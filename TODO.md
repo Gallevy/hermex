@@ -54,10 +54,6 @@ This document tracks remaining work and future enhancements for the React Usage 
 ## 📦 Nice to Have
 
 ### 7. Distribution
-- [ ] Publish to npm registry
-- [ ] Create GitHub releases workflow
-- [ ] Add changelog automation
-- [ ] Add semver release support via release please? or any other modern tools
 - [ ] Create Docker image (Why?)
 
 **Impact**: Easier installation and usage
@@ -85,10 +81,7 @@ This document tracks remaining work and future enhancements for the React Usage 
 ## 🔄 Refactoring Opportunities
 
 ### 1. Remove Redundancies
-- [x] Remove old JavaScript files from root (keep in src/) ✅ 2025-11-29
 - [ ] Consolidate duplicate report formatting logic
-- [x] Extract common patterns into shared utilities ✅ 2025-11-29
-- [x] Simplify CLI command handlers (analyze, compare, github refactored) ✅ 2025-11-29
 
 ### 2. Architecture Improvements
 - [ ] Consider converting analyzer classes to functional API
@@ -103,11 +96,6 @@ This document tracks remaining work and future enhancements for the React Usage 
 - [ ] Support multiple config formats (JSON, YAML, TOML)
 
 ## 📋 Migration Cleanup
-
-### Files to Remove (after verification)
-- [ ] `utils/*.js` (replaced by `src/utils/*.ts`)
-
-**Status**: Root directory cleanup complete! All legacy JS files removed.
 
 ### Documentation Updates Needed
 - [ ] Update all import examples in docs
