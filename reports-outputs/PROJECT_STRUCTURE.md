@@ -40,8 +40,6 @@ swc-parser/
 ├── examples/                    # Config examples and test files
 │   ├── repos-config.json        # GitHub repos config example
 │   ├── microfrontends-config.json
-│   ├── different-libraries.tsx
-│   └── examples-cli.sh          # CLI usage examples
 │
 ├── reports-outputs/             # Generated reports (.gitignored)
 │   ├── *.json                   # Analysis reports

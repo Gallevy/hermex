@@ -13,6 +13,7 @@
   ],
   "scripts": {
     "build": "tsup",
+    "check": "biome check",
     "format": "biome format --write",
     "format:ci": "biome ci",
     "tests:ci": "echo 'No tests to run'",

@@ -28,7 +28,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Run linter
+      - name: Run format
         run: pnpm run format:ci
 
       - name: Run tests

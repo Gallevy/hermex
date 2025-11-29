@@ -373,8 +373,6 @@ swc-parser/
 ├── examples/                    # Config examples
 │   ├── repos-config.json
 │   ├── microfrontends-config.json
-│   ├── different-libraries.tsx
-│   └── examples-cli.sh
 │
 └── reports-outputs/             # Generated reports (.gitignored)
     ├── *.json

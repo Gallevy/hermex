@@ -53,7 +53,6 @@
 ### Examples (3 config files)
 - ✅ examples/repos-config.json
 - ✅ examples/microfrontends-config.json
-- ✅ examples/different-libraries.tsx
 
 ### Code Examples (7 files, consistently named)
 - ✅ code-examples/01-direct-usage.tsx
