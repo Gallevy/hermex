@@ -15,6 +15,8 @@
     "build": "tsup",
     "format": "biome format --write",
     "format:ci": "biome ci",
+    "tests:ci": "echo 'No tests to run'",
+    "build:ci": "tsup --clean",
     "dev": "tsup --watch",
     "clean": "rm -rf dist",
     "prepublishOnly": "pnpm run build -- FIXME WHY PREPUBLISH SCRIPT, ITS SOUNDS LIKE PLACE FOR ISSUES",
