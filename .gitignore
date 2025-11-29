@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Reports and outputs
+reports-outputs/*.json
+
+# Lock files
+package-lock.json
+yarn.lock
+
+# Keep pnpm-lock.yaml (we're using pnpm)
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo

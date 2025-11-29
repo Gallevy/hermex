@@ -1,0 +1,15 @@
+{
+  "repositories": [
+    "facebook/react",
+    "mui/material-ui",
+    "ant-design/ant-design",
+    "chakra-ui/chakra-ui"
+  ],
+  "options": {
+    "library": "@mui/material",
+    "branch": "main",
+    "pattern": "**/*.{tsx,jsx}",
+    "depth": 1
+  },
+  "description": "Example configuration for analyzing popular React UI libraries"
+}
