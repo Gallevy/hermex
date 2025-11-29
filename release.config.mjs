@@ -4,7 +4,8 @@ export default {
   branches: [
     {
       name: 'main',
-      prerelease: 'alpha',
+      channel: 'alpha',
+      prerelease: true,
     },
   ],
   plugins: [
