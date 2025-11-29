@@ -18,8 +18,11 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 22
           cache: "pnpm"
+
+      - name: Setup pnpm CLI
+        uses: pnpm/action-setup@v4
 
       - name: Install pnpm
         run: npm install -g pnpm
@@ -35,3 +38,9 @@ jobs:
 
       - name: Build project
         run: pnpm run build:ci
+
+      - name: Run semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # for pushing changelog & tag
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }} # for publishing
+        run: npx semantic-release
