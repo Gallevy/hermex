@@ -1,8 +1,8 @@
-import React from "react";
+import React from 'react';
 
 // Example library imports - Namespace patterns
-import * as Foundation from "@design-system/foundation";
-import * as FoundationComponents from "@design-system/foundation";
+import * as Foundation from '@design-system/foundation';
+import * as FoundationComponents from '@design-system/foundation';
 
 /**
  * PATTERN 5: NAMESPACE IMPORTS
@@ -71,14 +71,14 @@ export function NamespaceImportsExample() {
       {/* Namespace with computed access */}
       <section>
         <h3>Dynamic Namespace Access</h3>
-        {["Button", "Input", "Card"].map((componentName, index) => {
+        {['Button', 'Input', 'Card'].map((componentName, index) => {
           const Component =
             Foundation[componentName as keyof typeof Foundation];
           if (!Component) return null;
 
-          if (componentName === "Button") {
+          if (componentName === 'Button') {
             return <Component key={index}>Dynamic {componentName}</Component>;
-          } else if (componentName === "Input") {
+          } else if (componentName === 'Input') {
             return (
               <Component key={index} placeholder={`Dynamic ${componentName}`} />
             );
@@ -103,9 +103,9 @@ export function NamespaceImportsExample() {
           };
 
           return Object.entries(componentMap).map(([key, Component]) => {
-            if (key === "button") {
+            if (key === 'button') {
               return <Component key={key}>Mapped from Namespace</Component>;
-            } else if (key === "input") {
+            } else if (key === 'input') {
               return (
                 <Component key={key} placeholder="Mapped from namespace" />
               );
@@ -127,7 +127,7 @@ export function NamespaceImportsExample() {
           <Foundation.Typography variant="h3">
             Nested Title
           </Foundation.Typography>
-          <Foundation.Button onClick={() => alert("Nested click")}>
+          <Foundation.Button onClick={() => alert('Nested click')}>
             Nested Button
           </Foundation.Button>
           <Foundation.Input placeholder="Nested input" />

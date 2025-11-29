@@ -7,20 +7,20 @@ import React, {
   forwardRef,
   createContext,
   useContext,
-} from "react";
-import { createPortal } from "react-dom";
+} from 'react';
+import { createPortal } from 'react-dom';
 
 // Example library imports - these would be your actual library components
-import Button from "@design-system/foundation/button";
-import Input from "@design-system/foundation/input";
-import Modal from "@design-system/foundation/modal";
-import Card from "@design-system/foundation/card";
-import { Icon, Typography, Layout } from "@design-system/foundation";
-import * as Foundation from "@design-system/foundation";
+import Button from '@design-system/foundation/button';
+import Input from '@design-system/foundation/input';
+import Modal from '@design-system/foundation/modal';
+import Card from '@design-system/foundation/card';
+import { Icon, Typography, Layout } from '@design-system/foundation';
+import * as Foundation from '@design-system/foundation';
 import {
   Button as AliasedButton,
   Input as AliasedInput,
-} from "@design-system/foundation";
+} from '@design-system/foundation';
 
 // 1. DIRECT USAGE PATTERNS
 function DirectUsage() {
@@ -33,7 +33,7 @@ function DirectUsage() {
       <Button
         variant="primary"
         size="large"
-        onClick={() => console.log("clicked")}
+        onClick={() => console.log('clicked')}
       >
         Primary Button
       </Button>
@@ -68,15 +68,15 @@ function VariableAssignments() {
   // Dynamic assignment
   const getComponent = (type: string) => {
     switch (type) {
-      case "button":
+      case 'button':
         return Button;
-      case "input":
+      case 'input':
         return Input;
       default:
         return Card;
     }
   };
-  const DynamicComponent = getComponent("button");
+  const DynamicComponent = getComponent('button');
 
   return (
     <div>
@@ -103,9 +103,9 @@ function ObjectMappingUsage() {
 
   // Array of component configs
   const componentConfigs = [
-    { type: "button", props: { children: "Button 1", variant: "primary" } },
-    { type: "input", props: { placeholder: "Input 1" } },
-    { type: "card", props: { title: "Card 1", children: "Card content" } },
+    { type: 'button', props: { children: 'Button 1', variant: 'primary' } },
+    { type: 'input', props: { placeholder: 'Input 1' } },
+    { type: 'card', props: { title: 'Card 1', children: 'Card content' } },
   ];
 
   // Object with nested components
@@ -143,20 +143,20 @@ function ObjectMappingUsage() {
 }
 
 // 4. LAZY LOADING PATTERNS
-const LazyButton = lazy(() => import("@design-system/foundation/button"));
-const LazyModal = lazy(() => import("@design-system/foundation/modal"));
+const LazyButton = lazy(() => import('@design-system/foundation/button'));
+const LazyModal = lazy(() => import('@design-system/foundation/modal'));
 
 // Lazy with dynamic import
 const LazyDynamic = lazy(() => {
-  return import("@design-system/foundation/card");
+  return import('@design-system/foundation/card');
 });
 
 // Lazy with conditional loading
 const LazyConditional = lazy(() => {
   const condition = true;
   return condition
-    ? import("@design-system/foundation/button")
-    : import("@design-system/foundation/input");
+    ? import('@design-system/foundation/button')
+    : import('@design-system/foundation/input');
 });
 
 function LazyUsagePatterns() {
@@ -203,8 +203,8 @@ function RenderPropPattern() {
 
   return (
     <div>
-      {renderButton("Render prop button")}
-      {renderInput("Render prop input")}
+      {renderButton('Render prop button')}
+      {renderInput('Render prop input')}
     </div>
   );
 }
@@ -264,8 +264,8 @@ const MemoizedCard = memo(Card);
 function ConditionalPatterns() {
   const [condition, setCondition] = useState(true);
   const [componentType, setComponentType] = useState<
-    "button" | "input" | "card"
-  >("button");
+    'button' | 'input' | 'card'
+  >('button');
 
   // Ternary conditional
   const ConditionalComponent = condition ? Button : Input;
@@ -273,11 +273,11 @@ function ConditionalPatterns() {
   // Switch-based conditional
   const getSwitchComponent = () => {
     switch (componentType) {
-      case "button":
+      case 'button':
         return Button;
-      case "input":
+      case 'input':
         return Input;
-      case "card":
+      case 'card':
         return Card;
       default:
         return Button;
@@ -292,11 +292,11 @@ function ConditionalPatterns() {
       <button
         onClick={() =>
           setComponentType(
-            componentType === "button"
-              ? "input"
-              : componentType === "input"
-                ? "card"
-                : "button",
+            componentType === 'button'
+              ? 'input'
+              : componentType === 'input'
+                ? 'card'
+                : 'button',
           )
         }
       >
@@ -319,15 +319,15 @@ function ConditionalPatterns() {
 
 // 11. ARRAY ITERATION PATTERNS
 function ArrayIterationPatterns() {
-  const buttonTexts = ["First", "Second", "Third"];
-  const inputPlaceholders = ["Name", "Email", "Phone"];
+  const buttonTexts = ['First', 'Second', 'Third'];
+  const inputPlaceholders = ['Name', 'Email', 'Phone'];
 
   const mixedComponents = [
-    { Component: Button, props: { children: "Mixed Button" } },
-    { Component: Input, props: { placeholder: "Mixed Input" } },
+    { Component: Button, props: { children: 'Mixed Button' } },
+    { Component: Input, props: { placeholder: 'Mixed Input' } },
     {
       Component: Card,
-      props: { title: "Mixed Card", children: "Mixed content" },
+      props: { title: 'Mixed Card', children: 'Mixed content' },
     },
   ];
 
@@ -380,10 +380,10 @@ function DynamicImportPatterns() {
     const loadComponent = async () => {
       const condition = Math.random() > 0.5;
       if (condition) {
-        const module = await import("@design-system/foundation/button");
+        const module = await import('@design-system/foundation/button');
         setDynamicComponent(() => module.default);
       } else {
-        const module = await import("@design-system/foundation/input");
+        const module = await import('@design-system/foundation/input');
         setDynamicComponent(() => module.default);
       }
     };
@@ -551,7 +551,7 @@ function ComplexNestingPatterns() {
       level2: {
         level3: {
           component: Button,
-          props: { children: "Deeply Nested" },
+          props: { children: 'Deeply Nested' },
         },
       },
     },

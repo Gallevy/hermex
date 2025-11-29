@@ -1,82 +1,82 @@
 #!/usr/bin/env node
 
-import { Command } from "commander";
-import { glob } from "glob";
-import chalk from "chalk";
-import ora from "ora";
-import fs from "fs";
-import path from "path";
-import Table from "cli-table3";
-import { ReactComponentUsageAnalyzer } from "./parser";
-import { FocusedUsageAnalyzer } from "./analyze-usage";
-import { analyzeCommand, compareCommand, githubCommand } from "./commands";
+import { Command } from 'commander';
+import { glob } from 'glob';
+import chalk from 'chalk';
+import ora from 'ora';
+import fs from 'fs';
+import path from 'path';
+import Table from 'cli-table3';
+import { ReactComponentUsageAnalyzer } from './parser';
+import { FocusedUsageAnalyzer } from './analyze-usage';
+import { analyzeCommand, compareCommand, githubCommand } from './commands';
 
 const program = new Command();
 
 // CLI Configuration
 program
-  .name("react-usage-analyzer")
-  .description("Analyze React component usage patterns in your codebase")
-  .version("1.0.0");
+  .name('react-usage-analyzer')
+  .description('Analyze React component usage patterns in your codebase')
+  .version('1.0.0');
 
 // Analyze command
 program
-  .command("analyze")
+  .command('analyze')
   .description(
-    "Analyze component usage patterns in files matching a glob pattern",
+    'Analyze component usage patterns in files matching a glob pattern',
   )
   .argument(
-    "<pattern>",
+    '<pattern>',
     'Glob pattern for files to analyze (e.g., "src/**/*.tsx")',
   )
   .option(
-    "-l, --library <name>",
-    "Library name to analyze (e.g., @mui/material)",
-    "@design-system/foundation",
+    '-l, --library <name>',
+    'Library name to analyze (e.g., @mui/material)',
+    '@design-system/foundation',
   )
   .option(
-    "-o, --output <file>",
-    "Output file path for JSON report (defaults to timestamped filename)",
+    '-o, --output <file>',
+    'Output file path for JSON report (defaults to timestamped filename)',
   )
   .option(
-    "-f, --format <type>",
-    "Output format: json, console, or both",
-    "both",
+    '-f, --format <type>',
+    'Output format: json, console, or both',
+    'both',
   )
-  .option("-c, --complexity", "Include complexity analysis", false)
+  .option('-c, --complexity', 'Include complexity analysis', false)
   .option(
-    "-s, --summary-only",
-    "Show only summary, not detailed patterns",
+    '-s, --summary-only',
+    'Show only summary, not detailed patterns',
     false,
   )
   .option(
-    "--ignore <patterns...>",
+    '--ignore <patterns...>',
     'Glob patterns to ignore (e.g., "**/*.test.tsx")',
     [],
   )
-  .option("--max-files <number>", "Maximum number of files to analyze", "1000")
+  .option('--max-files <number>', 'Maximum number of files to analyze', '1000')
   .action(async (pattern, options) => {
     await analyzeCommand(pattern, options);
   });
 
 // Compare command
 program
-  .command("compare")
-  .description("Compare usage patterns across multiple libraries")
-  .argument("<pattern>", "Glob pattern for files to analyze")
-  .option("-l, --libraries <names...>", "Library names to compare", [
-    "@mui/material",
-    "antd",
-    "@chakra-ui/react",
+  .command('compare')
+  .description('Compare usage patterns across multiple libraries')
+  .argument('<pattern>', 'Glob pattern for files to analyze')
+  .option('-l, --libraries <names...>', 'Library names to compare', [
+    '@mui/material',
+    'antd',
+    '@chakra-ui/react',
   ])
   .option(
-    "-o, --output <file>",
-    "Output file path for comparison report (defaults to timestamped filename)",
+    '-o, --output <file>',
+    'Output file path for comparison report (defaults to timestamped filename)',
   )
   .option(
-    "-f, --format <type>",
-    "Output format: json, console, or both",
-    "both",
+    '-f, --format <type>',
+    'Output format: json, console, or both',
+    'both',
   )
   .action(async (pattern, options) => {
     await compareCommand(pattern, options);
@@ -84,98 +84,98 @@ program
 
 // Summary command
 program
-  .command("summary")
-  .description("Generate a quick summary of component usage")
-  .argument("<pattern>", "Glob pattern for files to analyze")
+  .command('summary')
+  .description('Generate a quick summary of component usage')
+  .argument('<pattern>', 'Glob pattern for files to analyze')
   .option(
-    "-l, --library <name>",
-    "Library name to analyze",
-    "@design-system/foundation",
+    '-l, --library <name>',
+    'Library name to analyze',
+    '@design-system/foundation',
   )
-  .option("--top <number>", "Number of top components to show", "10")
+  .option('--top <number>', 'Number of top components to show', '10')
   .action(async (pattern, options) => {
     await summaryCommand(pattern, options);
   });
 
 // Patterns command
 program
-  .command("patterns")
-  .description("List all detected usage patterns")
-  .argument("<pattern>", "Glob pattern for files to analyze")
+  .command('patterns')
+  .description('List all detected usage patterns')
+  .argument('<pattern>', 'Glob pattern for files to analyze')
   .option(
-    "-l, --library <name>",
-    "Library name to analyze",
-    "@design-system/foundation",
+    '-l, --library <name>',
+    'Library name to analyze',
+    '@design-system/foundation',
   )
-  .option("--sort <by>", "Sort by: frequency, complexity, or name", "frequency")
+  .option('--sort <by>', 'Sort by: frequency, complexity, or name', 'frequency')
   .action(async (pattern, options) => {
     await patternsCommand(pattern, options);
   });
 
 // Stats command
 program
-  .command("stats")
-  .description("Show detailed statistics about component usage")
-  .argument("<pattern>", "Glob pattern for files to analyze")
+  .command('stats')
+  .description('Show detailed statistics about component usage')
+  .argument('<pattern>', 'Glob pattern for files to analyze')
   .option(
-    "-l, --library <name>",
-    "Library name to analyze",
-    "@design-system/foundation",
+    '-l, --library <name>',
+    'Library name to analyze',
+    '@design-system/foundation',
   )
-  .option("--chart", "Show ASCII charts", false)
+  .option('--chart', 'Show ASCII charts', false)
   .action(async (pattern, options) => {
     await statsCommand(pattern, options);
   });
 
 // Table command
 program
-  .command("table")
-  .description("Show components and imports in table format")
-  .argument("<pattern>", "Glob pattern for files to analyze")
+  .command('table')
+  .description('Show components and imports in table format')
+  .argument('<pattern>', 'Glob pattern for files to analyze')
   .option(
-    "-l, --library <name>",
-    "Library name to analyze",
-    "@design-system/foundation",
+    '-l, --library <name>',
+    'Library name to analyze',
+    '@design-system/foundation',
   )
-  .option("-s, --sort <by>", "Sort by: uses, name, files, or props", "uses")
-  .option("-t, --top <number>", "Number of top items to show", "20")
-  .option("--props", "Show props analysis", false)
+  .option('-s, --sort <by>', 'Sort by: uses, name, files, or props', 'uses')
+  .option('-t, --top <number>', 'Number of top items to show', '20')
+  .option('--props', 'Show props analysis', false)
   .action(async (pattern, options) => {
     await tableCommand(pattern, options);
   });
 
 // GitHub command
 program
-  .command("github")
-  .description("Analyze GitHub repositories")
+  .command('github')
+  .description('Analyze GitHub repositories')
   .argument(
-    "[repos...]",
-    "GitHub repository URLs or owner/repo format (or use --config)",
+    '[repos...]',
+    'GitHub repository URLs or owner/repo format (or use --config)',
   )
   .option(
-    "-l, --library <name>",
-    "Library name to analyze",
-    "@design-system/foundation",
+    '-l, --library <name>',
+    'Library name to analyze',
+    '@design-system/foundation',
   )
-  .option("-b, --branch <name>", "Branch to analyze", "main")
+  .option('-b, --branch <name>', 'Branch to analyze', 'main')
   .option(
-    "-p, --pattern <glob>",
-    "File pattern to analyze",
-    "**/*.{tsx,jsx,ts,js}",
-  )
-  .option(
-    "-o, --output <file>",
-    "Output JSON file (defaults to timestamped filename)",
+    '-p, --pattern <glob>',
+    'File pattern to analyze',
+    '**/*.{tsx,jsx,ts,js}',
   )
   .option(
-    "-f, --format <type>",
-    "Output format: json, console, or both",
-    "both",
+    '-o, --output <file>',
+    'Output JSON file (defaults to timestamped filename)',
   )
-  .option("--keep-repos", "Keep cloned repositories after analysis", false)
-  .option("--depth <number>", "Clone depth", "1")
-  .option("-c, --complexity", "Include complexity analysis", false)
-  .option("--config <file>", "Path to config file with repository list")
+  .option(
+    '-f, --format <type>',
+    'Output format: json, console, or both',
+    'both',
+  )
+  .option('--keep-repos', 'Keep cloned repositories after analysis', false)
+  .option('--depth <number>', 'Clone depth', '1')
+  .option('-c, --complexity', 'Include complexity analysis', false)
+  .option('--config <file>', 'Path to config file with repository list')
   .action(async (repos, options) => {
     await githubCommand(repos, options);
   });
@@ -185,13 +185,13 @@ program
 
 // Summary command implementation
 async function summaryCommand(pattern, options) {
-  const spinner = ora("Generating summary...").start();
+  const spinner = ora('Generating summary...').start();
 
   try {
     const files = await findFiles(pattern, [], 1000);
 
     if (files.length === 0) {
-      spinner.fail(chalk.red("No files found"));
+      spinner.fail(chalk.red('No files found'));
       return;
     }
 
@@ -217,9 +217,9 @@ async function summaryCommand(pattern, options) {
       }
     }
 
-    spinner.succeed(chalk.green("Summary generated"));
+    spinner.succeed(chalk.green('Summary generated'));
 
-    console.log(chalk.bold("\n📊 COMPONENT USAGE SUMMARY\n"));
+    console.log(chalk.bold('\n📊 COMPONENT USAGE SUMMARY\n'));
     console.log(chalk.gray(`Library: ${options.library}`));
     console.log(chalk.gray(`Files analyzed: ${totalFiles}\n`));
 
@@ -237,25 +237,25 @@ async function summaryCommand(pattern, options) {
     sorted.forEach((item, index) => {
       const rank = index + 1;
       const emoji =
-        rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : "  ";
+        rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '  ';
       console.log(
         `${emoji} ${rank}. ${chalk.cyan(item.comp)}: ${chalk.yellow(item.count)} uses in ${chalk.green(item.files)} files`,
       );
     });
   } catch (error) {
-    spinner.fail(chalk.red("Summary failed: " + error.message));
+    spinner.fail(chalk.red('Summary failed: ' + error.message));
   }
 }
 
 // Patterns command implementation
 async function patternsCommand(pattern, options) {
-  const spinner = ora("Analyzing patterns...").start();
+  const spinner = ora('Analyzing patterns...').start();
 
   try {
     const files = await findFiles(pattern, [], 1000);
 
     if (files.length === 0) {
-      spinner.fail(chalk.red("No files found"));
+      spinner.fail(chalk.red('No files found'));
       return;
     }
 
@@ -285,15 +285,15 @@ async function patternsCommand(pattern, options) {
       }
     }
 
-    spinner.succeed(chalk.green("Pattern analysis complete"));
+    spinner.succeed(chalk.green('Pattern analysis complete'));
 
-    console.log(chalk.bold("\n🔍 USAGE PATTERNS DETECTED\n"));
+    console.log(chalk.bold('\n🔍 USAGE PATTERNS DETECTED\n'));
 
     let sorted = Object.entries(patternStats);
 
-    if (options.sort === "complexity") {
+    if (options.sort === 'complexity') {
       sorted = sorted.sort((a, b) => b[1].complexity - a[1].complexity);
-    } else if (options.sort === "frequency") {
+    } else if (options.sort === 'frequency') {
       sorted = sorted.sort((a, b) => b[1].count - a[1].count);
     } else {
       sorted = sorted.sort((a, b) => a[0].localeCompare(b[0]));
@@ -305,22 +305,22 @@ async function patternsCommand(pattern, options) {
       console.log(`   Complexity: ${stats.complexity}/10`);
       console.log(`   Instances: ${chalk.yellow(stats.count)}`);
       console.log(`   Files: ${chalk.green(stats.files.size)}`);
-      console.log("");
+      console.log('');
     });
   } catch (error) {
-    spinner.fail(chalk.red("Pattern analysis failed: " + error.message));
+    spinner.fail(chalk.red('Pattern analysis failed: ' + error.message));
   }
 }
 
 // Stats command implementation
 async function statsCommand(pattern, options) {
-  const spinner = ora("Generating statistics...").start();
+  const spinner = ora('Generating statistics...').start();
 
   try {
     const files = await findFiles(pattern, [], 1000);
 
     if (files.length === 0) {
-      spinner.fail(chalk.red("No files found"));
+      spinner.fail(chalk.red('No files found'));
       return;
     }
 
@@ -334,8 +334,8 @@ async function statsCommand(pattern, options) {
         Simple: 0,
         Moderate: 0,
         Complex: 0,
-        "Very Complex": 0,
-        "Extremely Complex": 0,
+        'Very Complex': 0,
+        'Extremely Complex': 0,
       },
       avgComplexity: 0,
       topComponents: {},
@@ -381,11 +381,11 @@ async function statsCommand(pattern, options) {
       stats.analyzedFiles > 0 ? totalComplexityScore / stats.analyzedFiles : 0;
     stats.totalComponents = stats.totalComponents.size;
 
-    spinner.succeed(chalk.green("Statistics generated"));
+    spinner.succeed(chalk.green('Statistics generated'));
 
     // Print stats
-    console.log(chalk.bold("\n📈 DETAILED STATISTICS\n"));
-    console.log(chalk.cyan("Overview:"));
+    console.log(chalk.bold('\n📈 DETAILED STATISTICS\n'));
+    console.log(chalk.cyan('Overview:'));
     console.log(`  Total Files: ${stats.totalFiles}`);
     console.log(`  Analyzed Files: ${chalk.green(stats.analyzedFiles)}`);
     console.log(`  Unique Components: ${chalk.yellow(stats.totalComponents)}`);
@@ -394,20 +394,20 @@ async function statsCommand(pattern, options) {
       `  Average Complexity: ${chalk.yellow(stats.avgComplexity.toFixed(2))}`,
     );
 
-    console.log(chalk.cyan("\nComplexity Distribution:"));
+    console.log(chalk.cyan('\nComplexity Distribution:'));
     Object.entries(stats.complexityDistribution).forEach(([level, count]) => {
       if (count > 0) {
         const percentage = ((count / stats.analyzedFiles) * 100).toFixed(1);
         const bar = options.chart
           ? createBar(count, stats.analyzedFiles, 30)
-          : "";
+          : '';
         console.log(
           `  ${level.padEnd(20)} ${count.toString().padStart(4)} (${percentage}%) ${bar}`,
         );
       }
     });
 
-    console.log(chalk.cyan("\nTop 5 Components:"));
+    console.log(chalk.cyan('\nTop 5 Components:'));
     Object.entries(stats.topComponents)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
@@ -417,7 +417,7 @@ async function statsCommand(pattern, options) {
         );
       });
 
-    console.log(chalk.cyan("\nTop 5 Patterns:"));
+    console.log(chalk.cyan('\nTop 5 Patterns:'));
     Object.entries(stats.topPatterns)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
@@ -427,19 +427,19 @@ async function statsCommand(pattern, options) {
         );
       });
   } catch (error) {
-    spinner.fail(chalk.red("Stats generation failed: " + error.message));
+    spinner.fail(chalk.red('Stats generation failed: ' + error.message));
   }
 }
 
 // Table command implementation
 async function tableCommand(pattern, options) {
-  const spinner = ora("Generating table...").start();
+  const spinner = ora('Generating table...').start();
 
   try {
     const files = await findFiles(pattern, [], 1000);
 
     if (files.length === 0) {
-      spinner.fail(chalk.red("No files found"));
+      spinner.fail(chalk.red('No files found'));
       return;
     }
 
@@ -487,7 +487,7 @@ async function tableCommand(pattern, options) {
             if (!importData[name]) {
               importData[name] = {
                 files: new Set(),
-                type: imp.imported ? "named" : "default",
+                type: imp.imported ? 'named' : 'default',
               };
             }
             importData[name].files.add(file);
@@ -498,7 +498,7 @@ async function tableCommand(pattern, options) {
       }
     }
 
-    spinner.succeed(chalk.green("Table generated"));
+    spinner.succeed(chalk.green('Table generated'));
 
     // Convert sets to counts
     Object.keys(componentData).forEach((key) => {
@@ -515,13 +515,13 @@ async function tableCommand(pattern, options) {
     const sortedComponents = Object.entries(componentData)
       .sort((a, b) => {
         switch (options.sort) {
-          case "name":
+          case 'name':
             return a[0].localeCompare(b[0]);
-          case "files":
+          case 'files':
             return b[1].filesCount - a[1].filesCount;
-          case "props":
+          case 'props':
             return b[1].propsCount - a[1].propsCount;
-          case "uses":
+          case 'uses':
           default:
             return b[1].uses - a[1].uses;
         }
@@ -530,7 +530,7 @@ async function tableCommand(pattern, options) {
 
     const sortedImports = Object.entries(importData)
       .sort((a, b) => {
-        if (options.sort === "name") {
+        if (options.sort === 'name') {
           return a[0].localeCompare(b[0]);
         }
         return b[1].filesCount - a[1].filesCount;
@@ -538,14 +538,14 @@ async function tableCommand(pattern, options) {
       .slice(0, parseInt(options.top));
 
     // Display components table
-    console.log(chalk.bold("\n📊 COMPONENT USAGE TABLE\n"));
+    console.log(chalk.bold('\n📊 COMPONENT USAGE TABLE\n'));
 
     const componentTable = new Table({
       head: [
-        chalk.cyan("Component"),
-        chalk.cyan("Uses"),
-        chalk.cyan("Files"),
-        ...(options.props ? [chalk.cyan("Props"), chalk.cyan("Spread")] : []),
+        chalk.cyan('Component'),
+        chalk.cyan('Uses'),
+        chalk.cyan('Files'),
+        ...(options.props ? [chalk.cyan('Props'), chalk.cyan('Spread')] : []),
       ],
       colWidths: [30, 10, 10, ...(options.props ? [40, 10] : [])],
       style: { head: [], border: [] },
@@ -561,13 +561,13 @@ async function tableCommand(pattern, options) {
       if (options.props) {
         const propsDisplay =
           data.propsCount > 0
-            ? data.propsList.slice(0, 5).join(", ") +
-              (data.propsCount > 5 ? "..." : "")
-            : "-";
+            ? data.propsList.slice(0, 5).join(', ') +
+              (data.propsCount > 5 ? '...' : '')
+            : '-';
         const spreadDisplay =
           data.spreadProps > 0
             ? chalk.red(`⚠ ${data.spreadProps}`)
-            : chalk.gray("0");
+            : chalk.gray('0');
         row.push(propsDisplay, spreadDisplay);
       }
 
@@ -577,10 +577,10 @@ async function tableCommand(pattern, options) {
     console.log(componentTable.toString());
 
     // Display imports table
-    console.log(chalk.bold("\n📦 IMPORTS TABLE\n"));
+    console.log(chalk.bold('\n📦 IMPORTS TABLE\n'));
 
     const importTable = new Table({
-      head: [chalk.cyan("Import"), chalk.cyan("Type"), chalk.cyan("Files")],
+      head: [chalk.cyan('Import'), chalk.cyan('Type'), chalk.cyan('Files')],
       colWidths: [30, 15, 10],
       style: { head: [], border: [] },
     });
@@ -588,7 +588,7 @@ async function tableCommand(pattern, options) {
     sortedImports.forEach(([name, data]) => {
       importTable.push([
         name,
-        data.type === "named" ? chalk.blue("named") : chalk.green("default"),
+        data.type === 'named' ? chalk.blue('named') : chalk.green('default'),
         chalk.yellow(data.filesCount),
       ]);
     });
@@ -597,12 +597,12 @@ async function tableCommand(pattern, options) {
 
     // Props details if requested
     if (options.props) {
-      console.log(chalk.bold("\n🔧 PROPS ANALYSIS\n"));
+      console.log(chalk.bold('\n🔧 PROPS ANALYSIS\n'));
 
       sortedComponents.forEach(([component, data]) => {
         if (data.propsCount > 0 || data.spreadProps > 0) {
           console.log(chalk.cyan(`${component}:`));
-          console.log(`  Props: ${data.propsList.join(", ")}`);
+          console.log(`  Props: ${data.propsList.join(', ')}`);
           if (data.spreadProps > 0) {
             console.log(
               chalk.yellow(
@@ -610,19 +610,19 @@ async function tableCommand(pattern, options) {
               ),
             );
           }
-          console.log("");
+          console.log('');
         }
       });
     }
 
     // Summary
-    console.log(chalk.bold("📈 SUMMARY"));
+    console.log(chalk.bold('📈 SUMMARY'));
     console.log(`  Total Components: ${Object.keys(componentData).length}`);
     console.log(`  Total Imports: ${Object.keys(importData).length}`);
     console.log(`  Files Analyzed: ${files.length}`);
     console.log(`  Sort: ${options.sort}`);
   } catch (error) {
-    spinner.fail(chalk.red("Table generation failed: " + error.message));
+    spinner.fail(chalk.red('Table generation failed: ' + error.message));
   }
 }
 
@@ -630,11 +630,11 @@ async function tableCommand(pattern, options) {
 // These will be moved to separate files in a future cleanup
 
 function printGitHubReport(report, options) {
-  console.log("\n" + chalk.bold.blue("═".repeat(80)));
-  console.log(chalk.bold.blue("  🚀 GITHUB REPOSITORIES ANALYSIS REPORT"));
-  console.log(chalk.bold.blue("═".repeat(80)));
+  console.log('\n' + chalk.bold.blue('═'.repeat(80)));
+  console.log(chalk.bold.blue('  🚀 GITHUB REPOSITORIES ANALYSIS REPORT'));
+  console.log(chalk.bold.blue('═'.repeat(80)));
 
-  console.log(chalk.bold("\n📈 SUMMARY:"));
+  console.log(chalk.bold('\n📈 SUMMARY:'));
   console.log(`  Library: ${chalk.cyan(report.metadata.library)}`);
   console.log(
     `  Repositories Analyzed: ${chalk.green(report.metadata.totalRepositories)}`,
@@ -649,7 +649,7 @@ function printGitHubReport(report, options) {
     `  Total Imports Found: ${chalk.yellow(report.combined.totalImports.length)}`,
   );
 
-  console.log(chalk.bold("\n🏆 TOP COMPONENTS (Across All Repos):"));
+  console.log(chalk.bold('\n🏆 TOP COMPONENTS (Across All Repos):'));
   const topComponents = Object.entries(report.combined.componentFrequency)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 10);
@@ -657,13 +657,13 @@ function printGitHubReport(report, options) {
   topComponents.forEach(([comp, count], index) => {
     const rank = index + 1;
     const emoji =
-      rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : "  ";
+      rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '  ';
     console.log(
       `  ${emoji} ${rank}. ${chalk.cyan(comp)}: ${chalk.yellow(count)} uses`,
     );
   });
 
-  console.log(chalk.bold("\n📦 REPOSITORY SUMMARIES:"));
+  console.log(chalk.bold('\n📦 REPOSITORY SUMMARIES:'));
   report.combined.repoSummaries.forEach((summary, index) => {
     console.log(`\n  ${index + 1}. ${chalk.bold.cyan(summary.name)}`);
     console.log(`     Components: ${chalk.yellow(summary.components)}`);
@@ -681,7 +681,7 @@ function printGitHubReport(report, options) {
     }
   });
 
-  console.log(chalk.bold("\n🔍 COMPONENT DISTRIBUTION:"));
+  console.log(chalk.bold('\n🔍 COMPONENT DISTRIBUTION:'));
   Object.entries(report.combined.componentsByRepo).forEach(
     ([repoName, components]) => {
       console.log(
@@ -691,24 +691,24 @@ function printGitHubReport(report, options) {
   );
 
   if (report.cloneErrors.length > 0) {
-    console.log(chalk.bold.red("\n⚠️  CLONE ERRORS:"));
+    console.log(chalk.bold.red('\n⚠️  CLONE ERRORS:'));
     report.cloneErrors.forEach((error) => {
-      console.log(`  ${chalk.red("✗")} ${error.url}: ${error.error}`);
+      console.log(`  ${chalk.red('✗')} ${error.url}: ${error.error}`);
     });
   }
 
-  console.log("\n" + chalk.bold.blue("═".repeat(80)));
+  console.log('\n' + chalk.bold.blue('═'.repeat(80)));
 
   // Display helpful tips
-  console.log(chalk.bold("\n💡 TIPS:"));
-  console.log("  • Use --keep-repos to inspect cloned repositories locally");
-  console.log("  • Use --branch <name> to analyze different branches");
-  console.log("  • Use --pattern to customize which files to analyze");
-  console.log("  • Use --config <file> to load repositories from JSON file");
-  console.log("  • JSON report contains detailed per-repo analysis");
+  console.log(chalk.bold('\n💡 TIPS:'));
+  console.log('  • Use --keep-repos to inspect cloned repositories locally');
+  console.log('  • Use --branch <name> to analyze different branches');
+  console.log('  • Use --pattern to customize which files to analyze');
+  console.log('  • Use --config <file> to load repositories from JSON file');
+  console.log('  • JSON report contains detailed per-repo analysis');
 
   // Show example config format
-  console.log(chalk.bold("\n📝 CONFIG FILE FORMAT:"));
+  console.log(chalk.bold('\n📝 CONFIG FILE FORMAT:'));
   console.log(
     chalk.gray(`  {
     "repositories": [
@@ -723,7 +723,7 @@ function printGitHubReport(report, options) {
 // Helper functions
 async function findFiles(pattern, ignorePatterns, maxFiles) {
   const allFiles = await glob(pattern, {
-    ignore: ["node_modules/**", "dist/**", "build/**", ...ignorePatterns],
+    ignore: ['node_modules/**', 'dist/**', 'build/**', ...ignorePatterns],
     nodir: true,
     absolute: false,
     // Support all React file types
@@ -733,18 +733,18 @@ async function findFiles(pattern, ignorePatterns, maxFiles) {
   // Filter for React file types: tsx, jsx, ts, js
   const reactFiles = allFiles.filter((file) => {
     const ext = path.extname(file).toLowerCase();
-    return [".tsx", ".jsx", ".ts", ".js"].includes(ext);
+    return ['.tsx', '.jsx', '.ts', '.js'].includes(ext);
   });
 
   return reactFiles.slice(0, maxFiles);
 }
 
 function printAggregatedReport(report, options) {
-  console.log("\n" + chalk.bold.blue("═".repeat(80)));
-  console.log(chalk.bold.blue("  📊 AGGREGATED ANALYSIS REPORT"));
-  console.log(chalk.bold.blue("═".repeat(80)));
+  console.log('\n' + chalk.bold.blue('═'.repeat(80)));
+  console.log(chalk.bold.blue('  📊 AGGREGATED ANALYSIS REPORT'));
+  console.log(chalk.bold.blue('═'.repeat(80)));
 
-  console.log(chalk.bold("\n📈 SUMMARY:"));
+  console.log(chalk.bold('\n📈 SUMMARY:'));
   console.log(`  Library: ${chalk.cyan(report.metadata.library)}`);
   console.log(
     `  Files Analyzed: ${chalk.green(report.metadata.filesAnalyzed)} / ${report.metadata.totalFiles}`,
@@ -765,7 +765,7 @@ function printAggregatedReport(report, options) {
   );
 
   if (!options.summaryOnly) {
-    console.log(chalk.bold("\n🎯 TOP COMPONENTS:"));
+    console.log(chalk.bold('\n🎯 TOP COMPONENTS:'));
     const topComponents = Object.entries(report.aggregated.componentFrequency)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 10);
@@ -773,13 +773,13 @@ function printAggregatedReport(report, options) {
     topComponents.forEach(([comp, count], index) => {
       const rank = index + 1;
       const emoji =
-        rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : "  ";
+        rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '  ';
       console.log(
         `  ${emoji} ${rank}. ${chalk.cyan(comp)}: ${chalk.yellow(count)} uses`,
       );
     });
 
-    console.log(chalk.bold("\n🔍 PATTERN FREQUENCY:"));
+    console.log(chalk.bold('\n🔍 PATTERN FREQUENCY:'));
     const topPatterns = Object.entries(report.aggregated.patternFrequency)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 10);
@@ -789,7 +789,7 @@ function printAggregatedReport(report, options) {
     });
 
     if (report.aggregated.fileComplexity.length > 0) {
-      console.log(chalk.bold("\n📊 COMPLEXITY ANALYSIS:"));
+      console.log(chalk.bold('\n📊 COMPLEXITY ANALYSIS:'));
       const avgComplexity =
         report.aggregated.fileComplexity.reduce((sum, f) => sum + f.score, 0) /
         report.aggregated.fileComplexity.length;
@@ -800,7 +800,7 @@ function printAggregatedReport(report, options) {
       const mostComplex = report.aggregated.fileComplexity
         .sort((a, b) => b.score - a.score)
         .slice(0, 5);
-      console.log(chalk.bold("\n  Most Complex Files:"));
+      console.log(chalk.bold('\n  Most Complex Files:'));
       mostComplex.forEach((file, index) => {
         console.log(
           `  ${index + 1}. ${path.basename(file.file)}: ${chalk.yellow(file.score)} (${file.level})`,
@@ -810,10 +810,10 @@ function printAggregatedReport(report, options) {
   }
 
   if (report.aggregated.errors.length > 0) {
-    console.log(chalk.bold.red("\n⚠️  ERRORS:"));
+    console.log(chalk.bold.red('\n⚠️  ERRORS:'));
     report.aggregated.errors.slice(0, 5).forEach((error) => {
       console.log(
-        `  ${chalk.red("✗")} ${path.basename(error.file)}: ${error.error}`,
+        `  ${chalk.red('✗')} ${path.basename(error.file)}: ${error.error}`,
       );
     });
     if (report.aggregated.errors.length > 5) {
@@ -823,42 +823,42 @@ function printAggregatedReport(report, options) {
     }
   }
 
-  console.log("\n" + chalk.bold.blue("═".repeat(80)) + "\n");
+  console.log('\n' + chalk.bold.blue('═'.repeat(80)) + '\n');
 }
 
 function printComparisonReport(results) {
-  console.log("\n" + chalk.bold.magenta("═".repeat(80)));
-  console.log(chalk.bold.magenta("  🏆 LIBRARY COMPARISON REPORT"));
-  console.log(chalk.bold.magenta("═".repeat(80)));
+  console.log('\n' + chalk.bold.magenta('═'.repeat(80)));
+  console.log(chalk.bold.magenta('  🏆 LIBRARY COMPARISON REPORT'));
+  console.log(chalk.bold.magenta('═'.repeat(80)));
 
-  console.log(chalk.bold("\n📊 RANKING BY COMPONENT USAGE:"));
+  console.log(chalk.bold('\n📊 RANKING BY COMPONENT USAGE:'));
   results.libraries.forEach((lib, index) => {
     const rank = index + 1;
     const emoji =
-      rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : "📍";
+      rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '📍';
     console.log(`  ${emoji} ${rank}. ${chalk.cyan(lib.name)}`);
     console.log(`     Components: ${chalk.yellow(lib.componentsFound)}`);
     console.log(`     Usage Patterns: ${chalk.yellow(lib.totalUsagePatterns)}`);
     console.log(
-      `     Top Components: ${lib.topComponents.slice(0, 3).join(", ")}`,
+      `     Top Components: ${lib.topComponents.slice(0, 3).join(', ')}`,
     );
-    console.log("");
+    console.log('');
   });
 
-  console.log(chalk.bold.magenta("═".repeat(80)) + "\n");
+  console.log(chalk.bold.magenta('═'.repeat(80)) + '\n');
 }
 
 function getComplexityIcon(complexity) {
-  if (complexity <= 2) return chalk.green("🟢");
-  if (complexity <= 4) return chalk.yellow("🟡");
-  if (complexity <= 6) return chalk.hex("#FFA500")("🟠");
-  return chalk.red("🔴");
+  if (complexity <= 2) return chalk.green('🟢');
+  if (complexity <= 4) return chalk.yellow('🟡');
+  if (complexity <= 6) return chalk.hex('#FFA500')('🟠');
+  return chalk.red('🔴');
 }
 
 function createBar(value, max, width) {
   const filled = Math.round((value / max) * width);
   const empty = width - filled;
-  return chalk.green("█".repeat(filled)) + chalk.gray("░".repeat(empty));
+  return chalk.green('█'.repeat(filled)) + chalk.gray('░'.repeat(empty));
 }
 
 // Parse arguments and execute

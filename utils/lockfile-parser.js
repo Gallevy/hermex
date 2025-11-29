@@ -1,7 +1,7 @@
-const fs = require("fs");
-const path = require("path");
-const yaml = require("js-yaml");
-const lockfile = require("@yarnpkg/lockfile");
+const fs = require('fs');
+const path = require('path');
+const yaml = require('js-yaml');
+const lockfile = require('@yarnpkg/lockfile');
 
 /**
  * Parse package-lock.json (npm/npm v7+)
@@ -10,17 +10,17 @@ const lockfile = require("@yarnpkg/lockfile");
  */
 function parsePackageLock(lockFilePath) {
   try {
-    const content = fs.readFileSync(lockFilePath, "utf8");
+    const content = fs.readFileSync(lockFilePath, 'utf8');
     const lockData = JSON.parse(content);
     const versions = {};
 
     // npm v7+ uses "packages" field
     if (lockData.packages) {
       Object.entries(lockData.packages).forEach(([pkgPath, pkgData]) => {
-        if (!pkgPath || pkgPath === "") return; // Skip root
+        if (!pkgPath || pkgPath === '') return; // Skip root
 
         // Remove leading "node_modules/"
-        const pkgName = pkgPath.replace(/^node_modules\//, "");
+        const pkgName = pkgPath.replace(/^node_modules\//, '');
 
         if (pkgData.version) {
           versions[pkgName] = pkgData.version;
@@ -30,7 +30,7 @@ function parsePackageLock(lockFilePath) {
 
     // npm v6 uses "dependencies" field
     if (lockData.dependencies && Object.keys(versions).length === 0) {
-      function extractVersions(deps, prefix = "") {
+      function extractVersions(deps, prefix = '') {
         Object.entries(deps).forEach(([name, data]) => {
           const fullName = prefix ? `${prefix}/${name}` : name;
           if (data.version) {
@@ -60,11 +60,11 @@ function parsePackageLock(lockFilePath) {
  */
 function parseYarnLock(lockFilePath) {
   try {
-    const content = fs.readFileSync(lockFilePath, "utf8");
+    const content = fs.readFileSync(lockFilePath, 'utf8');
     const parsed = lockfile.parse(content);
 
-    if (parsed.type !== "success") {
-      console.warn("Warning: Failed to parse yarn.lock");
+    if (parsed.type !== 'success') {
+      console.warn('Warning: Failed to parse yarn.lock');
       return {};
     }
 
@@ -76,7 +76,7 @@ function parseYarnLock(lockFilePath) {
       let pkgName = key;
 
       // Handle scoped packages
-      if (key.startsWith("@")) {
+      if (key.startsWith('@')) {
         const match = key.match(/^(@[^@]+\/[^@]+)@/);
         if (match) {
           pkgName = match[1];
@@ -107,18 +107,18 @@ function parseYarnLock(lockFilePath) {
  */
 function parsePnpmLock(lockFilePath) {
   try {
-    const content = fs.readFileSync(lockFilePath, "utf8");
+    const content = fs.readFileSync(lockFilePath, 'utf8');
     const lockData = yaml.load(content);
     const versions = {};
 
     // pnpm v9+ uses "importers" field
     if (lockData.importers) {
-      const rootImporter = lockData.importers["."];
+      const rootImporter = lockData.importers['.'];
       if (rootImporter) {
         // Parse dependencies
         if (rootImporter.dependencies) {
           Object.entries(rootImporter.dependencies).forEach(([name, data]) => {
-            if (typeof data === "object" && data.version) {
+            if (typeof data === 'object' && data.version) {
               versions[name] = data.version;
             }
           });
@@ -127,7 +127,7 @@ function parsePnpmLock(lockFilePath) {
         if (rootImporter.devDependencies) {
           Object.entries(rootImporter.devDependencies).forEach(
             ([name, data]) => {
-              if (typeof data === "object" && data.version) {
+              if (typeof data === 'object' && data.version) {
                 versions[name] = data.version;
               }
             },
@@ -153,11 +153,11 @@ function parsePnpmLock(lockFilePath) {
       Object.entries(lockData.dependencies).forEach(([name, versionSpec]) => {
         // versionSpec format: "1.0.0" or "link:../package"
         if (
-          typeof versionSpec === "string" &&
-          !versionSpec.startsWith("link:")
+          typeof versionSpec === 'string' &&
+          !versionSpec.startsWith('link:')
         ) {
           versions[name] = versionSpec;
-        } else if (typeof versionSpec === "object" && versionSpec.version) {
+        } else if (typeof versionSpec === 'object' && versionSpec.version) {
           versions[name] = versionSpec.version;
         }
       });
@@ -177,9 +177,9 @@ function parsePnpmLock(lockFilePath) {
  */
 function findAndParseLockfile(projectPath) {
   const lockfiles = [
-    { name: "package-lock.json", parser: parsePackageLock, type: "npm" },
-    { name: "yarn.lock", parser: parseYarnLock, type: "yarn" },
-    { name: "pnpm-lock.yaml", parser: parsePnpmLock, type: "pnpm" },
+    { name: 'package-lock.json', parser: parsePackageLock, type: 'npm' },
+    { name: 'yarn.lock', parser: parseYarnLock, type: 'yarn' },
+    { name: 'pnpm-lock.yaml', parser: parsePnpmLock, type: 'pnpm' },
   ];
 
   for (const { name, parser, type } of lockfiles) {

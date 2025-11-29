@@ -1,7 +1,7 @@
-import { glob } from "glob";
-import chalk from "chalk";
-import fs from "fs";
-import path from "path";
+import { glob } from 'glob';
+import chalk from 'chalk';
+import fs from 'fs';
+import path from 'path';
 
 export interface FileSearchOptions {
   ignore?: string[];
@@ -12,7 +12,7 @@ export interface SaveReportOptions {
   data: any;
   commandType: string;
   outputPath?: string;
-  format?: "json" | "console" | "both";
+  format?: 'json' | 'console' | 'both';
 }
 
 /**
@@ -25,9 +25,9 @@ export async function findFiles(
 ): Promise<string[]> {
   const allFiles = await glob(pattern, {
     ignore: ignorePatterns || [
-      "**/node_modules/**",
-      "**/dist/**",
-      "**/build/**",
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/build/**',
     ],
     nodir: true,
     absolute: true,
@@ -37,8 +37,8 @@ export async function findFiles(
 
   // Filter for React component files
   const reactFiles = allFiles.filter((file) => {
-    const ext = file.split(".").pop()?.toLowerCase();
-    return ["tsx", "jsx", "ts", "js"].includes(ext || "");
+    const ext = file.split('.').pop()?.toLowerCase();
+    return ['tsx', 'jsx', 'ts', 'js'].includes(ext || '');
   });
 
   return maxFiles ? reactFiles.slice(0, maxFiles) : reactFiles;
@@ -49,9 +49,9 @@ export async function findFiles(
  */
 export function generateReportFilename(
   commandType: string,
-  extension: string = "json",
+  extension: string = 'json',
 ): string {
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   return `${commandType}-report-${timestamp}.${extension}`;
 }
 
@@ -78,17 +78,17 @@ export function addReportMetadata(
  * Save a report to the reports-outputs directory
  */
 export function saveReport(options: SaveReportOptions): string {
-  const { data, commandType, outputPath, format = "both" } = options;
+  const { data, commandType, outputPath, format = 'both' } = options;
 
-  if (format === "console") {
-    return "";
+  if (format === 'console') {
+    return '';
   }
 
   // Generate filename with timestamp and command type
   const filename = outputPath || generateReportFilename(commandType);
 
   // Ensure reports-outputs directory exists
-  const reportsDir = path.join(process.cwd(), "reports-outputs");
+  const reportsDir = path.join(process.cwd(), 'reports-outputs');
   if (!fs.existsSync(reportsDir)) {
     fs.mkdirSync(reportsDir, { recursive: true });
   }
@@ -113,18 +113,18 @@ export function saveReport(options: SaveReportOptions): string {
  */
 export function getComplexityIcon(level: string): string {
   switch (level) {
-    case "Simple":
-      return "🟢";
-    case "Moderate":
-      return "🟡";
-    case "Complex":
-      return "🟠";
-    case "Very Complex":
-      return "🔴";
-    case "Extremely Complex":
-      return "⚫";
+    case 'Simple':
+      return '🟢';
+    case 'Moderate':
+      return '🟡';
+    case 'Complex':
+      return '🟠';
+    case 'Very Complex':
+      return '🔴';
+    case 'Extremely Complex':
+      return '⚫';
     default:
-      return "⚪";
+      return '⚪';
   }
 }
 
@@ -134,7 +134,7 @@ export function getComplexityIcon(level: string): string {
 export function createBar(percentage: number, length: number = 20): string {
   const filled = Math.round((percentage / 100) * length);
   const empty = length - filled;
-  return chalk.green("█".repeat(filled)) + chalk.gray("░".repeat(empty));
+  return chalk.green('█'.repeat(filled)) + chalk.gray('░'.repeat(empty));
 }
 
 /**
@@ -150,12 +150,12 @@ export function formatNumber(num: number): string {
 export function getRankEmoji(rank: number): string {
   switch (rank) {
     case 1:
-      return "🥇";
+      return '🥇';
     case 2:
-      return "🥈";
+      return '🥈';
     case 3:
-      return "🥉";
+      return '🥉';
     default:
-      return "📍";
+      return '📍';
   }
 }

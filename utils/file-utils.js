@@ -1,6 +1,6 @@
-const fs = require("fs");
-const path = require("path");
-const { glob } = require("glob");
+const fs = require('fs');
+const path = require('path');
+const { glob } = require('glob');
 
 /**
  * Find files matching a glob pattern
@@ -17,9 +17,9 @@ async function findFiles(pattern, options = {}) {
 
   const allFiles = await glob(pattern, {
     ignore: [
-      "**/node_modules/**",
-      "**/dist/**",
-      "**/build/**",
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/build/**',
       ...ignorePatterns,
     ],
     nodir: true,
@@ -31,7 +31,7 @@ async function findFiles(pattern, options = {}) {
   // Filter to only React-related file types
   const reactFiles = allFiles.filter((file) => {
     const ext = path.extname(file);
-    return [".tsx", ".jsx", ".ts", ".js"].includes(ext);
+    return ['.tsx', '.jsx', '.ts', '.js'].includes(ext);
   });
 
   // Limit number of files
@@ -51,7 +51,7 @@ async function findFiles(pattern, options = {}) {
  * @returns {string} File content
  */
 function readFile(filePath) {
-  return fs.readFileSync(filePath, "utf8");
+  return fs.readFileSync(filePath, 'utf8');
 }
 
 /**
@@ -66,7 +66,7 @@ function writeFile(filePath, content) {
     fs.mkdirSync(dir, { recursive: true });
   }
 
-  fs.writeFileSync(filePath, content, "utf8");
+  fs.writeFileSync(filePath, content, 'utf8');
 }
 
 /**
@@ -94,7 +94,7 @@ function getFileExtension(filePath) {
  */
 function isReactFile(filePath) {
   const ext = getFileExtension(filePath);
-  return ["tsx", "jsx", "ts", "js"].includes(ext);
+  return ['tsx', 'jsx', 'ts', 'js'].includes(ext);
 }
 
 /**
@@ -123,7 +123,7 @@ function getRelativePath(filePath, basePath) {
  * @returns {string} Normalized path (forward slashes)
  */
 function normalizePath(filePath) {
-  return filePath.replace(/\\/g, "/");
+  return filePath.replace(/\\/g, '/');
 }
 
 /**
@@ -134,13 +134,13 @@ function normalizePath(filePath) {
  */
 async function getFilesByType(
   dirPath,
-  extensions = [".tsx", ".jsx", ".ts", ".js"],
+  extensions = ['.tsx', '.jsx', '.ts', '.js'],
 ) {
   const normalizedPath = normalizePath(dirPath);
-  const pattern = `${normalizedPath}/**/*{${extensions.join(",")}}`;
+  const pattern = `${normalizedPath}/**/*{${extensions.join(',')}}`;
 
   const files = await glob(pattern, {
-    ignore: ["**/node_modules/**", "**/dist/**", "**/build/**"],
+    ignore: ['**/node_modules/**', '**/dist/**', '**/build/**'],
     nodir: true,
     windowsPathsNoEscape: true,
   });

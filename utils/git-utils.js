@@ -1,10 +1,10 @@
-const simpleGit = require("simple-git");
-const tmp = require("tmp");
-const fs = require("fs");
-const path = require("path");
-const { glob } = require("glob");
-const chalk = require("chalk");
-const ora = require("ora");
+const simpleGit = require('simple-git');
+const tmp = require('tmp');
+const fs = require('fs');
+const path = require('path');
+const { glob } = require('glob');
+const chalk = require('chalk');
+const ora = require('ora');
 
 /**
  * Parse GitHub URL to extract owner and repo name
@@ -17,10 +17,10 @@ const ora = require("ora");
 function parseGitHubUrl(url) {
   // Handle shorthand: owner/repo
   if (/^[\w-]+\/[\w-]+$/.test(url)) {
-    const [owner, repo] = url.split("/");
+    const [owner, repo] = url.split('/');
     return {
       owner,
-      repo: repo.replace(".git", ""),
+      repo: repo.replace('.git', ''),
       url: `https://github.com/${owner}/${repo}`,
       shorthand: url,
     };
@@ -38,7 +38,7 @@ function parseGitHubUrl(url) {
   }
 
   throw new Error(
-    `Invalid GitHub URL: ${url}. Expected format: https://github.com/owner/repo or owner/repo`
+    `Invalid GitHub URL: ${url}. Expected format: https://github.com/owner/repo or owner/repo`,
   );
 }
 
@@ -49,11 +49,11 @@ function parseGitHubUrl(url) {
 function createTempDir() {
   return new Promise((resolve, reject) => {
     tmp.dir(
-      { unsafeCleanup: true, prefix: "react-analyzer-" },
+      { unsafeCleanup: true, prefix: 'react-analyzer-' },
       (err, dirPath, cleanup) => {
         if (err) reject(err);
         resolve({ path: dirPath, cleanup });
-      }
+      },
     );
   });
 }
@@ -66,18 +66,18 @@ function createTempDir() {
  * @returns {Promise<Object>} Repository info
  */
 async function cloneRepository(repoUrl, targetDir, options = {}) {
-  const { branch = "main", depth = 1 } = options;
+  const { branch = 'main', depth = 1 } = options;
   const repoInfo = parseGitHubUrl(repoUrl);
   const localPath = path.join(targetDir, `${repoInfo.owner}-${repoInfo.repo}`);
 
   const git = simpleGit();
 
   const cloneOptions = [
-    "--depth",
+    '--depth',
     depth.toString(),
-    "--branch",
+    '--branch',
     branch,
-    "--single-branch",
+    '--single-branch',
   ];
 
   try {
@@ -90,20 +90,20 @@ async function cloneRepository(repoUrl, targetDir, options = {}) {
     };
   } catch (error) {
     // Try alternative branch if main fails
-    if (error.message.includes("not found") && branch === "main") {
+    if (error.message.includes('not found') && branch === 'main') {
       try {
         const fallbackOptions = [
-          "--depth",
-          "1",
-          "--branch",
-          "master",
-          "--single-branch",
+          '--depth',
+          '1',
+          '--branch',
+          'master',
+          '--single-branch',
         ];
         await git.clone(repoInfo.url, localPath, fallbackOptions);
         return {
           ...repoInfo,
           localPath,
-          branch: "master",
+          branch: 'master',
           success: true,
         };
       } catch (retryError) {
@@ -122,7 +122,7 @@ async function cloneRepository(repoUrl, targetDir, options = {}) {
  * @returns {Promise<{clonedRepos: Array, errors: Array}>}
  */
 async function cloneRepositories(repoUrls, targetDir, options = {}) {
-  const spinner = ora("Cloning repositories...").start();
+  const spinner = ora('Cloning repositories...').start();
   const clonedRepos = [];
   const errors = [];
 
@@ -133,8 +133,8 @@ async function cloneRepositories(repoUrls, targetDir, options = {}) {
       clonedRepos.push(repoInfo);
       spinner.succeed(
         chalk.green(
-          `✓ Cloned ${repoInfo.shorthand} (${repoInfo.branch} branch)`
-        )
+          `✓ Cloned ${repoInfo.shorthand} (${repoInfo.branch} branch)`,
+        ),
       );
       spinner.start();
     } catch (error) {
@@ -150,13 +150,13 @@ async function cloneRepositories(repoUrls, targetDir, options = {}) {
   spinner.stop();
 
   if (clonedRepos.length === 0) {
-    throw new Error("No repositories were successfully cloned");
+    throw new Error('No repositories were successfully cloned');
   }
 
   console.log(
     chalk.green(
-      `\nSuccessfully cloned ${clonedRepos.length} of ${repoUrls.length} repositories\n`
-    )
+      `\nSuccessfully cloned ${clonedRepos.length} of ${repoUrls.length} repositories\n`,
+    ),
   );
 
   return { clonedRepos, errors };
@@ -168,18 +168,13 @@ async function cloneRepositories(repoUrls, targetDir, options = {}) {
  * @param {string} pattern - Glob pattern
  * @returns {Promise<string[]>} Array of file paths
  */
-async function findFilesInRepo(repo, pattern = "**/*.{tsx,jsx,ts,js}") {
+async function findFilesInRepo(repo, pattern = '**/*.{tsx,jsx,ts,js}') {
   // Normalize path separators for glob (use forward slashes)
-  const normalizedPath = repo.localPath.replace(/\\/g, "/");
+  const normalizedPath = repo.localPath.replace(/\\/g, '/');
   const searchPattern = `${normalizedPath}/${pattern}`;
 
   const files = await glob(searchPattern, {
-    ignore: [
-      "**/node_modules/**",
-      "**/dist/**",
-      "**/build/**",
-      "**/.git/**",
-    ],
+    ignore: ['**/node_modules/**', '**/dist/**', '**/build/**', '**/.git/**'],
     nodir: true,
     windowsPathsNoEscape: true,
   });
@@ -193,7 +188,7 @@ async function findFilesInRepo(repo, pattern = "**/*.{tsx,jsx,ts,js}") {
  * @param {string} pattern - Glob pattern
  * @returns {Promise<Object>} Map of repo shorthand to files
  */
-async function findFilesInRepos(repos, pattern = "**/*.{tsx,jsx,ts,js}") {
+async function findFilesInRepos(repos, pattern = '**/*.{tsx,jsx,ts,js}') {
   const filesByRepo = {};
 
   for (const repo of repos) {
@@ -215,17 +210,17 @@ async function findFilesInRepos(repos, pattern = "**/*.{tsx,jsx,ts,js}") {
  */
 async function getRepoStats(repoPath) {
   try {
-    const packageJsonPath = path.join(repoPath, "package.json");
+    const packageJsonPath = path.join(repoPath, 'package.json');
     let packageJson = null;
 
     if (fs.existsSync(packageJsonPath)) {
-      packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+      packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
     }
 
     // Count files by type - normalize path for glob
-    const normalizedPath = repoPath.replace(/\\/g, "/");
+    const normalizedPath = repoPath.replace(/\\/g, '/');
     const files = await glob(`${normalizedPath}/**/*.{tsx,jsx,ts,js}`, {
-      ignore: ["**/node_modules/**", "**/dist/**", "**/build/**"],
+      ignore: ['**/node_modules/**', '**/dist/**', '**/build/**'],
       nodir: true,
       windowsPathsNoEscape: true,
     });
@@ -246,8 +241,8 @@ async function getRepoStats(repoPath) {
 
     return {
       packageJson,
-      name: packageJson?.name || "unknown",
-      version: packageJson?.version || "unknown",
+      name: packageJson?.name || 'unknown',
+      version: packageJson?.version || 'unknown',
       dependencies: packageJson?.dependencies || {},
       devDependencies: packageJson?.devDependencies || {},
       totalFiles: files.length,
@@ -281,10 +276,10 @@ function generateCombinedReport(analysisResults) {
     ([repoName, repoData]) => {
       // Add to totals
       repoData.analysis.components.forEach((comp) =>
-        combined.totalComponents.add(comp)
+        combined.totalComponents.add(comp),
       );
       Object.keys(repoData.analysis.imports).forEach((imp) =>
-        combined.totalImports.add(imp)
+        combined.totalImports.add(imp),
       );
 
       // Track components by repo
@@ -295,7 +290,7 @@ function generateCombinedReport(analysisResults) {
         ([comp, count]) => {
           combined.componentFrequency[comp] =
             (combined.componentFrequency[comp] || 0) + count;
-        }
+        },
       );
 
       // Aggregate import usage
@@ -315,7 +310,7 @@ function generateCombinedReport(analysisResults) {
           .slice(0, 5)
           .map(([comp, count]) => ({ component: comp, uses: count })),
       });
-    }
+    },
   );
 
   combined.totalComponents = Array.from(combined.totalComponents);
@@ -334,10 +329,10 @@ function cleanupTempDir(cleanup, tmpDir, keepRepos = false) {
   if (!keepRepos && cleanup) {
     try {
       cleanup();
-      console.log(chalk.gray("\n🧹 Cleaned up temporary directory"));
+      console.log(chalk.gray('\n🧹 Cleaned up temporary directory'));
     } catch (error) {
       console.warn(
-        chalk.yellow(`Warning: Failed to cleanup: ${error.message}`)
+        chalk.yellow(`Warning: Failed to cleanup: ${error.message}`),
       );
     }
   } else if (keepRepos && tmpDir) {

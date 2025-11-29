@@ -1,10 +1,10 @@
-import simpleGit from "simple-git";
-import tmp from "tmp";
-import fs from "fs";
-import path from "path";
-import { glob } from "glob";
-import chalk from "chalk";
-import ora from "ora";
+import simpleGit from 'simple-git';
+import tmp from 'tmp';
+import fs from 'fs';
+import path from 'path';
+import { glob } from 'glob';
+import chalk from 'chalk';
+import ora from 'ora';
 
 /**
  * GitHub repository information
@@ -120,10 +120,10 @@ export interface AnalysisResults {
 export function parseGitHubUrl(url: string): GitHubRepoInfo {
   // Handle shorthand: owner/repo
   if (/^[\w-]+\/[\w-]+$/.test(url)) {
-    const [owner, repo] = url.split("/");
+    const [owner, repo] = url.split('/');
     return {
       owner,
-      repo: repo.replace(".git", ""),
+      repo: repo.replace('.git', ''),
       url: `https://github.com/${owner}/${repo}`,
       shorthand: url,
     };
@@ -141,7 +141,7 @@ export function parseGitHubUrl(url: string): GitHubRepoInfo {
   }
 
   throw new Error(
-    `Invalid GitHub URL: ${url}. Expected format: https://github.com/owner/repo or owner/repo`
+    `Invalid GitHub URL: ${url}. Expected format: https://github.com/owner/repo or owner/repo`,
   );
 }
 
@@ -152,11 +152,11 @@ export function parseGitHubUrl(url: string): GitHubRepoInfo {
 export function createTempDir(): Promise<TempDirResult> {
   return new Promise((resolve, reject) => {
     tmp.dir(
-      { unsafeCleanup: true, prefix: "react-analyzer-" },
+      { unsafeCleanup: true, prefix: 'react-analyzer-' },
       (err, dirPath, cleanup) => {
         if (err) reject(err);
         resolve({ path: dirPath, cleanup });
-      }
+      },
     );
   });
 }
@@ -171,20 +171,20 @@ export function createTempDir(): Promise<TempDirResult> {
 export async function cloneRepository(
   repoUrl: string,
   targetDir: string,
-  options: CloneOptions = {}
+  options: CloneOptions = {},
 ): Promise<GitHubRepoInfo> {
-  const { branch = "main", depth = 1 } = options;
+  const { branch = 'main', depth = 1 } = options;
   const repoInfo = parseGitHubUrl(repoUrl);
   const localPath = path.join(targetDir, `${repoInfo.owner}-${repoInfo.repo}`);
 
   const git = simpleGit();
 
   const cloneOptions = [
-    "--depth",
+    '--depth',
     depth.toString(),
-    "--branch",
+    '--branch',
     branch,
-    "--single-branch",
+    '--single-branch',
   ];
 
   try {
@@ -197,20 +197,24 @@ export async function cloneRepository(
     };
   } catch (error) {
     // Try alternative branch if main fails
-    if (error instanceof Error && error.message.includes("not found") && branch === "main") {
+    if (
+      error instanceof Error &&
+      error.message.includes('not found') &&
+      branch === 'main'
+    ) {
       try {
         const fallbackOptions = [
-          "--depth",
-          "1",
-          "--branch",
-          "master",
-          "--single-branch",
+          '--depth',
+          '1',
+          '--branch',
+          'master',
+          '--single-branch',
         ];
         await git.clone(repoInfo.url, localPath, fallbackOptions);
         return {
           ...repoInfo,
           localPath,
-          branch: "master",
+          branch: 'master',
           success: true,
         };
       } catch (retryError) {
@@ -231,9 +235,9 @@ export async function cloneRepository(
 export async function cloneRepositories(
   repoUrls: string[],
   targetDir: string,
-  options: CloneOptions = {}
+  options: CloneOptions = {},
 ): Promise<CloneResult> {
-  const spinner = ora("Cloning repositories...").start();
+  const spinner = ora('Cloning repositories...').start();
   const clonedRepos: GitHubRepoInfo[] = [];
   const errors: Array<{ url: string; error: string }> = [];
 
@@ -244,8 +248,8 @@ export async function cloneRepositories(
       clonedRepos.push(repoInfo);
       spinner.succeed(
         chalk.green(
-          `✓ Cloned ${repoInfo.shorthand} (${repoInfo.branch} branch)`
-        )
+          `✓ Cloned ${repoInfo.shorthand} (${repoInfo.branch} branch)`,
+        ),
       );
       spinner.start();
     } catch (error) {
@@ -262,13 +266,13 @@ export async function cloneRepositories(
   spinner.stop();
 
   if (clonedRepos.length === 0) {
-    throw new Error("No repositories were successfully cloned");
+    throw new Error('No repositories were successfully cloned');
   }
 
   console.log(
     chalk.green(
-      `\nSuccessfully cloned ${clonedRepos.length} of ${repoUrls.length} repositories\n`
-    )
+      `\nSuccessfully cloned ${clonedRepos.length} of ${repoUrls.length} repositories\n`,
+    ),
   );
 
   return { clonedRepos, errors };
@@ -282,23 +286,18 @@ export async function cloneRepositories(
  */
 export async function findFilesInRepo(
   repo: GitHubRepoInfo,
-  pattern: string = "**/*.{tsx,jsx,ts,js}"
+  pattern: string = '**/*.{tsx,jsx,ts,js}',
 ): Promise<string[]> {
   if (!repo.localPath) {
-    throw new Error("Repository localPath is not defined");
+    throw new Error('Repository localPath is not defined');
   }
 
   // Normalize path separators for glob (use forward slashes)
-  const normalizedPath = repo.localPath.replace(/\\/g, "/");
+  const normalizedPath = repo.localPath.replace(/\\/g, '/');
   const searchPattern = `${normalizedPath}/${pattern}`;
 
   const files = await glob(searchPattern, {
-    ignore: [
-      "**/node_modules/**",
-      "**/dist/**",
-      "**/build/**",
-      "**/.git/**",
-    ],
+    ignore: ['**/node_modules/**', '**/dist/**', '**/build/**', '**/.git/**'],
     nodir: true,
     windowsPathsNoEscape: true,
   });
@@ -314,7 +313,7 @@ export async function findFilesInRepo(
  */
 export async function findFilesInRepos(
   repos: GitHubRepoInfo[],
-  pattern: string = "**/*.{tsx,jsx,ts,js}"
+  pattern: string = '**/*.{tsx,jsx,ts,js}',
 ): Promise<FilesByRepo> {
   const filesByRepo: FilesByRepo = {};
 
@@ -337,17 +336,17 @@ export async function findFilesInRepos(
  */
 export async function getRepoStats(repoPath: string): Promise<RepoStats> {
   try {
-    const packageJsonPath = path.join(repoPath, "package.json");
+    const packageJsonPath = path.join(repoPath, 'package.json');
     let packageJson: any = null;
 
     if (fs.existsSync(packageJsonPath)) {
-      packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+      packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
     }
 
     // Count files by type - normalize path for glob
-    const normalizedPath = repoPath.replace(/\\/g, "/");
+    const normalizedPath = repoPath.replace(/\\/g, '/');
     const files = await glob(`${normalizedPath}/**/*.{tsx,jsx,ts,js}`, {
-      ignore: ["**/node_modules/**", "**/dist/**", "**/build/**"],
+      ignore: ['**/node_modules/**', '**/dist/**', '**/build/**'],
       nodir: true,
       windowsPathsNoEscape: true,
     });
@@ -368,8 +367,8 @@ export async function getRepoStats(repoPath: string): Promise<RepoStats> {
 
     return {
       packageJson,
-      name: packageJson?.name || "unknown",
-      version: packageJson?.version || "unknown",
+      name: packageJson?.name || 'unknown',
+      version: packageJson?.version || 'unknown',
       dependencies: packageJson?.dependencies || {},
       devDependencies: packageJson?.devDependencies || {},
       totalFiles: files.length,
@@ -379,8 +378,8 @@ export async function getRepoStats(repoPath: string): Promise<RepoStats> {
     const message = error instanceof Error ? error.message : String(error);
     return {
       error: message,
-      name: "unknown",
-      version: "unknown",
+      name: 'unknown',
+      version: 'unknown',
       dependencies: {},
       devDependencies: {},
       totalFiles: 0,
@@ -395,7 +394,7 @@ export async function getRepoStats(repoPath: string): Promise<RepoStats> {
  * @returns Combined report
  */
 export function generateCombinedReport(
-  analysisResults: AnalysisResults
+  analysisResults: AnalysisResults,
 ): CombinedReport {
   const combined: CombinedReport = {
     totalComponents: [],
@@ -413,10 +412,10 @@ export function generateCombinedReport(
     ([repoName, repoData]) => {
       // Add to totals
       repoData.analysis.components.forEach((comp) =>
-        totalComponentsSet.add(comp)
+        totalComponentsSet.add(comp),
       );
       Object.keys(repoData.analysis.imports).forEach((imp) =>
-        totalImportsSet.add(imp)
+        totalImportsSet.add(imp),
       );
 
       // Track components by repo
@@ -427,7 +426,7 @@ export function generateCombinedReport(
         ([comp, count]) => {
           combined.componentFrequency[comp] =
             (combined.componentFrequency[comp] || 0) + count;
-        }
+        },
       );
 
       // Aggregate import usage
@@ -447,7 +446,7 @@ export function generateCombinedReport(
           .slice(0, 5)
           .map(([comp, count]) => ({ component: comp, uses: count })),
       });
-    }
+    },
   );
 
   combined.totalComponents = Array.from(totalComponentsSet);
@@ -465,17 +464,15 @@ export function generateCombinedReport(
 export function cleanupTempDir(
   cleanup: (() => void) | null,
   tmpDir: string,
-  keepRepos: boolean = false
+  keepRepos: boolean = false,
 ): void {
   if (!keepRepos && cleanup) {
     try {
       cleanup();
-      console.log(chalk.gray("\n🧹 Cleaned up temporary directory"));
+      console.log(chalk.gray('\n🧹 Cleaned up temporary directory'));
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      console.warn(
-        chalk.yellow(`Warning: Failed to cleanup: ${message}`)
-      );
+      console.warn(chalk.yellow(`Warning: Failed to cleanup: ${message}`));
     }
   } else if (keepRepos && tmpDir) {
     console.log(chalk.blue(`\n📁 Repositories kept in: ${tmpDir}`));

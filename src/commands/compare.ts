@@ -1,25 +1,25 @@
-import chalk from "chalk";
-import ora from "ora";
-import { FocusedUsageAnalyzer } from "../analyze-usage";
-import { findFiles, saveReport, getRankEmoji } from "./shared";
+import chalk from 'chalk';
+import ora from 'ora';
+import { FocusedUsageAnalyzer } from '../analyze-usage';
+import { findFiles, saveReport, getRankEmoji } from './shared';
 
 interface CompareOptions {
   libraries: string[];
   output?: string;
-  format: "json" | "console" | "both";
+  format: 'json' | 'console' | 'both';
 }
 
 export async function compareCommand(
   pattern: string,
   options: CompareOptions,
 ): Promise<void> {
-  const spinner = ora("Finding files to analyze...").start();
+  const spinner = ora('Finding files to analyze...').start();
 
   try {
     const files = await findFiles(pattern, [], 1000);
 
     if (files.length === 0) {
-      spinner.fail(chalk.red("No files found matching pattern: " + pattern));
+      spinner.fail(chalk.red('No files found matching pattern: ' + pattern));
       return;
     }
 
@@ -28,7 +28,7 @@ export async function compareCommand(
     const comparisonResults = {
       metadata: {
         timestamp: new Date().toISOString(),
-        commandType: "compare",
+        commandType: 'compare',
         pattern: pattern,
         filesAnalyzed: files.length,
         libraries: options.libraries,
@@ -77,30 +77,30 @@ export async function compareCommand(
     );
 
     // Save and display
-    if (options.format === "json" || options.format === "both") {
+    if (options.format === 'json' || options.format === 'both') {
       saveReport({
         data: comparisonResults,
-        commandType: "compare",
+        commandType: 'compare',
         outputPath: options.output,
         format: options.format,
       });
     }
 
-    if (options.format === "console" || options.format === "both") {
+    if (options.format === 'console' || options.format === 'both') {
       printComparisonReport(comparisonResults);
     }
   } catch (error: any) {
-    spinner.fail(chalk.red("Comparison failed: " + error.message));
+    spinner.fail(chalk.red('Comparison failed: ' + error.message));
     console.error(error);
   }
 }
 
 function printComparisonReport(results: any): void {
-  console.log("\n" + chalk.bold.blue("═".repeat(60)));
-  console.log(chalk.bold.blue("  📊 LIBRARY COMPARISON REPORT"));
-  console.log(chalk.bold.blue("═".repeat(60)));
+  console.log('\n' + chalk.bold.blue('═'.repeat(60)));
+  console.log(chalk.bold.blue('  📊 LIBRARY COMPARISON REPORT'));
+  console.log(chalk.bold.blue('═'.repeat(60)));
 
-  console.log(chalk.bold("\n🏆 RESULTS:"));
+  console.log(chalk.bold('\n🏆 RESULTS:'));
   results.libraries.forEach((lib: any, index: number) => {
     const rank = index + 1;
     const emoji = getRankEmoji(rank);
@@ -109,5 +109,5 @@ function printComparisonReport(results: any): void {
     );
   });
 
-  console.log("\n" + chalk.bold.blue("═".repeat(60)) + "\n");
+  console.log('\n' + chalk.bold.blue('═'.repeat(60)) + '\n');
 }

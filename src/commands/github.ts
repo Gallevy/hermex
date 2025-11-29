@@ -1,20 +1,20 @@
-import chalk from "chalk";
-import ora from "ora";
-import { ReactComponentUsageAnalyzer } from "../parser";
-import { FocusedUsageAnalyzer } from "../analyze-usage";
+import chalk from 'chalk';
+import ora from 'ora';
+import { ReactComponentUsageAnalyzer } from '../parser';
+import { FocusedUsageAnalyzer } from '../analyze-usage';
 import {
   analyzeGitHubRepositories,
   loadRepositoriesFromConfig,
   createGitHubAnalysisReport,
-} from "../github-analysis";
-import { formatGitHubReport, saveJsonReport } from "../utils/formatters";
-import { saveReport } from "./shared";
+} from '../github-analysis';
+import { formatGitHubReport, saveJsonReport } from '../utils/formatters';
+import { saveReport } from './shared';
 
 interface GithubOptions {
   library: string;
   config?: string;
   output?: string;
-  format: "json" | "console" | "both";
+  format: 'json' | 'console' | 'both';
   complexity?: boolean;
   branch?: string;
   pattern?: string;
@@ -26,7 +26,7 @@ export async function githubCommand(
   repos: string[],
   options: GithubOptions,
 ): Promise<void> {
-  const spinner = ora("Initializing GitHub analyzer...").start();
+  const spinner = ora('Initializing GitHub analyzer...').start();
 
   try {
     // Load repositories from config file or arguments
@@ -49,17 +49,17 @@ export async function githubCommand(
     if (repoList.length === 0) {
       spinner.fail(
         chalk.red(
-          "No repositories specified. Use arguments or --config <file>",
+          'No repositories specified. Use arguments or --config <file>',
         ),
       );
       console.log(
-        chalk.yellow("\nExample: node cli.js github owner/repo1 owner/repo2"),
+        chalk.yellow('\nExample: node cli.js github owner/repo1 owner/repo2'),
       );
-      console.log(chalk.yellow("Or: node cli.js github --config repos.json"));
+      console.log(chalk.yellow('Or: node cli.js github --config repos.json'));
       process.exit(1);
     }
 
-    spinner.succeed(chalk.green("GitHub analyzer initialized"));
+    spinner.succeed(chalk.green('GitHub analyzer initialized'));
 
     // Create analyzer instance
     const analyzer = options.complexity
@@ -70,7 +70,7 @@ export async function githubCommand(
     const results = await analyzeGitHubRepositories(repoList, analyzer, {
       branch: options.branch,
       pattern: options.pattern,
-      depth: parseInt(options.depth || "1"),
+      depth: parseInt(options.depth || '1'),
       keepRepos: options.keepRepos,
     });
 
@@ -80,26 +80,26 @@ export async function githubCommand(
     // Add command type to metadata
     fullReport.metadata = {
       ...fullReport.metadata,
-      commandType: "github",
+      commandType: 'github',
       timestamp: new Date().toISOString(),
     };
 
     // Save JSON if requested
-    if (options.format === "json" || options.format === "both") {
+    if (options.format === 'json' || options.format === 'both') {
       saveReport({
         data: fullReport,
-        commandType: "github",
+        commandType: 'github',
         outputPath: options.output,
         format: options.format,
       });
     }
 
     // Display console output
-    if (options.format === "console" || options.format === "both") {
+    if (options.format === 'console' || options.format === 'both') {
       formatGitHubReport(fullReport, options);
     }
   } catch (error: any) {
-    spinner.fail(chalk.red("GitHub analysis failed: " + error.message));
+    spinner.fail(chalk.red('GitHub analysis failed: ' + error.message));
     console.error(error);
     process.exit(1);
   }

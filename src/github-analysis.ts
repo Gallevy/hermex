@@ -1,5 +1,5 @@
-import ora from "ora";
-import chalk from "chalk";
+import ora from 'ora';
+import chalk from 'chalk';
 import {
   createTempDir,
   cloneRepositories,
@@ -9,12 +9,9 @@ import {
   cleanupTempDir,
   GitHubRepoInfo,
   RepoStats,
-} from "./utils/git-utils";
-import {
-  findAndParseLockfile,
-  LockfileResult,
-} from "./utils/lockfile-parser";
-import { readJsonFile } from "./utils/file-utils";
+} from './utils/git-utils';
+import { findAndParseLockfile, LockfileResult } from './utils/lockfile-parser';
+import { readJsonFile } from './utils/file-utils';
 
 /**
  * Analysis options
@@ -43,8 +40,18 @@ export interface AnalysisReport {
       jsx: Array<{ component: string; count: number }>;
     };
     imports: {
-      default: Array<{ name?: string; local?: string; from?: string; source?: string }>;
-      named: Array<{ name?: string; local?: string; from?: string; source?: string }>;
+      default: Array<{
+        name?: string;
+        local?: string;
+        from?: string;
+        source?: string;
+      }>;
+      named: Array<{
+        name?: string;
+        local?: string;
+        from?: string;
+        source?: string;
+      }>;
     };
   };
 }
@@ -156,16 +163,16 @@ export interface RepositoriesConfig {
 export async function analyzeGitHubRepositories(
   repoUrls: string[],
   analyzer: Analyzer,
-  options: AnalysisOptions = {}
+  options: AnalysisOptions = {},
 ): Promise<GitHubAnalysisResults> {
   const {
-    branch = "main",
-    pattern = "**/*.{tsx,jsx,ts,js}",
+    branch = 'main',
+    pattern = '**/*.{tsx,jsx,ts,js}',
     depth = 1,
     keepRepos = false,
   } = options;
 
-  console.log(chalk.bold.cyan("\n🔍 GitHub Repository Analysis\n"));
+  console.log(chalk.bold.cyan('\n🔍 GitHub Repository Analysis\n'));
   console.log(chalk.gray(`Repositories to analyze: ${repoUrls.length}`));
   console.log(chalk.gray(`Pattern: ${pattern}`));
   console.log(chalk.gray(`Branch: ${branch}\n`));
@@ -178,11 +185,11 @@ export async function analyzeGitHubRepositories(
     const { clonedRepos, errors: cloneErrors } = await cloneRepositories(
       repoUrls,
       tmpDir,
-      { branch, depth }
+      { branch, depth },
     );
 
     // Find files in repositories
-    console.log(chalk.bold("\n📁 Finding files in repositories...\n"));
+    console.log(chalk.bold('\n📁 Finding files in repositories...\n'));
     const filesByRepo = await findFilesInRepos(clonedRepos, pattern);
 
     // Display file counts
@@ -191,7 +198,7 @@ export async function analyzeGitHubRepositories(
     });
 
     // Get repository statistics and parse lockfiles
-    console.log(chalk.bold("\n📊 Gathering repository statistics...\n"));
+    console.log(chalk.bold('\n📊 Gathering repository statistics...\n'));
     const repoStats: Record<string, RepoStats> = {};
     const lockfileData: Record<string, LockfileResult> = {};
 
@@ -206,22 +213,22 @@ export async function analyzeGitHubRepositories(
       lockfileData[repo.shorthand] = lockfileInfo;
 
       console.log(
-        `  ${chalk.cyan(repo.shorthand)}: ${stats.name}@${stats.version} (${stats.totalFiles} files)`
+        `  ${chalk.cyan(repo.shorthand)}: ${stats.name}@${stats.version} (${stats.totalFiles} files)`,
       );
 
       if (lockfileInfo.found) {
         console.log(
           chalk.gray(
-            `    Lockfile: ${lockfileInfo.lockfileType} (${Object.keys(lockfileInfo.versions).length} packages)`
-          )
+            `    Lockfile: ${lockfileInfo.lockfileType} (${Object.keys(lockfileInfo.versions).length} packages)`,
+          ),
         );
       }
     }
 
     // Analyze each repository
-    console.log(chalk.bold("\n🔬 Analyzing repositories...\n"));
+    console.log(chalk.bold('\n🔬 Analyzing repositories...\n'));
     const results: Record<string, RepositoryAnalysisResult> = {};
-    const spinner = ora("Analyzing...").start();
+    const spinner = ora('Analyzing...').start();
 
     for (const [repoName, repoData] of Object.entries(filesByRepo)) {
       spinner.text = `Analyzing ${repoName}...`;
@@ -275,7 +282,7 @@ export async function analyzeGitHubRepositories(
               ...report.patterns.imports.default,
               ...report.patterns.imports.named,
             ].forEach((imp) => {
-              const name = imp.name || imp.local || "";
+              const name = imp.name || imp.local || '';
               const source = imp.source || imp.from;
 
               const existing = importsTemp.get(name);
@@ -292,7 +299,8 @@ export async function analyzeGitHubRepositories(
             });
           }
         } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
+          const message =
+            error instanceof Error ? error.message : String(error);
           repoResults.analysis.errors.push({
             file: file,
             error: message,
@@ -321,8 +329,8 @@ export async function analyzeGitHubRepositories(
       results[repoName] = repoResults;
       spinner.succeed(
         chalk.green(
-          `✓ Analyzed ${repoName}: ${repoResults.analysis.components.length} components found`
-        )
+          `✓ Analyzed ${repoName}: ${repoResults.analysis.components.length} components found`,
+        ),
       );
       spinner.start();
     }
@@ -380,7 +388,7 @@ export function loadRepositoriesFromConfig(configPath: string): string[] {
 export function enhanceComponentsWithVersions(
   componentUsage: Record<string, { count: number; files: string[] }>,
   lockfileData: LockfileResult,
-  libraryName: string
+  libraryName: string,
 ): Record<string, any> {
   const enhanced: Record<string, any> = {};
 
@@ -393,7 +401,7 @@ export function enhanceComponentsWithVersions(
     enhanced[displayName] = {
       component: componentName,
       library: libraryName,
-      version: version || "unknown",
+      version: version || 'unknown',
       ...usage,
     };
   });
@@ -409,7 +417,7 @@ export function enhanceComponentsWithVersions(
  */
 export function createGitHubAnalysisReport(
   analysisResults: GitHubAnalysisResults,
-  libraryName: string
+  libraryName: string,
 ): GitHubAnalysisReport {
   // Generate combined report
   const combined = generateCombinedReport(analysisResults);
@@ -432,7 +440,7 @@ export function createGitHubAnalysisReport(
             enhancedComponentFrequency[key] = {
               component,
               library: libraryName,
-              version: version || "unknown",
+              version: version || 'unknown',
               count: 0,
               repos: [],
             };
@@ -443,9 +451,9 @@ export function createGitHubAnalysisReport(
             name: repoName,
             count: usage.count || 0,
           });
-        }
+        },
       );
-    }
+    },
   );
 
   return {

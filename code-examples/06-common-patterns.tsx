@@ -1,18 +1,18 @@
-import React, { lazy, Suspense, useState, useCallback } from "react";
+import React, { lazy, Suspense, useState, useCallback } from 'react';
 
 // 1. Direct imports - most common pattern
-import Button from "@design-system/foundation/button";
-import Card from "@design-system/foundation/card";
+import Button from '@design-system/foundation/button';
+import Card from '@design-system/foundation/card';
 
 // 2. Named imports with and without aliases
-import { Input, Modal } from "@design-system/foundation";
-import { Typography as Text, Icon as UIIcon } from "@design-system/foundation";
+import { Input, Modal } from '@design-system/foundation';
+import { Typography as Text, Icon as UIIcon } from '@design-system/foundation';
 
 // 3. Namespace import
-import * as Foundation from "@design-system/foundation";
+import * as Foundation from '@design-system/foundation';
 
 // 4. Lazy loading
-const LazyChart = lazy(() => import("@design-system/foundation/chart"));
+const LazyChart = lazy(() => import('@design-system/foundation/chart'));
 
 // 5. Simple variable assignments
 const PrimaryButton = Button;
@@ -27,8 +27,8 @@ const componentMap = {
 };
 
 // 7. Conditional component selection
-function getComponentByType(type: "primary" | "secondary") {
-  return type === "primary" ? Button : Input;
+function getComponentByType(type: 'primary' | 'secondary') {
+  return type === 'primary' ? Button : Input;
 }
 
 // Basic usage examples
@@ -74,17 +74,17 @@ function VariableAssignmentExample() {
     <div>
       <h2>Variable Assignment Patterns</h2>
 
-      <SaveButton onClick={() => console.log("Saved!")}>
+      <SaveButton onClick={() => console.log('Saved!')}>
         Save Changes
       </SaveButton>
 
       <UserCard title="Dynamic Card">
         <ActionComponent>
-          {isEditing ? "Edit mode active" : "View mode"}
+          {isEditing ? 'Edit mode active' : 'View mode'}
         </ActionComponent>
 
         <Button onClick={() => setIsEditing(!isEditing)}>
-          {isEditing ? "Cancel" : "Edit"}
+          {isEditing ? 'Cancel' : 'Edit'}
         </Button>
       </UserCard>
     </div>
@@ -117,13 +117,13 @@ function NamespaceUsageExample() {
 // Object mapping patterns
 function ObjectMappingExample() {
   const [selectedType, setSelectedType] =
-    useState<keyof typeof componentMap>("button");
+    useState<keyof typeof componentMap>('button');
   const SelectedComponent = componentMap[selectedType];
 
   const componentConfigs = [
-    { type: "button" as const, props: { children: "Mapped Button" } },
-    { type: "input" as const, props: { placeholder: "Mapped Input" } },
-    { type: "text" as const, props: { children: "Mapped Text" } },
+    { type: 'button' as const, props: { children: 'Mapped Button' } },
+    { type: 'input' as const, props: { placeholder: 'Mapped Input' } },
+    { type: 'text' as const, props: { children: 'Mapped Text' } },
   ];
 
   return (
@@ -160,13 +160,13 @@ function ObjectMappingExample() {
 
 // Conditional patterns
 function ConditionalPatternsExample() {
-  const [mode, setMode] = useState<"view" | "edit">("view");
-  const [componentType, setComponentType] = useState<"primary" | "secondary">(
-    "primary",
+  const [mode, setMode] = useState<'view' | 'edit'>('view');
+  const [componentType, setComponentType] = useState<'primary' | 'secondary'>(
+    'primary',
   );
 
   // Ternary conditional
-  const ModeComponent = mode === "edit" ? Input : Text;
+  const ModeComponent = mode === 'edit' ? Input : Text;
 
   // Function-based conditional
   const TypeComponent = getComponentByType(componentType);
@@ -176,24 +176,24 @@ function ConditionalPatternsExample() {
       <h2>Conditional Patterns</h2>
 
       <div>
-        <Button onClick={() => setMode(mode === "view" ? "edit" : "view")}>
-          Switch to {mode === "view" ? "Edit" : "View"} Mode
+        <Button onClick={() => setMode(mode === 'view' ? 'edit' : 'view')}>
+          Switch to {mode === 'view' ? 'Edit' : 'View'} Mode
         </Button>
 
         <Button
           onClick={() =>
             setComponentType(
-              componentType === "primary" ? "secondary" : "primary",
+              componentType === 'primary' ? 'secondary' : 'primary',
             )
           }
         >
-          Switch to {componentType === "primary" ? "Secondary" : "Primary"}
+          Switch to {componentType === 'primary' ? 'Secondary' : 'Primary'}
         </Button>
       </div>
 
       {/* Conditional rendering */}
-      {mode === "edit" && <Button>Save</Button>}
-      {mode === "view" && <Button>Edit</Button>}
+      {mode === 'edit' && <Button>Save</Button>}
+      {mode === 'view' && <Button>Edit</Button>}
 
       {/* Dynamic components */}
       <ModeComponent>Current mode: {mode}</ModeComponent>
@@ -212,7 +212,7 @@ function LazyLoadingExample() {
       <h2>Lazy Loading Patterns</h2>
 
       <Button onClick={() => setShowChart(!showChart)}>
-        {showChart ? "Hide" : "Show"} Chart
+        {showChart ? 'Hide' : 'Show'} Chart
       </Button>
 
       {showChart && (
@@ -228,20 +228,20 @@ function LazyLoadingExample() {
 
 // Array patterns
 function ArrayPatternsExample() {
-  const buttons = ["Save", "Cancel", "Delete"];
+  const buttons = ['Save', 'Cancel', 'Delete'];
   const inputs = [
-    { placeholder: "First Name", type: "text" },
-    { placeholder: "Last Name", type: "text" },
-    { placeholder: "Email", type: "email" },
+    { placeholder: 'First Name', type: 'text' },
+    { placeholder: 'Last Name', type: 'text' },
+    { placeholder: 'Email', type: 'email' },
   ];
 
   const componentList = [
     {
       Component: Button,
-      props: { children: "Array Button", variant: "primary" },
+      props: { children: 'Array Button', variant: 'primary' },
     },
-    { Component: Input, props: { placeholder: "Array Input" } },
-    { Component: Text, props: { children: "Array Text" } },
+    { Component: Input, props: { placeholder: 'Array Input' } },
+    { Component: Text, props: { children: 'Array Text' } },
   ];
 
   return (
@@ -276,9 +276,9 @@ function ArrayPatternsExample() {
 function RenderPropExample() {
   const renderFormField = (
     label: string,
-    type: "input" | "button" = "input",
+    type: 'input' | 'button' = 'input',
   ) => {
-    return type === "input" ? (
+    return type === 'input' ? (
       <Input placeholder={label} />
     ) : (
       <Button>{label}</Button>
@@ -290,9 +290,9 @@ function RenderPropExample() {
       <h2>Render Prop Patterns</h2>
 
       <Card title="User Form">
-        {renderFormField("Username")}
-        {renderFormField("Password")}
-        {renderFormField("Submit", "button")}
+        {renderFormField('Username')}
+        {renderFormField('Password')}
+        {renderFormField('Submit', 'button')}
       </Card>
     </div>
   );
@@ -300,7 +300,7 @@ function RenderPropExample() {
 
 // Main app component
 export default function CommonPatternsApp() {
-  const [activeExample, setActiveExample] = useState("direct");
+  const [activeExample, setActiveExample] = useState('direct');
 
   const examples = {
     direct: <DirectUsageExample />,
@@ -314,19 +314,19 @@ export default function CommonPatternsApp() {
   };
 
   return (
-    <div style={{ padding: "20px", fontFamily: "Arial, sans-serif" }}>
+    <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
       <h1>Common React Component Usage Patterns</h1>
 
       {/* Navigation */}
-      <div style={{ marginBottom: "20px" }}>
+      <div style={{ marginBottom: '20px' }}>
         <Text variant="subtitle">Select a pattern to explore:</Text>
         <div>
           {Object.keys(examples).map((key) => (
             <Button
               key={key}
-              variant={activeExample === key ? "primary" : "secondary"}
+              variant={activeExample === key ? 'primary' : 'secondary'}
               onClick={() => setActiveExample(key)}
-              style={{ margin: "5px" }}
+              style={{ margin: '5px' }}
             >
               {key.charAt(0).toUpperCase() + key.slice(1)}
             </Button>
@@ -337,9 +337,9 @@ export default function CommonPatternsApp() {
       {/* Active example */}
       <div
         style={{
-          border: "1px solid #ccc",
-          padding: "20px",
-          borderRadius: "8px",
+          border: '1px solid #ccc',
+          padding: '20px',
+          borderRadius: '8px',
         }}
       >
         {examples[activeExample as keyof typeof examples]}

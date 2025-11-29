@@ -1,11 +1,11 @@
-import React, { useState } from "react";
+import React, { useState } from 'react';
 
 // Example library imports
-import Button from "@design-system/foundation/button";
-import Input from "@design-system/foundation/input";
-import Card from "@design-system/foundation/card";
-import Modal from "@design-system/foundation/modal";
-import { Typography } from "@design-system/foundation";
+import Button from '@design-system/foundation/button';
+import Input from '@design-system/foundation/input';
+import Card from '@design-system/foundation/card';
+import Modal from '@design-system/foundation/modal';
+import { Typography } from '@design-system/foundation';
 
 /**
  * PATTERN 3: OBJECT MAPPING
@@ -30,18 +30,18 @@ export function ObjectMappingExample() {
   const componentRegistry = {
     button: {
       component: Button,
-      label: "Button",
-      category: "action",
+      label: 'Button',
+      category: 'action',
     },
     input: {
       component: Input,
-      label: "Input Field",
-      category: "form",
+      label: 'Input Field',
+      category: 'form',
     },
     card: {
       component: Card,
-      label: "Card",
-      category: "layout",
+      label: 'Card',
+      category: 'layout',
     },
   };
 
@@ -61,22 +61,22 @@ export function ObjectMappingExample() {
   // Component config array for dynamic rendering
   const componentConfigs = [
     {
-      type: "button",
-      props: { variant: "primary", children: "First Button" },
+      type: 'button',
+      props: { variant: 'primary', children: 'First Button' },
     },
     {
-      type: "input",
-      props: { placeholder: "First Input" },
+      type: 'input',
+      props: { placeholder: 'First Input' },
     },
     {
-      type: "card",
-      props: { title: "First Card", children: "Card content here" },
+      type: 'card',
+      props: { title: 'First Card', children: 'Card content here' },
     },
   ];
 
   // State for dynamic component selection
   const [selectedType, setSelectedType] =
-    useState<keyof typeof componentMap>("button");
+    useState<keyof typeof componentMap>('button');
   const SelectedComponent = componentMap[selectedType];
 
   return (
@@ -87,15 +87,15 @@ export function ObjectMappingExample() {
       <section>
         <h3>Simple Object Mapping</h3>
         {Object.entries(componentMap).map(([key, Component]) => {
-          if (key === "button") {
+          if (key === 'button') {
             return (
               <Component key={key} variant="primary">
                 Mapped {key}
               </Component>
             );
-          } else if (key === "input") {
+          } else if (key === 'input') {
             return <Component key={key} placeholder={`Mapped ${key}`} />;
-          } else if (key === "typography") {
+          } else if (key === 'typography') {
             return <Component key={key}>Mapped {key}</Component>;
           } else {
             return (
@@ -117,13 +117,13 @@ export function ObjectMappingExample() {
               <label>
                 {config.label} ({config.category})
               </label>
-              {key === "button" && (
+              {key === 'button' && (
                 <Component>Registry {config.label}</Component>
               )}
-              {key === "input" && (
+              {key === 'input' && (
                 <Component placeholder={`Enter ${config.label}`} />
               )}
-              {key === "card" && (
+              {key === 'card' && (
                 <Component title={config.label}>
                   This is a {config.label} from registry
                 </Component>
@@ -139,7 +139,7 @@ export function ObjectMappingExample() {
         <div>
           <h4>Form Components</h4>
           {Object.entries(nestedComponents.form).map(([key, Component]) => {
-            if (key === "button") {
+            if (key === 'button') {
               return <Component key={key}>Nested Form {key}</Component>;
             }
             return <Component key={key} placeholder={`Nested form ${key}`} />;
@@ -148,7 +148,7 @@ export function ObjectMappingExample() {
         <div>
           <h4>Display Components</h4>
           {Object.entries(nestedComponents.display).map(([key, Component]) => {
-            if (key === "typography") {
+            if (key === 'typography') {
               return <Component key={key}>Nested Display {key}</Component>;
             }
             return (
@@ -186,19 +186,19 @@ export function ObjectMappingExample() {
           <option value="typography">Typography</option>
         </select>
 
-        <div style={{ marginTop: "10px" }}>
-          {selectedType === "button" && (
+        <div style={{ marginTop: '10px' }}>
+          {selectedType === 'button' && (
             <SelectedComponent>Dynamic Button</SelectedComponent>
           )}
-          {selectedType === "input" && (
+          {selectedType === 'input' && (
             <SelectedComponent placeholder="Dynamic Input" />
           )}
-          {selectedType === "card" && (
+          {selectedType === 'card' && (
             <SelectedComponent title="Dynamic Card">
               This card was selected dynamically
             </SelectedComponent>
           )}
-          {selectedType === "typography" && (
+          {selectedType === 'typography' && (
             <SelectedComponent>Dynamic Typography</SelectedComponent>
           )}
         </div>

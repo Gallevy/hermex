@@ -1,8 +1,8 @@
-import React, { lazy, Suspense, useState } from "react";
+import React, { lazy, Suspense, useState } from 'react';
 
 // Example library imports - Lazy loading patterns
-import Button from "@design-system/foundation/button";
-import { Typography } from "@design-system/foundation";
+import Button from '@design-system/foundation/button';
+import { Typography } from '@design-system/foundation';
 
 /**
  * PATTERN 4: LAZY LOADING
@@ -13,13 +13,13 @@ import { Typography } from "@design-system/foundation";
  */
 
 // Basic lazy loading
-const LazyCard = lazy(() => import("@design-system/foundation/card"));
-const LazyModal = lazy(() => import("@design-system/foundation/modal"));
-const LazyInput = lazy(() => import("@design-system/foundation/input"));
+const LazyCard = lazy(() => import('@design-system/foundation/card'));
+const LazyModal = lazy(() => import('@design-system/foundation/modal'));
+const LazyInput = lazy(() => import('@design-system/foundation/input'));
 
 // Lazy loading with dynamic path
 const LazyDynamic = lazy(() => {
-  const componentPath = "@design-system/foundation/card";
+  const componentPath = '@design-system/foundation/card';
   return import(componentPath);
 });
 
@@ -27,14 +27,14 @@ const LazyDynamic = lazy(() => {
 const LazyConditional = lazy(() => {
   const condition = Math.random() > 0.5;
   return condition
-    ? import("@design-system/foundation/button")
-    : import("@design-system/foundation/input");
+    ? import('@design-system/foundation/button')
+    : import('@design-system/foundation/input');
 });
 
 // Lazy loading with error handling
 const LazyWithRetry = lazy(() =>
-  import("@design-system/foundation/card").catch(() => {
-    return import("@design-system/foundation/button");
+  import('@design-system/foundation/card').catch(() => {
+    return import('@design-system/foundation/button');
   }),
 );
 
@@ -42,7 +42,7 @@ export function LazyLoadingExample() {
   const [showLazy, setShowLazy] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [showConditional, setShowConditional] = useState(false);
-  const [lazyType, setLazyType] = useState<"card" | "input" | "button">("card");
+  const [lazyType, setLazyType] = useState<'card' | 'input' | 'button'>('card');
 
   // Dynamic lazy loading based on type
   const [DynamicLazyComponent, setDynamicLazyComponent] =
@@ -52,21 +52,21 @@ export function LazyLoadingExample() {
     try {
       let module;
       switch (type) {
-        case "card":
-          module = await import("@design-system/foundation/card");
+        case 'card':
+          module = await import('@design-system/foundation/card');
           break;
-        case "input":
-          module = await import("@design-system/foundation/input");
+        case 'input':
+          module = await import('@design-system/foundation/input');
           break;
-        case "button":
-          module = await import("@design-system/foundation/button");
+        case 'button':
+          module = await import('@design-system/foundation/button');
           break;
         default:
           return;
       }
       setDynamicLazyComponent(() => module.default);
     } catch (error) {
-      console.error("Failed to load component:", error);
+      console.error('Failed to load component:', error);
     }
   };
 
@@ -78,7 +78,7 @@ export function LazyLoadingExample() {
       <section>
         <h3>Basic Lazy Loading</h3>
         <Button onClick={() => setShowLazy(!showLazy)}>
-          {showLazy ? "Hide" : "Show"} Lazy Components
+          {showLazy ? 'Hide' : 'Show'} Lazy Components
         </Button>
 
         {showLazy && (
@@ -95,7 +95,7 @@ export function LazyLoadingExample() {
       <section>
         <h3>Separate Suspense Boundaries</h3>
         <Button onClick={() => setShowModal(!showModal)}>
-          {showModal ? "Hide" : "Show"} Modal
+          {showModal ? 'Hide' : 'Show'} Modal
         </Button>
 
         {showModal && (

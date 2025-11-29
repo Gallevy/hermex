@@ -1,9 +1,9 @@
-import { parseSync } from "@swc/core";
-import fs from "fs";
-import path from "path";
+import { parseSync } from '@swc/core';
+import fs from 'fs';
+import path from 'path';
 
 class ReactComponentUsageAnalyzer {
-  constructor(libraryName = "@design-system/foundation") {
+  constructor(libraryName = '@design-system/foundation') {
     this.libraryName = libraryName;
     this.usagePatterns = {
       directImports: new Set(),
@@ -36,9 +36,9 @@ class ReactComponentUsageAnalyzer {
     console.log(`\n📁 Analyzing: ${filePath}`);
 
     try {
-      const code = fs.readFileSync(filePath, "utf8");
+      const code = fs.readFileSync(filePath, 'utf8');
       const ast = parseSync(code, {
-        syntax: "typescript",
+        syntax: 'typescript',
         tsx: true,
         decorators: true,
         dynamicImport: true,
@@ -56,54 +56,54 @@ class ReactComponentUsageAnalyzer {
     if (!node) return;
 
     switch (node.type) {
-      case "Module":
+      case 'Module':
         node.body.forEach((item) => this.visitNode(item, node));
         break;
 
-      case "ImportDeclaration":
+      case 'ImportDeclaration':
         this.analyzeImport(node);
         break;
 
-      case "CallExpression":
+      case 'CallExpression':
         this.analyzeCallExpression(node, parent);
         break;
 
-      case "VariableDeclaration":
+      case 'VariableDeclaration':
         this.analyzeVariableDeclaration(node);
         break;
 
-      case "JSXElement":
-      case "JSXFragment":
+      case 'JSXElement':
+      case 'JSXFragment':
         this.analyzeJSXElement(node, parent);
         break;
 
-      case "JSXOpeningElement":
+      case 'JSXOpeningElement':
         this.analyzeJSXOpeningElement(node, parent);
         break;
 
-      case "ArrayExpression":
+      case 'ArrayExpression':
         this.analyzeArrayExpression(node, parent);
         break;
 
-      case "ObjectExpression":
+      case 'ObjectExpression':
         this.analyzeObjectExpression(node, parent);
         break;
 
-      case "MemberExpression":
+      case 'MemberExpression':
         this.analyzeMemberExpression(node, parent);
         break;
 
-      case "ConditionalExpression":
+      case 'ConditionalExpression':
         this.analyzeConditionalExpression(node, parent);
         break;
 
-      case "FunctionDeclaration":
-      case "FunctionExpression":
-      case "ArrowFunctionExpression":
+      case 'FunctionDeclaration':
+      case 'FunctionExpression':
+      case 'ArrowFunctionExpression':
         this.analyzeFunctionDeclaration(node);
         break;
 
-      case "ClassDeclaration":
+      case 'ClassDeclaration':
         this.analyzeClassDeclaration(node);
         break;
 
@@ -115,13 +115,13 @@ class ReactComponentUsageAnalyzer {
   }
 
   visitChildren(node) {
-    if (!node || typeof node !== "object") return;
+    if (!node || typeof node !== 'object') return;
 
     for (const key in node) {
       const value = node[key];
       if (Array.isArray(value)) {
         value.forEach((child) => this.visitNode(child, node));
-      } else if (value && typeof value === "object" && value.type) {
+      } else if (value && typeof value === 'object' && value.type) {
         this.visitNode(value, node);
       }
     }
@@ -136,7 +136,7 @@ class ReactComponentUsageAnalyzer {
 
     node.specifiers.forEach((spec) => {
       switch (spec.type) {
-        case "ImportDefaultSpecifier":
+        case 'ImportDefaultSpecifier':
           this.usagePatterns.defaultImports.add({
             name: spec.local.value,
             source: source,
@@ -145,7 +145,7 @@ class ReactComponentUsageAnalyzer {
           this.componentNames.add(spec.local.value);
           break;
 
-        case "ImportNamespaceSpecifier":
+        case 'ImportNamespaceSpecifier':
           this.usagePatterns.namespaceImports.add({
             name: spec.local.value,
             source: source,
@@ -154,7 +154,7 @@ class ReactComponentUsageAnalyzer {
           this.allIdentifiers.add(spec.local.value);
           break;
 
-        case "ImportSpecifier":
+        case 'ImportSpecifier':
           const importedName = spec.imported
             ? spec.imported.value
             : spec.local.value;
@@ -184,15 +184,15 @@ class ReactComponentUsageAnalyzer {
   analyzeCallExpression(node, parent) {
     // Analyze lazy imports
     if (
-      node.callee?.value === "lazy" ||
-      (node.callee?.object?.value === "React" &&
-        node.callee?.property?.value === "lazy")
+      node.callee?.value === 'lazy' ||
+      (node.callee?.object?.value === 'React' &&
+        node.callee?.property?.value === 'lazy')
     ) {
       this.analyzeLazyImport(node);
     }
 
     // Analyze dynamic imports
-    if (node.callee?.type === "Import") {
+    if (node.callee?.type === 'Import') {
       this.analyzeDynamicImport(node);
     }
 
@@ -202,18 +202,18 @@ class ReactComponentUsageAnalyzer {
     }
 
     // Analyze React.memo, React.forwardRef
-    if (node.callee?.object?.value === "React") {
-      if (node.callee?.property?.value === "memo") {
+    if (node.callee?.object?.value === 'React') {
+      if (node.callee?.property?.value === 'memo') {
         this.analyzeMemoUsage(node);
-      } else if (node.callee?.property?.value === "forwardRef") {
+      } else if (node.callee?.property?.value === 'forwardRef') {
         this.analyzeForwardRefUsage(node);
       }
     }
 
     // Analyze createPortal
     if (
-      node.callee?.property?.value === "createPortal" ||
-      node.callee?.value === "createPortal"
+      node.callee?.property?.value === 'createPortal' ||
+      node.callee?.value === 'createPortal'
     ) {
       this.analyzePortalUsage(node);
     }
@@ -224,11 +224,11 @@ class ReactComponentUsageAnalyzer {
   analyzeLazyImport(node) {
     const arg = node.arguments?.[0];
     if (
-      arg?.type === "ArrowFunctionExpression" &&
-      arg.body?.type === "CallExpression"
+      arg?.type === 'ArrowFunctionExpression' &&
+      arg.body?.type === 'CallExpression'
     ) {
       const importCall = arg.body;
-      if (importCall.callee?.type === "Import") {
+      if (importCall.callee?.type === 'Import') {
         const source = importCall.arguments?.[0]?.value;
         if (this.isLibraryImport(source)) {
           this.usagePatterns.lazyImports.add({
@@ -254,7 +254,7 @@ class ReactComponentUsageAnalyzer {
 
   analyzeVariableDeclaration(node) {
     node.declarations?.forEach((decl) => {
-      if (decl.id?.type === "Identifier") {
+      if (decl.id?.type === 'Identifier') {
         const varName = decl.id.value;
 
         // Check if it's assigning a component
@@ -272,7 +272,7 @@ class ReactComponentUsageAnalyzer {
       }
 
       // Handle destructuring assignments
-      if (decl.id?.type === "ObjectPattern") {
+      if (decl.id?.type === 'ObjectPattern') {
         this.analyzeDestructuringPattern(decl.id, decl.init);
       }
     });
@@ -283,13 +283,13 @@ class ReactComponentUsageAnalyzer {
   analyzeDestructuringPattern(pattern, init) {
     pattern.properties?.forEach((prop) => {
       if (
-        prop.type === "AssignmentPatternProperty" &&
-        prop.key?.type === "Identifier"
+        prop.type === 'AssignmentPatternProperty' &&
+        prop.key?.type === 'Identifier'
       ) {
         const propName = prop.key.value;
 
         if (
-          init?.type === "Identifier" &&
+          init?.type === 'Identifier' &&
           this.allIdentifiers.has(init.value)
         ) {
           this.usagePatterns.destructuredUsage.add({
@@ -355,20 +355,20 @@ class ReactComponentUsageAnalyzer {
   }
 
   getJSXElementName(nameNode) {
-    if (!nameNode) return "";
+    if (!nameNode) return '';
 
     switch (nameNode.type) {
-      case "Identifier":
+      case 'Identifier':
         return nameNode.value;
-      case "JSXMemberExpression":
+      case 'JSXMemberExpression':
         return `${this.getJSXElementName(nameNode.object)}.${nameNode.property.value}`;
       default:
-        return "";
+        return '';
     }
   }
 
   isMemberExpressionComponent(nameNode) {
-    if (nameNode?.type === "JSXMemberExpression") {
+    if (nameNode?.type === 'JSXMemberExpression') {
       const objectName = this.getJSXElementName(nameNode.object);
       return this.allIdentifiers.has(objectName);
     }
@@ -380,15 +380,15 @@ class ReactComponentUsageAnalyzer {
 
     return attributes
       .map((attr) => {
-        if (attr.type === "JSXAttribute") {
+        if (attr.type === 'JSXAttribute') {
           return {
             name: attr.name?.value || attr.name?.name?.value,
             value: this.extractJSXAttributeValue(attr.value),
           };
-        } else if (attr.type === "SpreadElement") {
+        } else if (attr.type === 'SpreadElement') {
           return {
-            name: "...",
-            value: "[spread]",
+            name: '...',
+            value: '[spread]',
             isSpread: true,
           };
         }
@@ -401,34 +401,34 @@ class ReactComponentUsageAnalyzer {
     if (!value) return true; // boolean attribute
 
     switch (value.type) {
-      case "StringLiteral":
+      case 'StringLiteral':
         return value.value;
-      case "JSXExpressionContainer":
+      case 'JSXExpressionContainer':
         return this.extractExpressionValue(value.expression);
       default:
-        return "[complex]";
+        return '[complex]';
     }
   }
 
   extractExpressionValue(expr) {
-    if (!expr) return "[unknown]";
+    if (!expr) return '[unknown]';
 
     switch (expr.type) {
-      case "StringLiteral":
-      case "NumericLiteral":
-      case "BooleanLiteral":
+      case 'StringLiteral':
+      case 'NumericLiteral':
+      case 'BooleanLiteral':
         return expr.value;
-      case "Identifier":
+      case 'Identifier':
         return `{${expr.value}}`;
-      case "ArrowFunctionExpression":
-      case "FunctionExpression":
-        return "[function]";
-      case "ObjectExpression":
-        return "[object]";
-      case "ArrayExpression":
-        return "[array]";
+      case 'ArrowFunctionExpression':
+      case 'FunctionExpression':
+        return '[function]';
+      case 'ObjectExpression':
+        return '[object]';
+      case 'ArrayExpression':
+        return '[array]';
       default:
-        return "[expression]";
+        return '[expression]';
     }
   }
 
@@ -444,7 +444,7 @@ class ReactComponentUsageAnalyzer {
     if (!attributes) return analysis;
 
     attributes.forEach((attr) => {
-      if (attr.type === "JSXAttribute") {
+      if (attr.type === 'JSXAttribute') {
         const propName = attr.name?.value || attr.name?.name?.value;
         if (propName) {
           analysis.namedProps.add(propName);
@@ -452,7 +452,7 @@ class ReactComponentUsageAnalyzer {
           const propDetail = {
             name: propName,
             type: this.getPropType(attr.value),
-            isEventHandler: propName.startsWith("on"),
+            isEventHandler: propName.startsWith('on'),
             isComplex: this.isComplexProp(attr.value),
           };
 
@@ -465,14 +465,14 @@ class ReactComponentUsageAnalyzer {
 
           analysis.propDetails.push(propDetail);
         }
-      } else if (attr.type === "SpreadElement") {
+      } else if (attr.type === 'SpreadElement') {
         analysis.hasSpread = true;
         analysis.propDetails.push({
-          name: "...",
-          type: "spread",
+          name: '...',
+          type: 'spread',
           isSpread: true,
           isComplex: true,
-          warning: "Spread props cannot be statically analyzed",
+          warning: 'Spread props cannot be statically analyzed',
         });
         analysis.hasComplexProps = true;
       }
@@ -482,48 +482,48 @@ class ReactComponentUsageAnalyzer {
   }
 
   getPropType(value) {
-    if (!value) return "boolean";
+    if (!value) return 'boolean';
 
     switch (value.type) {
-      case "StringLiteral":
-        return "string";
-      case "JSXExpressionContainer":
+      case 'StringLiteral':
+        return 'string';
+      case 'JSXExpressionContainer':
         const expr = value.expression;
-        if (!expr) return "unknown";
+        if (!expr) return 'unknown';
         switch (expr.type) {
-          case "NumericLiteral":
-            return "number";
-          case "BooleanLiteral":
-            return "boolean";
-          case "StringLiteral":
-            return "string";
-          case "ArrowFunctionExpression":
-          case "FunctionExpression":
-            return "function";
-          case "ObjectExpression":
-            return "object";
-          case "ArrayExpression":
-            return "array";
-          case "Identifier":
-            return "variable";
+          case 'NumericLiteral':
+            return 'number';
+          case 'BooleanLiteral':
+            return 'boolean';
+          case 'StringLiteral':
+            return 'string';
+          case 'ArrowFunctionExpression':
+          case 'FunctionExpression':
+            return 'function';
+          case 'ObjectExpression':
+            return 'object';
+          case 'ArrayExpression':
+            return 'array';
+          case 'Identifier':
+            return 'variable';
           default:
-            return "expression";
+            return 'expression';
         }
       default:
-        return "unknown";
+        return 'unknown';
     }
   }
 
   isComplexProp(value) {
     if (!value) return false;
-    if (value.type === "JSXExpressionContainer") {
+    if (value.type === 'JSXExpressionContainer') {
       const expr = value.expression;
       if (!expr) return false;
       return (
-        expr.type === "ObjectExpression" ||
-        expr.type === "ArrayExpression" ||
-        expr.type === "CallExpression" ||
-        expr.type === "ConditionalExpression"
+        expr.type === 'ObjectExpression' ||
+        expr.type === 'ArrayExpression' ||
+        expr.type === 'CallExpression' ||
+        expr.type === 'ConditionalExpression'
       );
     }
     return false;
@@ -532,7 +532,7 @@ class ReactComponentUsageAnalyzer {
   analyzeArrayExpression(node, parent) {
     // Check if array contains components
     const hasComponents = node.elements?.some((elem) => {
-      if (elem?.type === "Identifier") {
+      if (elem?.type === 'Identifier') {
         return this.componentNames.has(elem.value);
       }
       return false;
@@ -553,8 +553,8 @@ class ReactComponentUsageAnalyzer {
     // Check if object contains component mappings
     const componentProps = node.properties?.filter((prop) => {
       if (
-        prop.type === "KeyValueProperty" &&
-        prop.value?.type === "Identifier"
+        prop.type === 'KeyValueProperty' &&
+        prop.value?.type === 'Identifier'
       ) {
         return this.componentNames.has(prop.value.value);
       }
@@ -564,7 +564,7 @@ class ReactComponentUsageAnalyzer {
     if (componentProps?.length > 0) {
       this.usagePatterns.objectMappings.add({
         mappings: componentProps.map((prop) => ({
-          key: prop.key?.value || "[computed]",
+          key: prop.key?.value || '[computed]',
           component: prop.value?.value,
         })),
         line: node.span?.start || 0,
@@ -577,9 +577,9 @@ class ReactComponentUsageAnalyzer {
 
   analyzeConditionalExpression(node, parent) {
     const consequent =
-      node.consequent?.type === "Identifier" ? node.consequent.value : null;
+      node.consequent?.type === 'Identifier' ? node.consequent.value : null;
     const alternate =
-      node.alternate?.type === "Identifier" ? node.alternate.value : null;
+      node.alternate?.type === 'Identifier' ? node.alternate.value : null;
 
     if (
       (consequent && this.componentNames.has(consequent)) ||
@@ -600,7 +600,7 @@ class ReactComponentUsageAnalyzer {
     // Analyze function for HOC patterns
     if (this.isHOCFunction(node)) {
       this.usagePatterns.hocUsage.add({
-        name: node.identifier?.value || "[anonymous]",
+        name: node.identifier?.value || '[anonymous]',
         line: node.span?.start || 0,
       });
       console.log(`🔧 HOC function found: ${node.identifier?.value}`);
@@ -617,10 +617,10 @@ class ReactComponentUsageAnalyzer {
   isHOCPattern(node) {
     // Simple heuristic: function that returns a component-like structure
     return (
-      node.callee?.type === "Identifier" &&
+      node.callee?.type === 'Identifier' &&
       node.arguments?.some(
         (arg) =>
-          arg.type === "Identifier" && this.componentNames.has(arg.value),
+          arg.type === 'Identifier' && this.componentNames.has(arg.value),
       )
     );
   }
@@ -628,7 +628,7 @@ class ReactComponentUsageAnalyzer {
   isHOCFunction(node) {
     // Check if function takes a component as parameter and returns JSX
     const params = node.params || [];
-    return params.some((param) => param.pat?.type === "Identifier");
+    return params.some((param) => param.pat?.type === 'Identifier');
   }
 
   analyzeHOCUsage(node) {
@@ -642,7 +642,7 @@ class ReactComponentUsageAnalyzer {
   analyzeMemoUsage(node) {
     const component = node.arguments?.[0];
     if (
-      component?.type === "Identifier" &&
+      component?.type === 'Identifier' &&
       this.componentNames.has(component.value)
     ) {
       this.usagePatterns.memoizedComponents.add({
@@ -670,7 +670,7 @@ class ReactComponentUsageAnalyzer {
   analyzeMemberExpression(node, parent) {
     // Check if this is a namespace access like Foundation.Button
     if (
-      node.object?.type === "Identifier" &&
+      node.object?.type === 'Identifier' &&
       this.allIdentifiers.has(node.object.value)
     ) {
       const namespaceName = node.object.value;
@@ -688,11 +688,11 @@ class ReactComponentUsageAnalyzer {
 
   extractAssignmentInfo(node) {
     switch (node.type) {
-      case "Identifier":
+      case 'Identifier':
         return node.value;
-      case "MemberExpression":
+      case 'MemberExpression':
         return `${this.extractAssignmentInfo(node.object)}.${node.property.value}`;
-      case "ConditionalExpression":
+      case 'ConditionalExpression':
         return `${this.extractAssignmentInfo(node.consequent)} | ${this.extractAssignmentInfo(node.alternate)}`;
       default:
         return null;
@@ -700,19 +700,19 @@ class ReactComponentUsageAnalyzer {
   }
 
   getUsageContext(parent) {
-    if (!parent) return "unknown";
+    if (!parent) return 'unknown';
 
     switch (parent.type) {
-      case "JSXElement":
-        return "jsx";
-      case "CallExpression":
-        return "function-call";
-      case "ArrayExpression":
-        return "array";
-      case "ConditionalExpression":
-        return "conditional";
+      case 'JSXElement':
+        return 'jsx';
+      case 'CallExpression':
+        return 'function-call';
+      case 'ArrayExpression':
+        return 'array';
+      case 'ConditionalExpression':
+        return 'conditional';
       default:
-        return "other";
+        return 'other';
     }
   }
 
@@ -805,9 +805,9 @@ class ReactComponentUsageAnalyzer {
   }
 
   printReport(report) {
-    console.log("\n" + "=".repeat(80));
-    console.log("📊 REACT COMPONENT USAGE ANALYSIS REPORT");
-    console.log("=".repeat(80));
+    console.log('\n' + '='.repeat(80));
+    console.log('📊 REACT COMPONENT USAGE ANALYSIS REPORT');
+    console.log('='.repeat(80));
 
     console.log(`\n📈 SUMMARY:`);
     console.log(`   Total Imports: ${report.summary.totalImports}`);
@@ -830,7 +830,7 @@ class ReactComponentUsageAnalyzer {
       );
       report.patterns.imports.named.forEach((imp) => {
         console.log(
-          `     - {${imp.imported}${imp.imported !== imp.local ? ` as ${imp.local}` : ""}} from "${imp.source}"`,
+          `     - {${imp.imported}${imp.imported !== imp.local ? ` as ${imp.local}` : ''}} from "${imp.source}"`,
         );
       });
     }
@@ -862,7 +862,7 @@ class ReactComponentUsageAnalyzer {
       );
       usage.usages.slice(0, 3).forEach((use, idx) => {
         const props =
-          use.props.length > 0 ? ` with ${use.props.length} props` : "";
+          use.props.length > 0 ? ` with ${use.props.length} props` : '';
         console.log(
           `     ${idx + 1}. <${usage.component}${props}> (line ~${use.line})`,
         );
@@ -897,7 +897,7 @@ class ReactComponentUsageAnalyzer {
       console.log(`\n🔀 CONDITIONAL USAGE:`);
       report.patterns.usage.conditional.forEach((cond) => {
         console.log(
-          `   - ${cond.consequent || "null"} ? ${cond.alternate || "null"}`,
+          `   - ${cond.consequent || 'null'} ? ${cond.alternate || 'null'}`,
         );
       });
     }
@@ -907,15 +907,15 @@ class ReactComponentUsageAnalyzer {
       console.log(`   - ${comp}`);
     });
 
-    console.log("\n" + "=".repeat(80));
+    console.log('\n' + '='.repeat(80));
   }
 }
 
 // Main execution
 function main() {
   const args = process.argv.slice(2);
-  const filePath = args[0] || "code-examples/comprehensive-usage.tsx";
-  const libraryName = args[1] || "@design-system/foundation";
+  const filePath = args[0] || 'code-examples/comprehensive-usage.tsx';
+  const libraryName = args[1] || '@design-system/foundation';
 
   console.log(`🔍 Starting analysis with library: ${libraryName}`);
   console.log(`📁 Target file: ${filePath}`);
@@ -934,9 +934,9 @@ function main() {
     }
   } else {
     console.error(`❌ File not found: ${filePath}`);
-    console.log("\nUsage: node parser.js <file-path> [library-name]");
+    console.log('\nUsage: node parser.js <file-path> [library-name]');
     console.log(
-      "Example: node parser.js code-examples/comprehensive-usage.tsx @design-system/foundation",
+      'Example: node parser.js code-examples/comprehensive-usage.tsx @design-system/foundation',
     );
   }
 }

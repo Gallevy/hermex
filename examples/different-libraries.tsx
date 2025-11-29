@@ -11,7 +11,11 @@ import { Button as AntButton, Input as AntInput, Card as AntCard } from 'antd';
 import { Typography as AntTypography } from 'antd';
 
 // === Chakra UI Examples ===
-import { Button as ChakraButton, Input as ChakraInput, Box } from '@chakra-ui/react';
+import {
+  Button as ChakraButton,
+  Input as ChakraInput,
+  Box,
+} from '@chakra-ui/react';
 
 // === React Bootstrap Examples ===
 import { Button as BSButton, Form, Card as BSCard } from 'react-bootstrap';
@@ -35,7 +39,7 @@ function MaterialUIExamples() {
   const muiComponents = {
     button: Button,
     textField: TextField,
-    card: Card
+    card: Card,
   };
 
   return (
@@ -68,7 +72,11 @@ function MaterialUIExamples() {
       {/* Object mapping */}
       {Object.entries(muiComponents).map(([key, Component]) => {
         if (key === 'button') {
-          return <Component key={key} variant="outlined">{key}</Component>;
+          return (
+            <Component key={key} variant="outlined">
+              {key}
+            </Component>
+          );
         } else if (key === 'textField') {
           return <Component key={key} label={`Mapped ${key}`} />;
         } else {
@@ -91,7 +99,7 @@ function AntDesignExamples() {
   const antConfig = {
     button: { children: 'Ant Button', type: 'primary' as const },
     input: { placeholder: 'Ant Input' },
-    card: { title: 'Ant Card', children: 'Card content' }
+    card: { title: 'Ant Card', children: 'Card content' },
   };
 
   return (
@@ -109,11 +117,19 @@ function AntDesignExamples() {
       {/* Array mapping */}
       {components.map((Component, index) => {
         if (Component === AntButton) {
-          return <Component key={index} type="default">Array Button {index}</Component>;
+          return (
+            <Component key={index} type="default">
+              Array Button {index}
+            </Component>
+          );
         } else if (Component === AntInput) {
           return <Component key={index} placeholder={`Array Input ${index}`} />;
         } else {
-          return <Component key={index} title={`Array Card ${index}`}>Content</Component>;
+          return (
+            <Component key={index} title={`Array Card ${index}`}>
+              Content
+            </Component>
+          );
         }
       })}
 
@@ -135,7 +151,7 @@ function MixedLibrariesExample() {
   const libraryComponents = {
     mui: { Button, TextField, Card },
     antd: { Button: AntButton, TextField: AntInput, Card: AntCard },
-    chakra: { Button: ChakraButton, TextField: ChakraInput, Card: Box }
+    chakra: { Button: ChakraButton, TextField: ChakraInput, Card: Box },
   };
 
   const ActiveComponents = libraryComponents[library];
@@ -146,7 +162,10 @@ function MixedLibrariesExample() {
 
       <div>
         <label>Select Library: </label>
-        <select value={library} onChange={(e) => setLibrary(e.target.value as any)}>
+        <select
+          value={library}
+          onChange={(e) => setLibrary(e.target.value as any)}
+        >
           <option value="mui">Material-UI</option>
           <option value="antd">Ant Design</option>
           <option value="chakra">Chakra UI</option>
@@ -170,7 +189,7 @@ function MixedLibrariesExample() {
 const ComponentContext = createContext({
   Button: Button,
   Input: TextField,
-  Card: Card
+  Card: Card,
 });
 
 function ContextProvider({ children }: { children: React.ReactNode }) {
@@ -182,7 +201,11 @@ function ContextProvider({ children }: { children: React.ReactNode }) {
 }
 
 function ContextConsumer() {
-  const { Button: ContextButton, Input: ContextInput, Card: ContextCard } = useContext(ComponentContext);
+  const {
+    Button: ContextButton,
+    Input: ContextInput,
+    Card: ContextCard,
+  } = useContext(ComponentContext);
 
   return (
     <div>
@@ -199,7 +222,7 @@ function ContextConsumer() {
 // 5. HOC Patterns with Multiple Libraries
 function withLibraryWrapper<T extends {}>(
   WrappedComponent: React.ComponentType<T>,
-  wrapperProps?: any
+  wrapperProps?: any,
 ) {
   return function WrappedWithLibrary(props: T) {
     return (
@@ -214,8 +237,12 @@ function withLibraryWrapper<T extends {}>(
 
 // Enhanced components
 const EnhancedMUIButton = withLibraryWrapper(Button, { elevation: 2 });
-const EnhancedAntButton = withLibraryWrapper(AntButton, { title: 'Enhanced Ant' });
-const EnhancedMyButton = withLibraryWrapper(MyButton, { title: 'Enhanced Custom' });
+const EnhancedAntButton = withLibraryWrapper(AntButton, {
+  title: 'Enhanced Ant',
+});
+const EnhancedMyButton = withLibraryWrapper(MyButton, {
+  title: 'Enhanced Custom',
+});
 
 // 6. Lazy Loading with Different Libraries
 const LazyMUIChart = lazy(() => import('@mui/x-charts/LineChart'));
@@ -234,7 +261,9 @@ function LazyComponentsExample() {
       </Button>
 
       {showComponents && (
-        <React.Suspense fallback={<Typography>Loading components...</Typography>}>
+        <React.Suspense
+          fallback={<Typography>Loading components...</Typography>}
+        >
           <LazyMUIChart width={300} height={200} series={[]} />
           <LazyAntTable dataSource={[]} columns={[]} />
           <LazyCustomWidget title="Custom Widget" />
@@ -249,17 +278,17 @@ const complexLibraryStructure = {
   ui: {
     material: {
       forms: { Button, TextField },
-      display: { Card, Typography }
+      display: { Card, Typography },
     },
     antd: {
       forms: { Button: AntButton, Input: AntInput },
-      display: { Card: AntCard, Text: AntTypography.Text }
-    }
+      display: { Card: AntCard, Text: AntTypography.Text },
+    },
   },
   custom: {
     forms: { Button: MyButton, Input: MyInput },
-    namespace: UIKit
-  }
+    namespace: UIKit,
+  },
 };
 
 function ComplexNestedExample() {
@@ -269,10 +298,17 @@ function ComplexNestedExample() {
   const CustomNamespace = complexLibraryStructure.custom.namespace;
 
   // Function-based selection
-  const getFormComponent = (library: 'material' | 'antd', type: 'Button' | 'Input') => {
+  const getFormComponent = (
+    library: 'material' | 'antd',
+    type: 'Button' | 'Input',
+  ) => {
     return library === 'material'
-      ? complexLibraryStructure.ui.material.forms[type === 'Button' ? 'Button' : 'TextField']
-      : complexLibraryStructure.ui.antd.forms[type === 'Button' ? 'Button' : 'Input'];
+      ? complexLibraryStructure.ui.material.forms[
+          type === 'Button' ? 'Button' : 'TextField'
+        ]
+      : complexLibraryStructure.ui.antd.forms[
+          type === 'Button' ? 'Button' : 'Input'
+        ];
   };
 
   const DynamicFormButton = getFormComponent('material', 'Button');
@@ -289,7 +325,9 @@ function ComplexNestedExample() {
       <CustomNamespace.Button>Namespace from nested</CustomNamespace.Button>
 
       {/* Function-selected components */}
-      <DynamicFormButton variant="outlined">Function Selected</DynamicFormButton>
+      <DynamicFormButton variant="outlined">
+        Function Selected
+      </DynamicFormButton>
     </div>
   );
 }
@@ -303,7 +341,7 @@ function LibraryMigrationExample() {
   const componentMapping = {
     Button: useLegacyComponents ? MyButton : Button,
     Input: useLegacyComponents ? MyInput : TextField,
-    Card: useLegacyComponents ? UIKit.Card : Card
+    Card: useLegacyComponents ? UIKit.Card : Card,
   };
 
   return (
@@ -325,7 +363,9 @@ function LibraryMigrationExample() {
       </componentMapping.Button>
 
       <componentMapping.Input
-        {...(useLegacyComponents ? { placeholder: 'Legacy Input' } : { label: 'New Input' })}
+        {...(useLegacyComponents
+          ? { placeholder: 'Legacy Input' }
+          : { label: 'New Input' })}
       />
 
       <componentMapping.Card>
@@ -358,7 +398,9 @@ export default function DifferentLibrariesApp() {
 
         <div>
           <h2>HOC Enhanced Components</h2>
-          <EnhancedMUIButton variant="contained">Enhanced MUI</EnhancedMUIButton>
+          <EnhancedMUIButton variant="contained">
+            Enhanced MUI
+          </EnhancedMUIButton>
           <EnhancedAntButton type="primary">Enhanced Ant</EnhancedAntButton>
           <EnhancedMyButton>Enhanced Custom</EnhancedMyButton>
         </div>
@@ -387,5 +429,5 @@ export const AnalysisPatterns = {
   lazyLoading: { LazyMUIChart, LazyAntTable, LazyCustomWidget },
   contextUsage: { ComponentContext },
   hocPatterns: { withLibraryWrapper },
-  migrationPatterns: { componentMapping: 'dynamic based on feature flags' }
+  migrationPatterns: { componentMapping: 'dynamic based on feature flags' },
 };

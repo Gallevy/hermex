@@ -1,14 +1,14 @@
-import fs from "fs";
-import path from "path";
-import yaml from "js-yaml";
-import lockfile from "@yarnpkg/lockfile";
+import fs from 'fs';
+import path from 'path';
+import yaml from 'js-yaml';
+import lockfile from '@yarnpkg/lockfile';
 
 /**
  * Lockfile parse result
  */
 export interface LockfileResult {
   versions: Record<string, string>;
-  lockfileType: "npm" | "yarn" | "pnpm" | null;
+  lockfileType: 'npm' | 'yarn' | 'pnpm' | null;
   lockfilePath: string | null;
   found: boolean;
 }
@@ -20,27 +20,29 @@ export interface LockfileResult {
  */
 export function parsePackageLock(lockFilePath: string): Record<string, string> {
   try {
-    const content = fs.readFileSync(lockFilePath, "utf8");
+    const content = fs.readFileSync(lockFilePath, 'utf8');
     const lockData = JSON.parse(content);
     const versions: Record<string, string> = {};
 
     // npm v7+ uses "packages" field
     if (lockData.packages) {
-      Object.entries(lockData.packages).forEach(([pkgPath, pkgData]: [string, any]) => {
-        if (!pkgPath || pkgPath === "") return; // Skip root
+      Object.entries(lockData.packages).forEach(
+        ([pkgPath, pkgData]: [string, any]) => {
+          if (!pkgPath || pkgPath === '') return; // Skip root
 
-        // Remove leading "node_modules/"
-        const pkgName = pkgPath.replace(/^node_modules\//, "");
+          // Remove leading "node_modules/"
+          const pkgName = pkgPath.replace(/^node_modules\//, '');
 
-        if (pkgData.version) {
-          versions[pkgName] = pkgData.version;
-        }
-      });
+          if (pkgData.version) {
+            versions[pkgName] = pkgData.version;
+          }
+        },
+      );
     }
 
     // npm v6 uses "dependencies" field
     if (lockData.dependencies && Object.keys(versions).length === 0) {
-      function extractVersions(deps: any, prefix = ""): void {
+      function extractVersions(deps: any, prefix = ''): void {
         Object.entries(deps).forEach(([name, data]: [string, any]) => {
           const fullName = prefix ? `${prefix}/${name}` : name;
           if (data.version) {
@@ -69,11 +71,11 @@ export function parsePackageLock(lockFilePath: string): Record<string, string> {
  */
 export function parseYarnLock(lockFilePath: string): Record<string, string> {
   try {
-    const content = fs.readFileSync(lockFilePath, "utf8");
+    const content = fs.readFileSync(lockFilePath, 'utf8');
     const parsed = lockfile.parse(content);
 
-    if (parsed.type !== "success") {
-      console.warn("Warning: Failed to parse yarn.lock");
+    if (parsed.type !== 'success') {
+      console.warn('Warning: Failed to parse yarn.lock');
       return {};
     }
 
@@ -85,7 +87,7 @@ export function parseYarnLock(lockFilePath: string): Record<string, string> {
       let pkgName = key;
 
       // Handle scoped packages
-      if (key.startsWith("@")) {
+      if (key.startsWith('@')) {
         const match = key.match(/^(@[^@]+\/[^@]+)@/);
         if (match) {
           pkgName = match[1];
@@ -117,30 +119,32 @@ export function parseYarnLock(lockFilePath: string): Record<string, string> {
  */
 export function parsePnpmLock(lockFilePath: string): Record<string, string> {
   try {
-    const content = fs.readFileSync(lockFilePath, "utf8");
+    const content = fs.readFileSync(lockFilePath, 'utf8');
     const lockData = yaml.load(content) as any;
     const versions: Record<string, string> = {};
 
     // pnpm v9+ uses "importers" field
     if (lockData.importers) {
-      const rootImporter = lockData.importers["."];
+      const rootImporter = lockData.importers['.'];
       if (rootImporter) {
         // Parse dependencies
         if (rootImporter.dependencies) {
-          Object.entries(rootImporter.dependencies).forEach(([name, data]: [string, any]) => {
-            if (typeof data === "object" && data.version) {
-              versions[name] = data.version;
-            }
-          });
+          Object.entries(rootImporter.dependencies).forEach(
+            ([name, data]: [string, any]) => {
+              if (typeof data === 'object' && data.version) {
+                versions[name] = data.version;
+              }
+            },
+          );
         }
         // Parse devDependencies
         if (rootImporter.devDependencies) {
           Object.entries(rootImporter.devDependencies).forEach(
             ([name, data]: [string, any]) => {
-              if (typeof data === "object" && data.version) {
+              if (typeof data === 'object' && data.version) {
                 versions[name] = data.version;
               }
-            }
+            },
           );
         }
       }
@@ -160,17 +164,19 @@ export function parsePnpmLock(lockFilePath: string): Record<string, string> {
 
     // pnpm v5 uses "dependencies" and "specifiers"
     if (lockData.dependencies && Object.keys(versions).length === 0) {
-      Object.entries(lockData.dependencies).forEach(([name, versionSpec]: [string, any]) => {
-        // versionSpec format: "1.0.0" or "link:../package"
-        if (
-          typeof versionSpec === "string" &&
-          !versionSpec.startsWith("link:")
-        ) {
-          versions[name] = versionSpec;
-        } else if (typeof versionSpec === "object" && versionSpec.version) {
-          versions[name] = versionSpec.version;
-        }
-      });
+      Object.entries(lockData.dependencies).forEach(
+        ([name, versionSpec]: [string, any]) => {
+          // versionSpec format: "1.0.0" or "link:../package"
+          if (
+            typeof versionSpec === 'string' &&
+            !versionSpec.startsWith('link:')
+          ) {
+            versions[name] = versionSpec;
+          } else if (typeof versionSpec === 'object' && versionSpec.version) {
+            versions[name] = versionSpec.version;
+          }
+        },
+      );
     }
 
     return versions;
@@ -188,9 +194,13 @@ export function parsePnpmLock(lockFilePath: string): Record<string, string> {
  */
 export function findAndParseLockfile(projectPath: string): LockfileResult {
   const lockfiles = [
-    { name: "package-lock.json", parser: parsePackageLock, type: "npm" as const },
-    { name: "yarn.lock", parser: parseYarnLock, type: "yarn" as const },
-    { name: "pnpm-lock.yaml", parser: parsePnpmLock, type: "pnpm" as const },
+    {
+      name: 'package-lock.json',
+      parser: parsePackageLock,
+      type: 'npm' as const,
+    },
+    { name: 'yarn.lock', parser: parseYarnLock, type: 'yarn' as const },
+    { name: 'pnpm-lock.yaml', parser: parsePnpmLock, type: 'pnpm' as const },
   ];
 
   for (const { name, parser, type } of lockfiles) {
@@ -222,7 +232,7 @@ export function findAndParseLockfile(projectPath: string): LockfileResult {
  */
 export function getPackageVersion(
   projectPath: string,
-  packageName: string
+  packageName: string,
 ): string | null {
   const { versions } = findAndParseLockfile(projectPath);
   return versions[packageName] || null;
@@ -236,7 +246,7 @@ export function getPackageVersion(
  */
 export function getPackageVersions(
   projectPath: string,
-  packageNames: string[]
+  packageNames: string[],
 ): Record<string, string> {
   const { versions } = findAndParseLockfile(projectPath);
   const result: Record<string, string> = {};
@@ -260,7 +270,7 @@ export function getPackageVersions(
 export function formatComponentWithVersion(
   componentName: string,
   packageName: string,
-  projectPath: string
+  projectPath: string,
 ): string {
   const version = getPackageVersion(projectPath, packageName);
 

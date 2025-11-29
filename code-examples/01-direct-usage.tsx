@@ -1,10 +1,10 @@
-import React from "react";
+import React from 'react';
 
 // Example library imports - Direct usage patterns
-import Button from "@design-system/foundation/button";
-import Input from "@design-system/foundation/input";
-import Card from "@design-system/foundation/card";
-import { Typography } from "@design-system/foundation";
+import Button from '@design-system/foundation/button';
+import Input from '@design-system/foundation/input';
+import Card from '@design-system/foundation/card';
+import { Typography } from '@design-system/foundation';
 
 /**
  * PATTERN 1: DIRECT IMPORT & USAGE
@@ -28,7 +28,7 @@ export function DirectUsageExample() {
       </Button>
 
       {/* With event handlers */}
-      <Button variant="secondary" onClick={() => console.log("clicked")}>
+      <Button variant="secondary" onClick={() => console.log('clicked')}>
         Secondary Button
       </Button>
 
@@ -62,7 +62,7 @@ export function DirectUsageExample() {
       </Card>
 
       {/* With spread props */}
-      <Button {...{ variant: "primary", size: "large" }}>
+      <Button {...{ variant: 'primary', size: 'large' }}>
         Button with spread
       </Button>
 
@@ -70,7 +70,7 @@ export function DirectUsageExample() {
       <Button
         variant="primary"
         disabled={false}
-        onClick={() => alert("Clicked!")}
+        onClick={() => alert('Clicked!')}
       >
         Dynamic Props Button
       </Button>

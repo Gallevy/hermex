@@ -1,6 +1,6 @@
-import fs from "fs";
-import path from "path";
-import { glob } from "glob";
+import fs from 'fs';
+import path from 'path';
+import { glob } from 'glob';
 
 /**
  * Options for finding files
@@ -19,16 +19,17 @@ export interface FindFilesOptions {
  */
 export async function findFiles(
   pattern: string,
-  options: FindFilesOptions = {}
+  options: FindFilesOptions = {},
 ): Promise<string[]> {
-  const {
-    ignorePatterns = [],
-    maxFiles = 1000,
-    cwd = process.cwd(),
-  } = options;
+  const { ignorePatterns = [], maxFiles = 1000, cwd = process.cwd() } = options;
 
   const allFiles = await glob(pattern, {
-    ignore: ["**/node_modules/**", "**/dist/**", "**/build/**", ...ignorePatterns],
+    ignore: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/build/**',
+      ...ignorePatterns,
+    ],
     nodir: true,
     cwd,
     absolute: true,
@@ -38,13 +39,13 @@ export async function findFiles(
   // Filter to only React-related file types
   const reactFiles = allFiles.filter((file) => {
     const ext = path.extname(file);
-    return [".tsx", ".jsx", ".ts", ".js"].includes(ext);
+    return ['.tsx', '.jsx', '.ts', '.js'].includes(ext);
   });
 
   // Limit number of files
   if (reactFiles.length > maxFiles) {
     console.warn(
-      `Warning: Found ${reactFiles.length} files, limiting to ${maxFiles}`
+      `Warning: Found ${reactFiles.length} files, limiting to ${maxFiles}`,
     );
     return reactFiles.slice(0, maxFiles);
   }
@@ -58,7 +59,7 @@ export async function findFiles(
  * @returns File content
  */
 export function readFile(filePath: string): string {
-  return fs.readFileSync(filePath, "utf8");
+  return fs.readFileSync(filePath, 'utf8');
 }
 
 /**
@@ -73,7 +74,7 @@ export function writeFile(filePath: string, content: string): void {
     fs.mkdirSync(dir, { recursive: true });
   }
 
-  fs.writeFileSync(filePath, content, "utf8");
+  fs.writeFileSync(filePath, content, 'utf8');
 }
 
 /**
@@ -101,7 +102,7 @@ export function getFileExtension(filePath: string): string {
  */
 export function isReactFile(filePath: string): boolean {
   const ext = getFileExtension(filePath);
-  return ["tsx", "jsx", "ts", "js"].includes(ext);
+  return ['tsx', 'jsx', 'ts', 'js'].includes(ext);
 }
 
 /**
@@ -130,7 +131,7 @@ export function getRelativePath(filePath: string, basePath: string): string {
  * @returns Normalized path (forward slashes)
  */
 export function normalizePath(filePath: string): string {
-  return filePath.replace(/\\/g, "/");
+  return filePath.replace(/\\/g, '/');
 }
 
 /**
@@ -141,13 +142,13 @@ export function normalizePath(filePath: string): string {
  */
 export async function getFilesByType(
   dirPath: string,
-  extensions: string[] = [".tsx", ".jsx", ".ts", ".js"]
+  extensions: string[] = ['.tsx', '.jsx', '.ts', '.js'],
 ): Promise<string[]> {
   const normalizedPath = normalizePath(dirPath);
-  const pattern = `${normalizedPath}/**/*{${extensions.join(",")}}`;
+  const pattern = `${normalizedPath}/**/*{${extensions.join(',')}}`;
 
   const files = await glob(pattern, {
-    ignore: ["**/node_modules/**", "**/dist/**", "**/build/**"],
+    ignore: ['**/node_modules/**', '**/dist/**', '**/build/**'],
     nodir: true,
     windowsPathsNoEscape: true,
   });
@@ -161,7 +162,7 @@ export async function getFilesByType(
  * @returns Map of extensions to counts
  */
 export async function countFilesByExtension(
-  dirPath: string
+  dirPath: string,
 ): Promise<Record<string, number>> {
   const files = await getFilesByType(dirPath);
   const counts: Record<string, number> = {};
