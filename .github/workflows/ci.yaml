@@ -8,6 +8,10 @@ on:
     branches: ["main"]
 
 jobs:
+  permissions:
+    id-token: write
+    contents: write
+    issues: write
   build:
     runs-on: ubuntu-latest
 
@@ -26,7 +30,7 @@ jobs:
           version: 10
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Run format
         run: pnpm run format:ci
@@ -38,7 +42,4 @@ jobs:
         run: pnpm run build:ci
 
       - name: Run semantic-release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npx semantic-release
