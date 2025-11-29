@@ -11,12 +11,17 @@ const { glob } = require("glob");
 async function findFiles(pattern, options = {}) {
   const {
     ignorePatterns = [],
-    maxFiles = 1000,
+    maxFiles = 1000, // FIXME why limit to 1000
     cwd = process.cwd(),
   } = options;
 
   const allFiles = await glob(pattern, {
-    ignore: ["**/node_modules/**", "**/dist/**", "**/build/**", ...ignorePatterns],
+    ignore: [
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/build/**",
+      ...ignorePatterns,
+    ],
     nodir: true,
     cwd,
     absolute: true,
@@ -32,7 +37,7 @@ async function findFiles(pattern, options = {}) {
   // Limit number of files
   if (reactFiles.length > maxFiles) {
     console.warn(
-      `Warning: Found ${reactFiles.length} files, limiting to ${maxFiles}`
+      `Warning: Found ${reactFiles.length} files, limiting to ${maxFiles}`,
     );
     return reactFiles.slice(0, maxFiles);
   }
@@ -127,7 +132,10 @@ function normalizePath(filePath) {
  * @param {string[]} extensions - Array of extensions (e.g., ['.tsx', '.jsx'])
  * @returns {Promise<string[]>} Array of file paths
  */
-async function getFilesByType(dirPath, extensions = [".tsx", ".jsx", ".ts", ".js"]) {
+async function getFilesByType(
+  dirPath,
+  extensions = [".tsx", ".jsx", ".ts", ".js"],
+) {
   const normalizedPath = normalizePath(dirPath);
   const pattern = `${normalizedPath}/**/*{${extensions.join(",")}}`;
 

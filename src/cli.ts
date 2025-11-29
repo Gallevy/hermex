@@ -9,12 +9,7 @@ import path from "path";
 import Table from "cli-table3";
 import { ReactComponentUsageAnalyzer } from "./parser";
 import { FocusedUsageAnalyzer } from "./analyze-usage";
-import {
-  analyzeGitHubRepositories,
-  loadRepositoriesFromConfig,
-  createGitHubAnalysisReport,
-} from "./github-analysis";
-import { formatGitHubReport, saveJsonReport } from "./utils/formatters";
+import { analyzeCommand, compareCommand, githubCommand } from "./commands";
 
 const program = new Command();
 
@@ -41,8 +36,7 @@ program
   )
   .option(
     "-o, --output <file>",
-    "Output file path for JSON report",
-    "analysis-report.json",
+    "Output file path for JSON report (defaults to timestamped filename)",
   )
   .option(
     "-f, --format <type>",
@@ -77,8 +71,7 @@ program
   ])
   .option(
     "-o, --output <file>",
-    "Output file path for comparison report",
-    "comparison-report.json",
+    "Output file path for comparison report (defaults to timestamped filename)",
   )
   .option(
     "-f, --format <type>",
@@ -170,7 +163,10 @@ program
     "File pattern to analyze",
     "**/*.{tsx,jsx,ts,js}",
   )
-  .option("-o, --output <file>", "Output JSON file", "github-analysis.json")
+  .option(
+    "-o, --output <file>",
+    "Output JSON file (defaults to timestamped filename)",
+  )
   .option(
     "-f, --format <type>",
     "Output format: json, console, or both",
@@ -185,236 +181,7 @@ program
   });
 
 // Main analyze command implementation
-async function analyzeCommand(pattern, options) {
-  const spinner = ora("Finding files to analyze...").start();
-
-  try {
-    // Find matching files
-    const files = await findFiles(
-      pattern,
-      options.ignore,
-      parseInt(options.maxFiles),
-    );
-
-    if (files.length === 0) {
-      spinner.fail(chalk.red("No files found matching pattern: " + pattern));
-      return;
-    }
-
-    spinner.succeed(chalk.green(`Found ${files.length} files to analyze`));
-
-    // Analyze files
-    spinner.start("Analyzing files...");
-    const analyzer = options.complexity
-      ? new FocusedUsageAnalyzer(options.library)
-      : new ReactComponentUsageAnalyzer(options.library);
-
-    const aggregatedReport = {
-      metadata: {
-        timestamp: new Date().toISOString(),
-        library: options.library,
-        pattern: pattern,
-        filesAnalyzed: 0,
-        filesWithErrors: 0,
-        totalFiles: files.length,
-      },
-      files: [],
-      aggregated: {
-        allComponents: new Set(),
-        totalImports: 0,
-        totalUsagePatterns: 0,
-        patternFrequency: {},
-        componentFrequency: {},
-        fileComplexity: [],
-        errors: [],
-      },
-    };
-
-    // Analyze each file
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      spinner.text = `Analyzing files... (${i + 1}/${files.length}) ${path.basename(file)}`;
-
-      try {
-        const report = analyzer.analyzeFile(file);
-
-        if (report) {
-          aggregatedReport.metadata.filesAnalyzed++;
-
-          const fileResult = {
-            path: file,
-            components: report.components,
-            summary: report.summary,
-            patterns: report.patterns,
-          };
-
-          if (options.complexity) {
-            const analysis = analyzer.classifyUsage(report);
-            const complexity = analyzer.generateComplexityScore(
-              analysis.foundPatterns,
-            );
-            fileResult.complexity = complexity;
-            aggregatedReport.aggregated.fileComplexity.push({
-              file: file,
-              score: complexity.score,
-              level: complexity.level,
-            });
-          }
-
-          aggregatedReport.files.push(fileResult);
-
-          // Aggregate data
-          report.components.forEach((comp) =>
-            aggregatedReport.aggregated.allComponents.add(comp),
-          );
-          aggregatedReport.aggregated.totalImports +=
-            report.summary.totalImports;
-          aggregatedReport.aggregated.totalUsagePatterns +=
-            report.summary.totalUsagePatterns;
-
-          // Count component usage
-          report.patterns.usage.jsx.forEach((usage) => {
-            aggregatedReport.aggregated.componentFrequency[usage.component] =
-              (aggregatedReport.aggregated.componentFrequency[
-                usage.component
-              ] || 0) + usage.count;
-          });
-
-          // Count pattern types
-          Object.keys(report.patterns).forEach((category) => {
-            Object.keys(report.patterns[category]).forEach((patternType) => {
-              const pattern = report.patterns[category][patternType];
-              const count = Array.isArray(pattern) ? pattern.length : 0;
-              if (count > 0) {
-                const key = `${category}.${patternType}`;
-                aggregatedReport.aggregated.patternFrequency[key] =
-                  (aggregatedReport.aggregated.patternFrequency[key] || 0) +
-                  count;
-              }
-            });
-          });
-        }
-      } catch (error) {
-        aggregatedReport.metadata.filesWithErrors++;
-        aggregatedReport.aggregated.errors.push({
-          file: file,
-          error: error.message,
-        });
-      }
-    }
-
-    // Convert Set to Array for JSON serialization
-    aggregatedReport.aggregated.allComponents = Array.from(
-      aggregatedReport.aggregated.allComponents,
-    );
-
-    spinner.succeed(
-      chalk.green(
-        `Analysis complete! Analyzed ${aggregatedReport.metadata.filesAnalyzed} files`,
-      ),
-    );
-
-    // Generate output
-    if (options.format === "json" || options.format === "both") {
-      fs.writeFileSync(
-        options.output,
-        JSON.stringify(aggregatedReport, null, 2),
-      );
-      console.log(chalk.blue(`\n📄 JSON report saved to: ${options.output}`));
-    }
-
-    if (options.format === "console" || options.format === "both") {
-      printAggregatedReport(aggregatedReport, options);
-    }
-  } catch (error) {
-    spinner.fail(chalk.red("Analysis failed: " + error.message));
-    console.error(error);
-  }
-}
-
-// Compare command implementation
-async function compareCommand(pattern, options) {
-  const spinner = ora("Finding files to analyze...").start();
-
-  try {
-    const files = await findFiles(pattern, [], 1000);
-
-    if (files.length === 0) {
-      spinner.fail(chalk.red("No files found matching pattern: " + pattern));
-      return;
-    }
-
-    spinner.succeed(chalk.green(`Found ${files.length} files`));
-
-    const comparisonResults = {
-      metadata: {
-        timestamp: new Date().toISOString(),
-        pattern: pattern,
-        filesAnalyzed: files.length,
-        libraries: options.libraries,
-      },
-      libraries: [],
-    };
-
-    // Analyze for each library
-    for (const library of options.libraries) {
-      spinner.start(`Analyzing ${library}...`);
-
-      const analyzer = new FocusedUsageAnalyzer(library);
-      let componentsFound = 0;
-      let usagePatterns = 0;
-      const components = new Set();
-
-      for (const file of files) {
-        try {
-          const report = analyzer.analyzeFile(file);
-          if (report) {
-            componentsFound += report.summary.totalComponents;
-            usagePatterns += report.summary.totalUsagePatterns;
-            report.components.forEach((comp) => components.add(comp));
-          }
-        } catch (error) {
-          // Skip files with errors
-        }
-      }
-
-      const libraryResult = {
-        name: library,
-        componentsFound: components.size,
-        totalUsagePatterns: usagePatterns,
-        topComponents: Array.from(components).slice(0, 10),
-      };
-
-      comparisonResults.libraries.push(libraryResult);
-      spinner.succeed(
-        chalk.green(`${library}: ${components.size} components found`),
-      );
-    }
-
-    // Sort by components found
-    comparisonResults.libraries.sort(
-      (a, b) => b.componentsFound - a.componentsFound,
-    );
-
-    // Save and display
-    if (options.format === "json" || options.format === "both") {
-      fs.writeFileSync(
-        options.output,
-        JSON.stringify(comparisonResults, null, 2),
-      );
-      console.log(
-        chalk.blue(`\n📄 Comparison report saved to: ${options.output}`),
-      );
-    }
-
-    if (options.format === "console" || options.format === "both") {
-      printComparisonReport(comparisonResults);
-    }
-  } catch (error) {
-    spinner.fail(chalk.red("Comparison failed: " + error.message));
-    console.error(error);
-  }
-}
+// Command implementations are now in src/commands/
 
 // Summary command implementation
 async function summaryCommand(pattern, options) {
@@ -859,74 +626,8 @@ async function tableCommand(pattern, options) {
   }
 }
 
-// GitHub command implementation
-async function githubCommand(repos, options) {
-  const spinner = ora("Initializing GitHub analyzer...").start();
-
-  try {
-    // Load repositories from config file or arguments
-    let repoList = repos || [];
-
-    if (options.config) {
-      spinner.text = `Loading repositories from ${options.config}...`;
-      try {
-        repoList = loadRepositoriesFromConfig(options.config);
-        spinner.succeed(
-          chalk.green(`Loaded ${repoList.length} repositories from config`),
-        );
-        spinner.start();
-      } catch (error) {
-        spinner.fail(chalk.red(`Failed to load config file: ${error.message}`));
-        process.exit(1);
-      }
-    }
-
-    if (repoList.length === 0) {
-      spinner.fail(
-        chalk.red(
-          "No repositories specified. Use arguments or --config <file>",
-        ),
-      );
-      console.log(
-        chalk.yellow("\nExample: node cli.js github owner/repo1 owner/repo2"),
-      );
-      console.log(chalk.yellow("Or: node cli.js github --config repos.json"));
-      process.exit(1);
-    }
-
-    spinner.succeed(chalk.green("GitHub analyzer initialized"));
-
-    // Create analyzer instance
-    const analyzer = options.complexity
-      ? new FocusedUsageAnalyzer(options.library)
-      : new ReactComponentUsageAnalyzer(options.library);
-
-    // Analyze repositories
-    const results = await analyzeGitHubRepositories(repoList, analyzer, {
-      branch: options.branch,
-      pattern: options.pattern,
-      depth: parseInt(options.depth),
-      keepRepos: options.keepRepos,
-    });
-
-    // Create full report with enhanced data
-    const fullReport = createGitHubAnalysisReport(results, options.library);
-
-    // Save JSON if requested
-    if (options.format === "json" || options.format === "both") {
-      saveJsonReport(fullReport, options.output);
-    }
-
-    // Display console output
-    if (options.format === "console" || options.format === "both") {
-      formatGitHubReport(fullReport, options);
-    }
-  } catch (error) {
-    spinner.fail(chalk.red("GitHub analysis failed: " + error.message));
-    console.error(error);
-    process.exit(1);
-  }
-}
+// Remaining commands need refactoring (summary, patterns, stats, table)
+// These will be moved to separate files in a future cleanup
 
 function printGitHubReport(report, options) {
   console.log("\n" + chalk.bold.blue("═".repeat(80)));
@@ -1024,8 +725,9 @@ async function findFiles(pattern, ignorePatterns, maxFiles) {
   const allFiles = await glob(pattern, {
     ignore: ["node_modules/**", "dist/**", "build/**", ...ignorePatterns],
     nodir: true,
+    absolute: false,
     // Support all React file types
-    matchBase: true,
+    matchBase: false,
   });
 
   // Filter for React file types: tsx, jsx, ts, js

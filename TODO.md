@@ -6,21 +6,20 @@ This document tracks remaining work and future enhancements for the React Usage 
 
 ### 1. Type Safety Improvements
 - [ ] Add proper types to `cli.ts` (replace `any` types)
-- [ ] Add types to `ReactComponentUsageAnalyzer` class methods
-- [ ] Add types to `FocusedUsageAnalyzer` class methods
+- [ ] Add types to `ReactComponentUsageAnalyzer` class methods (Postponed because we dont want classes anyway)
+- [ ] Add types to `FocusedUsageAnalyzer` class methods (Postponed because we dont want classes anyway)
 - [ ] Enable TypeScript strict mode gradually
-- [ ] Enable `.d.ts` generation in tsup config
 - [ ] Add return types to all functions
 
 **Impact**: Better IDE support, catch bugs at compile time
 
 ### 2. Testing Infrastructure
-- [ ] Set up testing framework (Jest or Vitest)
+- [ ] Set up testing framework (Vitest)
 - [ ] Add unit tests for lockfile parsers
 - [ ] Add unit tests for file utilities
 - [ ] Add integration tests for CLI commands
 - [ ] Add tests for GitHub analysis workflow
-- [ ] Test cross-platform compatibility (Windows/Unix)
+- [ ] Test cross-platform compatibility (Windows/Linux/MacOS)
 
 **Impact**: Confidence in refactoring, prevent regressions
 
@@ -37,29 +36,18 @@ This document tracks remaining work and future enhancements for the React Usage 
 
 ### 4. Code Quality
 - [ ] Add ESLint configuration for TypeScript
-- [ ] Add Prettier for code formatting
-- [ ] Set up pre-commit hooks (husky)
-- [ ] Add GitHub Actions for CI/CD
+- [ ] Add Biome for code formatting
+- [ ] Add OXlint for code linting
+- [ ] Make sure we DON'T set up pre-commit or preinstall postinstall scripts
+- [ ] Add GitHub Actions for CI/CD with lint step, test step and build step
 - [ ] Configure code coverage reporting
 
 **Impact**: Consistent code style, automated quality checks
 
-### 5. Performance Optimization
-- [ ] Profile parser performance on large codebases
-- [ ] Add caching for parsed ASTs
-- [ ] Parallelize file analysis
-- [ ] Optimize lockfile parsing
-- [ ] Add progress bars for long operations
-
-**Impact**: Faster analysis, better UX for large projects
-
 ### 6. Feature Enhancements
-- [ ] Add support for more UI libraries (React Native, etc.)
-- [ ] Add plugin system for custom analyzers
 - [ ] Add HTML report generation
 - [ ] Add comparison with previous analysis (diff mode)
 - [ ] Add configuration file support (`.ruarc.json`)
-- [ ] Add watch mode for continuous analysis
 
 **Impact**: More versatile tool, better user experience
 
@@ -69,26 +57,15 @@ This document tracks remaining work and future enhancements for the React Usage 
 - [ ] Publish to npm registry
 - [ ] Create GitHub releases workflow
 - [ ] Add changelog automation
-- [ ] Create Docker image
-- [ ] Add VS Code extension
+- [ ] Add semver release support via release please? or any other modern tools
+- [ ] Create Docker image (Why?)
 
 **Impact**: Easier installation and usage
 
-### 8. Integration
-- [ ] Add GitHub Action for PR analysis
-- [ ] Add pre-commit hook for local analysis
-- [ ] Add API server mode for CI/CD
-- [ ] Add webhook support for automated analysis
-- [ ] Integration with Slack/Discord notifications
-
-**Impact**: Seamless CI/CD integration
-
-### 9. Visualization
-- [ ] Interactive HTML dashboard
+### 8. Visualization
 - [ ] Component dependency graphs
 - [ ] Usage trends over time
 - [ ] Heatmaps of component usage
-- [ ] Export to various formats (CSV, Excel)
 
 **Impact**: Better insights, easier to communicate findings
 
@@ -108,10 +85,10 @@ This document tracks remaining work and future enhancements for the React Usage 
 ## 🔄 Refactoring Opportunities
 
 ### 1. Remove Redundancies
-- [ ] Remove old JavaScript files from root (keep in src/)
+- [x] Remove old JavaScript files from root (keep in src/) ✅ 2025-11-29
 - [ ] Consolidate duplicate report formatting logic
-- [ ] Extract common patterns into shared utilities
-- [ ] Simplify CLI command handlers
+- [x] Extract common patterns into shared utilities ✅ 2025-11-29
+- [x] Simplify CLI command handlers (analyze, compare, github refactored) ✅ 2025-11-29
 
 ### 2. Architecture Improvements
 - [ ] Consider converting analyzer classes to functional API
@@ -128,19 +105,13 @@ This document tracks remaining work and future enhancements for the React Usage 
 ## 📋 Migration Cleanup
 
 ### Files to Remove (after verification)
-- [ ] `cli.js` (replaced by `src/cli.ts`)
-- [ ] `parser.js` (replaced by `src/parser.ts`)
-- [ ] `analyze-usage.js` (replaced by `src/analyze-usage.ts`)
-- [ ] `github-analysis.js` (replaced by `src/github-analysis.ts`)
 - [ ] `utils/*.js` (replaced by `src/utils/*.ts`)
 
-**Note**: Keep these until all functionality is verified in TypeScript versions
+**Status**: Root directory cleanup complete! All legacy JS files removed.
 
 ### Documentation Updates Needed
 - [ ] Update all import examples in docs
-- [ ] Update CLI examples to use `dist/cli.js`
 - [ ] Add TypeScript usage examples
-- [ ] Update contribution guide for TypeScript
 
 ## 🎓 Learning & Research
 
@@ -185,13 +156,9 @@ This document tracks remaining work and future enhancements for the React Usage 
 ## 🚀 Version 2.0 Ideas
 
 ### Major Features
-- [ ] Plugin architecture for extensibility
-- [ ] Real-time analysis server
-- [ ] Web UI for visualization
-- [ ] Multi-language support (Vue, Svelte, Angular)
-- [ ] AI-powered usage recommendations
 - [ ] Component migration assistant
 - [ ] Automated refactoring suggestions
+- [ ] Codemods which works by describing a transformation for example <Col /> to <Stack variant="horizontal" />
 
 ### Breaking Changes (consider for v2)
 - [ ] Pure functional API (remove classes)
