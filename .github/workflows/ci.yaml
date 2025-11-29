@@ -8,12 +8,13 @@ on:
     branches: ["main"]
 
 jobs:
-  permissions:
-    id-token: write
-    contents: write
-    issues: write
   build:
     runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: write
+      issues: write
 
     steps:
       - name: Checkout repository
