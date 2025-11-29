@@ -1,5 +1,12 @@
+// TODO review plugins, Also i saw a github plugin which i cannot see here
+
 export default {
-  branches: ['main'],
+  branches: [
+    {
+      name: 'main',
+      prerelease: 'alpha',
+    },
+  ],
   plugins: [
     '@semantic-release/commit-analyzer',
     '@semantic-release/release-notes-generator',
