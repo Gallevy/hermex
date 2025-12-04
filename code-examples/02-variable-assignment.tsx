@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 
 // Example library imports
-import Button from '@design-system/foundation/button';
-import Input from '@design-system/foundation/input';
-import Card from '@design-system/foundation/card';
-import Modal from '@design-system/foundation/modal';
+import Button from "@design-system/foundation/button";
+import Input from "@design-system/foundation/input";
+import Card from "@design-system/foundation/card";
+import Modal from "@design-system/foundation/modal";
 
 /**
  * PATTERN 2: VARIABLE ASSIGNMENT
@@ -26,8 +26,8 @@ export function VariableAssignmentExample() {
   const ActionComponent = isEditing ? Input : Button;
 
   // Conditional assignment based on props
-  const [userRole, setUserRole] = useState<'admin' | 'user'>('user');
-  const AdminButton = userRole === 'admin' ? Button : null;
+  const [userRole, setUserRole] = useState<"admin" | "user">("user");
+  const AdminButton = userRole === "admin" ? Button : null;
 
   // Assignment from array
   const components = [Button, Input, Card];
@@ -37,7 +37,7 @@ export function VariableAssignmentExample() {
   // Assignment with multiple conditions
   const getComponent = () => {
     if (isEditing) return Input;
-    if (userRole === 'admin') return Button;
+    if (userRole === "admin") return Button;
     return Card;
   };
   const DynamicComponent = getComponent();
@@ -60,10 +60,10 @@ export function VariableAssignmentExample() {
       <section>
         <h3>Conditional Components</h3>
         <button onClick={() => setIsEditing(!isEditing)}>
-          Toggle Editing ({isEditing ? 'ON' : 'OFF'})
+          Toggle Editing ({isEditing ? "ON" : "OFF"})
         </button>
 
-        <ActionComponent>{isEditing ? 'Save Changes' : 'Edit'}</ActionComponent>
+        <ActionComponent>{isEditing ? "Save Changes" : "Edit"}</ActionComponent>
 
         {AdminButton && (
           <AdminButton variant="danger">Admin Only Button</AdminButton>
@@ -81,7 +81,7 @@ export function VariableAssignmentExample() {
       <section>
         <h3>Dynamic Assignment</h3>
         <button
-          onClick={() => setUserRole(userRole === 'admin' ? 'user' : 'admin')}
+          onClick={() => setUserRole(userRole === "admin" ? "user" : "admin")}
         >
           Toggle Role: {userRole}
         </button>

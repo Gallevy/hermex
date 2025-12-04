@@ -1,18 +1,50 @@
-import { ReactComponentUsageAnalyzer } from './parser';
-import fs from 'fs';
-import path from 'path';
+import { parseFile, type UsageReport } from './swc-parser';
+import fs from 'node:fs';
 
-class FocusedUsageAnalyzer extends ReactComponentUsageAnalyzer {
-  constructor(libraryName = '@design-system/foundation') {
-    super(libraryName);
-    this.patternMap = new Map();
-    this.componentFrequency = new Map();
-    this.usageComplexity = new Map();
+interface PatternAnalysis {
+  patterns: Record<string, PatternInfo>;
+  foundPatterns: Map<string, FoundPattern>;
+}
+
+interface PatternInfo {
+  weight: number;
+  description: string;
+  examples: string[];
+}
+
+interface FoundPattern {
+  count: number;
+  complexity: number;
+  examples: any[];
+}
+
+interface ComplexityScore {
+  score: number;
+  maxPossible: number;
+  percentage: number;
+  level: string;
+}
+
+interface Recommendation {
+  type: string;
+  priority: string;
+  message: string;
+  action: string;
+}
+
+export class FocusedUsageAnalyzer {
+  private libraryName?: string;
+
+  constructor(libraryName?: string) {
+    this.libraryName = libraryName;
+  }
+
+  analyzeFile(filePath: string): UsageReport | null {
+    return parseFile(filePath, { libraryName: this.libraryName });
   }
 
   analyzePatterns() {
-    // Define pattern categories
-    const patterns = {
+    const patterns: Record<string, PatternInfo> = {
       'Direct Import & Usage': {
         weight: 1,
         description: 'Simple import and direct JSX usage',
@@ -98,9 +130,9 @@ class FocusedUsageAnalyzer extends ReactComponentUsageAnalyzer {
     return patterns;
   }
 
-  classifyUsage(report) {
+  classifyUsage(report: UsageReport): PatternAnalysis {
     const patterns = this.analyzePatterns();
-    const foundPatterns = new Map();
+    const foundPatterns = new Map<string, FoundPattern>();
 
     // Analyze each pattern type
     if (report.patterns.imports.default.length > 0) {
@@ -210,16 +242,18 @@ class FocusedUsageAnalyzer extends ReactComponentUsageAnalyzer {
     return { patterns, foundPatterns };
   }
 
-  generateComplexityScore(foundPatterns) {
+  generateComplexityScore(
+    foundPatterns: Map<string, FoundPattern>,
+  ): ComplexityScore {
     let totalScore = 0;
     let maxPossibleScore = 0;
 
-    foundPatterns.forEach((data, patternName) => {
+    for (const [, data] of foundPatterns) {
       const weight = data.complexity;
       const score = weight * data.count;
       totalScore += score;
       maxPossibleScore += weight * 10; // Assume max 10 instances per pattern
-    });
+    }
 
     return {
       score: totalScore,
@@ -231,7 +265,7 @@ class FocusedUsageAnalyzer extends ReactComponentUsageAnalyzer {
     };
   }
 
-  getComplexityLevel(score) {
+  getComplexityLevel(score: number): string {
     if (score <= 10) return 'Simple';
     if (score <= 30) return 'Moderate';
     if (score <= 60) return 'Complex';
@@ -239,8 +273,11 @@ class FocusedUsageAnalyzer extends ReactComponentUsageAnalyzer {
     return 'Extremely Complex';
   }
 
-  generateRecommendations(foundPatterns, complexity) {
-    const recommendations = [];
+  generateRecommendations(
+    foundPatterns: Map<string, FoundPattern>,
+    complexity: ComplexityScore,
+  ): Recommendation[] {
+    const recommendations: Recommendation[] = [];
 
     if (
       foundPatterns.has('Dynamic Import') ||
@@ -287,7 +324,7 @@ class FocusedUsageAnalyzer extends ReactComponentUsageAnalyzer {
     return recommendations;
   }
 
-  printFocusedReport(report) {
+  printFocusedReport(report: UsageReport) {
     const { patterns, foundPatterns } = this.classifyUsage(report);
     const complexity = this.generateComplexityScore(foundPatterns);
     const recommendations = this.generateRecommendations(
@@ -316,7 +353,7 @@ class FocusedUsageAnalyzer extends ReactComponentUsageAnalyzer {
       (a, b) => b[1].complexity - a[1].complexity,
     );
 
-    sortedPatterns.forEach(([patternName, data]) => {
+    for (const [patternName, data] of sortedPatterns) {
       const patternInfo = patterns[patternName];
       console.log(
         `\n   ${this.getComplexityIcon(data.complexity)} ${patternName}:`,
@@ -330,27 +367,27 @@ class FocusedUsageAnalyzer extends ReactComponentUsageAnalyzer {
           `     Examples: ${JSON.stringify(data.examples[0], null, '       ').slice(0, 100)}...`,
         );
       }
-    });
+    }
 
     console.log(`\n📈 COMPONENT FREQUENCY:`);
-    report.patterns.usage.jsx.forEach((usage) => {
-      console.log(`   ${usage.component}: ${usage.count} uses`);
-    });
+    for (const usage of report.patterns.usage.jsx) {
+      console.log(`   ${usage.component}: 1 use`);
+    }
 
     if (recommendations.length > 0) {
       console.log(`\n💡 RECOMMENDATIONS:`);
-      recommendations.forEach((rec, idx) => {
+      for (const [idx, rec] of recommendations.entries()) {
         console.log(`   ${idx + 1}. [${rec.priority}] ${rec.type}:`);
         console.log(`      Issue: ${rec.message}`);
         console.log(`      Action: ${rec.action}`);
-      });
+      }
     }
 
     console.log(`\n📋 PATTERN COVERAGE:`);
-    Object.keys(patterns).forEach((patternName) => {
+    for (const patternName of Object.keys(patterns)) {
       const found = foundPatterns.has(patternName);
       console.log(`   ${found ? '✅' : '❌'} ${patternName}`);
-    });
+    }
 
     console.log(`\n🎯 USAGE DENSITY:`);
     const density = (foundPatterns.size / Object.keys(patterns).length) * 100;
@@ -362,32 +399,36 @@ class FocusedUsageAnalyzer extends ReactComponentUsageAnalyzer {
     return { foundPatterns, complexity, recommendations };
   }
 
-  getComplexityIcon(complexity) {
+  getComplexityIcon(complexity: number): string {
     if (complexity <= 2) return '🟢';
     if (complexity <= 4) return '🟡';
     if (complexity <= 6) return '🟠';
     return '🔴';
   }
 
-  getUsageIntensity(score) {
+  getUsageIntensity(score: number): string {
     if (score <= 10) return 'Light';
     if (score <= 30) return 'Moderate';
     if (score <= 60) return 'Heavy';
     return 'Intensive';
   }
 
-  analyzeMultipleFiles(filePatterns) {
-    const allReports = [];
+  analyzeMultipleFiles(filePatterns: string[]) {
+    const allReports: Array<{ file: string; report: UsageReport }> = [];
     const combinedAnalysis = {
       totalFiles: 0,
-      totalComponents: new Set(),
-      patternFrequency: new Map(),
-      complexityDistribution: [],
+      totalComponents: new Set<string>(),
+      patternFrequency: new Map<string, number>(),
+      complexityDistribution: [] as Array<{
+        file: string;
+        score: number;
+        level: string;
+      }>,
     };
 
-    filePatterns.forEach((pattern) => {
+    for (const pattern of filePatterns) {
       const files = this.findMatchingFiles(pattern);
-      files.forEach((file) => {
+      for (const file of files) {
         console.log(`\n📁 Analyzing: ${file}`);
         const report = this.analyzeFile(file);
         if (report) {
@@ -395,12 +436,13 @@ class FocusedUsageAnalyzer extends ReactComponentUsageAnalyzer {
           combinedAnalysis.totalFiles++;
 
           // Add components to global set
-          report.components.forEach((comp) =>
-            combinedAnalysis.totalComponents.add(comp),
-          );
+          for (const comp of report.components) {
+            combinedAnalysis.totalComponents.add(comp);
+          }
 
           // Analyze patterns in this file
-          const { foundPatterns, complexity } = this.classifyUsage(report);
+          const { foundPatterns } = this.classifyUsage(report);
+          const complexity = this.generateComplexityScore(foundPatterns);
           combinedAnalysis.complexityDistribution.push({
             file,
             score: complexity.score,
@@ -408,112 +450,24 @@ class FocusedUsageAnalyzer extends ReactComponentUsageAnalyzer {
           });
 
           // Count pattern frequency
-          foundPatterns.forEach((data, pattern) => {
+          for (const [pattern, data] of foundPatterns) {
             const current = combinedAnalysis.patternFrequency.get(pattern) || 0;
             combinedAnalysis.patternFrequency.set(pattern, current + 1);
-          });
+          }
         }
-      });
-    });
+      }
+    }
 
     return { allReports, combinedAnalysis };
   }
 
-  findMatchingFiles(pattern) {
-    const glob = require('glob');
+  findMatchingFiles(pattern: string): string[] {
+    const { globSync } = require('glob');
     try {
-      return glob.sync(pattern);
+      return globSync(pattern);
     } catch (e) {
       console.warn(`Warning: Could not process pattern ${pattern}`);
       return [];
     }
   }
 }
-
-// Main execution
-function main() {
-  const args = process.argv.slice(2);
-  const command = args[0] || 'analyze';
-
-  const analyzer = new FocusedUsageAnalyzer('@design-system/foundation');
-
-  switch (command) {
-    case 'analyze':
-      const filePath = args[1] || 'code-examples/comprehensive-usage.tsx';
-      console.log(`🎯 Focused analysis of: ${filePath}`);
-
-      if (fs.existsSync(filePath)) {
-        const report = analyzer.analyzeFile(filePath);
-        if (report) {
-          const analysis = analyzer.printFocusedReport(report);
-
-          // Save focused report
-          const outputPath = `focused-analysis-${Date.now()}.json`;
-          fs.writeFileSync(
-            outputPath,
-            JSON.stringify(
-              {
-                file: filePath,
-                report,
-                analysis,
-              },
-              null,
-              2,
-            ),
-          );
-          console.log(`\n💾 Focused analysis saved to: ${outputPath}`);
-        }
-      } else {
-        console.error(`❌ File not found: ${filePath}`);
-      }
-      break;
-
-    case 'bulk':
-      const patterns = args.slice(1) || [
-        'code-examples/**/*.tsx',
-        'src/**/*.tsx',
-      ];
-      console.log(`🎯 Bulk analysis of patterns: ${patterns.join(', ')}`);
-
-      const { allReports, combinedAnalysis } =
-        analyzer.analyzeMultipleFiles(patterns);
-
-      console.log(`\n📊 BULK ANALYSIS SUMMARY:`);
-      console.log(`   Files analyzed: ${combinedAnalysis.totalFiles}`);
-      console.log(
-        `   Unique components: ${combinedAnalysis.totalComponents.size}`,
-      );
-      console.log(`   Most common patterns:`);
-
-      Array.from(combinedAnalysis.patternFrequency.entries())
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5)
-        .forEach(([pattern, count]) => {
-          console.log(`     ${pattern}: ${count} files`);
-        });
-
-      break;
-
-    case 'help':
-    default:
-      console.log('🎯 Focused Usage Analyzer Commands:');
-      console.log('  analyze [file]     - Analyze a single file (default)');
-      console.log(
-        '  bulk [patterns...] - Analyze multiple files matching patterns',
-      );
-      console.log('  help              - Show this help');
-      console.log('\nExamples:');
-      console.log(
-        '  node analyze-usage.js analyze code-examples/comprehensive-usage.tsx',
-      );
-      console.log(
-        '  node analyze-usage.js bulk "src/**/*.tsx" "components/**/*.jsx"',
-      );
-      break;
-  }
-}
-
-export { FocusedUsageAnalyzer };
-
-// Run if called directly - Note: This works in CommonJS output from tsup
-// In ESM, you'd use import.meta.url === `file://${process.argv[1]}`

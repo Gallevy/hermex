@@ -1,0 +1,40 @@
+{
+  "$schema2": "...",
+  "imports": ["/@biomejs/biome"],
+  "local": true,
+  "repositories": [
+    "https://github.com/biomejs/biome",
+    "https://github.com/biomejs/biome"
+  ],
+  "files": {
+    "includes": ["**", "!!**/dist", "!!code-examples/**"]
+  },
+  "summary": {
+    "enabled": true
+  },
+  "verbose": {
+    "enabled": true
+  },
+  "analysis": {
+    "enabled": true
+  },
+  "props": true,
+  "group": "version",
+  "versions": true,
+  "patterns": [
+    "direct-usage",
+    "lazy-loading",
+    "dynamic-imports",
+    "object-mapping"
+  ],
+  "charts": true,
+  "console": {
+    "enabled": true,
+    "format": "table | console",
+    "complexity": true
+  },
+  "output": {
+    "path": "./reports/",
+    "format": "json"
+  }
+}

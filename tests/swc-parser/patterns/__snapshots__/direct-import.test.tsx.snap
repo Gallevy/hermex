@@ -1,0 +1,53 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Parser - Direct Import > should parse direct import 1`] = `
+{
+  "components": [
+    "MyCard",
+  ],
+  "patterns": {
+    "advanced": {
+      "dynamic": [],
+      "forwardRef": [],
+      "hoc": [],
+      "lazy": [],
+      "memo": [],
+      "portal": [],
+    },
+    "imports": {
+      "aliased": [
+        {
+          "alias": "MyCard",
+          "line": 4,
+          "original": "Card",
+          "source": "@design-system/foundation/card",
+        },
+      ],
+      "default": [],
+      "named": [
+        {
+          "imported": "Card",
+          "line": 4,
+          "local": "MyCard",
+          "source": "@design-system/foundation/card",
+        },
+      ],
+      "namespace": [],
+    },
+    "props": [],
+    "usage": {
+      "arrays": [],
+      "conditional": [],
+      "destructuring": [],
+      "jsx": [],
+      "objects": [],
+      "variables": [],
+    },
+  },
+  "summary": {
+    "totalComponents": 1,
+    "totalImports": 1,
+    "totalUsagePatterns": 2,
+  },
+}
+`;

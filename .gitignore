@@ -1,9 +1,6 @@
 # Dependencies
 node_modules/
 
-# Reports and outputs
-reports-outputs/*.json
-
 # Lock files
 package-lock.json
 yarn.lock

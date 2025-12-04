@@ -62,7 +62,7 @@ pnpm run clean
 | Command | Description |
 |---------|-------------|
 | `analyze` | Analyze local files with detailed patterns |
-| `summary` | Quick component usage overview |
+| ` ` | Quick component usage overview |
 | `stats` | Detailed statistics with charts |
 | `patterns` | List all detected usage patterns |
 | `table` | Component and import tables |
@@ -180,16 +180,16 @@ See [Usage Patterns Guide](./docs/USAGE_PATTERNS_GUIDE.md) for details.
 
 ## 📦 Requirements
 
-- Node.js 14+
+- Node.js 24+
 - Git (for GitHub analysis)
 
 ## 🤝 Contributing
 
-This is an internal tool. For bugs or feature requests, contact the team.
+[Contributing](Contributing.md)
 
 ## 📄 License
 
-Internal use only.
+[MIT License](License.md)
 
 ## 🎯 Use Cases
 
@@ -199,20 +199,3 @@ Internal use only.
 4. **Component Analytics** - Track most-used components
 5. **Multi-Repo Analysis** - Analyze microservices/microfrontends
 6. **Code Quality** - Identify complex usage patterns
-
-## 🚀 Getting Started
-
-```bash
-# Install
-npm install
-
-# View help
-node cli.js --help
-node cli.js github --help
-
-# Try some examples (see docs/EXAMPLES.md)
-node cli.js analyze "src/**/*.tsx" -l @mui/material
-node cli.js github owner/repo -l @mui/material
-```
-
-For detailed documentation, see the [docs](./docs) folder.

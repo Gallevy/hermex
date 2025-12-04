@@ -23,7 +23,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 24
 
       - name: Setup pnpm CLI
         uses: pnpm/action-setup@v4
@@ -37,7 +37,7 @@ jobs:
         run: pnpm run format:ci
 
       - name: Run tests
-        run: pnpm run tests:ci
+        run: pnpm run test:ci
 
       - name: Build project
         run: pnpm run build:ci

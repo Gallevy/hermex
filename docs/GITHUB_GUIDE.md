@@ -10,36 +10,6 @@ Complete guide for analyzing GitHub repositories and microfrontends with React U
 node cli.js github owner/repo -l @mui/material
 ```
 
-### Analyze Multiple Repositories
-
-```bash
-node cli.js github owner/repo1 owner/repo2 owner/repo3 -l @mui/material
-```
-
-### Using Config File (Recommended for Microfrontends)
-
-```bash
-node cli.js github --config examples/microfrontends-config.json
-```
-
-## 📋 Supported URL Formats
-
-The analyzer accepts multiple GitHub URL formats:
-
-```bash
-# Shorthand (recommended)
-node cli.js github facebook/react
-
-# Full HTTPS URL
-node cli.js github https://github.com/facebook/react
-
-# HTTPS with .git extension
-node cli.js github https://github.com/facebook/react.git
-
-# SSH URL
-node cli.js github git@github.com:facebook/react.git
-```
-
 ## 🎯 Use Cases
 
 ### 1. Microfrontends Analysis
