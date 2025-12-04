@@ -1,4 +1,4 @@
-import chalk from "chalk";
+import chalk from 'chalk';
 
 /**
  * Formatting options for console reports
@@ -99,7 +99,7 @@ export interface ImportData {
  */
 export interface TableOptions {
   componentData?: ComponentData;
-  sortBy?: "uses" | "files" | "props" | "name";
+  sortBy?: 'uses' | 'files' | 'props' | 'name';
   top?: number;
   showProps?: boolean;
 }
@@ -110,12 +110,12 @@ export function formatGitHubReport(
 ): void {
   const { metadata, combined, repositories } = report;
 
-  console.log(chalk.bold.cyan("\n" + "=".repeat(80)));
-  console.log(chalk.bold.cyan("  🚀 GITHUB REPOSITORIES ANALYSIS REPORT"));
-  console.log(chalk.bold.cyan("=".repeat(80) + "\n"));
+  console.log(chalk.bold.cyan('\n' + '='.repeat(80)));
+  console.log(chalk.bold.cyan('  🚀 GITHUB REPOSITORIES ANALYSIS REPORT'));
+  console.log(chalk.bold.cyan('='.repeat(80) + '\n'));
 
   // Summary
-  console.log(chalk.bold("📈 SUMMARY:"));
+  console.log(chalk.bold('📈 SUMMARY:'));
   console.log(chalk.gray(`  Library: ${chalk.cyan(metadata.library)}`));
   console.log(
     chalk.gray(`  Repositories Analyzed: ${metadata.repositories.length}`),
@@ -133,11 +133,11 @@ export function formatGitHubReport(
     .slice(0, 10);
 
   if (topComponents.length > 0) {
-    console.log(chalk.bold("\n🏆 TOP COMPONENTS (Across All Repos):"));
+    console.log(chalk.bold('\n🏆 TOP COMPONENTS (Across All Repos):'));
     topComponents.forEach(([comp, count], idx) => {
       const rank = idx + 1;
       const emoji =
-        rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : "  ";
+        rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '  ';
       console.log(
         `  ${emoji} ${rank}. ${chalk.green(comp)}: ${chalk.yellow(count)} uses`,
       );
@@ -146,9 +146,9 @@ export function formatGitHubReport(
 
   // Repository summaries
   if (combined.repoSummaries && combined.repoSummaries.length > 0) {
-    console.log(chalk.bold("\n📦 REPOSITORY SUMMARIES:\n"));
+    console.log(chalk.bold('\n📦 REPOSITORY SUMMARIES:\n'));
     combined.repoSummaries.forEach((summary, idx) => {
-      console.log(`  ${chalk.bold(idx + 1 + ".")} ${chalk.cyan(summary.name)}`);
+      console.log(`  ${chalk.bold(idx + 1 + '.')} ${chalk.cyan(summary.name)}`);
       console.log(`     Components: ${summary.components}`);
       console.log(`     Files: ${summary.files}`);
       if (summary.topComponents && summary.topComponents.length > 0) {
@@ -157,23 +157,23 @@ export function formatGitHubReport(
           console.log(`       - ${comp.component}: ${comp.uses} uses`);
         });
       }
-      console.log("");
+      console.log('');
     });
   }
 
   // Component distribution
-  console.log(chalk.bold("🔍 COMPONENT DISTRIBUTION:"));
+  console.log(chalk.bold('🔍 COMPONENT DISTRIBUTION:'));
   Object.entries(combined.componentsByRepo).forEach(([repo, components]) => {
     console.log(
       `  ${chalk.cyan(repo)}: ${components.length} unique components`,
     );
   });
 
-  console.log(chalk.bold.cyan("\n" + "=".repeat(80)));
+  console.log(chalk.bold.cyan('\n' + '='.repeat(80)));
 }
 
 function createBar(percentage: number, width: number = 20): string {
   const filled = Math.round((percentage / 100) * width);
   const empty = width - filled;
-  return chalk.green("█".repeat(filled)) + chalk.gray("░".repeat(empty));
+  return chalk.green('█'.repeat(filled)) + chalk.gray('░'.repeat(empty));
 }
