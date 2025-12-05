@@ -4,7 +4,20 @@ import type { AggregatedReport, ComponentUsage } from './aggregator';
 import { renderBarChart } from './chart-renderer';
 
 function printHeader() {
-  console.log(chalk.yellow.bold('\n🏆 Top Components\n'));
+  console.log(chalk.yellow.bold('\n🏆 Top Components'));
+  console.log(
+    chalk.yellow.bold(
+      '--------------------------------------------------------',
+    ),
+  );
+}
+
+function printFooter() {
+  console.log(
+    chalk.yellow.bold(
+      '--------------------------------------------------------',
+    ),
+  );
 }
 
 export function printTopComponents(
@@ -33,15 +46,13 @@ function printTopComponentsLog(components: ComponentUsage[]) {
 
   components.forEach((comp, idx) => {
     const rank = idx + 1;
-    const emoji =
-      rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '  ';
     const sourceStr = comp.source !== 'unknown' ? ` from ${comp.source}` : '';
     console.log(
-      chalk.yellow(
-        `  ${emoji} ${rank}. ${comp.name}${sourceStr}: ${comp.count} uses`,
-      ),
+      chalk.yellow(`${rank}. ${comp.name}${sourceStr}: ${comp.count} uses`),
     );
   });
+
+  printFooter();
 }
 
 function printTopComponentsTable(components: ComponentUsage[]) {
@@ -71,7 +82,7 @@ function printTopComponentsTable(components: ComponentUsage[]) {
 }
 
 function printTopComponentsChart(components: ComponentUsage[]) {
-  printHeader();
+  console.log(chalk.yellow(`[TOP-COMPONENTS] CHART`));
 
   if (components.length === 0) {
     console.log(chalk.gray('  No components found'));

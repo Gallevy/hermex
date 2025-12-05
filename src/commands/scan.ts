@@ -1,5 +1,4 @@
 import { Command } from 'commander';
-import { glob } from 'glob';
 import ora from 'ora';
 import chalk from 'chalk';
 import { parseFile } from '../swc-parser';
@@ -11,6 +10,7 @@ import { printDetails } from '../utils/print-details';
 import { printTopComponents } from '../utils/print-top-components';
 import { printComponentsUsage } from '../utils/print-components-usage';
 import { printPatterns } from '../utils/print-patterns';
+import { findFiles } from '../utils/file-utils';
 
 interface ScanOptions {
   verbose?: boolean;
@@ -19,7 +19,7 @@ interface ScanOptions {
   topComponents?: string;
   componentsUsage?: string;
   patterns?: string;
-  output?: string;
+  ignore?: string | string[];
 }
 
 interface NormalizedScanOptions {
@@ -29,7 +29,7 @@ interface NormalizedScanOptions {
   topComponents: 'log' | 'table' | 'chart';
   componentsUsage: 'table' | 'chart';
   patterns: 'table' | 'chart';
-  output?: string;
+  ignore: string[];
 }
 
 export function registerScanCommand(program: Command) {
@@ -41,6 +41,11 @@ export function registerScanCommand(program: Command) {
       'Glob pattern for files to analyze (defaults to current directory recursively)',
       '**/*.{tsx,jsx,ts,js}',
     )
+    .option('--ignore <pattern>', 'Glob pattern for files to ignore', [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/build/**',
+    ])
     .option(
       '--verbose',
       'Show detailed file-by-file analysis with every pattern found',
@@ -63,11 +68,20 @@ export function registerScanCommand(program: Command) {
       'Show patterns table/chart (table, chart)',
       'table',
     )
+
     .action(async (pattern: string, options: ScanOptions) => {
       const normalizedOptions = normalizeOptions(options);
 
       await executeScan(pattern, normalizedOptions);
     });
+}
+
+function normalizeIgnorePatterns(ignore?: string | string[]) {
+  if (!ignore) {
+    return [];
+  }
+
+  return Array.isArray(ignore) ? ignore : [ignore];
 }
 
 function normalizeOptions(options: ScanOptions): NormalizedScanOptions {
@@ -79,8 +93,12 @@ function normalizeOptions(options: ScanOptions): NormalizedScanOptions {
     topComponents: (options.topComponents as any) || 'log',
     componentsUsage: (options.componentsUsage as any) || 'table',
     patterns: (options.patterns as any) || 'table',
-    output: options.output,
+    ignore: normalizeIgnorePatterns(options.ignore),
   };
+}
+
+async function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function executeScan(pattern: string, options: NormalizedScanOptions) {
@@ -88,18 +106,21 @@ async function executeScan(pattern: string, options: NormalizedScanOptions) {
   const spinner = ora('Finding files...').start();
 
   try {
+    spinner.succeed(chalk.green(` Found 1111111 files`));
+
+    await sleep(5000);
+
     // Find files matching pattern
-    const files = await glob(pattern, {
-      ignore: ['node_modules/**', 'dist/**', 'build/**', '.git/**'],
-      absolute: true,
-    });
+    const files = await findFiles(pattern, options.ignore);
 
     if (files.length === 0) {
-      spinner.fail(chalk.red(`No files found matching pattern: ${pattern}`));
+      // spinner.color = 'red'; // It should be red but not working.
+      spinner.fail('TEST');
+      // spinner.fail(chalk.red(` No files found matching pattern: ${pattern}`));
       return;
     }
 
-    spinner.succeed(chalk.green(`Found ${files.length} files`));
+    spinner.succeed(chalk.green(` Found ${files.length} files`));
 
     // Analyze all files
     spinner.start('Analyzing files...');
