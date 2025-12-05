@@ -29,7 +29,7 @@ function printComponentsUsageTable(components: ComponentUsage[]) {
   }
 
   const table = new Table({
-    head: ['Component', 'Source', 'Version', 'Count'],
+    head: ['Component', 'Source', 'Count'],
     style: {
       head: ['cyan'],
       border: ['gray'],
@@ -37,7 +37,7 @@ function printComponentsUsageTable(components: ComponentUsage[]) {
   });
 
   components.forEach((comp) => {
-    table.push([comp.name, comp.source, '0.0.0', comp.count.toString()]);
+    table.push([comp.name, comp.source, comp.count.toString()]);
   });
 
   console.log(table.toString());

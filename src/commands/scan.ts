@@ -11,6 +11,8 @@ import { printTopComponents } from '../utils/print-top-components';
 import { printComponentsUsage } from '../utils/print-components-usage';
 import { printPatterns } from '../utils/print-patterns';
 import { findFiles } from '../utils/file-utils';
+import { findAndParseLockfile } from '../utils/lockfile-parser';
+import { printPackages } from '../utils/print-packages';
 
 interface ScanOptions {
   verbose?: boolean;
@@ -18,6 +20,7 @@ interface ScanOptions {
   details?: boolean;
   topComponents?: string;
   componentsUsage?: string;
+  packages?: string;
   patterns?: string;
   ignore?: string | string[];
 }
@@ -26,8 +29,9 @@ interface NormalizedScanOptions {
   verbose: boolean;
   summary: 'log' | false;
   details: boolean;
-  topComponents: 'log' | 'table' | 'chart';
-  componentsUsage: 'table' | 'chart';
+  topComponents: 'log' | 'table' | 'chart' | false;
+  componentsUsage: 'table' | 'chart' | false;
+  packages: 'table' | 'chart' | false;
   patterns: 'table' | 'chart';
   ignore: string[];
 }
@@ -108,6 +112,7 @@ function normalizeOptions(options: ScanOptions): NormalizedScanOptions {
     details: options.details || false,
     topComponents: (options.topComponents as any) || 'log',
     componentsUsage: (options.componentsUsage as any) || 'table',
+    packages: (options.packages as any) || 'table',
     patterns: (options.patterns as any) || 'table',
     ignore: normalizeIgnorePatterns(options.ignore),
   };
@@ -119,14 +124,29 @@ async function sleep(ms: number) {
 
 async function executeScan(pattern: string, options: NormalizedScanOptions) {
   const startTime = Date.now();
-  const spinner = ora('Finding files...').start();
+  const spinner = ora('Parsing lockfile...').start();
 
   try {
-    spinner.succeed(chalk.green(` Found 1111111 files`));
+    // Parse lockfile once at the beginning
+    const projectPath = process.cwd();
+    const lockfileResult = findAndParseLockfile(projectPath);
 
-    await sleep(5000);
+    if (!lockfileResult.found) {
+      spinner.warn(
+        chalk.yellow(
+          '⚠️  No lockfile found. Version information will not be available.',
+        ),
+      );
+    } else {
+      spinner.succeed(
+        chalk.blue(
+          `📦 Found ${lockfileResult.lockfileType} lockfile (supports: ${lockfileResult.supportedVersions.join(', ')}) - ${Object.keys(lockfileResult.versions).length} packages`,
+        ),
+      );
+    }
 
     // Find files matching pattern
+    spinner.start('Finding files...');
     const files = await findFiles(pattern, options.ignore);
 
     if (files.length === 0) {
@@ -176,7 +196,7 @@ async function executeScan(pattern: string, options: NormalizedScanOptions) {
     const elapsedTime = (Date.now() - startTime) / 1000;
 
     // Aggregate reports
-    const aggregated = aggregateReports(reports);
+    const aggregated = aggregateReports(reports, lockfileResult.versions);
 
     // Print outputs based on options
     console.log(''); // Empty line before output sections
@@ -198,6 +218,11 @@ async function executeScan(pattern: string, options: NormalizedScanOptions) {
     if (options.componentsUsage) {
       console.log(''); // Empty line between sections
       printComponentsUsage(aggregated, options.componentsUsage);
+    }
+
+    if (options.packages) {
+      console.log(''); // Empty line between sections
+      printPackages(aggregated, options.packages);
     }
 
     if (options.patterns) {

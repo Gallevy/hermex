@@ -1,8 +1,90 @@
-// 📦
-//
+import chalk from 'chalk';
+import Table from 'cli-table3';
+import type { AggregatedReport, PackageDistribution } from './aggregator';
+
 function printHeader() {
   console.log(chalk.blueBright.bold('\n📦 Packages\n'));
 }
-export function printPackages() {
-  // TODO
+
+export function printPackages(
+  aggregated: AggregatedReport,
+  mode: 'table' | 'chart',
+) {
+  const packages = aggregated.packageDistribution;
+
+  if (mode === 'table') {
+    printPackagesTable(packages, aggregated.totalUsagePatterns);
+  } else if (mode === 'chart') {
+    printPackagesChart(packages);
+  }
+}
+
+function printPackagesTable(
+  packages: PackageDistribution[],
+  totalUsage: number,
+) {
+  printHeader();
+
+  if (packages.length === 0) {
+    console.log(chalk.gray('  No packages found'));
+    return;
+  }
+
+  const table = new Table({
+    head: ['Package', 'Version', 'Components', 'Usage', 'Percentage'],
+    style: {
+      head: ['cyan'],
+      border: ['gray'],
+    },
+  });
+
+  packages.forEach((pkg) => {
+    table.push([
+      pkg.packageName,
+      pkg.version || 'N/A',
+      pkg.componentCount.toString(),
+      pkg.usageCount.toString(),
+      `${pkg.percentage.toFixed(1)}%`,
+    ]);
+  });
+
+  console.log(table.toString());
+
+  const totalComponents = packages.reduce(
+    (sum, p) => sum + p.componentCount,
+    0,
+  );
+  console.log(
+    chalk.gray(
+      `\nTotal: ${packages.length} packages | ${totalComponents} unique components | ${totalUsage} total usage patterns`,
+    ),
+  );
+}
+
+function printPackagesChart(packages: PackageDistribution[]) {
+  printHeader();
+
+  if (packages.length === 0) {
+    console.log(chalk.gray('  No packages found'));
+    return;
+  }
+
+  const maxBarWidth = 40;
+  const maxPercentage = Math.max(...packages.map((p) => p.percentage));
+  const maxLabelLength = Math.max(...packages.map((p) => p.packageName.length));
+
+  packages.forEach((pkg) => {
+    const barLength = Math.round(
+      (pkg.percentage / maxPercentage) * maxBarWidth,
+    );
+    const emptyLength = maxBarWidth - barLength;
+    const paddedLabel = pkg.packageName.padEnd(maxLabelLength, ' ');
+
+    const bar =
+      chalk.green('█'.repeat(barLength)) + chalk.gray('░'.repeat(emptyLength));
+
+    console.log(
+      `${paddedLabel} ${bar} ${chalk.bold(pkg.percentage.toFixed(1) + '%')} (${pkg.usageCount})`,
+    );
+  });
 }

@@ -7,6 +7,15 @@ export interface ComponentUsage {
   files: Set<string>;
 }
 
+export interface PackageDistribution {
+  packageName: string;
+  version: string | null;
+  componentCount: number;
+  usageCount: number;
+  percentage: number;
+  components: string[];
+}
+
 export interface PatternCount {
   patternType: string;
   displayName: string;
@@ -22,10 +31,14 @@ export interface AggregatedReport {
   componentUsage: Map<string, ComponentUsage>;
   topComponents: ComponentUsage[];
   allComponents: string[];
+  packageDistribution: PackageDistribution[];
   reports: UsageReport[];
 }
 
-export function aggregateReports(reports: UsageReport[]): AggregatedReport {
+export function aggregateReports(
+  reports: UsageReport[],
+  versions: Record<string, string> = {},
+): AggregatedReport {
   const componentUsageMap = new Map<string, ComponentUsage>();
   let totalImports = 0;
   let totalUsagePatterns = 0;
@@ -74,6 +87,12 @@ export function aggregateReports(reports: UsageReport[]): AggregatedReport {
     }))
     .sort((a, b) => b.count - a.count);
 
+  const packageDistribution = calculatePackageDistribution(
+    componentUsageMap,
+    versions,
+    totalUsagePatterns,
+  );
+
   return {
     filesAnalyzed: reports.length,
     totalImports,
@@ -83,6 +102,7 @@ export function aggregateReports(reports: UsageReport[]): AggregatedReport {
     componentUsage: componentUsageMap,
     topComponents,
     allComponents,
+    packageDistribution,
     reports,
   };
 }
@@ -196,4 +216,42 @@ function getPatternDisplayName(patternType: string): string {
     'advanced.portal': 'Portal Usage',
   };
   return displayNames[patternType] || patternType;
+}
+
+function calculatePackageDistribution(
+  componentUsageMap: Map<string, ComponentUsage>,
+  versions: Record<string, string>,
+  totalUsagePatterns: number,
+): PackageDistribution[] {
+  const packageMap = new Map<string, PackageDistribution>();
+
+  // Group components by package
+  for (const component of componentUsageMap.values()) {
+    if (component.source === 'unknown') continue;
+
+    const existing = packageMap.get(component.source);
+    if (existing) {
+      existing.componentCount++;
+      existing.usageCount += component.count;
+      existing.components.push(component.name);
+    } else {
+      packageMap.set(component.source, {
+        packageName: component.source,
+        version: versions[component.source] || null,
+        componentCount: 1,
+        usageCount: component.count,
+        percentage: 0,
+        components: [component.name],
+      });
+    }
+  }
+
+  // Calculate percentages
+  const distribution = Array.from(packageMap.values());
+  for (const pkg of distribution) {
+    pkg.percentage =
+      totalUsagePatterns > 0 ? (pkg.usageCount / totalUsagePatterns) * 100 : 0;
+  }
+
+  return distribution.sort((a, b) => b.usageCount - a.usageCount);
 }
