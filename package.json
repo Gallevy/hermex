@@ -26,11 +26,7 @@
     "test:ci": "vitest run",
     "build": "tsup",
     "build:ci": "tsup --clean",
-    "test-cli": "pnpm run build && node dist/cli.js analyze code-examples/**/*.tsx -l @design-system/foundation",
-    "test-stats": "pnpm run build && node dist/cli.js stats code-examples/**/*.tsx --chart",
-    "test-github": "pnpm run build && node dist/cli.js github https://github.com/mantinedev/mantine",
-    "test-scan": "pnpm run build && node dist/cli.js scan \"code-examples/**/*.tsx\"",
-    "test-scan-all": "pnpm run build && node dist/cli.js scan"
+    "test-scan": "pnpm run build && node dist/cli.js scan \"code-examples/**/*.tsx\""
   },
   "keywords": [
     "hermex",
