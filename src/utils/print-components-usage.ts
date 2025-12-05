@@ -3,6 +3,10 @@ import Table from 'cli-table3';
 import type { AggregatedReport, ComponentUsage } from './aggregator';
 import { renderBarChart } from './chart-renderer';
 
+function printHeader() {
+  console.log(chalk.magenta.bold('\n⚛️  Components Usage\n'));
+}
+
 export function printComponentsUsage(
   aggregated: AggregatedReport,
   mode: 'table' | 'chart',
@@ -17,7 +21,7 @@ export function printComponentsUsage(
 }
 
 function printComponentsUsageTable(components: ComponentUsage[]) {
-  console.log(chalk.magenta.bold(`\n⚛️ Components Usage\n`));
+  printHeader();
 
   if (components.length === 0) {
     console.log(chalk.gray('  No components found'));
@@ -40,7 +44,7 @@ function printComponentsUsageTable(components: ComponentUsage[]) {
 }
 
 function printComponentsUsageChart(components: ComponentUsage[]) {
-  console.log(chalk.magenta.bold(`\n⚛️ Components Usage\n`));
+  printHeader();
 
   if (components.length === 0) {
     console.log(chalk.gray('  No components found'));

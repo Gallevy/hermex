@@ -27,7 +27,7 @@ All contributions must adhere to the following directory structure:
 | `/src/commands` | CLI command implementations |
 | `/docs` | Project documentation |
 | `/code-examples` | Usage examples and demonstrations |
-| `/reports-outputs` | Test run outputs and generated reports |
+
 
 ## Style Guide
 

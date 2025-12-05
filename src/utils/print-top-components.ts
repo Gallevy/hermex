@@ -3,6 +3,10 @@ import Table from 'cli-table3';
 import type { AggregatedReport, ComponentUsage } from './aggregator';
 import { renderBarChart } from './chart-renderer';
 
+function printHeader() {
+  console.log(chalk.yellow.bold('\n🏆 Top Components\n'));
+}
+
 export function printTopComponents(
   aggregated: AggregatedReport,
   mode: 'log' | 'table' | 'chart',
@@ -20,7 +24,7 @@ export function printTopComponents(
 }
 
 function printTopComponentsLog(components: ComponentUsage[]) {
-  console.log(chalk.yellow.bold(`\n🏆 Top Components\n`));
+  printHeader();
 
   if (components.length === 0) {
     console.log(chalk.gray('  No components found'));
@@ -34,14 +38,14 @@ function printTopComponentsLog(components: ComponentUsage[]) {
     const sourceStr = comp.source !== 'unknown' ? ` from ${comp.source}` : '';
     console.log(
       chalk.yellow(
-        `[TOP-COMPONENTS] ${emoji} ${rank}. ${comp.name}${sourceStr}: ${comp.count} uses`,
+        `  ${emoji} ${rank}. ${comp.name}${sourceStr}: ${comp.count} uses`,
       ),
     );
   });
 }
 
 function printTopComponentsTable(components: ComponentUsage[]) {
-  console.log(chalk.yellow(`[TOP-COMPONENTS] TABLE`));
+  printHeader();
 
   if (components.length === 0) {
     console.log(chalk.gray('  No components found'));
@@ -67,7 +71,7 @@ function printTopComponentsTable(components: ComponentUsage[]) {
 }
 
 function printTopComponentsChart(components: ComponentUsage[]) {
-  console.log(chalk.yellow(`[TOP-COMPONENTS] CHART`));
+  printHeader();
 
   if (components.length === 0) {
     console.log(chalk.gray('  No components found'));

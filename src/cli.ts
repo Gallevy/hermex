@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 import { Command } from 'commander';
 import { registerScanCommand } from './commands/scan';
 import packageJson from '../package.json';

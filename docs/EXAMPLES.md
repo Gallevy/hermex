@@ -1,148 +1,465 @@
 # Examples
 
-Quick reference for common usage scenarios.
+This document provides practical examples of using `hermex` to analyze React component usage patterns in your codebase.
 
-## Local File Analysis
+## Table of Contents
 
-### Basic Analysis
+- [Quick Start](#quick-start)
+- [Basic Usage](#basic-usage)
+- [Command Options](#command-options)
+- [Output Control](#output-control)
+- [Real-World Use Cases](#real-world-use-cases)
+- [Pattern Detection](#pattern-detection)
+
+## Quick Start
+
+No installation required! Use `npx` to run hermex directly:
+
 ```bash
-node cli.js analyze "src/**/*.tsx" -l @mui/material
+npx hermex scan "src/**/*.tsx"
 ```
 
-### With JSON Output
+<!-- test output with command: npx hermex scan "code-examples/patterns/01-direct-usage.tsx" -->
+
+## Basic Usage
+
+### Scan Files
+
 ```bash
-node cli.js analyze "src/**/*.tsx" -l @mui/material -f json -o report.json
+# Scan with default pattern (all .tsx, .jsx, .ts, .js files)
+npx hermex scan
+
+# Scan specific directory
+npx hermex scan "src/**/*.tsx"
+
+# Scan specific file
+npx hermex scan "src/components/Button.tsx"
 ```
 
-### Quick Summary
+<!-- test output with command: npx hermex scan "code-examples/**/*.tsx" -->
+
+### With Verbose Output
+
+Show detailed file-by-file analysis with every pattern found:
+
 ```bash
-node cli.js summary "src/**/*.tsx" -l @mui/material --top 10
+npx hermex scan "src/**/*.tsx" --verbose
 ```
 
-### Statistics with Charts
+<!-- test output with command: npx hermex scan "code-examples/patterns/01-direct-usage.tsx" --verbose -->
+
+## Command Options
+
+### Full Command Syntax
+
+```
+npx hermex scan [pattern] [options]
+```
+
+**Arguments:**
+- `[pattern]` - Glob pattern for files to analyze
+  - Default: `**/*.{tsx,jsx,ts,js}`
+  - Automatically excludes: `node_modules/`, `dist/`, `build/`, `.git/` (TODO change this to be from --ignore)
+
+**Options:**
+- `--verbose` - Show detailed file-by-file analysis (default: false)
+- `--summary [mode]` - Show summary stats: `log`, `false` (default: `log`)
+- `--details` - Show detailed pattern counts (default: false)
+- `--top-components [mode]` - Show top components: `log`, `table`, `chart` (default: `log`)
+- `--components-usage [mode]` - Show components table/chart: `table`, `chart` (default: `table`)
+- `--patterns [mode]` - Show patterns table/chart: `table`, `chart` (default: `table`)
+- `-h, --help` - Display help
+
+<!-- test output with command: npx hermex scan --help -->
+
+### Default Output
+
+By default, hermex shows:
+- Summary statistics (files, imports, components)
+- Top components (ranked list)
+- Components usage table
+- Code patterns table
+
+## Output Control
+
+### Disable Specific Sections
+
 ```bash
-node cli.js stats "src/**/*.tsx" -l @mui/material --chart
+# Disable summary
+npx hermex scan "src/**/*.tsx" --summary false
+
+# Disable top components
+npx hermex scan "src/**/*.tsx" --top-components false
+
+# Show only components usage
+npx hermex scan "src/**/*.tsx" --summary false --top-components false --patterns false
 ```
 
-### Component Table
+<!-- test output with command: npx hermex scan "code-examples/patterns/01-direct-usage.tsx" --summary false --top-components false -->
+
+### Change Output Format
+
 ```bash
-node cli.js table "src/**/*.tsx" -l @mui/material --props --top 20
+# Show top components as table
+npx hermex scan "src/**/*.tsx" --top-components table
+
+# Show top components as chart
+npx hermex scan "src/**/*.tsx" --top-components chart
+
+# Show components usage as chart
+npx hermex scan "src/**/*.tsx" --components-usage chart
+
+# Show patterns as chart
+npx hermex scan "src/**/*.tsx" --patterns chart
 ```
 
-### Pattern Analysis
+<!-- test output with command: npx hermex scan "code-examples/**/*.tsx" --top-components table -->
+
+### Enable Details
+
 ```bash
-node cli.js patterns "src/**/*.tsx" -l @mui/material --sort complexity
+# Show detailed pattern counts
+npx hermex scan "src/**/*.tsx" --details
 ```
 
-### Compare Libraries
+<!-- test output with command: npx hermex scan "code-examples/patterns/01-direct-usage.tsx" --details -->
+
+## Real-World Use Cases
+
+### 1. Quick Component Usage Check
+
+Get a quick overview of component usage:
+
 ```bash
-node cli.js compare "src/**/*.tsx" -l @mui/material antd @chakra-ui/react
+npx hermex scan "src/**/*.tsx"
 ```
 
-## GitHub Repository Analysis
+<!-- test output with command: npx hermex scan "code-examples/patterns/01-direct-usage.tsx" -->
 
-### Single Repository
+### 2. Detailed File Analysis
+
+See exactly what patterns are detected in each file:
+
 ```bash
-node cli.js github owner/repo -l @mui/material
+npx hermex scan "src/**/*.tsx" --verbose
 ```
 
-### Multiple Repositories
+<!-- test output with command: npx hermex scan "code-examples/patterns/02-variable-assignment.tsx" --verbose -->
+
+### 3. Focus on Top Components
+
+Only show the most-used components:
+
 ```bash
-node cli.js github owner/repo1 owner/repo2 owner/repo3 -l @design-system
+npx hermex scan "src/**/*.tsx" --components-usage false --patterns false
 ```
 
-### With Config File
+<!-- test output with command: npx hermex scan "code-examples/**/*.tsx" --components-usage false --patterns false -->
+
+### 4. Pattern Analysis Only
+
+Focus on usage patterns:
+
 ```bash
-# Create repos.json:
-# {
-#   "repositories": [
-#     "owner/repo1",
-#     "owner/repo2"
-#   ]
-# }
-
-node cli.js github --config repos.json -l @design-system
+npx hermex scan "src/**/*.tsx" --top-components false --components-usage false
 ```
 
-### Custom Options
+<!-- test output with command: npx hermex scan "code-examples/**/*.tsx" --top-components false --components-usage false -->
+
+### 5. Component Library Migration
+
+Analyze usage before migration:
+
 ```bash
-# Specific branch
-node cli.js github owner/repo -l @mui/material --branch develop
+# Get overview
+npx hermex scan "src/**/*.tsx"
 
-# Custom file pattern
-node cli.js github owner/repo -l @mui/material --pattern "src/**/*.tsx"
-
-# Keep cloned repositories
-node cli.js github owner/repo -l @mui/material --keep-repos
-
-# Both console and JSON output
-node cli.js github owner/repo -l @mui/material -f both -o report.json
+# Detailed analysis
+npx hermex scan "src/**/*.tsx" --verbose --details
 ```
 
-## Expected Output
+<!-- test output with command: npx hermex scan "code-examples/patterns/01-direct-usage.tsx" --details -->
 
-Components are reported with exact versions from lockfiles:
+### 6. Monorepo Analysis
 
-```
-🏆 TOP COMPONENTS:
-  🥇 1. Button from @mui/material@5.14.0: 45 uses
-  🥈 2. TextField from @mui/material@5.14.0: 32 uses
-  🥉 3. Grid from @mui/material@5.14.0: 28 uses
+Analyze different packages:
 
-📦 Lockfile: package-lock.json (npm)
-```
-
-## Use Cases
-
-### Dependency Audit
-Before upgrading or migrating:
 ```bash
-node cli.js github your-org/app -l @material-ui/core -f json -o pre-migration.json
+# Analyze each package
+npx hermex scan "packages/app1/src/**/*.tsx"
+npx hermex scan "packages/app2/src/**/*.tsx"
+npx hermex scan "packages/shared/src/**/*.tsx"
 ```
 
-### Track Component Usage
-Identify most-used components:
+<!-- test output with command: npx hermex scan "code-examples/patterns/*.tsx" -->
+
+### 7. Specific File Investigation
+
+Analyze a single file in detail:
+
 ```bash
-node cli.js github your-org/app -l @your/design-system -f console
+npx hermex scan "src/components/MyComponent.tsx" --verbose
 ```
 
-### Analyze Microservices
-Check usage across multiple repositories:
+<!-- test output with command: npx hermex scan "code-examples/patterns/07-comprehensive-usage.tsx" --verbose -->
+
+## Pattern Detection
+
+Hermex detects various React component usage patterns. The verbose output shows what's detected as it analyzes files.
+
+### Import Patterns
+
+**Default Imports**
+```tsx
+import Button from "@design-system/foundation/button";
+```
+Detected as: `📦 Found import: @design-system/foundation/button`
+
+**Named Imports**
+```tsx
+import { Typography } from "@design-system/foundation";
+```
+Detected as: `📦 Found import: @design-system/foundation`
+
+**Namespace Imports**
+```tsx
+import * as Foundation from "@design-system/foundation";
+```
+Detected as: `📦 Found import: @design-system/foundation`
+
+<!-- test output with command: npx hermex scan "code-examples/patterns/01-direct-usage.tsx" --verbose -->
+
+### JSX Usage
+
+**Direct Usage**
+```tsx
+<Button variant="primary">Click me</Button>
+```
+Detected as: `🎨 JSX Usage: <Button>`
+
+**Namespace Usage**
+```tsx
+<Foundation.Button>Click</Foundation.Button>
+```
+Detected as: `🎨 JSX Usage: <Foundation.Button>`
+
+<!-- test output with command: npx hermex scan "code-examples/patterns/05-namespace-imports.tsx" --verbose -->
+
+### Variable Assignments
+
+```tsx
+const PrimaryButton = Button;
+<PrimaryButton>Click</PrimaryButton>
+```
+Detected as: `📝 Variable assignment: PrimaryButton = Button`
+
+<!-- test output with command: npx hermex scan "code-examples/patterns/02-variable-assignment.tsx" --verbose -->
+
+### Conditional Usage
+
+```tsx
+const Component = isLoading ? Spinner : Button;
+```
+Detected as: `🔀 Conditional component usage found`
+
+<!-- test output with command: npx hermex scan "code-examples/patterns/02-variable-assignment.tsx" --verbose -->
+
+### Object Mappings
+
+```tsx
+const components = {
+  button: Button,
+  input: Input,
+};
+```
+Detected as: `🗺️  Object mapping with components found`
+
+<!-- test output with command: npx hermex scan "code-examples/patterns/03-object-mapping.tsx" --verbose -->
+
+### Lazy Loading
+
+```tsx
+const LazyCard = lazy(() => import("@design-system/foundation/card"));
+```
+Detected as lazy import pattern
+
+<!-- test output with command: npx hermex scan "code-examples/patterns/04-lazy-loading.tsx" --verbose -->
+
+### Portal Usage
+
+```tsx
+createPortal(<Modal />, document.body);
+```
+Detected as: `🌀 Portal usage found`
+
+<!-- test output with command: npx hermex scan "code-examples/patterns/07-comprehensive-usage.tsx" --verbose -->
+
+### Namespace Access
+
+```tsx
+const MyButton = Foundation.Button;
+```
+Detected as: `🔗 Namespace access: Foundation.Button`
+
+<!-- test output with command: npx hermex scan "code-examples/patterns/05-namespace-imports.tsx" --verbose -->
+
+### Destructuring
+
+```tsx
+const { Card } = Foundation;
+```
+Detected as: `🔧 Destructuring: Card from Foundation`
+
+<!-- test output with command: npx hermex scan "code-examples/patterns/05-namespace-imports.tsx" --verbose -->
+
+## Understanding Output
+
+### Summary Section
+
+```
+[SUMMARY] Analysis completed successfully in 0.1s
+[SUMMARY] Files analyzed: 8
+[SUMMARY] Total imports: 59
+[SUMMARY] Total components: 22
+```
+
+Shows:
+- Analysis time
+- Files successfully analyzed
+- Total import statements
+- Unique components discovered
+
+### Top Components Section
+
+```
+🏆 Top Components
+
+[TOP-COMPONENTS] 🥇 1. Button from @design-system/foundation/button: 5 uses
+[TOP-COMPONENTS] 🥈 2. Card from @design-system/foundation/card: 4 uses
+[TOP-COMPONENTS] 🥉 3. Input from @design-system/foundation: 3 uses
+```
+
+Ranked list of most-used components.
+
+### Components Usage Table
+
+```
+⚛️ Components Usage
+
+┌────────────┬──────────────────────────────────┬─────────┬───────┐
+│ Component  │ Source                           │ Version │ Count │
+├────────────┼──────────────────────────────────┼─────────┼───────┤
+│ Button     │ @design-system/foundation/button │ 0.0.0   │ 5     │
+│ Card       │ @design-system/foundation/card   │ 0.0.0   │ 4     │
+│ Input      │ @design-system/foundation        │ 0.0.0   │ 3     │
+└────────────┴──────────────────────────────────┴─────────┴───────┘
+```
+
+Shows component name, source package, version (from lockfile), and usage count.
+
+### Code Patterns Table
+
+```
+🔍 Code Patterns
+
+┌──────────────────────┬───────┐
+│ Pattern              │ Count │
+├──────────────────────┼───────┤
+│ JSX Usage            │ 45    │
+│ Named Imports        │ 30    │
+│ Default Imports      │ 25    │
+│ Object Mappings      │ 19    │
+│ Variable Assignments │ 9     │
+│ Conditional Usage    │ 7     │
+│ Namespace Imports    │ 4     │
+└──────────────────────┴───────┘
+```
+
+Shows counts of different usage patterns detected.
+
+## Tips & Best Practices
+
+### Start with Default Output
+
+The default output provides a good overview:
+
 ```bash
-node cli.js github --config microfrontends.json -l @design-system
+npx hermex scan "src/**/*.tsx"
 ```
 
-### Migration Planning
-Compare old vs new library:
+### Use Verbose for Investigation
+
+When investigating specific files or patterns:
+
 ```bash
-node cli.js compare "src/**/*.tsx" -l @material-ui/core @mui/material
+npx hermex scan "src/components/**/*.tsx" --verbose
 ```
 
-## Output Formats
+### Use Details for Deep Analysis
 
-### Console
-- Color-coded output
-- Ranked component lists
-- Complexity distributions
-- Version information
+Get comprehensive pattern counts:
 
-### JSON
-- Complete analysis data
-- Version mappings
-- Per-file breakdowns
-- Machine-readable format
+```bash
+npx hermex scan "src/**/*.tsx" --details
+```
 
-### Table
-- Structured view
-- Sortable columns
-- Props analysis
-- Import tracking
+### Customize Output for Reports
 
-## Lockfile Support
+Only show what you need:
 
-The analyzer automatically detects and parses:
-- `package-lock.json` (npm)
-- `yarn.lock` (Yarn)
-- `pnpm-lock.yaml` (pnpm)
+```bash
+# Only show summary and top components
+npx hermex scan "src/**/*.tsx" --components-usage false --patterns false
+```
 
-Components are reported with exact versions extracted from the lockfile.
+### Use Specific Patterns
+
+Be specific to avoid analyzing unnecessary files:
+
+```bash
+# Good - Specific directory
+npx hermex scan "src/features/**/*.tsx"
+
+# Less ideal - Too broad
+npx hermex scan "**/*.tsx"
+```
+
+## Common Issues
+
+### No Files Found
+
+```bash
+# Verify your glob pattern
+npx hermex scan "src/**/*.tsx"  # Recursive
+npx hermex scan "src/*.tsx"     # Only top-level
+```
+
+### Too Much Output
+
+```bash
+# Disable verbose sections
+npx hermex scan "src/**/*.tsx" --summary false --details false
+```
+
+### Need More Details
+
+```bash
+# Enable verbose and details
+npx hermex scan "src/**/*.tsx" --verbose --details
+```
+
+## Performance
+
+The tool automatically excludes:
+- `node_modules/`
+- `dist/`
+- `build/`
+- `.git/`
+
+This ensures fast analysis even in large codebases.
+
+## Next Steps
+
+- Explore the [pattern examples](../code-examples/patterns/) to see all detectable patterns
+- Check [MILESTONES.md](./MILESTONES.md) for upcoming features
+- See the main [README.md](../README.md) for project overview
