@@ -1,9 +1,9 @@
-# .github/workflows/pull-request-main.yml
+# .github/workflows/pull-request.yml
 name: PR
 
 on:
   pull_request:
-    branches: ["main"]
+    branches: ["main", "beta"]
 
 jobs:
   validate:
