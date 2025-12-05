@@ -2,9 +2,10 @@
   "name": "hermex",
   "version": "0.0.1-alpha.0",
   "description": "SWC-based AST parser for analyzing code and React component usage patterns across entire codebases",
+  "homepage": "https://github.com/Gallevy/hermex",
   "repository": {
     "type": "git",
-    "url": "https://github.com/gallevy/hermex.git"
+    "url": "https://github.com/Gallevy/hermex.git"
   },
   "main": "./dist/cli.js",
   "bin": {

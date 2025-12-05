@@ -1,9 +1,9 @@
-# .github/workflows/push-main.yml
+# .github/workflows/push-release.yml
 name: Release
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "beta"]
 
 jobs:
   release:
