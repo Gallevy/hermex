@@ -1,19 +1,13 @@
-# .github/workflows/push-main.yml
-name: Release
+# .github/workflows/pull-request.yml
+name: PR
 
 on:
-  push:
-    branches: ["main"]
+  pull_request:
+    branches: ["main", "beta"]
 
 jobs:
-  release:
+  validate:
     runs-on: ubuntu-latest
-
-    permissions:
-      id-token: write
-      contents: write
-      issues: write
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -39,9 +33,3 @@ jobs:
 
       - name: Build project
         run: pnpm run build:ci
-
-      - name: Run semantic-release
-        run: npx semantic-release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_CONFIG_PROVENANCE: true

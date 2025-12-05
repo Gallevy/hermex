@@ -2,7 +2,7 @@
  * @type {import('semantic-release').GlobalConfig}
  */
 export default {
-  branches: ['main', { name: 'beta', prerelease: true }],
+  branches: ['main'],
   plugins: [
     '@semantic-release/commit-analyzer',
     '@semantic-release/release-notes-generator',
@@ -15,11 +15,11 @@ export default {
         message: 'chore(release): ${nextRelease.version} [skip ci]',
       },
     ],
-    [
-      '@semantic-release/github',
-      {
-        assets: ['package.json', 'CHANGELOG.md', 'LICENSE.md'],
-      },
-    ],
+    // [
+    //   '@semantic-release/github',
+    //   {
+    //     assets: ['package.json', 'CHANGELOG.md', 'LICENSE.md'],
+    //   },
+    // ],
   ],
 };
