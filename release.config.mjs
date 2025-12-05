@@ -1,13 +1,8 @@
-// TODO review plugins, Also i saw a github plugin which i cannot see here
-
+/**
+ * @type {import('semantic-release').GlobalConfig}
+ */
 export default {
-  branches: [
-    {
-      name: 'main',
-      channel: 'alpha',
-      prerelease: true,
-    },
-  ],
+  branches: ['main', { name: 'beta', prerelease: true }],
   plugins: [
     '@semantic-release/commit-analyzer',
     '@semantic-release/release-notes-generator',

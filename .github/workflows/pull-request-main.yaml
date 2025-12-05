@@ -1,0 +1,35 @@
+# .github/workflows/pull-request-main.yml
+name: PR
+
+on:
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Setup pnpm CLI
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run format
+        run: pnpm run format:ci
+
+      - name: Run tests
+        run: pnpm run test:ci
+
+      - name: Build project
+        run: pnpm run build:ci
