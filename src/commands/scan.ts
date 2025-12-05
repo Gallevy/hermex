@@ -18,7 +18,6 @@ interface ScanOptions {
   verbose?: boolean;
   summary?: string | boolean;
   details?: boolean;
-  topComponents?: string;
   componentsUsage?: string;
   packages?: string;
   patterns?: string;
@@ -29,7 +28,6 @@ interface NormalizedScanOptions {
   verbose: boolean;
   summary: 'log' | false;
   details: boolean;
-  topComponents: 'log' | 'table' | 'chart' | false;
   componentsUsage: 'table' | 'chart' | false;
   packages: 'table' | 'chart' | false;
   patterns: 'table' | 'chart';
@@ -60,18 +58,8 @@ export function registerScanCommand(program: Command) {
       'Glob pattern for what packages to ignore',
       [],
     )
-    .option(
-      '--verbose',
-      'Show detailed file-by-file analysis with every pattern found',
-      false,
-    )
     .option('--summary [mode]', 'Show summary stats (log, false)', 'log')
     .option('--details', 'Show detailed pattern counts')
-    .option(
-      '--top-components [mode]',
-      'Show top components (log, table, chart)',
-      'log',
-    )
     .option(
       '--components-usage [mode]',
       'Show components table/chart (table, chart)',
@@ -82,7 +70,6 @@ export function registerScanCommand(program: Command) {
       'Show packages table/chart (table, chart)',
       'table',
     )
-    .option('--distribution', 'Show dependencies distribution', false)
     .option(
       '--patterns [mode]',
       'Show patterns table/chart (table, chart)',
@@ -173,13 +160,6 @@ async function executeScan(pattern: string, options: NormalizedScanOptions) {
         const report = parseFile(file);
         if (report) {
           reports.push(report);
-
-          // Print verbose output immediately after parsing each file
-          if (options.verbose) {
-            spinner.stop();
-            printVerbose(file, report);
-            spinner.start();
-          }
         }
       } catch (error: any) {
         spinner.stop();
