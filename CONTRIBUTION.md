@@ -1,17 +1,49 @@
-# AI Contribution Guidelines
+# Contributing Guidelines
 
-## Basic Guidelines
-- Make sure each change is small and keeps the project working. Do not work on big changes all at once.
-- Use clear and concise language.
-- Typescript should always be used
-- Types should be strongly checked 
-- Follow the style guide for the project.
-- Ensure your contributions are well-documented and tested.
-- Do not use classes, use functional programming instead
-- Code should be in /src
-- Commands should be in /src/commands
-- Documentation should be in /docs
-- Code examples should be in /code-examples
-- Reports outputs of test runs should be in /reports-outputs
-- All reports should include the same base metadata and include a timestamp in the name
-- All reports should include the type of command used in the report "compare", "analysis", etc...
+Thank you for your interest in contributing to this project. Please review the following guidelines before submitting your contributions.
+
+## Development Principles
+
+### Code Quality Standards
+
+- **Incremental Changes**: Submit small, focused changes that maintain project stability. Avoid large, monolithic pull requests that combine multiple unrelated features or fixes.
+- **Type Safety**: All code must be written in TypeScript with strict type checking enabled. Avoid using `any` types unless absolutely necessary and well-documented.
+- **Functional Programming**: Use functional programming paradigms. Classes are not permitted; prefer pure functions, composition, and immutability.
+- **Code Clarity**: Write clear, self-documenting code. Variable and function names should be descriptive and follow established naming conventions.
+
+### Testing and Documentation
+
+- **Test Coverage**: All new features and bug fixes must include appropriate test coverage.
+- **Documentation**: Update relevant documentation for any changes that affect public APIs, functionality, or user-facing behavior.
+- **Code Comments**: Add comments for complex logic or non-obvious implementation decisions.
+
+## Project Structure
+
+All contributions must adhere to the following directory structure:
+
+| Directory | Purpose |
+|-----------|---------|
+| `/src` | Source code |
+| `/src/commands` | CLI command implementations |
+| `/docs` | Project documentation |
+| `/code-examples` | Usage examples and demonstrations |
+| `/reports-outputs` | Test run outputs and generated reports |
+
+## Style Guide
+
+- Follow the existing code style and formatting conventions used throughout the project
+- Run linting and formatting tools before submitting contributions
+- Ensure consistency with the established patterns in the codebase
+
+## Submission Process
+
+1. Fork the repository and create a feature branch
+2. Make your changes following these guidelines
+3. Write or update tests as needed
+4. Update documentation if applicable
+5. Ensure all tests pass and code meets style requirements
+6. Submit a pull request with a clear description of the changes
+
+## Questions?
+
+If you have questions about these guidelines or need clarification on contribution requirements, please open an issue for discussion.

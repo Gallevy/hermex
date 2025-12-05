@@ -119,7 +119,7 @@ export function registerScanCommand(program: Command) {
         { Component: 'Component3', Imports: 8, Version: '1.0.66' },
       ];
       const obj = mockTableData.reduce((acc, c) => {
-        acc[c.Component] = { Imports: c.Imports };
+        acc[c.Component] = { Imports: c.Imports, Version: c.Version };
         return acc;
       }, {});
       console.table(obj);

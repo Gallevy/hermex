@@ -3,7 +3,7 @@ import Button from "@design-system/foundation/button";
 import Input from "@design-system/foundation/input";
 import Card from "@design-system/foundation/card";
 import { Typography } from "@design-system/foundation";
-
+import ButtonFromOld from "@old-system/ui/button";
 /**
  * PATTERN 1: DIRECT IMPORT & USAGE
  * Complexity: 1/10

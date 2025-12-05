@@ -1,11 +1,7 @@
-import type { Node } from '@swc/core';
 import type { ParserState, VisitorContext } from '../types';
 import { analyzeImportDeclaration } from '../patterns/imports';
 import { analyzeJSXElement, analyzeJSXOpeningElement } from '../patterns/jsx';
-import {
-  analyzeVariableDeclaration,
-  analyzeDestructuringPattern,
-} from '../patterns/variables';
+import { analyzeVariableDeclaration } from '../patterns/variables';
 import { analyzeConditionalExpression } from '../patterns/conditionals';
 import {
   analyzeArrayExpression,
@@ -67,7 +63,7 @@ export function visitNode(
 
     case 'JSXElement':
     case 'JSXFragment':
-      analyzeJSXElement(node, state, context.parent);
+      analyzeJSXElement(node, state);
       visitChildren(node, state, context);
       break;
 

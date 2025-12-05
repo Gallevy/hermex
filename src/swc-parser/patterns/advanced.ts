@@ -1,5 +1,4 @@
 import type { ParserState } from '../types';
-import { isHOCFunction } from '../utils/matchers';
 
 /**
  * Analyzes Higher-Order Component (HOC) usage
@@ -37,7 +36,7 @@ export function analyzeForwardRefUsage(node: any, state: ParserState): void {
   state.usagePatterns.forwardedRefs.add({
     line: node.span?.start || 0,
   });
-  console.log('↗️  ForwardRef usage found');
+  console.log('↗️ ForwardRef usage found');
 }
 
 /**

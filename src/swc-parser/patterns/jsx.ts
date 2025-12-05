@@ -10,11 +10,7 @@ import { analyzePropsInDetail } from './props';
 /**
  * Analyzes JSX element usage
  */
-export function analyzeJSXElement(
-  node: any,
-  state: ParserState,
-  parent?: any,
-): void {
+export function analyzeJSXElement(node: any, state: ParserState): void {
   if (node.opening) {
     analyzeJSXOpeningElement(node.opening, state, node);
   }
