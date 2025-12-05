@@ -5,11 +5,11 @@ export function printSummary(
   aggregated: AggregatedReport,
   elapsedTimeSeconds: number,
 ) {
-  // console.log(
-  //   chalk.green(
-  //     `[SUMMARY] Analysis completed successfully in ${elapsedTimeSeconds.toFixed(1)}s`,
-  //   ),
-  // );
+  console.log(
+    chalk.green(
+      `[SUMMARY] Analysis completed successfully in ${elapsedTimeSeconds.toFixed(1)}s`,
+    ),
+  );
   console.log(
     chalk.green(
       `[SUMMARY] Files analyzed: ${aggregated.filesAnalyzed.toLocaleString()}`,
