@@ -173,12 +173,11 @@ Hermex detects 16+ React component usage patterns with varying complexity levels
 See the [Patterns Guide](./docs/PATTERNS.md) for complete details.
 
 ## 🛠️ Tech Stack
-
 - **Runtime**: Node.js 24
-- **Parser**: [@swc/core](https://swc.rs/) - Rust-based JavaScript/TypeScript parser
+- **Parser**: [@swc/core](https://swc.rs/)
 - **CLI**: [Commander.js](https://github.com/tj/commander.js)
 - **Build**: [tsup](https://tsup.egoist.dev/)
-- **Language**: TypeScript
+- **Language**: [TypeScript](https://www.typescriptlang.org/)
 - **Formatter**: [Biome](https://biomejs.dev/)
 - **Linter**: [oxlint](https://oxc-project.github.io/)
 - **Tests**: [Vitest](https://vitest.dev/)

@@ -47,6 +47,16 @@ export function registerScanCommand(program: Command) {
       '**/build/**',
     ])
     .option(
+      '--allow-packages <pattern>',
+      'Glob pattern for what packages to scan',
+      'ALL',
+    )
+    .option(
+      '--ignore-packages <pattern>',
+      'Glob pattern for what packages to ignore',
+      [],
+    )
+    .option(
       '--verbose',
       'Show detailed file-by-file analysis with every pattern found',
       false,
@@ -63,6 +73,12 @@ export function registerScanCommand(program: Command) {
       'Show components table/chart (table, chart)',
       'table',
     )
+    .option(
+      '--packages [mode]',
+      'Show packages table/chart (table, chart)',
+      'table',
+    )
+    .option('--distribution', 'Show dependencies distribution', false)
     .option(
       '--patterns [mode]',
       'Show patterns table/chart (table, chart)',
