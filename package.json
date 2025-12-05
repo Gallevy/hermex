@@ -27,7 +27,7 @@
     "test:ci": "vitest run",
     "build": "tsup",
     "build:ci": "tsup --clean",
-    "test-scan": "pnpm run build && node dist/cli.js scan \"code-examples/**/*.tsx\""
+    "dev:scan": "pnpm run build && node dist/cli.js scan \"code-examples/**/*.tsx\""
   },
   "keywords": [
     "hermex",

@@ -1,19 +1,36 @@
-import { Command, Option } from 'commander';
+import { Command } from 'commander';
 import { glob } from 'glob';
 import ora from 'ora';
 import chalk from 'chalk';
+import fs from 'node:fs';
 import { parseFile } from '../swc-parser';
 import type { UsageReport } from '../swc-parser';
+import { aggregateReports, type AggregatedReport } from '../utils/aggregator';
+import { printVerbose } from '../utils/print-verbose';
+import { printSummary } from '../utils/print-summary';
+import { printDetails } from '../utils/print-details';
+import { printTopComponents } from '../utils/print-top-components';
+import { printComponentsUsage } from '../utils/print-components-usage';
+import { printPatterns } from '../utils/print-patterns';
 
-interface LocalOptions {
+interface ScanOptions {
+  verbose?: boolean;
+  summary?: string | boolean;
+  details?: boolean;
+  topComponents?: string;
+  componentsUsage?: string;
+  patterns?: string;
   output?: string;
-  summary: boolean;
-  charts: boolean;
-  stats: boolean;
-  top: boolean;
-  patterns: boolean;
-  versions: boolean;
-  debug: boolean;
+}
+
+interface NormalizedScanOptions {
+  verbose: boolean;
+  summary: 'log' | false;
+  details: boolean;
+  topComponents: 'log' | 'table' | 'chart';
+  componentsUsage: 'table' | 'chart';
+  patterns: 'table' | 'chart';
+  output?: string;
 }
 
 export function registerScanCommand(program: Command) {
@@ -26,102 +43,135 @@ export function registerScanCommand(program: Command) {
       '**/*.{tsx,jsx,ts,js}',
     )
     .option(
-      '-o, --output <file>',
-      'Output file path for report (defaults to timestamped filename)',
+      '--verbose',
+      'Show detailed file-by-file analysis with every pattern found',
+      false,
     )
-    .addOption(new Option('-s, --summary', 'Show summary').default(true))
-    .addOption(new Option('-c, --charts', 'Show charts').default(true))
-    .addOption(new Option('-x, --stats', 'Show stats').default(true))
-    .addOption(new Option('-t, --top', 'Show top usage').default(true))
-    .addOption(new Option('-p, --patterns', 'Show patterns').default(true))
-    .addOption(new Option('-v, --versions', 'Show versions').default(false))
-    .addOption(new Option('-d, --debug', 'Debug mode').default(false))
-    .action(async (pattern: string, options: LocalOptions) => {
-      const spinner = ora('Finding files...').start();
+    .option('--summary [mode]', 'Show summary stats (log, false)', 'log')
+    .option('--details', 'Show detailed pattern counts')
+    .option(
+      '--top-components [mode]',
+      'Show top components (log, table, chart)',
+      'log',
+    )
+    .option(
+      '--components-usage [mode]',
+      'Show components table/chart (table, chart)',
+      'table',
+    )
+    .option(
+      '--patterns [mode]',
+      'Show patterns table/chart (table, chart)',
+      'table',
+    )
+    .action(async (pattern: string, options: ScanOptions) => {
+      const normalizedOptions = normalizeOptions(options);
 
-      try {
-        // Find files matching pattern
-        const files = await glob(pattern, {
-          ignore: ['node_modules/**', 'dist/**', 'build/**', '.git/**'],
-          absolute: true,
-        });
+      await executeScan(pattern, normalizedOptions);
+    });
+}
 
-        if (files.length === 0) {
-          spinner.fail(
-            chalk.red(`No files found matching pattern: ${pattern}`),
-          );
-          return;
-        }
+function normalizeOptions(options: ScanOptions): NormalizedScanOptions {
+  return {
+    verbose: options.verbose || false,
+    summary:
+      options.summary === false || options.summary === 'false' ? false : 'log',
+    details: options.details || false,
+    topComponents: (options.topComponents as any) || 'log',
+    componentsUsage: (options.componentsUsage as any) || 'table',
+    patterns: (options.patterns as any) || 'table',
+    output: options.output,
+  };
+}
 
-        spinner.succeed(chalk.green(`Found ${files.length} files`));
+async function executeScan(pattern: string, options: NormalizedScanOptions) {
+  const startTime = Date.now();
+  const spinner = ora('Finding files...').start();
 
-        // Analyze all files
-        spinner.start('Analyzing files...');
-        const reports: UsageReport[] = [];
+  try {
+    // Find files matching pattern
+    const files = await glob(pattern, {
+      ignore: ['node_modules/**', 'dist/**', 'build/**', '.git/**'],
+      absolute: true,
+    });
 
-        for (let i = 0; i < files.length; i++) {
-          const file = files[i];
-          spinner.text = `Analyzing files... (${i + 1}/${files.length})`;
+    if (files.length === 0) {
+      spinner.fail(chalk.red(`No files found matching pattern: ${pattern}`));
+      return;
+    }
 
-          try {
-            const report = parseFile(file);
-            if (report) {
-              reports.push(report);
-            }
-          } catch (error: any) {
-            if (options.debug) {
-              console.error(
-                chalk.red(`Error analyzing ${file}: ${error.message}`),
-              );
-            }
-          }
-        }
+    spinner.succeed(chalk.green(`Found ${files.length} files`));
 
-        spinner.succeed(
-          chalk.green(`Analysis complete! Analyzed ${reports.length} files`),
-        );
+    // Analyze all files
+    spinner.start('Analyzing files...');
+    const reports: UsageReport[] = [];
 
-        // Print each report (the print utilities will be called here when implemented)
-        console.log('\n' + chalk.bold.cyan('═'.repeat(80)));
-        console.log(chalk.bold.cyan('  📊 LOCAL ANALYSIS REPORT'));
-        console.log(chalk.bold.cyan('═'.repeat(80)));
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
 
-        // For now, just show basic summary
-        console.log(chalk.bold('\n📈 SUMMARY:'));
-        console.log(`  Files Analyzed: ${chalk.yellow(reports.length)}`);
-
-        const totalComponents = new Set(reports.flatMap((r) => r.components))
-          .size;
-        const totalImports = reports.reduce(
-          (sum, r) => sum + r.summary.totalImports,
-          0,
-        );
-        const totalPatterns = reports.reduce(
-          (sum, r) => sum + r.summary.totalUsagePatterns,
-          0,
-        );
-
-        console.log(`  Total Components: ${chalk.yellow(totalComponents)}`);
-        console.log(`  Total Imports: ${chalk.yellow(totalImports)}`);
-        console.log(`  Total Usage Patterns: ${chalk.yellow(totalPatterns)}`);
-
-        console.log('\n' + chalk.bold.cyan('═'.repeat(80)) + '\n');
-      } catch (error: any) {
-        spinner.fail(chalk.red('Analysis failed: ' + error.message));
-        if (options.debug) {
-          console.error(error);
-        }
+      if (!options.verbose) {
+        spinner.text = `Analyzing files... (${i + 1}/${files.length})`;
       }
 
-      const mockTableData = [
-        { Component: 'Component1', Imports: 10, Version: '1.0.23' },
-        { Component: 'Component2', Imports: 15, Version: '1.0.23' },
-        { Component: 'Component3', Imports: 8, Version: '1.0.66' },
-      ];
-      const obj = mockTableData.reduce((acc, c) => {
-        acc[c.Component] = { Imports: c.Imports, Version: c.Version };
-        return acc;
-      }, {});
-      console.table(obj);
-    });
+      try {
+        const report = parseFile(file);
+        if (report) {
+          reports.push(report);
+
+          // Print verbose output immediately after parsing each file
+          if (options.verbose) {
+            spinner.stop();
+            printVerbose(file, report);
+            spinner.start();
+          }
+        }
+      } catch (error: any) {
+        spinner.stop();
+        console.error(chalk.red(`Error analyzing ${file}: ${error.message}`));
+        spinner.start();
+      }
+    }
+
+    spinner.succeed(
+      chalk.green(`Analysis complete! Analyzed ${reports.length} files`),
+    );
+
+    // Calculate elapsed time
+    const elapsedTime = (Date.now() - startTime) / 1000;
+
+    // Aggregate reports
+    const aggregated = aggregateReports(reports);
+
+    // Print outputs based on options
+    console.log(''); // Empty line before output sections
+
+    if (options.summary) {
+      printSummary(aggregated, elapsedTime);
+    }
+
+    if (options.details) {
+      console.log(''); // Empty line between sections
+      printDetails(aggregated);
+    }
+
+    if (options.topComponents) {
+      console.log(''); // Empty line between sections
+      printTopComponents(aggregated, options.topComponents);
+    }
+
+    if (options.componentsUsage) {
+      console.log(''); // Empty line between sections
+      printComponentsUsage(aggregated, options.componentsUsage);
+    }
+
+    if (options.patterns) {
+      console.log(''); // Empty line between sections
+      printPatterns(aggregated, options.patterns);
+    }
+  } catch (error: any) {
+    spinner.fail(chalk.red('Analysis failed: ' + error.message));
+    console.error(error);
+
+    process.exit(1);
+  }
 }

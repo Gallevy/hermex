@@ -1,0 +1,199 @@
+import type { UsageReport } from '../swc-parser';
+
+export interface ComponentUsage {
+  name: string;
+  source: string;
+  count: number;
+  files: Set<string>;
+}
+
+export interface PatternCount {
+  patternType: string;
+  displayName: string;
+  count: number;
+}
+
+export interface AggregatedReport {
+  filesAnalyzed: number;
+  totalImports: number;
+  totalComponents: number;
+  totalUsagePatterns: number;
+  patternCounts: PatternCount[];
+  componentUsage: Map<string, ComponentUsage>;
+  topComponents: ComponentUsage[];
+  allComponents: string[];
+  reports: UsageReport[];
+}
+
+export function aggregateReports(reports: UsageReport[]): AggregatedReport {
+  const componentUsageMap = new Map<string, ComponentUsage>();
+  let totalImports = 0;
+  let totalUsagePatterns = 0;
+  const patternCountMap = new Map<string, number>();
+
+  // Aggregate data from all reports
+  for (const report of reports) {
+    totalImports += report.summary.totalImports;
+    totalUsagePatterns += report.summary.totalUsagePatterns;
+
+    // Aggregate component usage from JSX patterns
+    for (const jsx of report.patterns.usage.jsx) {
+      const key = jsx.component;
+      const existing = componentUsageMap.get(key);
+
+      if (existing) {
+        existing.count++;
+      } else {
+        // Try to find the source from imports
+        const source = findComponentSource(jsx.component, report);
+        componentUsageMap.set(key, {
+          name: jsx.component,
+          source,
+          count: 1,
+          files: new Set(),
+        });
+      }
+    }
+
+    // Count patterns
+    countPatterns(report, patternCountMap);
+  }
+
+  // Convert to arrays and sort
+  const topComponents = Array.from(componentUsageMap.values()).sort(
+    (a, b) => b.count - a.count,
+  );
+
+  const allComponents = Array.from(componentUsageMap.keys()).sort();
+
+  const patternCounts = Array.from(patternCountMap.entries())
+    .map(([type, count]) => ({
+      patternType: type,
+      displayName: getPatternDisplayName(type),
+      count,
+    }))
+    .sort((a, b) => b.count - a.count);
+
+  return {
+    filesAnalyzed: reports.length,
+    totalImports,
+    totalComponents: componentUsageMap.size,
+    totalUsagePatterns,
+    patternCounts,
+    componentUsage: componentUsageMap,
+    topComponents,
+    allComponents,
+    reports,
+  };
+}
+
+function findComponentSource(
+  componentName: string,
+  report: UsageReport,
+): string {
+  // Check named imports
+  const namedImport = report.patterns.imports.named.find(
+    (imp) => imp.name === componentName,
+  );
+  if (namedImport) return namedImport.source;
+
+  // Check default imports
+  const defaultImport = report.patterns.imports.default.find(
+    (imp) => imp.name === componentName,
+  );
+  if (defaultImport) return defaultImport.source;
+
+  // Check aliased imports
+  const aliasedImport = report.patterns.imports.aliased.find(
+    (imp) => imp.local === componentName,
+  );
+  if (aliasedImport) return aliasedImport.source;
+
+  return 'unknown';
+}
+
+function countPatterns(report: UsageReport, patternMap: Map<string, number>) {
+  // Count import patterns
+  increment(
+    patternMap,
+    'imports.default',
+    report.patterns.imports.default.length,
+  );
+  increment(patternMap, 'imports.named', report.patterns.imports.named.length);
+  increment(
+    patternMap,
+    'imports.namespace',
+    report.patterns.imports.namespace.length,
+  );
+  increment(
+    patternMap,
+    'imports.aliased',
+    report.patterns.imports.aliased.length,
+  );
+
+  // Count usage patterns
+  increment(patternMap, 'usage.jsx', report.patterns.usage.jsx.length);
+  increment(
+    patternMap,
+    'usage.variables',
+    report.patterns.usage.variables.length,
+  );
+  increment(
+    patternMap,
+    'usage.destructuring',
+    report.patterns.usage.destructuring.length,
+  );
+  increment(
+    patternMap,
+    'usage.conditional',
+    report.patterns.usage.conditional.length,
+  );
+  increment(patternMap, 'usage.arrays', report.patterns.usage.arrays.length);
+  increment(patternMap, 'usage.objects', report.patterns.usage.objects.length);
+
+  // Count advanced patterns
+  increment(patternMap, 'advanced.lazy', report.patterns.advanced.lazy.length);
+  increment(
+    patternMap,
+    'advanced.dynamic',
+    report.patterns.advanced.dynamic.length,
+  );
+  increment(patternMap, 'advanced.hoc', report.patterns.advanced.hoc.length);
+  increment(patternMap, 'advanced.memo', report.patterns.advanced.memo.length);
+  increment(
+    patternMap,
+    'advanced.forwardRef',
+    report.patterns.advanced.forwardRef.length,
+  );
+  increment(
+    patternMap,
+    'advanced.portal',
+    report.patterns.advanced.portal.length,
+  );
+}
+
+function increment(map: Map<string, number>, key: string, value: number) {
+  map.set(key, (map.get(key) || 0) + value);
+}
+
+function getPatternDisplayName(patternType: string): string {
+  const displayNames: Record<string, string> = {
+    'imports.default': 'Default Imports',
+    'imports.named': 'Named Imports',
+    'imports.namespace': 'Namespace Imports',
+    'imports.aliased': 'Aliased Imports',
+    'usage.jsx': 'JSX Usage',
+    'usage.variables': 'Variable Assignments',
+    'usage.destructuring': 'Destructuring',
+    'usage.conditional': 'Conditional Usage',
+    'usage.arrays': 'Array Mappings',
+    'usage.objects': 'Object Mappings',
+    'advanced.lazy': 'Lazy Loading',
+    'advanced.dynamic': 'Dynamic Imports',
+    'advanced.hoc': 'Higher-Order Components',
+    'advanced.memo': 'Memoized Components',
+    'advanced.forwardRef': 'Forward Refs',
+    'advanced.portal': 'Portal Usage',
+  };
+  return displayNames[patternType] || patternType;
+}
