@@ -15,11 +15,11 @@ export default {
         message: 'chore(release): ${nextRelease.version} [skip ci]',
       },
     ],
-    [
-      '@semantic-release/github',
-      {
-        assets: ['package.json', 'CHANGELOG.md', 'LICENSE.md'],
-      },
-    ],
+    // [
+    //   '@semantic-release/github',
+    //   {
+    //     assets: ['package.json', 'CHANGELOG.md', 'LICENSE.md'],
+    //   },
+    // ],
   ],
 };
