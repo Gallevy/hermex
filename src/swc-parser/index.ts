@@ -43,15 +43,8 @@ export function parseFile(
   filePath: string,
   options: ParseOptions = {},
 ): UsageReport | null {
-  console.log(`\n📁 Analyzing: ${filePath}`);
-
-  try {
-    const code = fs.readFileSync(filePath, 'utf8');
-    return parseCode(code, options);
-  } catch (error: any) {
-    console.error(`❌ Error parsing ${filePath}:`, error.message);
-    return null;
-  }
+  const code = fs.readFileSync(filePath, 'utf8');
+  return parseCode(code, options);
 }
 
 /**
