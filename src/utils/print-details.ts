@@ -19,9 +19,7 @@ export function printDetails(aggregated: AggregatedReport) {
   for (const pattern of aggregated.patternCounts) {
     if (pattern.count > 0) {
       console.log(
-        chalk.cyan(
-          `  ${pattern.displayName}: ${formatCount(pattern.count)}`,
-        ),
+        chalk.cyan(`  ${pattern.displayName}: ${formatCount(pattern.count)}`),
       );
     }
   }
