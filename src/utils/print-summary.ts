@@ -28,10 +28,22 @@ export function printSummary(
     },
   });
 
+  // Calculate external components only (filter out unknown and local)
+  const externalComponents = aggregated.topComponents.filter(
+    (comp) => comp.source !== 'unknown' && comp.source !== 'local',
+  ).length;
+
+  // Calculate total external package usage
+  const totalExternalUsage = aggregated.packageDistribution.reduce(
+    (sum, pkg) => sum + pkg.usageCount,
+    0,
+  );
+
   table.push(
     ['Files Analyzed', formatCount(aggregated.filesAnalyzed)],
-    ['Total Imports', formatCount(aggregated.totalImports)],
-    ['Total Components', formatCount(aggregated.totalComponents)],
+    ['External Packages', formatCount(aggregated.packageDistribution.length)],
+    ['External Components', formatCount(externalComponents)],
+    ['Total Usages', formatCount(totalExternalUsage)],
   );
 
   console.log(table.toString());

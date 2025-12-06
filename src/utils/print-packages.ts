@@ -55,9 +55,13 @@ function printPackagesTable(
     (sum, p) => sum + p.componentCount,
     0,
   );
+  const totalExternalUsage = packages.reduce(
+    (sum, p) => sum + p.usageCount,
+    0,
+  );
   console.log(
     chalk.gray(
-      `\nTotal: ${formatCount(packages.length)} packages | ${formatCount(totalComponents)} unique components | ${formatCount(totalUsage)} total usage patterns`,
+      `\nTotal: ${formatCount(packages.length)} packages | ${formatCount(totalComponents)} unique components | ${formatCount(totalExternalUsage)} total usages`,
     ),
   );
 }

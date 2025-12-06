@@ -41,6 +41,10 @@ function printPatternsTable(patterns: PatternCount[]) {
   });
 
   console.log(table.toString());
+
+  // Show total patterns count
+  const totalPatterns = patterns.reduce((sum, p) => sum + p.count, 0);
+  console.log(chalk.gray(`\nTotal: ${totalPatterns} patterns detected`));
 }
 
 function printPatternsChart(patterns: PatternCount[]) {

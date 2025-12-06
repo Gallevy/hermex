@@ -23,20 +23,25 @@ export function printComponents(
 function printComponentsTable(components: ComponentUsage[]) {
   printHeader();
 
-  if (components.length === 0) {
-    console.log(chalk.gray('  No components found'));
+  // Filter out unknown and local components - only show external packages
+  const externalComponents = components.filter(
+    (comp) => comp.source !== 'unknown' && comp.source !== 'local',
+  );
+
+  if (externalComponents.length === 0) {
+    console.log(chalk.gray('  No external components found'));
     return;
   }
 
   const table = new Table({
-    head: ['Component', 'Source', 'Count'],
+    head: ['Component', 'Package', 'Count'],
     style: {
       head: ['cyan'],
       border: ['gray'],
     },
   });
 
-  components.forEach((comp) => {
+  externalComponents.forEach((comp) => {
     table.push([comp.name, comp.source, comp.count.toString()]);
   });
 
@@ -46,12 +51,17 @@ function printComponentsTable(components: ComponentUsage[]) {
 function printComponentsChart(components: ComponentUsage[]) {
   printHeader();
 
-  if (components.length === 0) {
-    console.log(chalk.gray('  No components found'));
+  // Filter out unknown and local components - only show external packages
+  const externalComponents = components.filter(
+    (comp) => comp.source !== 'unknown' && comp.source !== 'local',
+  );
+
+  if (externalComponents.length === 0) {
+    console.log(chalk.gray('  No external components found'));
     return;
   }
 
-  const data = components.map((comp) => ({
+  const data = externalComponents.map((comp) => ({
     label: comp.name,
     value: comp.count,
   }));

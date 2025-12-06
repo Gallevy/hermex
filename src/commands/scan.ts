@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import ora from 'ora';
 import chalk from 'chalk';
+import path from 'path';
 import { parseFile } from '../swc-parser';
 import type { UsageReport } from '../swc-parser';
 import { aggregateReports } from '../utils/aggregator';
@@ -111,7 +112,17 @@ async function executeScan(pattern: string, options: NormalizedScanOptions) {
 
   try {
     // Parse lockfile once at the beginning
-    const projectPath = process.cwd();
+    // If scanning fixtures, look for lockfile in fixtures directory first
+    let projectPath = process.cwd();
+    if (pattern.includes('fixtures/')) {
+      const fixturesPath = path.join(projectPath, 'fixtures');
+      try {
+        const fixtureResult = findAndParseLockfile(fixturesPath);
+        projectPath = fixturesPath;
+      } catch {
+        // Fall back to project root if no fixtures lockfile found
+      }
+    }
     const lockfileResult = findAndParseLockfile(projectPath);
 
     spinner.succeed(

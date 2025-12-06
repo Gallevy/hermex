@@ -24,23 +24,19 @@ export class PnpmLockfileAdapter implements LockfileAdapter {
         if (rootImporter) {
           // Parse dependencies
           if (rootImporter.dependencies) {
-            Object.entries(rootImporter.dependencies).forEach(
-              ([name, data]: [string, any]) => {
-                if (typeof data === 'object' && data.version) {
-                  versions[name] = data.version;
-                }
-              },
-            );
+            for (const [name, data] of Object.entries(rootImporter.dependencies)) {
+              if (typeof data === 'object' && data !== null && 'version' in data) {
+                versions[name] = (data as any).version;
+              }
+            }
           }
           // Parse devDependencies
           if (rootImporter.devDependencies) {
-            Object.entries(rootImporter.devDependencies).forEach(
-              ([name, data]: [string, any]) => {
-                if (typeof data === 'object' && data.version) {
-                  versions[name] = data.version;
-                }
-              },
-            );
+            for (const [name, data] of Object.entries(rootImporter.devDependencies)) {
+              if (typeof data === 'object' && data !== null && 'version' in data) {
+                versions[name] = (data as any).version;
+              }
+            }
           }
         }
       }

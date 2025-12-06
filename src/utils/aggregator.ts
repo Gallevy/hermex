@@ -107,6 +107,26 @@ export function aggregateReports(
   };
 }
 
+function normalizePackageName(importPath: string): string {
+  // If it's a relative import, return 'local'
+  if (importPath.startsWith('.') || importPath.startsWith('/')) {
+    return 'local';
+  }
+
+  // Handle scoped packages like '@scope/package/subpath' -> '@scope/package'
+  if (importPath.startsWith('@')) {
+    const parts = importPath.split('/');
+    if (parts.length >= 2) {
+      return `${parts[0]}/${parts[1]}`;
+    }
+    return importPath;
+  }
+
+  // Handle non-scoped packages like 'package/subpath' -> 'package'
+  const parts = importPath.split('/');
+  return parts[0];
+}
+
 function findComponentSource(
   componentName: string,
   report: UsageReport,
@@ -115,19 +135,19 @@ function findComponentSource(
   const namedImport = report.patterns.imports.named.find(
     (imp) => imp.name === componentName,
   );
-  if (namedImport) return namedImport.source;
+  if (namedImport) return normalizePackageName(namedImport.source);
 
   // Check default imports
   const defaultImport = report.patterns.imports.default.find(
     (imp) => imp.name === componentName,
   );
-  if (defaultImport) return defaultImport.source;
+  if (defaultImport) return normalizePackageName(defaultImport.source);
 
   // Check aliased imports
   const aliasedImport = report.patterns.imports.aliased.find(
     (imp) => imp.local === componentName,
   );
-  if (aliasedImport) return aliasedImport.source;
+  if (aliasedImport) return normalizePackageName(aliasedImport.source);
 
   return 'unknown';
 }
@@ -218,6 +238,40 @@ function getPatternDisplayName(patternType: string): string {
   return displayNames[patternType] || patternType;
 }
 
+function getPackageVersion(
+  packageName: string,
+  versions: Record<string, string>,
+): string | null {
+  // First try exact match
+  if (versions[packageName]) {
+    return versions[packageName];
+  }
+
+  // Handle subpath imports like '@design-system/foundation/button'
+  // Try to find the base package '@design-system/foundation'
+  if (packageName.includes('/')) {
+    const parts = packageName.split('/');
+
+    // For scoped packages like '@scope/package/subpath'
+    if (packageName.startsWith('@') && parts.length > 2) {
+      const basePackage = `${parts[0]}/${parts[1]}`;
+      if (versions[basePackage]) {
+        return versions[basePackage];
+      }
+    }
+
+    // For non-scoped packages like 'package/subpath'
+    if (!packageName.startsWith('@') && parts.length > 1) {
+      const basePackage = parts[0];
+      if (versions[basePackage]) {
+        return versions[basePackage];
+      }
+    }
+  }
+
+  return null;
+}
+
 function calculatePackageDistribution(
   componentUsageMap: Map<string, ComponentUsage>,
   versions: Record<string, string>,
@@ -237,7 +291,7 @@ function calculatePackageDistribution(
     } else {
       packageMap.set(component.source, {
         packageName: component.source,
-        version: versions[component.source] || null,
+        version: getPackageVersion(component.source, versions),
         componentCount: 1,
         usageCount: component.count,
         percentage: 0,
@@ -246,11 +300,13 @@ function calculatePackageDistribution(
     }
   }
 
-  // Calculate percentages
+  // Calculate percentages based on total external package usage (not all patterns)
   const distribution = Array.from(packageMap.values());
+  const totalExternalUsage = distribution.reduce((sum, pkg) => sum + pkg.usageCount, 0);
+
   for (const pkg of distribution) {
     pkg.percentage =
-      totalUsagePatterns > 0 ? (pkg.usageCount / totalUsagePatterns) * 100 : 0;
+      totalExternalUsage > 0 ? (pkg.usageCount / totalExternalUsage) * 100 : 0;
   }
 
   return distribution.sort((a, b) => b.usageCount - a.usageCount);
