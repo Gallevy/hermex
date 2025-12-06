@@ -18,6 +18,9 @@ interface ScanOptions {
   summary?: string | boolean;
   noSummary?: boolean;
   components?: string;
+  noComponents?: boolean;
+  noPackages?: boolean;
+  noPatterns?: boolean;
   packages?: string;
   patterns?: string;
   ignore?: string | string[];
@@ -30,6 +33,9 @@ interface NormalizedScanOptions {
   summary: 'log' | false;
   noSummary?: boolean;
   components: 'table' | 'chart' | false;
+  noComponents?: boolean;
+  noPackages?: boolean;
+  noPatterns?: boolean;
   packages: 'table' | 'chart' | false;
   patterns: 'table' | 'chart';
   ignore: string[];
@@ -52,7 +58,7 @@ export function registerScanCommand(program: Command) {
       '**/build/**',
     ])
     .option('--allow-packages <pattern>', 'Pattern for what packages to scan', [
-      '*',
+      '**',
     ])
     .option(
       '--ignore-packages <pattern>',
@@ -104,7 +110,7 @@ function normalizeOptions(options: ScanOptions): NormalizedScanOptions {
     patterns: (options.patterns as any) || 'table',
     ignore: normalizeArray(options.ignore),
     allowPackages: normalizeArray(options.allowPackages),
-    ignorePackages: normalizeArray(),
+    ignorePackages: normalizeArray(options.ignorePackages),
   };
 }
 
@@ -116,20 +122,27 @@ async function executeScan(pattern: string, options: NormalizedScanOptions) {
     // Parse lockfile - start from current directory
     const lockfileResult = findAndParseLockfile(process.cwd());
 
-    // const availablePackages = Object.keys(versions);
+    // Filter packages based on allow/ignore patterns
+    const allPackages = Object.keys(lockfileResult.versions);
+    const filteredPackages = allPackages.filter((pkg) => {
+      // Must match allow patterns (default ['*'] = all)
+      const allowed = options.allowPackages.some((p) => minimatch(pkg, p));
 
-    // const filtered = lockfileResult.versions.filter((pkg) => {
-    //   // Must match allow patterns (default ['*'] = all)
-    //   const allowed = options.allowPackages.some((p) => minimatch(pkg, p));
+      // Must NOT match ignore patterns
+      const ignored = options.ignorePackages.some((p) => minimatch(pkg, p));
 
-    //   // Must NOT match ignore patterns
-    //   const ignored = options.ignorePackages.some((p) => minimatch(pkg, p));
+      console.log('PACKAGES:', pkg, allowed, ignored, options.allowPackages);
+      return allowed && !ignored;
+    });
 
-    //   return allowed && !ignored;
-    // });
+    // Create filtered versions object
+    const filteredVersions: Record<string, string> = {};
+    for (const pkg of filteredPackages) {
+      filteredVersions[pkg] = lockfileResult.versions[pkg];
+    }
 
     spinner.succeed(
-      `Found ${lockfileResult.lockfileType} lockfile (supports: ${lockfileResult.supportedVersions.join(', ')}) - ${Object.keys(lockfileResult.versions).length} packages`,
+      `Found ${lockfileResult.lockfileType} lockfile (supports: ${lockfileResult.supportedVersions.join(', ')}) - ${filteredPackages.length}/${allPackages.length} packages`,
     );
 
     // Find files matching pattern
@@ -164,18 +177,18 @@ async function executeScan(pattern: string, options: NormalizedScanOptions) {
     // Calculate elapsed time
     const elapsedTime = (Date.now() - startTime) / 1000;
 
-    // Aggregate reports
-    const aggregated = aggregateReports(reports, lockfileResult.versions);
+    // Aggregate reports using filtered versions
+    const aggregated = aggregateReports(reports, filteredVersions);
 
-    if (options.packages) {
+    if (options.packages && !options.noPackages) {
       printPackages(aggregated, options.packages);
     }
 
-    if (options.components) {
+    if (options.components && !options.noComponents) {
       printComponents(aggregated, options.components);
     }
 
-    if (options.patterns) {
+    if (options.patterns && !options.noPatterns) {
       printPatterns(aggregated, options.patterns);
     }
 
