@@ -27,6 +27,7 @@
     "test:ci": "vitest run",
     "build": "tsup",
     "build:ci": "tsup --clean",
+    "docs:update": "node scripts/update-docs.js",
     "dev:scan": "pnpm run build && cd fixtures && node ../dist/cli.js scan \"**/*.tsx\""
   },
   "keywords": [
