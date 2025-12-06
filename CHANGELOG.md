@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/Gallevy/hermex/compare/v1.1.2...v1.2.0) (2025-12-06)
+
+
+### Features
+
+* add --ignore-errors ([7469d92](https://github.com/Gallevy/hermex/commit/7469d9234d2071c360d9fc08232e417f272570f3))
+
 ## [1.1.2](https://github.com/Gallevy/hermex/compare/v1.1.1...v1.1.2) (2025-12-06)
 
 
