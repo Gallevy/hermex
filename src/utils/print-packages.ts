@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import Table from 'cli-table3';
 import type { AggregatedReport, PackageDistribution } from './aggregator';
+import { formatCount } from './format-utils';
 
 function printHeader() {
   console.log(chalk.blueBright.bold('\n📦 Packages\n'));
@@ -42,8 +43,8 @@ function printPackagesTable(
     table.push([
       pkg.packageName,
       pkg.version || 'N/A',
-      pkg.componentCount.toString(),
-      pkg.usageCount.toString(),
+      formatCount(pkg.componentCount),
+      formatCount(pkg.usageCount),
       `${pkg.percentage.toFixed(1)}%`,
     ]);
   });
@@ -56,7 +57,7 @@ function printPackagesTable(
   );
   console.log(
     chalk.gray(
-      `\nTotal: ${packages.length} packages | ${totalComponents} unique components | ${totalUsage} total usage patterns`,
+      `\nTotal: ${formatCount(packages.length)} packages | ${formatCount(totalComponents)} unique components | ${formatCount(totalUsage)} total usage patterns`,
     ),
   );
 }

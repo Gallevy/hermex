@@ -20,7 +20,7 @@ All contributions must adhere to the following directory structure:
 | `/src` | Source code |
 | `/src/commands` | CLI command implementations |
 | `/docs` | Project documentation |
-| `/code-examples` | Usage examples and demonstrations |
+| `/fixtures` | Code fixtures |
 
 ## Style Guide
 - Follow the existing code style and formatting conventions used throughout the project

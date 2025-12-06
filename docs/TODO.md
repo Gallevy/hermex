@@ -1,8 +1,9 @@
 ## TODO
 - [ ] add support for --allow-packages and --ignore-packages
-- [ ] add support for --packages option to show packages table/chart (table, chart)
 - [ ] add parsing of lock file to understand dependencies better
 - [ ] add version tracking to imports/dependencies
+- [ ] Change the failure pattern, instead of having a condition to check failures, throw error and make sure its properly catched at the end to show the error message with spinner failure
+```
 
 # FUTURE (DO NOT THINK ABOUT AT THE MOMENT)
 - [ ] add props to components tracking

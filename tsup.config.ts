@@ -24,7 +24,5 @@ export default defineConfig({
     'glob',
     'js-yaml',
     'ora',
-    'simple-git',
-    'tmp',
   ],
 });

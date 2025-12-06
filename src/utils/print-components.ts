@@ -4,23 +4,23 @@ import type { AggregatedReport, ComponentUsage } from './aggregator';
 import { renderBarChart } from './chart-renderer';
 
 function printHeader() {
-  console.log(chalk.magenta.bold('\n⚛️  Components Usage\n'));
+  console.log(chalk.magenta.bold('\n⚛️ Components\n'));
 }
 
-export function printComponentsUsage(
+export function printComponents(
   aggregated: AggregatedReport,
   mode: 'table' | 'chart',
 ) {
   const components = aggregated.topComponents;
 
   if (mode === 'table') {
-    printComponentsUsageTable(components);
+    printComponentsTable(components);
   } else if (mode === 'chart') {
-    printComponentsUsageChart(components);
+    printComponentsChart(components);
   }
 }
 
-function printComponentsUsageTable(components: ComponentUsage[]) {
+function printComponentsTable(components: ComponentUsage[]) {
   printHeader();
 
   if (components.length === 0) {
@@ -43,7 +43,7 @@ function printComponentsUsageTable(components: ComponentUsage[]) {
   console.log(table.toString());
 }
 
-function printComponentsUsageChart(components: ComponentUsage[]) {
+function printComponentsChart(components: ComponentUsage[]) {
   printHeader();
 
   if (components.length === 0) {

@@ -4,21 +4,19 @@ import chalk from 'chalk';
 import { parseFile } from '../swc-parser';
 import type { UsageReport } from '../swc-parser';
 import { aggregateReports } from '../utils/aggregator';
-import { printVerbose } from '../utils/print-verbose';
 import { printSummary } from '../utils/print-summary';
 import { printDetails } from '../utils/print-details';
-import { printTopComponents } from '../utils/print-top-components';
-import { printComponentsUsage } from '../utils/print-components-usage';
+import { printComponents } from '../utils/print-components';
 import { printPatterns } from '../utils/print-patterns';
+import { printPackages } from '../utils/print-packages';
 import { findFiles } from '../utils/file-utils';
 import { findAndParseLockfile } from '../utils/lockfile-parser';
-import { printPackages } from '../utils/print-packages';
 
 interface ScanOptions {
   verbose?: boolean;
   summary?: string | boolean;
   details?: boolean;
-  componentsUsage?: string;
+  components?: string;
   packages?: string;
   patterns?: string;
   ignore?: string | string[];
@@ -28,7 +26,7 @@ interface NormalizedScanOptions {
   verbose: boolean;
   summary: 'log' | false;
   details: boolean;
-  componentsUsage: 'table' | 'chart' | false;
+  components: 'table' | 'chart' | false;
   packages: 'table' | 'chart' | false;
   patterns: 'table' | 'chart';
   ignore: string[];
@@ -59,23 +57,26 @@ export function registerScanCommand(program: Command) {
       [],
     )
     .option('--summary [mode]', 'Show summary stats (log, false)', 'log')
+    .option('--no-summary', 'Do not show summary stats')
     .option('--details', 'Show detailed pattern counts')
     .option(
-      '--components-usage [mode]',
+      '--components [mode]',
       'Show components table/chart (table, chart)',
       'table',
     )
+    .option('--no-components', 'Do not show components')
     .option(
       '--packages [mode]',
       'Show packages table/chart (table, chart)',
       'table',
     )
+    .option('--no-packages', 'Do not show packages')
     .option(
       '--patterns [mode]',
       'Show patterns table/chart (table, chart)',
       'table',
     )
-
+    .option('--no-patterns', 'Do not show patterns')
     .action(async (pattern: string, options: ScanOptions) => {
       const normalizedOptions = normalizeOptions(options);
 
@@ -97,16 +98,11 @@ function normalizeOptions(options: ScanOptions): NormalizedScanOptions {
     summary:
       options.summary === false || options.summary === 'false' ? false : 'log',
     details: options.details || false,
-    topComponents: (options.topComponents as any) || 'log',
-    componentsUsage: (options.componentsUsage as any) || 'table',
+    components: (options.components as any) || 'table',
     packages: (options.packages as any) || 'table',
     patterns: (options.patterns as any) || 'table',
     ignore: normalizeIgnorePatterns(options.ignore),
   };
-}
-
-async function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function executeScan(pattern: string, options: NormalizedScanOptions) {
@@ -178,36 +174,24 @@ async function executeScan(pattern: string, options: NormalizedScanOptions) {
     // Aggregate reports
     const aggregated = aggregateReports(reports, lockfileResult.versions);
 
-    // Print outputs based on options
-    console.log(''); // Empty line before output sections
-
-    if (options.summary) {
-      printSummary(aggregated, elapsedTime);
-    }
-
-    if (options.details) {
-      console.log(''); // Empty line between sections
-      printDetails(aggregated);
-    }
-
-    if (options.topComponents) {
-      console.log(''); // Empty line between sections
-      printTopComponents(aggregated, options.topComponents);
-    }
-
-    if (options.componentsUsage) {
-      console.log(''); // Empty line between sections
-      printComponentsUsage(aggregated, options.componentsUsage);
-    }
-
     if (options.packages) {
-      console.log(''); // Empty line between sections
       printPackages(aggregated, options.packages);
     }
 
+    if (options.details) {
+      printDetails(aggregated);
+    }
+
+    if (options.components) {
+      printComponents(aggregated, options.components);
+    }
+
     if (options.patterns) {
-      console.log(''); // Empty line between sections
       printPatterns(aggregated, options.patterns);
+    }
+
+    if (options.summary) {
+      printSummary(aggregated, elapsedTime);
     }
   } catch (error: any) {
     spinner.fail(chalk.red('Analysis failed: ' + error.message));
