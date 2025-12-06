@@ -14,16 +14,13 @@ export function printPackages(
   const packages = aggregated.packageDistribution;
 
   if (mode === 'table') {
-    printPackagesTable(packages, aggregated.totalUsagePatterns);
+    printPackagesTable(packages);
   } else if (mode === 'chart') {
     printPackagesChart(packages);
   }
 }
 
-function printPackagesTable(
-  packages: PackageDistribution[],
-  totalUsage: number,
-) {
+function printPackagesTable(packages: PackageDistribution[]) {
   printHeader();
 
   if (packages.length === 0) {
@@ -55,10 +52,7 @@ function printPackagesTable(
     (sum, p) => sum + p.componentCount,
     0,
   );
-  const totalExternalUsage = packages.reduce(
-    (sum, p) => sum + p.usageCount,
-    0,
-  );
+  const totalExternalUsage = packages.reduce((sum, p) => sum + p.usageCount, 0);
   console.log(
     chalk.gray(
       `\nTotal: ${formatCount(packages.length)} packages | ${formatCount(totalComponents)} unique components | ${formatCount(totalExternalUsage)} total usages`,

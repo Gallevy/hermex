@@ -61,7 +61,11 @@ export function aggregateReports(
         existing.count++;
       } else {
         // Try to find the source from imports
-        const source = findComponentSource(jsx.component, report, availablePackages);
+        const source = findComponentSource(
+          jsx.component,
+          report,
+          availablePackages,
+        );
         componentUsageMap.set(key, {
           name: jsx.component,
           source,
@@ -93,7 +97,6 @@ export function aggregateReports(
   const packageDistribution = calculatePackageDistribution(
     componentUsageMap,
     versions,
-    totalUsagePatterns,
   );
 
   return {
@@ -122,7 +125,9 @@ function resolvePackageFromImportPath(
   // Try to find a matching package from available packages
   // Sort by length (descending) to match most specific package first
   // e.g., '@design-system/foundation' before '@design-system'
-  const sortedPackages = [...availablePackages].sort((a, b) => b.length - a.length);
+  const sortedPackages = [...availablePackages].sort(
+    (a, b) => b.length - a.length,
+  );
 
   for (const pkg of sortedPackages) {
     // Exact match
@@ -149,19 +154,28 @@ function findComponentSource(
   const namedImport = report.patterns.imports.named.find(
     (imp) => imp.name === componentName,
   );
-  if (namedImport) return resolvePackageFromImportPath(namedImport.source, availablePackages);
+  if (namedImport)
+    return resolvePackageFromImportPath(namedImport.source, availablePackages);
 
   // Check default imports
   const defaultImport = report.patterns.imports.default.find(
     (imp) => imp.name === componentName,
   );
-  if (defaultImport) return resolvePackageFromImportPath(defaultImport.source, availablePackages);
+  if (defaultImport)
+    return resolvePackageFromImportPath(
+      defaultImport.source,
+      availablePackages,
+    );
 
   // Check aliased imports
   const aliasedImport = report.patterns.imports.aliased.find(
     (imp) => imp.local === componentName,
   );
-  if (aliasedImport) return resolvePackageFromImportPath(aliasedImport.source, availablePackages);
+  if (aliasedImport)
+    return resolvePackageFromImportPath(
+      aliasedImport.source,
+      availablePackages,
+    );
 
   return 'unknown';
 }
@@ -289,7 +303,6 @@ function getPackageVersion(
 function calculatePackageDistribution(
   componentUsageMap: Map<string, ComponentUsage>,
   versions: Record<string, string>,
-  totalUsagePatterns: number,
 ): PackageDistribution[] {
   const packageMap = new Map<string, PackageDistribution>();
 
@@ -316,7 +329,10 @@ function calculatePackageDistribution(
 
   // Calculate percentages based on total external package usage (not all patterns)
   const distribution = Array.from(packageMap.values());
-  const totalExternalUsage = distribution.reduce((sum, pkg) => sum + pkg.usageCount, 0);
+  const totalExternalUsage = distribution.reduce(
+    (sum, pkg) => sum + pkg.usageCount,
+    0,
+  );
 
   for (const pkg of distribution) {
     pkg.percentage =

@@ -1,4 +1,3 @@
-
 import { NpmLockfileAdapter } from './patterns/npm';
 import { PnpmLockfileAdapter } from './patterns/pnpm';
 import { YarnLockfileAdapter } from './patterns/yarn';
