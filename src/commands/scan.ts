@@ -1,35 +1,38 @@
-import { Command } from 'commander';
+import { Command, Option } from 'commander';
 import ora from 'ora';
 import chalk from 'chalk';
+import { minimatch } from 'minimatch';
 import { parseFile } from '../swc-parser';
 import type { UsageReport } from '../swc-parser';
 import { aggregateReports } from '../utils/aggregator';
 import { printSummary } from '../utils/print-summary';
-import { printDetails } from '../utils/print-details';
 import { printComponents } from '../utils/print-components';
 import { printPatterns } from '../utils/print-patterns';
 import { printPackages } from '../utils/print-packages';
 import { findFiles } from '../utils/file-utils';
 import { findAndParseLockfile } from '../lock-parser';
+import { formatDuration } from '../utils/format-utils';
 
 interface ScanOptions {
   verbose?: boolean;
   summary?: string | boolean;
-  details?: boolean;
   components?: string;
   packages?: string;
   patterns?: string;
   ignore?: string | string[];
+  allowPackages?: string | string[];
+  ignorePackages?: string | string[];
 }
 
 interface NormalizedScanOptions {
   verbose: boolean;
   summary: 'log' | false;
-  details: boolean;
   components: 'table' | 'chart' | false;
   packages: 'table' | 'chart' | false;
   patterns: 'table' | 'chart';
   ignore: string[];
+  allowPackages: string[];
+  ignorePackages: string[];
 }
 
 export function registerScanCommand(program: Command) {
@@ -46,19 +49,14 @@ export function registerScanCommand(program: Command) {
       '**/dist/**',
       '**/build/**',
     ])
-    .option(
-      '--allow-packages <pattern>',
-      'Glob pattern for what packages to scan',
-      'ALL', // TO FIX
-    )
+    .option('--allow-packages <pattern>', 'Pattern for what packages to scan', [
+      '*',
+    ])
     .option(
       '--ignore-packages <pattern>',
-      'Glob pattern for what packages to ignore',
+      'Pattern for what packages to ignore',
       [],
     )
-    .option('--summary [mode]', 'Show summary stats (log, false)', 'log')
-    .option('--no-summary', 'Do not show summary stats')
-    .option('--details', 'Show detailed pattern counts')
     .option(
       '--components [mode]',
       'Show components table/chart (table, chart)',
@@ -84,12 +82,12 @@ export function registerScanCommand(program: Command) {
     });
 }
 
-function normalizeIgnorePatterns(ignore?: string | string[]) {
-  if (!ignore) {
+function normalizeArray(value?: string | string[]) {
+  if (!value) {
     return [];
   }
 
-  return Array.isArray(ignore) ? ignore : [ignore];
+  return Array.isArray(value) ? value : [value];
 }
 
 function normalizeOptions(options: ScanOptions): NormalizedScanOptions {
@@ -97,11 +95,12 @@ function normalizeOptions(options: ScanOptions): NormalizedScanOptions {
     verbose: options.verbose || false,
     summary:
       options.summary === false || options.summary === 'false' ? false : 'log',
-    details: options.details || false,
     components: (options.components as any) || 'table',
     packages: (options.packages as any) || 'table',
     patterns: (options.patterns as any) || 'table',
-    ignore: normalizeIgnorePatterns(options.ignore),
+    ignore: normalizeArray(options.ignore),
+    allowPackages: normalizeArray(options.allowPackages),
+    ignorePackages: normalizeArray(),
   };
 }
 
@@ -113,22 +112,29 @@ async function executeScan(pattern: string, options: NormalizedScanOptions) {
     // Parse lockfile - start from current directory
     const lockfileResult = findAndParseLockfile(process.cwd());
 
-    spinner.succeed(
-      chalk.blue(
-        `📦 Found ${lockfileResult.lockfileType} lockfile (supports: ${lockfileResult.supportedVersions.join(', ')}) - ${Object.keys(lockfileResult.versions).length} packages`,
-      ),
-    );
+    // const availablePackages = Object.keys(versions);
 
-    console.log('availablePackages', lockfileResult); // TODO remove
+    // const filtered = lockfileResult.versions.filter((pkg) => {
+    //   // Must match allow patterns (default ['*'] = all)
+    //   const allowed = options.allowPackages.some((p) => minimatch(pkg, p));
+
+    //   // Must NOT match ignore patterns
+    //   const ignored = options.ignorePackages.some((p) => minimatch(pkg, p));
+
+    //   return allowed && !ignored;
+    // });
+
+    spinner.succeed(
+      `Found ${lockfileResult.lockfileType} lockfile (supports: ${lockfileResult.supportedVersions.join(', ')}) - ${Object.keys(lockfileResult.versions).length} packages`,
+    );
 
     // Find files matching pattern
     spinner.start('Finding files...');
     const files = await findFiles(pattern, options.ignore);
 
     if (files.length === 0) {
-      // spinner.color = 'red'; // It should be red but not working.
-      spinner.fail('TEST');
-      // spinner.fail(chalk.red(` No files found matching pattern: ${pattern}`));
+      spinner.fail(`No files found matching pattern: ${pattern}`);
+
       return;
     }
 
@@ -145,21 +151,11 @@ async function executeScan(pattern: string, options: NormalizedScanOptions) {
         spinner.text = `Analyzing files... (${i + 1}/${files.length})`;
       }
 
-      try {
-        const report = parseFile(file);
-        if (report) {
-          reports.push(report);
-        }
-      } catch (error: any) {
-        spinner.stop();
-        console.error(chalk.red(`Error analyzing ${file}: ${error.message}`));
-        spinner.start();
+      const report = parseFile(file);
+      if (report) {
+        reports.push(report);
       }
     }
-
-    spinner.succeed(
-      chalk.green(`Analysis complete! Analyzed ${reports.length} files`),
-    );
 
     // Calculate elapsed time
     const elapsedTime = (Date.now() - startTime) / 1000;
@@ -171,10 +167,6 @@ async function executeScan(pattern: string, options: NormalizedScanOptions) {
       printPackages(aggregated, options.packages);
     }
 
-    if (options.details) {
-      printDetails(aggregated);
-    }
-
     if (options.components) {
       printComponents(aggregated, options.components);
     }
@@ -184,8 +176,16 @@ async function executeScan(pattern: string, options: NormalizedScanOptions) {
     }
 
     if (options.summary) {
-      printSummary(aggregated, elapsedTime);
+      printSummary(aggregated);
     }
+
+    console.log('');
+
+    spinner.succeed(
+      chalk.green.bold(
+        ` Analysis complete! Analyzed ${reports.length} files in ${formatDuration(elapsedTime)}\n`,
+      ),
+    );
   } catch (error: any) {
     spinner.fail(chalk.red('Analysis failed: ' + error.message));
     console.error(error);

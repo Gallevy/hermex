@@ -23,7 +23,7 @@ export function analyzeVariableDeclaration(
             line: node.span?.start || 0,
           });
           state.componentNames.add(varName);
-          console.log(`📝 Variable assignment: ${varName} = ${assignment}`);
+          // console.log(`📝 Variable assignment: ${varName} = ${assignment}`);
         }
       }
     }
@@ -59,7 +59,7 @@ export function analyzeDestructuringPattern(
           line: pattern.span?.start || 0,
         });
         state.componentNames.add(propName);
-        console.log(`🔧 Destructuring: ${propName} from ${init.value}`);
+        // console.log(`🔧 Destructuring: ${propName} from ${init.value}`);
       }
     }
   }

@@ -21,6 +21,6 @@ export function analyzeConditionalExpression(
       alternate: alternate || '',
       line: node.span?.start || 0,
     });
-    console.log('🔀 Conditional component usage found');
+    // console.log('🔀 Conditional component usage found');
   }
 }
