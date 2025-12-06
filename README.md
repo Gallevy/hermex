@@ -85,7 +85,7 @@ Options:
   --ignore <pattern>           Glob pattern for files to ignore (default:
                                ["**/node_modules/**","**/dist/**","**/build/**"])
   --allow-packages <pattern>   Pattern for what packages to scan (default:
-                               ["*"])
+                               ["**"])
   --ignore-packages <pattern>  Pattern for what packages to ignore (default: [])
   --no-summary                 Hide summary
   --components [mode]          Show components table/chart (table, chart)
