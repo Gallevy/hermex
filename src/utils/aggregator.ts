@@ -1,4 +1,4 @@
-import type { UsageReport } from '../swc-parser';
+import type { UsageReport, ParseError } from '../swc-parser/types';
 
 export interface ComponentUsage {
   name: string;
@@ -33,11 +33,13 @@ export interface AggregatedReport {
   allComponents: string[];
   packageDistribution: PackageDistribution[];
   reports: UsageReport[];
+  errors: ParseError[];
 }
 
 export function aggregateReports(
   reports: UsageReport[],
   versions: Record<string, string> = {},
+  errors: ParseError[] = [],
 ): AggregatedReport {
   const componentUsageMap = new Map<string, ComponentUsage>();
   let totalImports = 0;
@@ -110,6 +112,7 @@ export function aggregateReports(
     allComponents,
     packageDistribution,
     reports,
+    errors,
   };
 }
 

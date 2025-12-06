@@ -147,4 +147,10 @@ export interface UsageReport {
 
 export interface ParseOptions {
   libraryName?: string; // Optional library filter (for backward compatibility)
+  ignoreErrors?: boolean; // If true, catch parse errors and return error info instead of throwing
+}
+
+export interface ParseError {
+  file: string;
+  message: string;
 }

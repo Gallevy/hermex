@@ -3,12 +3,13 @@ import ora from 'ora';
 import chalk from 'chalk';
 import { minimatch } from 'minimatch';
 import { parseFile } from '../swc-parser';
-import type { UsageReport } from '../swc-parser';
+import type { UsageReport, ParseError } from '../swc-parser/types';
 import { aggregateReports } from '../utils/aggregator';
 import { printSummary } from '../utils/print-summary';
 import { printComponents } from '../utils/print-components';
 import { printPatterns } from '../utils/print-patterns';
 import { printPackages } from '../utils/print-packages';
+import { printErrors } from '../utils/print-errors';
 import { findFiles } from '../utils/file-utils';
 import { findAndParseLockfile } from '../lock-parser';
 import { formatDuration } from '../utils/format-utils';
@@ -26,6 +27,7 @@ interface ScanOptions {
   ignore?: string | string[];
   allowPackages?: string | string[];
   ignorePackages?: string | string[];
+  ignoreErrors?: boolean;
 }
 
 interface NormalizedScanOptions {
@@ -41,6 +43,7 @@ interface NormalizedScanOptions {
   ignore: string[];
   allowPackages: string[];
   ignorePackages: string[];
+  ignoreErrors: boolean;
 }
 
 export function registerScanCommand(program: Command) {
@@ -84,6 +87,10 @@ export function registerScanCommand(program: Command) {
       'table',
     )
     .option('--no-patterns', 'Do not show patterns')
+    .option(
+      '--ignore-errors',
+      'Continue scanning even if some files fail to parse',
+    )
     .action(async (pattern: string, options: ScanOptions) => {
       const normalizedOptions = normalizeOptions(options);
 
@@ -111,6 +118,7 @@ function normalizeOptions(options: ScanOptions): NormalizedScanOptions {
     ignore: normalizeArray(options.ignore),
     allowPackages: normalizeArray(options.allowPackages),
     ignorePackages: normalizeArray(options.ignorePackages),
+    ignoreErrors: options.ignoreErrors || false,
   };
 }
 
@@ -159,6 +167,7 @@ async function executeScan(pattern: string, options: NormalizedScanOptions) {
     // Analyze all files
     spinner.start('Analyzing files...');
     const reports: UsageReport[] = [];
+    const errors: ParseError[] = [];
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
@@ -167,17 +176,39 @@ async function executeScan(pattern: string, options: NormalizedScanOptions) {
         spinner.text = `Analyzing files... (${i + 1}/${files.length})`;
       }
 
-      const report = parseFile(file);
-      if (report) {
-        reports.push(report);
+      try {
+        const report = parseFile(file, { ignoreErrors: options.ignoreErrors });
+        if (report) {
+          reports.push(report);
+        } else if (options.ignoreErrors) {
+          // parseFile returned null due to error (ignoreErrors mode)
+          errors.push({
+            file,
+            message: 'Failed to parse file',
+          });
+        }
+      } catch (error: any) {
+        // Error thrown (default mode, ignoreErrors=false)
+        if (options.ignoreErrors) {
+          errors.push({
+            file,
+            message: error.message || 'Unknown error',
+          });
+        } else {
+          // Re-throw to maintain default crash behavior
+          throw error;
+        }
       }
     }
 
     // Calculate elapsed time
     const elapsedTime = (Date.now() - startTime) / 1000;
 
-    // Aggregate reports using filtered versions
-    const aggregated = aggregateReports(reports, filteredVersions);
+    // Aggregate reports using filtered versions and errors
+    const aggregated = aggregateReports(reports, filteredVersions, errors);
+
+    // Print errors first if any exist
+    printErrors(aggregated);
 
     if (options.packages && !options.noPackages) {
       printPackages(aggregated, options.packages);
@@ -197,11 +228,18 @@ async function executeScan(pattern: string, options: NormalizedScanOptions) {
 
     console.log('');
 
-    spinner.succeed(
-      chalk.green.bold(
-        ` Analysis complete! Analyzed ${reports.length} files in ${formatDuration(elapsedTime)}\n`,
-      ),
-    );
+    const successMessage =
+      aggregated.errors.length > 0
+        ? ` Analysis complete with ${aggregated.errors.length} error(s)! Analyzed ${reports.length}/${files.length} files in ${formatDuration(elapsedTime)}\n`
+        : ` Analysis complete! Analyzed ${reports.length} files in ${formatDuration(elapsedTime)}\n`;
+
+    if (aggregated.errors.length > 0) {
+      spinner.warn(chalk.yellow.bold(successMessage));
+      // Exit with error code if errors were found
+      process.exit(1);
+    } else {
+      spinner.succeed(chalk.green.bold(successMessage));
+    }
   } catch (error: any) {
     spinner.fail(chalk.red('Analysis failed: ' + error.message));
     console.error(error);
