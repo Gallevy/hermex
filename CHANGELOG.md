@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/Gallevy/hermex/compare/v1.0.0...v1.1.0) (2025-12-06)
+
+
+### Features
+
+* add lock file detection ([a35bd77](https://github.com/Gallevy/hermex/commit/a35bd77ca243a0eb7fc049138c1305f67c121a7a))
+
 # 1.0.0 (2025-12-05)
 
 
