@@ -17,12 +17,19 @@ const packageJson = JSON.parse(
   fs.readFileSync(path.join(__dirname, '../package.json'), 'utf8'),
 );
 
+function stripAnsiCodes(str) {
+  // Remove ANSI escape codes for colors and formatting
+  return str.replace(/\x1b\[[0-9;]*m/g, '');
+}
+
 function getCliOutput(command) {
   try {
-    return execSync(`node dist/cli.js ${command}`, {
+    const output = execSync(`node dist/cli.js ${command}`, {
       encoding: 'utf8',
       cwd: path.join(__dirname, '..'),
+      env: { ...process.env, NO_COLOR: '1', FORCE_COLOR: '0' },
     }).trim();
+    return stripAnsiCodes(output);
   } catch (error) {
     console.error(`Error getting CLI output for: ${command}, error: ${error}`);
     return '';
@@ -41,13 +48,13 @@ function getPackageValue(field) {
 function updateContent(content) {
   let updated = content;
 
-  // Replace CLI command outputs
+  // Replace CLI command outputs (inline - no code block wrapping)
   // Match pattern: <!-- @cli command args -->
   const cliRegex = /<!--\s*@cli\s+(.+?)\s*-->/g;
   updated = updated.replace(cliRegex, (match, command) => {
     console.log(`  Replacing CLI command: ${command}`);
     const output = getCliOutput(command);
-    return `\`\`\`\n${output}\n\`\`\``;
+    return output;
   });
 
   // Replace package.json values

@@ -1,4 +1,4 @@
-import { Command, Option } from 'commander';
+import { Command } from 'commander';
 import ora from 'ora';
 import chalk from 'chalk';
 import { minimatch } from 'minimatch';
@@ -16,6 +16,7 @@ import { formatDuration } from '../utils/format-utils';
 interface ScanOptions {
   verbose?: boolean;
   summary?: string | boolean;
+  noSummary?: boolean;
   components?: string;
   packages?: string;
   patterns?: string;
@@ -27,6 +28,7 @@ interface ScanOptions {
 interface NormalizedScanOptions {
   verbose: boolean;
   summary: 'log' | false;
+  noSummary?: boolean;
   components: 'table' | 'chart' | false;
   packages: 'table' | 'chart' | false;
   patterns: 'table' | 'chart';
@@ -57,6 +59,7 @@ export function registerScanCommand(program: Command) {
       'Pattern for what packages to ignore',
       [],
     )
+    .option('--no-summary', 'Hide summary', 'table')
     .option(
       '--components [mode]',
       'Show components table/chart (table, chart)',
@@ -95,6 +98,7 @@ function normalizeOptions(options: ScanOptions): NormalizedScanOptions {
     verbose: options.verbose || false,
     summary:
       options.summary === false || options.summary === 'false' ? false : 'log',
+    noSummary: options.noSummary || false,
     components: (options.components as any) || 'table',
     packages: (options.packages as any) || 'table',
     patterns: (options.patterns as any) || 'table',
@@ -175,7 +179,7 @@ async function executeScan(pattern: string, options: NormalizedScanOptions) {
       printPatterns(aggregated, options.patterns);
     }
 
-    if (options.summary) {
+    if (options.summary && !options.noSummary) {
       printSummary(aggregated);
     }
 
