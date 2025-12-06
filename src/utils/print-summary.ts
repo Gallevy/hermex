@@ -11,13 +11,6 @@ export function printSummary(
   aggregated: AggregatedReport,
   elapsedTimeSeconds: number,
 ) {
-  // Print elapsed time outside the table
-  console.log(
-    chalk.green(
-      `Analysis completed successfully in ${formatDuration(elapsedTimeSeconds)}\n`,
-    ),
-  );
-
   printHeader();
 
   const table = new Table({
@@ -47,4 +40,11 @@ export function printSummary(
   );
 
   console.log(table.toString());
+
+  // Print elapsed time outside the table
+  console.log(
+    chalk.green(
+      `Analysis completed successfully in ${formatDuration(elapsedTimeSeconds)}\n`,
+    ),
+  );
 }

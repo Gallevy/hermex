@@ -25,17 +25,15 @@ npx hermex scan "src/**/*.tsx"
 ## 📊 Key Features
 
 - **Fast SWC-based Parsing**: Lightning-fast static analysis using SWC's Rust-based parser
-- **Pattern Detection**: Identifies 16+ React usage patterns including:
+- **Pattern Detection**: Identifies 10+ React usage patterns including:
   - Direct imports and JSX usage
   - Variable assignments and destructuring
   - Conditional usage and object mappings
-  - Lazy loading and dynamic imports
-  - HOC wrapping and memoization
-  - Portal usage and context integration
+  - Namespace imports and aliased imports
+  - Portal usage
 - **Version Tracking**: Components reported with exact package versions from lockfiles
 - **Multi-Lockfile Support**: Parses package-lock.json, yarn.lock, and pnpm-lock.yaml
-- **Flexible Output**: Console, table, and chart formats
-- **Complexity Scoring**: Categorizes usage patterns by complexity
+- **Flexible Output**: Table and chart visualization formats
 - **Zero Configuration**: Works out of the box with sensible defaults
 
 ## 📋 Commands
@@ -59,12 +57,17 @@ hermex scan [pattern] [options]
 | Option | Description | Values | Default |
 |--------|-------------|--------|---------|
 | `--ignore <pattern>` | Glob pattern for files to ignore | Any glob pattern | `**/node_modules/**`, `**/dist/**`, `**/build/**` |
-| `--verbose` | Show detailed file-by-file analysis | `true`/`false` | `false` |
+| `--allow-packages <pattern>` | Glob pattern for packages to scan | Any glob pattern | `ALL` |
+| `--ignore-packages <pattern>` | Glob pattern for packages to ignore | Any glob pattern | None |
 | `--summary [mode]` | Show summary statistics | `log`, `false` | `log` |
-| `--details` | Show detailed pattern counts | `true`/`false` | `false` |
-| `--top-components [mode]` | Show top components | `log`, `table`, `chart` | `log` |
-| `--components-usage [mode]` | Show components usage table/chart | `table`, `chart` | `table` |
+| `--no-summary` | Do not show summary stats | - | - |
+| `--details` | Show detailed pattern counts | - | `false` |
+| `--components [mode]` | Show components table/chart | `table`, `chart` | `table` |
+| `--no-components` | Do not show components | - | - |
+| `--packages [mode]` | Show packages table/chart | `table`, `chart` | `table` |
+| `--no-packages` | Do not show packages | - | - |
 | `--patterns [mode]` | Show patterns table/chart | `table`, `chart` | `table` |
+| `--no-patterns` | Do not show patterns | - | - |
 
 #### Examples
 
@@ -75,49 +78,59 @@ hermex scan
 # Scan specific directory
 hermex scan "src/**/*.tsx"
 
-# Verbose output
-hermex scan "src/**/*.tsx" --verbose
-
-# Show only summary and top components
-hermex scan "src/**/*.tsx" --components-usage false --patterns false
+# Show only summary and components
+hermex scan --no-patterns --no-packages
 
 # Chart visualization
-hermex scan "src/**/*.tsx" --top-components chart --components-usage chart
+hermex scan --components chart --patterns chart
 
-# Detailed analysis
-hermex scan "src/**/*.tsx" --details --verbose
+# Minimal output
+hermex scan --no-summary --no-patterns
 ```
 
 ## 🎯 Example Output
 
-### Summary Statistics
+### Lockfile Detection
 ```
-[SUMMARY] Analysis completed successfully in 0.1s
-[SUMMARY] Files analyzed: 42
-[SUMMARY] Total imports: 156
-[SUMMARY] Total components: 38
+✔ 📦 Found pnpm lockfile (supports: v5, v6, v9) - 156 packages
 ```
 
-### Top Components
+### File Analysis
 ```
-🏆 Top Components
-
-[TOP-COMPONENTS] 🥇 1. Button from @design-system/button: 45 uses
-[TOP-COMPONENTS] 🥈 2. Card from @design-system/card: 32 uses
-[TOP-COMPONENTS] 🥉 3. Input from @design-system/input: 28 uses
+✔  Found 42 files
+✔ Analysis complete! Analyzed 42 files
 ```
 
-### Components Usage Table
+### Packages Table
 ```
-⚛️ Components Usage
+📦 Packages
 
-┌────────────┬──────────────────────────┬─────────┬───────┐
-│ Component  │ Source                   │ Version │ Count │
-├────────────┼──────────────────────────┼─────────┼───────┤
-│ Button     │ @design-system/button    │ 2.1.5   │ 45    │
-│ Card       │ @design-system/card      │ 1.8.3   │ 32    │
-│ Input      │ @design-system/input     │ 2.0.1   │ 28    │
-└────────────┴──────────────────────────┴─────────┴───────┘
+┌───────────────────────────┬─────────┬────────────┬───────┬────────────┐
+│ Package                   │ Version │ Components │ Usage │ Percentage │
+├───────────────────────────┼─────────┼────────────┼───────┼────────────┤
+│ @design-system/foundation │ 2.5.3   │ 9          │ 23    │ 88.5%      │
+├───────────────────────────┼─────────┼────────────┼───────┼────────────┤
+│ react                     │ 18.3.1  │ 1          │ 3     │ 11.5%      │
+└───────────────────────────┴─────────┴────────────┴───────┴────────────┘
+
+Total: 2 packages | 10 unique components | 26 total usages
+```
+
+### Components Table
+```
+⚛️  Components
+
+┌────────────┬───────────────────────────┬───────┐
+│ Component  │ Package                   │ Count │
+├────────────┼───────────────────────────┼───────┤
+│ Button     │ @design-system/foundation │ 5     │
+├────────────┼───────────────────────────┼───────┤
+│ Card       │ @design-system/foundation │ 5     │
+├────────────┼───────────────────────────┼───────┤
+│ Input      │ @design-system/foundation │ 4     │
+├────────────┼───────────────────────────┼───────┤
+│ Typography │ @design-system/foundation │ 4     │
+└────────────┴───────────────────────────┴───────┘
 ```
 
 ### Code Patterns
@@ -128,13 +141,38 @@ hermex scan "src/**/*.tsx" --details --verbose
 │ Pattern              │ Count │
 ├──────────────────────┼───────┤
 │ JSX Usage            │ 145   │
+├──────────────────────┼───────┤
 │ Named Imports        │ 89    │
+├──────────────────────┼───────┤
 │ Default Imports      │ 67    │
+├──────────────────────┼───────┤
 │ Variable Assignments │ 23    │
+├──────────────────────┼───────┤
 │ Object Mappings      │ 15    │
+├──────────────────────┼───────┤
 │ Conditional Usage    │ 12    │
-│ Lazy Loading         │ 8     │
 └──────────────────────┴───────┘
+
+Total: 146 patterns detected
+```
+
+### Summary Statistics
+```
+📊 Summary
+
+┌─────────────────────┬───────┐
+│ Metric              │ Count │
+├─────────────────────┼───────┤
+│ Files Analyzed      │ 8     │
+├─────────────────────┼───────┤
+│ External Packages   │ 2     │
+├─────────────────────┼───────┤
+│ External Components │ 10    │
+├─────────────────────┼───────┤
+│ Total Usages        │ 26    │
+└─────────────────────┴───────┘
+
+Analysis completed successfully in 0.1s
 ```
 
 ## 📚 Documentation
@@ -155,22 +193,8 @@ hermex scan "src/**/*.tsx" --details --verbose
 
 ## 🔍 Pattern Detection
 
-Hermex detects 16+ React component usage patterns with varying complexity levels:
-
-| Pattern | Complexity | Examples |
-|---------|------------|----------|
-| Direct Import & Usage | 1/10 | `import Button from '@lib/button'` |
-| Named Import with Alias | 2/10 | `import { Button as Btn } from '@lib'` |
-| Variable Assignment | 3/10 | `const MyButton = Button` |
-| Destructuring Usage | 4/10 | `const { Button } = Foundation` |
-| Object Mapping | 5/10 | `const map = { btn: Button }` |
-| Lazy Loading | 6/10 | `lazy(() => import('@lib/button'))` |
-| Dynamic Import | 7/10 | `await import('@lib/button')` |
-| HOC Wrapping | 7/10 | `withWrapper(Button)` |
-| Context Integration | 7/10 | `useContext(ComponentContext)` |
-| Portal Usage | 8/10 | `createPortal(<Button />)` |
-
-See the [Patterns Guide](./docs/PATTERNS.md) for complete details.
+Hermex detects 10+ React component usage patterns.
+See the [Patterns](./docs/PATTERNS.md) for complete details.
 
 ## 🛠️ Tech Stack
 - **Runtime**: Node.js 24
