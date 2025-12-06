@@ -1,3 +1,13 @@
+## [1.1.2](https://github.com/Gallevy/hermex/compare/v1.1.1...v1.1.2) (2025-12-06)
+
+
+### Bug Fixes
+
+* --allow-packages & --ignore-packages ([cde1cab](https://github.com/Gallevy/hermex/commit/cde1cabd6d88a51c118a17f9d8b59db3136f1b5f))
+* docs ([e5266c1](https://github.com/Gallevy/hermex/commit/e5266c16121c1f294973abba95296f9d49963316))
+* lint ([a02bd48](https://github.com/Gallevy/hermex/commit/a02bd486d0a8a0c970083a286db3adec2cd27d39))
+* lint ([de0fcf2](https://github.com/Gallevy/hermex/commit/de0fcf2ed233532e256e35e3b4b19c43b6f52e9c))
+
 ## [1.1.1](https://github.com/Gallevy/hermex/compare/v1.1.0...v1.1.1) (2025-12-06)
 
 
