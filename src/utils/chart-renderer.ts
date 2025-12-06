@@ -1,4 +1,5 @@
 import chalk from 'chalk';
+import { formatCount } from './format-utils';
 
 export interface ChartData {
   label: string;
@@ -50,7 +51,7 @@ export function renderBarChart(data: ChartData[], options: ChartOptions = {}) {
       chalk.gray(emptyChar.repeat(emptyLength));
 
     // Build value string
-    const valueStr = showValues ? ` ${item.value.toLocaleString()}` : '';
+    const valueStr = showValues ? ` ${formatCount(item.value)}` : '';
 
     console.log(`${paddedLabel} ${bar}${valueStr}\n`);
   }
