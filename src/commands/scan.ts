@@ -10,7 +10,7 @@ import { printComponents } from '../utils/print-components';
 import { printPatterns } from '../utils/print-patterns';
 import { printPackages } from '../utils/print-packages';
 import { findFiles } from '../utils/file-utils';
-import { findAndParseLockfile } from '../utils/lockfile-parser';
+import { findAndParseLockfile } from '../lock-parser';
 
 interface ScanOptions {
   verbose?: boolean;
@@ -49,7 +49,7 @@ export function registerScanCommand(program: Command) {
     .option(
       '--allow-packages <pattern>',
       'Glob pattern for what packages to scan',
-      'ALL',
+      'ALL', // TO FIX
     )
     .option(
       '--ignore-packages <pattern>',
@@ -114,19 +114,11 @@ async function executeScan(pattern: string, options: NormalizedScanOptions) {
     const projectPath = process.cwd();
     const lockfileResult = findAndParseLockfile(projectPath);
 
-    if (!lockfileResult.found) {
-      spinner.warn(
-        chalk.yellow(
-          '⚠️  No lockfile found. Version information will not be available.',
-        ),
-      );
-    } else {
-      spinner.succeed(
-        chalk.blue(
-          `📦 Found ${lockfileResult.lockfileType} lockfile (supports: ${lockfileResult.supportedVersions.join(', ')}) - ${Object.keys(lockfileResult.versions).length} packages`,
-        ),
-      );
-    }
+    spinner.succeed(
+      chalk.blue(
+        `📦 Found ${lockfileResult.lockfileType} lockfile (supports: ${lockfileResult.supportedVersions.join(', ')}) - ${Object.keys(lockfileResult.versions).length} packages`,
+      ),
+    );
 
     // Find files matching pattern
     spinner.start('Finding files...');
