@@ -2,8 +2,8 @@ import { defineConfig } from 'tsup';
 
 export default defineConfig({
   entry: ['src/cli.ts'],
-  format: ['cjs'], // FIXME: We can use more modern format
-  target: 'node14', // FIXME: This should be updated to the latest LTS version
+  format: ['cjs'], // FIXME We can use more modern format
+  target: 'node14', // FIXME This should be updated to the latest LTS version
   outDir: 'dist',
   clean: true,
   sourcemap: true,
@@ -24,7 +24,5 @@ export default defineConfig({
     'glob',
     'js-yaml',
     'ora',
-    'simple-git',
-    'tmp',
   ],
 });

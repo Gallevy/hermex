@@ -1,0 +1,244 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Parser - Direct Import > should parse direct import 1`] = `
+{
+  "components": [
+    "Button",
+    "ButtonFromOld",
+    "Card",
+    "Input",
+    "Typography",
+  ],
+  "patterns": {
+    "advanced": {
+      "dynamic": [],
+      "forwardRef": [],
+      "hoc": [],
+      "lazy": [],
+      "memo": [],
+      "portal": [],
+    },
+    "imports": {
+      "aliased": [],
+      "default": [
+        {
+          "line": 52,
+          "name": "Button",
+          "source": "@design-system/foundation/button",
+        },
+        {
+          "line": 107,
+          "name": "Input",
+          "source": "@design-system/foundation/input",
+        },
+        {
+          "line": 160,
+          "name": "Card",
+          "source": "@design-system/foundation/card",
+        },
+        {
+          "line": 267,
+          "name": "ButtonFromOld",
+          "source": "@old-system/ui/button",
+        },
+      ],
+      "named": [
+        {
+          "line": 211,
+          "name": "Typography",
+          "source": "@design-system/foundation",
+        },
+      ],
+      "namespace": [],
+    },
+    "props": [
+      {
+        "analysis": {
+          "hasComplexProps": false,
+          "hasEventHandlers": true,
+          "hasSpread": false,
+          "namedProps": [
+            "variant",
+            "disabled",
+            "onClick",
+          ],
+          "propDetails": [
+            {
+              "isComplex": false,
+              "isEventHandler": false,
+              "name": "variant",
+              "type": "string",
+            },
+            {
+              "isComplex": false,
+              "isEventHandler": false,
+              "name": "disabled",
+              "type": "boolean",
+            },
+            {
+              "isComplex": false,
+              "isEventHandler": true,
+              "name": "onClick",
+              "type": "function",
+            },
+          ],
+        },
+        "component": "Button",
+      },
+      {
+        "analysis": {
+          "hasComplexProps": false,
+          "hasEventHandlers": false,
+          "hasSpread": false,
+          "namedProps": [
+            "placeholder",
+          ],
+          "propDetails": [
+            {
+              "isComplex": false,
+              "isEventHandler": false,
+              "name": "placeholder",
+              "type": "string",
+            },
+          ],
+        },
+        "component": "Input",
+      },
+      {
+        "analysis": {
+          "hasComplexProps": false,
+          "hasEventHandlers": false,
+          "hasSpread": false,
+          "namedProps": [
+            "title",
+          ],
+          "propDetails": [
+            {
+              "isComplex": false,
+              "isEventHandler": false,
+              "name": "title",
+              "type": "string",
+            },
+          ],
+        },
+        "component": "Card",
+      },
+      {
+        "analysis": {
+          "hasComplexProps": false,
+          "hasEventHandlers": false,
+          "hasSpread": false,
+          "namedProps": [
+            "variant",
+          ],
+          "propDetails": [
+            {
+              "isComplex": false,
+              "isEventHandler": false,
+              "name": "variant",
+              "type": "string",
+            },
+          ],
+        },
+        "component": "Typography",
+      },
+    ],
+    "usage": {
+      "arrays": [],
+      "conditional": [],
+      "destructuring": [],
+      "jsx": [
+        {
+          "component": "Button",
+          "context": "jsx",
+          "line": 664,
+          "props": [],
+          "propsAnalysis": {
+            "hasComplexProps": false,
+            "hasEventHandlers": false,
+            "hasSpread": false,
+            "namedProps": [],
+            "propDetails": [],
+          },
+        },
+        {
+          "component": "Input",
+          "context": "jsx",
+          "line": 1003,
+          "props": [
+            "placeholder",
+          ],
+          "propsAnalysis": {
+            "hasComplexProps": false,
+            "hasEventHandlers": false,
+            "hasSpread": false,
+            "namedProps": [
+              "placeholder",
+            ],
+            "propDetails": [
+              {
+                "isComplex": false,
+                "isEventHandler": false,
+                "name": "placeholder",
+                "type": "string",
+              },
+            ],
+          },
+        },
+        {
+          "component": "Card",
+          "context": "jsx",
+          "line": 1320,
+          "props": [
+            "title",
+            "variant",
+          ],
+          "propsAnalysis": {
+            "hasComplexProps": false,
+            "hasEventHandlers": false,
+            "hasSpread": false,
+            "namedProps": [
+              "title",
+              "variant",
+            ],
+            "propDetails": [
+              {
+                "isComplex": false,
+                "isEventHandler": false,
+                "name": "title",
+                "type": "string",
+              },
+              {
+                "isComplex": false,
+                "isEventHandler": false,
+                "name": "variant",
+                "type": "string",
+              },
+            ],
+          },
+        },
+        {
+          "component": "Typography",
+          "context": "jsx",
+          "line": 1375,
+          "props": [],
+          "propsAnalysis": {
+            "hasComplexProps": false,
+            "hasEventHandlers": false,
+            "hasSpread": false,
+            "namedProps": [],
+            "propDetails": [],
+          },
+        },
+      ],
+      "objects": [],
+      "variables": [],
+    },
+  },
+  "summary": {
+    "totalComponents": 5,
+    "totalImports": 5,
+    "totalUsagePatterns": 13,
+  },
+}
+`;
