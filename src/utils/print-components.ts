@@ -4,7 +4,8 @@ import type { AggregatedReport, ComponentUsage } from './aggregator';
 import { renderBarChart } from './chart-renderer';
 
 function printHeader() {
-  console.log(chalk.magenta.bold('\n⚛️ Components\n'));
+  // FIXME why double space, if single space output is wrong somehow?
+  console.log(chalk.magenta.bold('\n⚛️  Components\n'));
 }
 
 export function printComponents(
