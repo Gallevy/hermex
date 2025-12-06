@@ -19,6 +19,7 @@ const packageJson = JSON.parse(
 
 function stripAnsiCodes(str) {
   // Remove ANSI escape codes for colors and formatting
+  // eslint-disable-next-line no-control-regex -- intentionally matching ANSI escape sequences
   return str.replace(/\x1b\[[0-9;]*m/g, '');
 }
 
