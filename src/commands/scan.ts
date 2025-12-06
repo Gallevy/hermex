@@ -119,6 +119,8 @@ async function executeScan(pattern: string, options: NormalizedScanOptions) {
       ),
     );
 
+    console.log('availablePackages', lockfileResult); // TODO remove
+
     // Find files matching pattern
     spinner.start('Finding files...');
     const files = await findFiles(pattern, options.ignore);

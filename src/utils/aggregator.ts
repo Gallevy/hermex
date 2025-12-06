@@ -119,6 +119,7 @@ function resolvePackageFromImportPath(
 ): string {
   // If it's a relative import, return 'local'
   if (importPath.startsWith('.') || importPath.startsWith('/')) {
+    console.log('importPath', importPath); // TODO remove
     return 'local';
   }
 

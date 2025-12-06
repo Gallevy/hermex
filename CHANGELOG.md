@@ -1,3 +1,10 @@
+## [1.1.1-beta.1](https://github.com/Gallevy/hermex/compare/v1.1.0...v1.1.1-beta.1) (2025-12-06)
+
+
+### Bug Fixes
+
+* bin execution issue ([f844cd0](https://github.com/Gallevy/hermex/commit/f844cd0e1ee8b9aba271fb51f5739f4679a2b73c))
+
 # [1.1.0](https://github.com/Gallevy/hermex/compare/v1.0.0...v1.1.0) (2025-12-06)
 
 
