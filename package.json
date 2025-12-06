@@ -1,6 +1,6 @@
 {
   "name": "hermex",
-  "version": "1.1.0",
+  "version": "1.1.1-beta.1",
   "type": "module",
   "description": "SWC-based AST parser for analyzing code and React component usage patterns across entire codebases",
   "homepage": "https://github.com/Gallevy/hermex",
