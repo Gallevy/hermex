@@ -44,6 +44,9 @@ export function aggregateReports(
   let totalUsagePatterns = 0;
   const patternCountMap = new Map<string, number>();
 
+  // Create package resolver with available packages from lockfile
+  const availablePackages = Object.keys(versions);
+
   // Aggregate data from all reports
   for (const report of reports) {
     totalImports += report.summary.totalImports;
@@ -58,7 +61,7 @@ export function aggregateReports(
         existing.count++;
       } else {
         // Try to find the source from imports
-        const source = findComponentSource(jsx.component, report);
+        const source = findComponentSource(jsx.component, report, availablePackages);
         componentUsageMap.set(key, {
           name: jsx.component,
           source,
@@ -107,47 +110,58 @@ export function aggregateReports(
   };
 }
 
-function normalizePackageName(importPath: string): string {
+function resolvePackageFromImportPath(
+  importPath: string,
+  availablePackages: string[],
+): string {
   // If it's a relative import, return 'local'
   if (importPath.startsWith('.') || importPath.startsWith('/')) {
     return 'local';
   }
 
-  // Handle scoped packages like '@scope/package/subpath' -> '@scope/package'
-  if (importPath.startsWith('@')) {
-    const parts = importPath.split('/');
-    if (parts.length >= 2) {
-      return `${parts[0]}/${parts[1]}`;
+  // Try to find a matching package from available packages
+  // Sort by length (descending) to match most specific package first
+  // e.g., '@design-system/foundation' before '@design-system'
+  const sortedPackages = [...availablePackages].sort((a, b) => b.length - a.length);
+
+  for (const pkg of sortedPackages) {
+    // Exact match
+    if (importPath === pkg) {
+      return pkg;
     }
-    return importPath;
+
+    // Subpath import match (e.g., '@design-system/foundation/button' matches '@design-system/foundation')
+    if (importPath.startsWith(`${pkg}/`)) {
+      return pkg;
+    }
   }
 
-  // Handle non-scoped packages like 'package/subpath' -> 'package'
-  const parts = importPath.split('/');
-  return parts[0];
+  // If no package matches, it's likely not in the lockfile
+  return 'unknown';
 }
 
 function findComponentSource(
   componentName: string,
   report: UsageReport,
+  availablePackages: string[],
 ): string {
   // Check named imports
   const namedImport = report.patterns.imports.named.find(
     (imp) => imp.name === componentName,
   );
-  if (namedImport) return normalizePackageName(namedImport.source);
+  if (namedImport) return resolvePackageFromImportPath(namedImport.source, availablePackages);
 
   // Check default imports
   const defaultImport = report.patterns.imports.default.find(
     (imp) => imp.name === componentName,
   );
-  if (defaultImport) return normalizePackageName(defaultImport.source);
+  if (defaultImport) return resolvePackageFromImportPath(defaultImport.source, availablePackages);
 
   // Check aliased imports
   const aliasedImport = report.patterns.imports.aliased.find(
     (imp) => imp.local === componentName,
   );
-  if (aliasedImport) return normalizePackageName(aliasedImport.source);
+  if (aliasedImport) return resolvePackageFromImportPath(aliasedImport.source, availablePackages);
 
   return 'unknown';
 }
