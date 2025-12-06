@@ -38,13 +38,24 @@ export function parseCode(
 
 /**
  * Parses a file and analyzes React component usage patterns
+ * Returns null if parsing fails and ignoreErrors is true
+ * Throws error if parsing fails and ignoreErrors is false (default)
  */
 export function parseFile(
   filePath: string,
   options: ParseOptions = {},
 ): UsageReport | null {
-  const code = fs.readFileSync(filePath, 'utf8');
-  return parseCode(code, options);
+  try {
+    const code = fs.readFileSync(filePath, 'utf8');
+    return parseCode(code, options);
+  } catch (error) {
+    // If ignoreErrors is true, return null and let caller handle the error
+    if (options.ignoreErrors) {
+      return null;
+    }
+    // Otherwise, throw the error (default behavior)
+    throw error;
+  }
 }
 
 /**

@@ -28,7 +28,7 @@
     "build": "tsup",
     "build:ci": "tsup --clean",
     "docs:update": "node scripts/update-docs.js",
-    "dev:scan": "pnpm run build && cd fixtures && node ../dist/cli.js scan \"**/*.tsx\""
+    "dev:scan": "pnpm run build && node ./dist/cli.js scan"
   },
   "keywords": [
     "hermex",

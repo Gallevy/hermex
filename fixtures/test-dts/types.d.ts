@@ -1,4 +1,4 @@
-export type CommissionItemConfig = {
+export type FunctionMistyped = {
   component: function;
   props: object;
 };
