@@ -58,7 +58,7 @@ export function analyzeMemberExpression(node: any, state: ParserState): void {
     node.object?.type === 'Identifier' &&
     state.allIdentifiers.has(node.object.value)
   ) {
-    const namespaceName = node.object.value;
+    // const namespaceName = node.object.value;
     const propertyName = node.property?.value;
 
     if (propertyName) {
