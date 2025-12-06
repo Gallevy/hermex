@@ -131,7 +131,6 @@ async function executeScan(pattern: string, options: NormalizedScanOptions) {
       // Must NOT match ignore patterns
       const ignored = options.ignorePackages.some((p) => minimatch(pkg, p));
 
-      console.log('PACKAGES:', pkg, allowed, ignored, options.allowPackages);
       return allowed && !ignored;
     });
 
