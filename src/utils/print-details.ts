@@ -1,10 +1,16 @@
 import chalk from 'chalk';
 import type { AggregatedReport } from './aggregator';
 
+function printHeader() {
+  console.log(chalk.cyan.bold('\n📋 Details\n'));
+}
+
 export function printDetails(aggregated: AggregatedReport) {
+  printHeader();
+
   console.log(
     chalk.cyan(
-      `[DETAILS] Total usage patterns: ${aggregated.totalUsagePatterns.toLocaleString()}`,
+      `  Total usage patterns: ${aggregated.totalUsagePatterns.toLocaleString()}`,
     ),
   );
 
@@ -13,7 +19,7 @@ export function printDetails(aggregated: AggregatedReport) {
     if (pattern.count > 0) {
       console.log(
         chalk.cyan(
-          `[DETAILS] ${pattern.displayName}: ${pattern.count.toLocaleString()}`,
+          `  ${pattern.displayName}: ${pattern.count.toLocaleString()}`,
         ),
       );
     }

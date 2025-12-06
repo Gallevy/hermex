@@ -23,12 +23,5 @@
     "types": ["node"]
   },
   "include": ["src/**/*"],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "examples",
-    "docs",
-    "code-examples",
-    "reports-outputs"
-  ]
+  "exclude": ["node_modules", "dist", "examples", "docs", "fixtures"]
 }

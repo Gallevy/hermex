@@ -1,201 +1,197 @@
-# React Component Usage Analyzer
+# Hermex
 
 A powerful SWC-based tool for analyzing React component usage patterns across codebases. Understand how UI library components are used, track dependencies with exact versions, and generate comprehensive reports.
 
-## ✅ Status: Production Ready
-
-- ✅ **TypeScript** - Migrated to TypeScript with src/ structure
-- ✅ Functional programming architecture
-- ✅ Cross-platform support (Windows/Unix)
-- ✅ Lockfile parsing (npm, yarn, pnpm)
-- ✅ Version tracking from lockfiles
-- ✅ GitHub repository analysis
-- ✅ Multiple output formats
-- ✅ Built with **tsup** for optimized distribution
+Made with AI 🤖
 
 ## 🚀 Quick Start
 
 ```bash
-# Install dependencies
-pnpm install
+# No installation required - use npx
+npx hermex scan "src/**/*.tsx"
 
-# Build the project (TypeScript -> JavaScript)
-pnpm run build
+# Or install globally
+npm install -g hermex
+hermex scan "src/**/*.tsx"
 
-# Analyze local files
-node dist/cli.js analyze "src/**/*.tsx" -l @mui/material
-
-# Or use the npm scripts
-pnpm run test-cli
-
-# Analyze GitHub repository
-node dist/cli.js github owner/repo -l @mui/material
-
-# Generate reports with versions
-node dist/cli.js github owner/repo -l @mui/material -f both -o reports-outputs/analysis.json
+# Or install locally
+npm install hermex
+npx hermex scan "src/**/*.tsx"
 ```
 
-## 🛠️ Development
-
-```bash
-# Build in watch mode
-pnpm run dev
-
-# Run tests
-pnpm test
-
-# Clean build artifacts
-pnpm run clean
-```
+## 📦 Requirements
+- Node.js 24+
 
 ## 📊 Key Features
 
+- **Fast SWC-based Parsing**: Lightning-fast static analysis using SWC's Rust-based parser
+- **Pattern Detection**: Identifies 16+ React usage patterns including:
+  - Direct imports and JSX usage
+  - Variable assignments and destructuring
+  - Conditional usage and object mappings
+  - Lazy loading and dynamic imports
+  - HOC wrapping and memoization
+  - Portal usage and context integration
 - **Version Tracking**: Components reported with exact package versions from lockfiles
 - **Multi-Lockfile Support**: Parses package-lock.json, yarn.lock, and pnpm-lock.yaml
-- **Pattern Detection**: Identifies 16+ React usage patterns (imports, lazy loading, HOCs, etc.)
-- **GitHub Analysis**: Clone and analyze multiple repositories
-- **Flexible Output**: Console, JSON, and table formats
+- **Flexible Output**: Console, table, and chart formats
 - **Complexity Scoring**: Categorizes usage patterns by complexity
+- **Zero Configuration**: Works out of the box with sensible defaults
 
-## 📋 Available Commands
+## 📋 Commands
 
-| Command | Description |
-|---------|-------------|
-| `analyze` | Analyze local files with detailed patterns |
-| ` ` | Quick component usage overview |
-| `stats` | Detailed statistics with charts |
-| `patterns` | List all detected usage patterns |
-| `table` | Component and import tables |
-| `compare` | Compare usage across libraries |
-| `github` | Analyze GitHub repositories |
+### `scan` Command
+
+Scan and analyze local files for React component usage patterns.
+
+```bash
+hermex scan [pattern] [options]
+```
+
+#### Arguments
+
+| Argument | Description | Default |
+|----------|-------------|---------|
+| `[pattern]` | Glob pattern for files to analyze | `**/*.{tsx,jsx,ts,js}` |
+
+#### Options
+
+| Option | Description | Values | Default |
+|--------|-------------|--------|---------|
+| `--ignore <pattern>` | Glob pattern for files to ignore | Any glob pattern | `**/node_modules/**`, `**/dist/**`, `**/build/**` |
+| `--verbose` | Show detailed file-by-file analysis | `true`/`false` | `false` |
+| `--summary [mode]` | Show summary statistics | `log`, `false` | `log` |
+| `--details` | Show detailed pattern counts | `true`/`false` | `false` |
+| `--top-components [mode]` | Show top components | `log`, `table`, `chart` | `log` |
+| `--components-usage [mode]` | Show components usage table/chart | `table`, `chart` | `table` |
+| `--patterns [mode]` | Show patterns table/chart | `table`, `chart` | `table` |
+
+#### Examples
+
+```bash
+# Basic scan with defaults
+hermex scan
+
+# Scan specific directory
+hermex scan "src/**/*.tsx"
+
+# Verbose output
+hermex scan "src/**/*.tsx" --verbose
+
+# Show only summary and top components
+hermex scan "src/**/*.tsx" --components-usage false --patterns false
+
+# Chart visualization
+hermex scan "src/**/*.tsx" --top-components chart --components-usage chart
+
+# Detailed analysis
+hermex scan "src/**/*.tsx" --details --verbose
+```
 
 ## 🎯 Example Output
 
-Components are reported with exact versions:
-
+### Summary Statistics
 ```
-🏆 TOP COMPONENTS:
-  🥇 1. Button from @mui/material@5.14.0: 45 uses
-  🥈 2. TextField from @mui/material@5.14.0: 32 uses
-  🥉 3. Grid from @mui/material@5.14.0: 28 uses
+[SUMMARY] Analysis completed successfully in 0.1s
+[SUMMARY] Files analyzed: 42
+[SUMMARY] Total imports: 156
+[SUMMARY] Total components: 38
+```
+
+### Top Components
+```
+🏆 Top Components
+
+[TOP-COMPONENTS] 🥇 1. Button from @design-system/button: 45 uses
+[TOP-COMPONENTS] 🥈 2. Card from @design-system/card: 32 uses
+[TOP-COMPONENTS] 🥉 3. Input from @design-system/input: 28 uses
+```
+
+### Components Usage Table
+```
+⚛️ Components Usage
+
+┌────────────┬──────────────────────────┬─────────┬───────┐
+│ Component  │ Source                   │ Version │ Count │
+├────────────┼──────────────────────────┼─────────┼───────┤
+│ Button     │ @design-system/button    │ 2.1.5   │ 45    │
+│ Card       │ @design-system/card      │ 1.8.3   │ 32    │
+│ Input      │ @design-system/input     │ 2.0.1   │ 28    │
+└────────────┴──────────────────────────┴─────────┴───────┘
+```
+
+### Code Patterns
+```
+🔍 Code Patterns
+
+┌──────────────────────┬───────┐
+│ Pattern              │ Count │
+├──────────────────────┼───────┤
+│ JSX Usage            │ 145   │
+│ Named Imports        │ 89    │
+│ Default Imports      │ 67    │
+│ Variable Assignments │ 23    │
+│ Object Mappings      │ 15    │
+│ Conditional Usage    │ 12    │
+│ Lazy Loading         │ 8     │
+└──────────────────────┴───────┘
 ```
 
 ## 📚 Documentation
 
-- [CLI Guide](./docs/CLI_GUIDE.md) - Complete command reference
-- [GitHub Guide](./docs/GITHUB_GUIDE.md) - Repository analysis guide
-- [Usage Patterns](./docs/USAGE_PATTERNS_GUIDE.md) - Pattern detection details
-- [Demo Examples](./docs/DEMO.md) - Live examples and use cases
-- [Test Results](./docs/TEST_RESULTS.md) - Validation and testing
-
-## 🏗️ Project Structure
-
-```
-swc-parser/
-├── cli.js                  # Main CLI entry point
-├── parser.js               # SWC AST parser
-├── analyze-usage.js        # Pattern analysis
-├── github-analysis.js      # GitHub repository analysis
-├── utils/
-│   ├── formatters.js       # Output formatting
-│   ├── git-utils.js        # Git operations
-│   ├── lockfile-parser.js  # Version extraction
-│   └── file-utils.js       # File operations
-├── code-examples/          # Pattern examples (01-07)
-├── docs/                   # Documentation
-└── reports-outputs/        # Generated reports
-```
-
-## 🔧 Usage Examples
-
-### Local Analysis
-```bash
-# Basic analysis
-node cli.js analyze "src/**/*.tsx" -l @mui/material
-
-# With complexity scoring
-node cli.js analyze "src/**/*.tsx" -l @mui/material --complexity
-
-# JSON output only
-node cli.js analyze "src/**/*.tsx" -l @mui/material -f json -o report.json
-```
-
-### GitHub Analysis
-```bash
-# Single repository
-node cli.js github owner/repo -l @mui/material
-
-# Multiple repositories from config
-node cli.js github --config repos.json -l @design-system
-
-# Keep cloned repos for inspection
-node cli.js github owner/repo -l @mui/material --keep-repos
-```
-
-### Summary Commands
-```bash
-# Quick summary
-node cli.js summary "src/**/*.tsx" -l @mui/material --top 10
-
-# Statistics with charts
-node cli.js stats "src/**/*.tsx" -l @mui/material --chart
-
-# Component table
-node cli.js table "src/**/*.tsx" -l @mui/material --props --top 20
-```
-
-## 🎨 Output Formats
-
-### Console Output
-- Color-coded with emojis
-- Ranked component lists
-- Complexity distributions
-- Version information
-
-### JSON Output
-- Complete analysis data
-- Version mapping
-- Per-file breakdowns
-- Machine-readable
-
-### Table Output
-- Structured data view
-- Sortable columns
-- Props analysis
-- Import tracking
-
-## 🔍 Pattern Detection
-
-Detects 16+ usage patterns including:
-- Direct imports and JSX usage
-- Named imports with aliases
-- Namespace imports
-- Lazy loading and code splitting
-- HOC patterns
-- Dynamic imports
-- Context usage
-- Portal usage
-
-See [Usage Patterns Guide](./docs/USAGE_PATTERNS_GUIDE.md) for details.
-
-## 📦 Requirements
-
-- Node.js 24+
-- Git (for GitHub analysis)
-
-## 🤝 Contributing
-
-[Contributing](Contributing.md)
-
-## 📄 License
-
-[MIT License](License.md)
+- **[Examples](./docs/EXAMPLES.md)** - Comprehensive examples and command usage
+- **[Patterns Guide](./docs/PATTERNS.md)** - All detectable React usage patterns
+- **[Project Milestones](./docs/MILESTONES.md)** - Roadmap and future features
 
 ## 🎯 Use Cases
 
 1. **Dependency Audits** - Understand library usage before migrations
-2. **Version Tracking** - Know exactly which versions are in use
-3. **Migration Planning** - Identify components that need updating
-4. **Component Analytics** - Track most-used components
-5. **Multi-Repo Analysis** - Analyze microservices/microfrontends
-6. **Code Quality** - Identify complex usage patterns
+2. **Version Tracking** - Know exactly which component versions are in use
+3. **Migration Planning** - Identify components that need updating when migrating UI libraries
+4. **Component Analytics** - Track most-used components and usage patterns
+5. **Code Quality** - Identify complex usage patterns that may need refactoring
+6. **Team Insights** - Understand how your team uses component libraries
+7. **Documentation** - Generate usage reports for component library documentation
+
+## 🔍 Pattern Detection
+
+Hermex detects 16+ React component usage patterns with varying complexity levels:
+
+| Pattern | Complexity | Examples |
+|---------|------------|----------|
+| Direct Import & Usage | 1/10 | `import Button from '@lib/button'` |
+| Named Import with Alias | 2/10 | `import { Button as Btn } from '@lib'` |
+| Variable Assignment | 3/10 | `const MyButton = Button` |
+| Destructuring Usage | 4/10 | `const { Button } = Foundation` |
+| Object Mapping | 5/10 | `const map = { btn: Button }` |
+| Lazy Loading | 6/10 | `lazy(() => import('@lib/button'))` |
+| Dynamic Import | 7/10 | `await import('@lib/button')` |
+| HOC Wrapping | 7/10 | `withWrapper(Button)` |
+| Context Integration | 7/10 | `useContext(ComponentContext)` |
+| Portal Usage | 8/10 | `createPortal(<Button />)` |
+
+See the [Patterns Guide](./docs/PATTERNS.md) for complete details.
+
+## 🛠️ Tech Stack
+- **Runtime**: Node.js 24
+- **Parser**: [@swc/core](https://swc.rs/)
+- **CLI**: [Commander.js](https://github.com/tj/commander.js)
+- **Build**: [tsup](https://tsup.egoist.dev/)
+- **Language**: [TypeScript](https://www.typescriptlang.org/)
+- **Formatter**: [Biome](https://biomejs.dev/)
+- **Linter**: [oxlint](https://oxc-project.github.io/)
+- **Tests**: [Vitest](https://vitest.dev/)
+
+## 🤝 Contributing
+
+Contributions are welcome! Please read our [Contributing Guide](./CONTRIBUTING.md) for details.
+
+## 📄 License
+
+MIT License - see [LICENSE.md](./LICENSE.md)
+
+## 🔗 Links
+
+- [GitHub Repository](https://github.com/Gallevy/hermex)
+- [npm Package](https://www.npmjs.com/package/hermex)
+- [Report Issues](https://github.com/Gallevy/hermex/issues)

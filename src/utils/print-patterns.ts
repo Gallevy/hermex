@@ -3,6 +3,10 @@ import Table from 'cli-table3';
 import type { AggregatedReport, PatternCount } from './aggregator';
 import { renderBarChart } from './chart-renderer';
 
+function printHeader() {
+  console.log(chalk.blue.bold('\n🔍 Code Patterns\n'));
+}
+
 export function printPatterns(
   aggregated: AggregatedReport,
   mode: 'table' | 'chart',
@@ -17,7 +21,7 @@ export function printPatterns(
 }
 
 function printPatternsTable(patterns: PatternCount[]) {
-  console.log(chalk.blue.bold(`\n🔍 Code Patterns\n`));
+  printHeader();
 
   if (patterns.length === 0) {
     console.log(chalk.gray('  No patterns found'));
@@ -37,10 +41,14 @@ function printPatternsTable(patterns: PatternCount[]) {
   });
 
   console.log(table.toString());
+
+  // Show total patterns count
+  const totalPatterns = patterns.reduce((sum, p) => sum + p.count, 0);
+  console.log(chalk.gray(`\nTotal: ${totalPatterns} patterns detected`));
 }
 
 function printPatternsChart(patterns: PatternCount[]) {
-  console.log(chalk.blue(`[PATTERNS] CHART`));
+  printHeader();
 
   if (patterns.length === 0) {
     console.log(chalk.gray('  No patterns found'));

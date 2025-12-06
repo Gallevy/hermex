@@ -1,35 +1,35 @@
 import { Command } from 'commander';
-import { glob } from 'glob';
 import ora from 'ora';
 import chalk from 'chalk';
 import { parseFile } from '../swc-parser';
 import type { UsageReport } from '../swc-parser';
 import { aggregateReports } from '../utils/aggregator';
-import { printVerbose } from '../utils/print-verbose';
 import { printSummary } from '../utils/print-summary';
 import { printDetails } from '../utils/print-details';
-import { printTopComponents } from '../utils/print-top-components';
-import { printComponentsUsage } from '../utils/print-components-usage';
+import { printComponents } from '../utils/print-components';
 import { printPatterns } from '../utils/print-patterns';
+import { printPackages } from '../utils/print-packages';
+import { findFiles } from '../utils/file-utils';
+import { findAndParseLockfile } from '../lock-parser';
 
 interface ScanOptions {
   verbose?: boolean;
   summary?: string | boolean;
   details?: boolean;
-  topComponents?: string;
-  componentsUsage?: string;
+  components?: string;
+  packages?: string;
   patterns?: string;
-  output?: string;
+  ignore?: string | string[];
 }
 
 interface NormalizedScanOptions {
   verbose: boolean;
   summary: 'log' | false;
   details: boolean;
-  topComponents: 'log' | 'table' | 'chart';
-  componentsUsage: 'table' | 'chart';
+  components: 'table' | 'chart' | false;
+  packages: 'table' | 'chart' | false;
   patterns: 'table' | 'chart';
-  output?: string;
+  ignore: string[];
 }
 
 export function registerScanCommand(program: Command) {
@@ -41,33 +41,55 @@ export function registerScanCommand(program: Command) {
       'Glob pattern for files to analyze (defaults to current directory recursively)',
       '**/*.{tsx,jsx,ts,js}',
     )
+    .option('--ignore <pattern>', 'Glob pattern for files to ignore', [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/build/**',
+    ])
     .option(
-      '--verbose',
-      'Show detailed file-by-file analysis with every pattern found',
-      false,
+      '--allow-packages <pattern>',
+      'Glob pattern for what packages to scan',
+      'ALL', // TO FIX
+    )
+    .option(
+      '--ignore-packages <pattern>',
+      'Glob pattern for what packages to ignore',
+      [],
     )
     .option('--summary [mode]', 'Show summary stats (log, false)', 'log')
+    .option('--no-summary', 'Do not show summary stats')
     .option('--details', 'Show detailed pattern counts')
     .option(
-      '--top-components [mode]',
-      'Show top components (log, table, chart)',
-      'log',
-    )
-    .option(
-      '--components-usage [mode]',
+      '--components [mode]',
       'Show components table/chart (table, chart)',
       'table',
     )
+    .option('--no-components', 'Do not show components')
+    .option(
+      '--packages [mode]',
+      'Show packages table/chart (table, chart)',
+      'table',
+    )
+    .option('--no-packages', 'Do not show packages')
     .option(
       '--patterns [mode]',
       'Show patterns table/chart (table, chart)',
       'table',
     )
+    .option('--no-patterns', 'Do not show patterns')
     .action(async (pattern: string, options: ScanOptions) => {
       const normalizedOptions = normalizeOptions(options);
 
       await executeScan(pattern, normalizedOptions);
     });
+}
+
+function normalizeIgnorePatterns(ignore?: string | string[]) {
+  if (!ignore) {
+    return [];
+  }
+
+  return Array.isArray(ignore) ? ignore : [ignore];
 }
 
 function normalizeOptions(options: ScanOptions): NormalizedScanOptions {
@@ -76,30 +98,39 @@ function normalizeOptions(options: ScanOptions): NormalizedScanOptions {
     summary:
       options.summary === false || options.summary === 'false' ? false : 'log',
     details: options.details || false,
-    topComponents: (options.topComponents as any) || 'log',
-    componentsUsage: (options.componentsUsage as any) || 'table',
+    components: (options.components as any) || 'table',
+    packages: (options.packages as any) || 'table',
     patterns: (options.patterns as any) || 'table',
-    output: options.output,
+    ignore: normalizeIgnorePatterns(options.ignore),
   };
 }
 
 async function executeScan(pattern: string, options: NormalizedScanOptions) {
   const startTime = Date.now();
-  const spinner = ora('Finding files...').start();
+  const spinner = ora('Parsing lockfile...').start();
 
   try {
+    // Parse lockfile - start from current directory
+    const lockfileResult = findAndParseLockfile(process.cwd());
+
+    spinner.succeed(
+      chalk.blue(
+        `📦 Found ${lockfileResult.lockfileType} lockfile (supports: ${lockfileResult.supportedVersions.join(', ')}) - ${Object.keys(lockfileResult.versions).length} packages`,
+      ),
+    );
+
     // Find files matching pattern
-    const files = await glob(pattern, {
-      ignore: ['node_modules/**', 'dist/**', 'build/**', '.git/**'],
-      absolute: true,
-    });
+    spinner.start('Finding files...');
+    const files = await findFiles(pattern, options.ignore);
 
     if (files.length === 0) {
-      spinner.fail(chalk.red(`No files found matching pattern: ${pattern}`));
+      // spinner.color = 'red'; // It should be red but not working.
+      spinner.fail('TEST');
+      // spinner.fail(chalk.red(` No files found matching pattern: ${pattern}`));
       return;
     }
 
-    spinner.succeed(chalk.green(`Found ${files.length} files`));
+    spinner.succeed(chalk.green(` Found ${files.length} files`));
 
     // Analyze all files
     spinner.start('Analyzing files...');
@@ -116,13 +147,6 @@ async function executeScan(pattern: string, options: NormalizedScanOptions) {
         const report = parseFile(file);
         if (report) {
           reports.push(report);
-
-          // Print verbose output immediately after parsing each file
-          if (options.verbose) {
-            spinner.stop();
-            printVerbose(file, report);
-            spinner.start();
-          }
         }
       } catch (error: any) {
         spinner.stop();
@@ -139,33 +163,26 @@ async function executeScan(pattern: string, options: NormalizedScanOptions) {
     const elapsedTime = (Date.now() - startTime) / 1000;
 
     // Aggregate reports
-    const aggregated = aggregateReports(reports);
+    const aggregated = aggregateReports(reports, lockfileResult.versions);
 
-    // Print outputs based on options
-    console.log(''); // Empty line before output sections
-
-    if (options.summary) {
-      printSummary(aggregated, elapsedTime);
+    if (options.packages) {
+      printPackages(aggregated, options.packages);
     }
 
     if (options.details) {
-      console.log(''); // Empty line between sections
       printDetails(aggregated);
     }
 
-    if (options.topComponents) {
-      console.log(''); // Empty line between sections
-      printTopComponents(aggregated, options.topComponents);
-    }
-
-    if (options.componentsUsage) {
-      console.log(''); // Empty line between sections
-      printComponentsUsage(aggregated, options.componentsUsage);
+    if (options.components) {
+      printComponents(aggregated, options.components);
     }
 
     if (options.patterns) {
-      console.log(''); // Empty line between sections
       printPatterns(aggregated, options.patterns);
+    }
+
+    if (options.summary) {
+      printSummary(aggregated, elapsedTime);
     }
   } catch (error: any) {
     spinner.fail(chalk.red('Analysis failed: ' + error.message));

@@ -138,5 +138,5 @@
     "builtin": true
   },
   "globals": {},
-  "ignorePatterns": ["code-examples/**"]
+  "ignorePatterns": ["fixtures/**"]
 }
