@@ -15,6 +15,7 @@ import { findFiles } from '../utils/file-utils';
 import { findAndParseLockfile } from '../lock-parser';
 import { loadConfig } from '../config/loader';
 import { evaluateRules } from '../rules/evaluator';
+import { enrichWithReleaseAge } from '../npm-registry/enricher';
 import type { HermexConfig } from '../config/types';
 
 export function registerScanCommand(program: Command) {
@@ -95,6 +96,20 @@ export async function executeScan(
 
     const ruleViolations = evaluateRules(process.cwd(), config.rules);
     aggregated.ruleViolations = ruleViolations;
+
+    if (config.releaseAge.enabled) {
+      spinner.start('Fetching release age from registry...');
+      const { enriched, skipped } = await enrichWithReleaseAge(
+        aggregated.packageDistribution,
+        config.releaseAge,
+      );
+      aggregated.packageDistribution = enriched;
+      spinner.succeed(
+        chalk.blue(
+          `📅 Release age fetched${skipped > 0 ? chalk.gray(` (${skipped} packages skipped — registry unreachable or not found)`) : ''}`,
+        ),
+      );
+    }
 
     printScanResults(aggregated, config, elapsedTime);
   } catch (error: any) {

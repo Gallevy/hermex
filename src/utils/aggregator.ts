@@ -3,6 +3,7 @@ import type { UsageReport } from '../swc-parser';
 import type { HermexConfig, VersusConfig } from '../config/types';
 import type { MultiVersionMap } from '../lock-parser';
 import type { RuleViolation } from '../rules/evaluator';
+import type { ReleaseAgeEntry } from '../npm-registry/types';
 
 export interface ComponentUsage {
   name: string;
@@ -21,6 +22,7 @@ export interface PackageDistribution {
   internal: boolean;
   hasVersionConflict: boolean;
   allVersions: string[];
+  releaseAge?: ReleaseAgeEntry;
 }
 
 export interface PatternCount {

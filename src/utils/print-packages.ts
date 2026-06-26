@@ -5,6 +5,7 @@ import type {
   BannedPackageViolation,
   PackageDistribution,
 } from './aggregator';
+import type { ReleaseAgeEntry } from '../npm-registry/types';
 import { formatCount } from './format-utils';
 
 function printHeader() {
@@ -16,15 +17,36 @@ function formatPackageName(
   banned?: BannedPackageViolation,
 ): string {
   let prefix = '';
+  if (pkg.releaseAge?.deprecated) {
+    prefix += chalk.red('[DEPRECATED] ');
+  }
   if (banned) {
-    prefix =
+    prefix +=
       banned.severity === 'error'
         ? chalk.red('[BANNED] ')
         : chalk.yellow('[RESTRICTED] ');
   } else if (pkg.internal) {
-    prefix = chalk.yellow('[int] ');
+    prefix += chalk.yellow('[int] ');
   }
   return prefix + pkg.packageName;
+}
+
+function formatUpgradeCell(releaseAge?: ReleaseAgeEntry): string {
+  if (!releaseAge) return '';
+  const { worstLevel, upgrades } = releaseAge;
+  if (!worstLevel) return chalk.green('✓');
+
+  const top = upgrades[0];
+  if (!top) return chalk.green('✓');
+
+  if (worstLevel === 'mandatory_upgrade') {
+    return chalk.red(
+      `⚠ ${top.semverBump} ${top.version} (${top.releasedDaysAgo}d)`,
+    );
+  }
+  return chalk.yellow(
+    `↑ ${top.semverBump} ${top.version} (${top.releasedDaysAgo}d)`,
+  );
 }
 
 function getBannedViolation(
@@ -59,8 +81,12 @@ function printPackagesTable(
     return;
   }
 
+  const hasReleaseAge = packages.some((p) => p.releaseAge !== undefined);
+  const head = ['Package', 'Version', 'Components', 'Usage', 'Percentage'];
+  if (hasReleaseAge) head.push('Upgrades');
+
   const table = new Table({
-    head: ['Package', 'Version', 'Components', 'Usage', 'Percentage'],
+    head,
     style: {
       head: ['cyan'],
       border: ['gray'],
@@ -74,13 +100,15 @@ function printPackagesTable(
         )
       : pkg.version || 'N/A';
 
-    table.push([
+    const row = [
       formatPackageName(pkg, getBannedViolation(pkg, violations)),
       versionCell,
       formatCount(pkg.componentCount),
       formatCount(pkg.usageCount),
       `${pkg.percentage.toFixed(1)}%`,
-    ]);
+    ];
+    if (hasReleaseAge) row.push(formatUpgradeCell(pkg.releaseAge));
+    table.push(row);
   });
 
   console.log(table.toString());
