@@ -8,7 +8,10 @@ const RuleConfigSchema = z.object({
   message: z.string().optional(),
 });
 
-const RuleConfigOrArraySchema = z.union([RuleConfigSchema, z.array(RuleConfigSchema)]);
+const RuleConfigOrArraySchema = z.union([
+  RuleConfigSchema,
+  z.array(RuleConfigSchema),
+]);
 
 export const HermexConfigSchema = z.object({
   includes: z.array(z.string()).optional(),
@@ -46,9 +49,15 @@ export const HermexConfigSchema = z.object({
   output: z
     .object({
       summary: z.union([z.literal('log'), z.literal(false)]).optional(),
-      components: z.union([z.enum(['table', 'chart']), z.literal(false)]).optional(),
-      packages: z.union([z.enum(['table', 'chart']), z.literal(false)]).optional(),
-      patterns: z.union([z.enum(['table', 'chart']), z.literal(false)]).optional(),
+      components: z
+        .union([z.enum(['table', 'chart']), z.literal(false)])
+        .optional(),
+      packages: z
+        .union([z.enum(['table', 'chart']), z.literal(false)])
+        .optional(),
+      patterns: z
+        .union([z.enum(['table', 'chart']), z.literal(false)])
+        .optional(),
       details: z.boolean().optional(),
       versus: z.boolean().optional(),
       rules: z.boolean().optional(),

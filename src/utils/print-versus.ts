@@ -21,22 +21,27 @@ function printVersusResult(result: VersusResult) {
   console.log(chalk.bold(`  ${result.name}`));
   console.log(chalk.gray(`  ${'─'.repeat(50)}`));
 
-  const maxNameLen = Math.max(...result.entries.map((e) => e.packageName.length));
+  const maxNameLen = Math.max(
+    ...result.entries.map((e) => e.packageName.length),
+  );
 
   for (const entry of result.entries) {
     const name = entry.packageName.padEnd(maxNameLen);
     const bar = renderBar(entry.percentage);
     const pct = chalk.bold(`${entry.percentage.toFixed(1)}%`);
     const usage = chalk.gray(`(${entry.count} usages)`);
-    const components = entry.components.length > 0
-      ? chalk.gray(`  ${formatComponents(entry.components)}`)
-      : '';
+    const components =
+      entry.components.length > 0
+        ? chalk.gray(`  ${formatComponents(entry.components)}`)
+        : '';
 
     console.log(`  ${name}  ${bar} ${pct} ${usage}${components}`);
   }
 
   if (result.totalCount === 0) {
-    console.log(chalk.gray('  No usage detected for any package in this group.'));
+    console.log(
+      chalk.gray('  No usage detected for any package in this group.'),
+    );
   }
 
   console.log();

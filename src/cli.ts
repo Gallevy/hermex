@@ -6,7 +6,9 @@ import type { HermexConfig } from './config/types';
 
 export const program = new Command();
 
-export function defineConfig(config: Partial<HermexConfig>): Partial<HermexConfig> {
+export function defineConfig(
+  config: Partial<HermexConfig>,
+): Partial<HermexConfig> {
   return config;
 }
 

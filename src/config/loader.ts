@@ -9,7 +9,13 @@ function deepMerge<T extends object>(base: T, override: Partial<T>): T {
   for (const key of Object.keys(override) as (keyof T)[]) {
     const val = override[key];
     if (val === undefined) continue;
-    if (val !== null && typeof val === 'object' && !Array.isArray(val) && typeof base[key] === 'object' && !Array.isArray(base[key])) {
+    if (
+      val !== null &&
+      typeof val === 'object' &&
+      !Array.isArray(val) &&
+      typeof base[key] === 'object' &&
+      !Array.isArray(base[key])
+    ) {
       result[key] = deepMerge(base[key] as object, val as object) as T[keyof T];
     } else {
       result[key] = val as T[keyof T];
@@ -47,7 +53,9 @@ export async function loadConfig(cwd: string): Promise<HermexConfig> {
       throw new Error(`Failed to load hermex.config.ts: ${error.message}`);
     }
   } else if (existsSync(jsonConfigPath) || existsSync(jsonFallbackPath)) {
-    const configPath = existsSync(jsonConfigPath) ? jsonConfigPath : jsonFallbackPath;
+    const configPath = existsSync(jsonConfigPath)
+      ? jsonConfigPath
+      : jsonFallbackPath;
     try {
       const content = readFileSync(configPath, 'utf-8');
       raw = validate(JSON.parse(content));
