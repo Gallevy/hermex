@@ -9,6 +9,7 @@ import { printDetails } from '../utils/print-details';
 import { printComponents } from '../utils/print-components';
 import { printPatterns } from '../utils/print-patterns';
 import { printPackages } from '../utils/print-packages';
+import { printVersus } from '../utils/print-versus';
 import { findFiles } from '../utils/file-utils';
 import { findAndParseLockfile } from '../lock-parser';
 import { loadConfig } from '../config/loader';
@@ -96,6 +97,10 @@ function printScanResults(
 ) {
   if (config.output.packages) {
     printPackages(aggregated, config.output.packages);
+  }
+
+  if (config.output.versus && aggregated.versusResults.length > 0) {
+    printVersus(aggregated);
   }
 
   if (config.output.details) {

@@ -1,0 +1,15 @@
+{
+  "packages": {
+    "internal": ["@design-system/*"]
+  },
+  "versus": [
+    {
+      "name": "Design System Migration",
+      "packages": ["@design-system/foundation", "@new-system/arc"]
+    }
+  ],
+  "output": {
+    "details": false,
+    "patterns": false
+  }
+}

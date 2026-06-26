@@ -1,6 +1,6 @@
 import micromatch from 'micromatch';
 import type { UsageReport } from '../swc-parser';
-import type { HermexConfig } from '../config/types';
+import type { HermexConfig, VersusConfig } from '../config/types';
 
 export interface ComponentUsage {
   name: string;
@@ -25,6 +25,20 @@ export interface PatternCount {
   count: number;
 }
 
+export interface VersusEntry {
+  packageName: string;
+  count: number;
+  percentage: number;
+  components: string[];
+}
+
+export interface VersusResult {
+  name: string;
+  packages: string[];
+  entries: VersusEntry[];
+  totalCount: number;
+}
+
 export interface AggregatedReport {
   filesAnalyzed: number;
   totalImports: number;
@@ -35,6 +49,7 @@ export interface AggregatedReport {
   topComponents: ComponentUsage[];
   allComponents: string[];
   packageDistribution: PackageDistribution[];
+  versusResults: VersusResult[];
   reports: UsageReport[];
 }
 
@@ -94,6 +109,8 @@ export function aggregateReports(
     config,
   );
 
+  const versusResults = calculateVersusResults(packageDistribution, config?.versus ?? []);
+
   return {
     filesAnalyzed: reports.length,
     totalImports,
@@ -104,8 +121,38 @@ export function aggregateReports(
     topComponents,
     allComponents,
     packageDistribution,
+    versusResults,
     reports,
   };
+}
+
+function calculateVersusResults(
+  distribution: PackageDistribution[],
+  versusConfigs: VersusConfig[],
+): VersusResult[] {
+  const distMap = new Map(distribution.map((p) => [p.packageName, p]));
+
+  return versusConfigs.map((vc) => {
+    const entries: VersusEntry[] = vc.packages.map((pkgName) => {
+      const pkg = distMap.get(pkgName);
+      return {
+        packageName: pkgName,
+        count: pkg?.usageCount ?? 0,
+        percentage: 0,
+        components: pkg?.components ?? [],
+      };
+    });
+
+    const totalCount = entries.reduce((sum, e) => sum + e.count, 0);
+
+    for (const entry of entries) {
+      entry.percentage = totalCount > 0 ? (entry.count / totalCount) * 100 : 0;
+    }
+
+    entries.sort((a, b) => b.count - a.count);
+
+    return { name: vc.name, packages: vc.packages, entries, totalCount };
+  });
 }
 
 function resolvePackageFromImportPath(
