@@ -42,9 +42,13 @@ function printPackagesTable(packages: PackageDistribution[]) {
   });
 
   packages.forEach((pkg) => {
+    const versionCell = pkg.hasVersionConflict
+      ? chalk.yellow(`⚠ ${pkg.allVersions.join(', ')} (multiple — bundle impact)`)
+      : pkg.version || 'N/A';
+
     table.push([
       formatPackageName(pkg),
-      pkg.version || 'N/A',
+      versionCell,
       formatCount(pkg.componentCount),
       formatCount(pkg.usageCount),
       `${pkg.percentage.toFixed(1)}%`,

@@ -1,6 +1,7 @@
 import micromatch from 'micromatch';
 import type { UsageReport } from '../swc-parser';
 import type { HermexConfig, VersusConfig } from '../config/types';
+import type { MultiVersionMap } from '../lock-parser';
 
 export interface ComponentUsage {
   name: string;
@@ -17,6 +18,8 @@ export interface PackageDistribution {
   percentage: number;
   components: string[];
   internal: boolean;
+  hasVersionConflict: boolean;
+  allVersions: string[];
 }
 
 export interface PatternCount {
@@ -57,6 +60,7 @@ export function aggregateReports(
   reports: UsageReport[],
   versions: Record<string, string> = {},
   config?: HermexConfig,
+  multiVersions: MultiVersionMap = {},
 ): AggregatedReport {
   const componentUsageMap = new Map<string, ComponentUsage>();
   let totalImports = 0;
@@ -107,6 +111,7 @@ export function aggregateReports(
     componentUsageMap,
     versions,
     config,
+    multiVersions,
   );
 
   const versusResults = calculateVersusResults(packageDistribution, config?.versus ?? []);
@@ -268,6 +273,7 @@ function calculatePackageDistribution(
   componentUsageMap: Map<string, ComponentUsage>,
   versions: Record<string, string>,
   config?: HermexConfig,
+  multiVersions: MultiVersionMap = {},
 ): PackageDistribution[] {
   const ignorePatterns = config?.packages.ignore ?? [];
   const internalPatterns = config?.packages.internal ?? [];
@@ -292,6 +298,9 @@ function calculatePackageDistribution(
           ? micromatch.isMatch(component.source, internalPatterns)
           : false;
 
+      const allVersions = multiVersions[component.source] ?? [];
+      const hasVersionConflict = allVersions.length > 1;
+
       packageMap.set(component.source, {
         packageName: component.source,
         version: getPackageVersion(component.source, versions),
@@ -300,6 +309,8 @@ function calculatePackageDistribution(
         percentage: 0,
         components: [component.name],
         internal: isInternal,
+        hasVersionConflict,
+        allVersions,
       });
     }
   }

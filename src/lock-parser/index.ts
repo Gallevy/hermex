@@ -1,12 +1,19 @@
 import { NpmLockfileAdapter } from './patterns/npm';
 import { PnpmLockfileAdapter } from './patterns/pnpm';
 import { YarnLockfileAdapter } from './patterns/yarn';
+import type { MultiVersionMap } from './lock-file-adapter';
 
-/**
- * Lockfile parse result
- */
+export type { MultiVersionMap };
+
+export interface VersionConflict {
+  packageName: string;
+  versions: string[];
+}
+
 export interface LockfileResult {
   versions: Record<string, string>;
+  multiVersions: MultiVersionMap;
+  versionConflicts: VersionConflict[];
   lockfileType: 'npm' | 'yarn' | 'pnpm' | null;
   lockfilePath: string | null;
   supportedVersions: string[];
@@ -28,8 +35,18 @@ export function findAndParseLockfile(projectPath: string): LockfileResult {
     const lockfilePath = adapter.detect(projectPath);
     if (lockfilePath) {
       const versions = adapter.parse(lockfilePath);
+      const multiVersions = adapter.parseMultiVersion
+        ? adapter.parseMultiVersion(lockfilePath)
+        : {};
+
+      const versionConflicts: VersionConflict[] = Object.entries(multiVersions)
+        .filter(([, vers]) => vers.length > 1)
+        .map(([packageName, vers]) => ({ packageName, versions: vers }));
+
       return {
         versions,
+        multiVersions,
+        versionConflicts,
         lockfileType: adapter.name as 'npm' | 'yarn' | 'pnpm',
         lockfilePath,
         supportedVersions: adapter.supportedVersions,

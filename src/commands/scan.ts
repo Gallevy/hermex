@@ -80,7 +80,7 @@ export async function executeScan(config: HermexConfig, patternOverride?: string
 
     const elapsedTime = (Date.now() - startTime) / 1000;
 
-    const aggregated = aggregateReports(reports, lockfileResult.versions, config);
+    const aggregated = aggregateReports(reports, lockfileResult.versions, config, lockfileResult.multiVersions);
 
     printScanResults(aggregated, config, elapsedTime);
   } catch (error: any) {
