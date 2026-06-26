@@ -51,7 +51,10 @@
     "commander": "^14.0.2",
     "glob": "^13.0.0",
     "js-yaml": "^4.1.1",
-    "ora": "^9.0.0"
+    "micromatch": "^4.0.8",
+    "ora": "^9.0.0",
+    "semver": "^7.8.5",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.8",
@@ -61,7 +64,9 @@
     "@semantic-release/npm": "^13.1.2",
     "@semantic-release/release-notes-generator": "^14.1.0",
     "@types/js-yaml": "^4.0.9",
+    "@types/micromatch": "^4.0.10",
     "@types/node": "^24.10.1",
+    "@types/semver": "^7.7.1",
     "@types/tmp": "^0.2.6",
     "oxlint": "^1.31.0",
     "semantic-release": "^25.0.2",

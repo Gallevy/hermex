@@ -11,26 +11,8 @@ import { printPatterns } from '../utils/print-patterns';
 import { printPackages } from '../utils/print-packages';
 import { findFiles } from '../utils/file-utils';
 import { findAndParseLockfile } from '../lock-parser';
-
-interface ScanOptions {
-  verbose?: boolean;
-  summary?: string | boolean;
-  details?: boolean;
-  components?: string;
-  packages?: string;
-  patterns?: string;
-  ignore?: string | string[];
-}
-
-interface NormalizedScanOptions {
-  verbose: boolean;
-  summary: 'log' | false;
-  details: boolean;
-  components: 'table' | 'chart' | false;
-  packages: 'table' | 'chart' | false;
-  patterns: 'table' | 'chart';
-  ignore: string[];
-}
+import { loadConfig } from '../config/loader';
+import type { HermexConfig } from '../config/types';
 
 export function registerScanCommand(program: Command) {
   program
@@ -38,79 +20,19 @@ export function registerScanCommand(program: Command) {
     .description('Scan and analyze local files')
     .argument(
       '[pattern]',
-      'Glob pattern for files to analyze (defaults to current directory recursively)',
-      '**/*.{tsx,jsx,ts,js}',
+      'Glob pattern for files to analyze (overrides config includes)',
     )
-    .option('--ignore <pattern>', 'Glob pattern for files to ignore', [
-      '**/node_modules/**',
-      '**/dist/**',
-      '**/build/**',
-    ])
-    .option(
-      '--allow-packages <pattern>',
-      'Glob pattern for what packages to scan',
-      'ALL', // TO FIX
-    )
-    .option(
-      '--ignore-packages <pattern>',
-      'Glob pattern for what packages to ignore',
-      [],
-    )
-    .option('--summary [mode]', 'Show summary stats (log, false)', 'log')
-    .option('--no-summary', 'Do not show summary stats')
-    .option('--details', 'Show detailed pattern counts')
-    .option(
-      '--components [mode]',
-      'Show components table/chart (table, chart)',
-      'table',
-    )
-    .option('--no-components', 'Do not show components')
-    .option(
-      '--packages [mode]',
-      'Show packages table/chart (table, chart)',
-      'table',
-    )
-    .option('--no-packages', 'Do not show packages')
-    .option(
-      '--patterns [mode]',
-      'Show patterns table/chart (table, chart)',
-      'table',
-    )
-    .option('--no-patterns', 'Do not show patterns')
-    .action(async (pattern: string, options: ScanOptions) => {
-      const normalizedOptions = normalizeOptions(options);
-
-      await executeScan(pattern, normalizedOptions);
+    .action(async (patternArg: string | undefined) => {
+      const config = await loadConfig(process.cwd());
+      await executeScan(config, patternArg);
     });
 }
 
-function normalizeIgnorePatterns(ignore?: string | string[]) {
-  if (!ignore) {
-    return [];
-  }
-
-  return Array.isArray(ignore) ? ignore : [ignore];
-}
-
-function normalizeOptions(options: ScanOptions): NormalizedScanOptions {
-  return {
-    verbose: options.verbose || false,
-    summary:
-      options.summary === false || options.summary === 'false' ? false : 'log',
-    details: options.details || false,
-    components: (options.components as any) || 'table',
-    packages: (options.packages as any) || 'table',
-    patterns: (options.patterns as any) || 'table',
-    ignore: normalizeIgnorePatterns(options.ignore),
-  };
-}
-
-async function executeScan(pattern: string, options: NormalizedScanOptions) {
+export async function executeScan(config: HermexConfig, patternOverride?: string) {
   const startTime = Date.now();
   const spinner = ora('Parsing lockfile...').start();
 
   try {
-    // Parse lockfile - start from current directory
     const lockfileResult = findAndParseLockfile(process.cwd());
 
     spinner.succeed(
@@ -119,31 +41,25 @@ async function executeScan(pattern: string, options: NormalizedScanOptions) {
       ),
     );
 
-    console.log('availablePackages', lockfileResult); // TODO remove
+    const pattern = patternOverride ?? config.includes[0] ?? '**/*.{tsx,jsx,ts,js}';
+    const ignorePatterns = config.excludes;
 
-    // Find files matching pattern
     spinner.start('Finding files...');
-    const files = await findFiles(pattern, options.ignore);
+    const files = await findFiles(pattern, ignorePatterns);
 
     if (files.length === 0) {
-      // spinner.color = 'red'; // It should be red but not working.
-      spinner.fail('TEST');
-      // spinner.fail(chalk.red(` No files found matching pattern: ${pattern}`));
+      spinner.fail(chalk.red(`No files found matching pattern: ${pattern}`));
       return;
     }
 
     spinner.succeed(chalk.green(` Found ${files.length} files`));
 
-    // Analyze all files
     spinner.start('Analyzing files...');
     const reports: UsageReport[] = [];
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-
-      if (!options.verbose) {
-        spinner.text = `Analyzing files... (${i + 1}/${files.length})`;
-      }
+      spinner.text = `Analyzing files... (${i + 1}/${files.length})`;
 
       try {
         const report = parseFile(file);
@@ -161,35 +77,40 @@ async function executeScan(pattern: string, options: NormalizedScanOptions) {
       chalk.green(`Analysis complete! Analyzed ${reports.length} files`),
     );
 
-    // Calculate elapsed time
     const elapsedTime = (Date.now() - startTime) / 1000;
 
-    // Aggregate reports
-    const aggregated = aggregateReports(reports, lockfileResult.versions);
+    const aggregated = aggregateReports(reports, lockfileResult.versions, config);
 
-    if (options.packages) {
-      printPackages(aggregated, options.packages);
-    }
-
-    if (options.details) {
-      printDetails(aggregated);
-    }
-
-    if (options.components) {
-      printComponents(aggregated, options.components);
-    }
-
-    if (options.patterns) {
-      printPatterns(aggregated, options.patterns);
-    }
-
-    if (options.summary) {
-      printSummary(aggregated, elapsedTime);
-    }
+    printScanResults(aggregated, config, elapsedTime);
   } catch (error: any) {
     spinner.fail(chalk.red('Analysis failed: ' + error.message));
     console.error(error);
-
     process.exit(1);
+  }
+}
+
+function printScanResults(
+  aggregated: ReturnType<typeof aggregateReports>,
+  config: HermexConfig,
+  elapsedTime: number,
+) {
+  if (config.output.packages) {
+    printPackages(aggregated, config.output.packages);
+  }
+
+  if (config.output.details) {
+    printDetails(aggregated);
+  }
+
+  if (config.output.components) {
+    printComponents(aggregated, config.output.components);
+  }
+
+  if (config.output.patterns) {
+    printPatterns(aggregated, config.output.patterns);
+  }
+
+  if (config.output.summary) {
+    printSummary(aggregated, elapsedTime);
   }
 }

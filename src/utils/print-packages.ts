@@ -7,6 +7,11 @@ function printHeader() {
   console.log(chalk.blueBright.bold('\n📦 Packages\n'));
 }
 
+function formatPackageName(pkg: PackageDistribution): string {
+  const badge = pkg.internal ? chalk.yellow('[int] ') : '';
+  return badge + pkg.packageName;
+}
+
 export function printPackages(
   aggregated: AggregatedReport,
   mode: 'table' | 'chart',
@@ -38,7 +43,7 @@ function printPackagesTable(packages: PackageDistribution[]) {
 
   packages.forEach((pkg) => {
     table.push([
-      pkg.packageName,
+      formatPackageName(pkg),
       pkg.version || 'N/A',
       formatCount(pkg.componentCount),
       formatCount(pkg.usageCount),
@@ -48,10 +53,7 @@ function printPackagesTable(packages: PackageDistribution[]) {
 
   console.log(table.toString());
 
-  const totalComponents = packages.reduce(
-    (sum, p) => sum + p.componentCount,
-    0,
-  );
+  const totalComponents = packages.reduce((sum, p) => sum + p.componentCount, 0);
   const totalExternalUsage = packages.reduce((sum, p) => sum + p.usageCount, 0);
   console.log(
     chalk.gray(
@@ -70,20 +72,18 @@ function printPackagesChart(packages: PackageDistribution[]) {
 
   const maxBarWidth = 40;
   const maxPercentage = Math.max(...packages.map((p) => p.percentage));
-  const maxLabelLength = Math.max(...packages.map((p) => p.packageName.length));
+  const maxLabelLength = Math.max(...packages.map((p) => p.packageName.length + (p.internal ? 6 : 0)));
 
   packages.forEach((pkg) => {
-    const barLength = Math.round(
-      (pkg.percentage / maxPercentage) * maxBarWidth,
-    );
+    const barLength = Math.round((pkg.percentage / maxPercentage) * maxBarWidth);
     const emptyLength = maxBarWidth - barLength;
-    const paddedLabel = pkg.packageName.padEnd(maxLabelLength, ' ');
+    const label = formatPackageName(pkg).padEnd(maxLabelLength, ' ');
 
     const bar =
       chalk.green('█'.repeat(barLength)) + chalk.gray('░'.repeat(emptyLength));
 
     console.log(
-      `${paddedLabel} ${bar} ${chalk.bold(pkg.percentage.toFixed(1) + '%')} (${pkg.usageCount})`,
+      `${label} ${bar} ${chalk.bold(pkg.percentage.toFixed(1) + '%')} (${pkg.usageCount})`,
     );
   });
 }
