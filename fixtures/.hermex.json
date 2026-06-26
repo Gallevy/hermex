@@ -1,6 +1,9 @@
 {
   "packages": {
-    "internal": ["@design-system/*"]
+    "internal": ["@design-system/*"],
+    "banned": [
+      { "name": "moment", "severity": "error", "message": "Use date-fns or dayjs" }
+    ]
   },
   "versus": [
     {
@@ -8,6 +11,13 @@
       "packages": ["@design-system/foundation", "@new-system/arc"]
     }
   ],
+  "rules": {
+    "forbid_files": [
+      { "severity": "error", "patterns": ["jest.config.*", ".babelrc"], "message": "Use vitest + Vite" }
+    ],
+    "require_files": { "severity": "error", "patterns": [".nvmrc"] },
+    "allow_files": { "severity": "warn", "patterns": [".editorconfig"] }
+  },
   "output": {
     "details": false,
     "patterns": false

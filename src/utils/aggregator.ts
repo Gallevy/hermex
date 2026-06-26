@@ -2,6 +2,7 @@ import micromatch from 'micromatch';
 import type { UsageReport } from '../swc-parser';
 import type { HermexConfig, VersusConfig } from '../config/types';
 import type { MultiVersionMap } from '../lock-parser';
+import type { RuleViolation } from '../rules/evaluator';
 
 export interface ComponentUsage {
   name: string;
@@ -42,6 +43,12 @@ export interface VersusResult {
   totalCount: number;
 }
 
+export interface BannedPackageViolation {
+  packageName: string;
+  severity: 'error' | 'warn';
+  message?: string;
+}
+
 export interface AggregatedReport {
   filesAnalyzed: number;
   totalImports: number;
@@ -53,6 +60,8 @@ export interface AggregatedReport {
   allComponents: string[];
   packageDistribution: PackageDistribution[];
   versusResults: VersusResult[];
+  ruleViolations: RuleViolation[];
+  bannedPackageViolations: BannedPackageViolation[];
   reports: UsageReport[];
 }
 
@@ -80,7 +89,11 @@ export function aggregateReports(
       if (existing) {
         existing.count++;
       } else {
-        const source = findComponentSource(jsx.component, report, availablePackages);
+        const source = findComponentSource(
+          jsx.component,
+          report,
+          availablePackages,
+        );
         componentUsageMap.set(key, {
           name: jsx.component,
           source,
@@ -114,7 +127,14 @@ export function aggregateReports(
     multiVersions,
   );
 
-  const versusResults = calculateVersusResults(packageDistribution, config?.versus ?? []);
+  const versusResults = calculateVersusResults(
+    packageDistribution,
+    config?.versus ?? [],
+  );
+  const bannedPackageViolations = detectBannedPackages(
+    packageDistribution,
+    config,
+  );
 
   return {
     filesAnalyzed: reports.length,
@@ -127,6 +147,8 @@ export function aggregateReports(
     allComponents,
     packageDistribution,
     versusResults,
+    ruleViolations: [],
+    bannedPackageViolations,
     reports,
   };
 }
@@ -160,6 +182,32 @@ function calculateVersusResults(
   });
 }
 
+function detectBannedPackages(
+  distribution: PackageDistribution[],
+  config?: HermexConfig,
+): BannedPackageViolation[] {
+  const bannedRules = config?.packages.banned ?? [];
+  if (bannedRules.length === 0) return [];
+
+  const violations: BannedPackageViolation[] = [];
+  for (const pkg of distribution) {
+    for (const rule of bannedRules) {
+      const isMatch =
+        micromatch.isMatch(pkg.packageName, rule.name) ||
+        pkg.packageName === rule.name;
+      if (isMatch) {
+        violations.push({
+          packageName: pkg.packageName,
+          severity: rule.severity,
+          message: rule.message,
+        });
+        break;
+      }
+    }
+  }
+  return violations;
+}
+
 function resolvePackageFromImportPath(
   importPath: string,
   availablePackages: string[],
@@ -168,7 +216,9 @@ function resolvePackageFromImportPath(
     return 'local';
   }
 
-  const sortedPackages = [...availablePackages].sort((a, b) => b.length - a.length);
+  const sortedPackages = [...availablePackages].sort(
+    (a, b) => b.length - a.length,
+  );
 
   for (const pkg of sortedPackages) {
     if (importPath === pkg) return pkg;
@@ -193,34 +243,76 @@ function findComponentSource(
     (imp) => imp.name === componentName,
   );
   if (defaultImport)
-    return resolvePackageFromImportPath(defaultImport.source, availablePackages);
+    return resolvePackageFromImportPath(
+      defaultImport.source,
+      availablePackages,
+    );
 
   const aliasedImport = report.patterns.imports.aliased.find(
     (imp) => imp.local === componentName,
   );
   if (aliasedImport)
-    return resolvePackageFromImportPath(aliasedImport.source, availablePackages);
+    return resolvePackageFromImportPath(
+      aliasedImport.source,
+      availablePackages,
+    );
 
   return 'unknown';
 }
 
 function countPatterns(report: UsageReport, patternMap: Map<string, number>) {
-  increment(patternMap, 'imports.default', report.patterns.imports.default.length);
+  increment(
+    patternMap,
+    'imports.default',
+    report.patterns.imports.default.length,
+  );
   increment(patternMap, 'imports.named', report.patterns.imports.named.length);
-  increment(patternMap, 'imports.namespace', report.patterns.imports.namespace.length);
-  increment(patternMap, 'imports.aliased', report.patterns.imports.aliased.length);
+  increment(
+    patternMap,
+    'imports.namespace',
+    report.patterns.imports.namespace.length,
+  );
+  increment(
+    patternMap,
+    'imports.aliased',
+    report.patterns.imports.aliased.length,
+  );
   increment(patternMap, 'usage.jsx', report.patterns.usage.jsx.length);
-  increment(patternMap, 'usage.variables', report.patterns.usage.variables.length);
-  increment(patternMap, 'usage.destructuring', report.patterns.usage.destructuring.length);
-  increment(patternMap, 'usage.conditional', report.patterns.usage.conditional.length);
+  increment(
+    patternMap,
+    'usage.variables',
+    report.patterns.usage.variables.length,
+  );
+  increment(
+    patternMap,
+    'usage.destructuring',
+    report.patterns.usage.destructuring.length,
+  );
+  increment(
+    patternMap,
+    'usage.conditional',
+    report.patterns.usage.conditional.length,
+  );
   increment(patternMap, 'usage.arrays', report.patterns.usage.arrays.length);
   increment(patternMap, 'usage.objects', report.patterns.usage.objects.length);
   increment(patternMap, 'advanced.lazy', report.patterns.advanced.lazy.length);
-  increment(patternMap, 'advanced.dynamic', report.patterns.advanced.dynamic.length);
+  increment(
+    patternMap,
+    'advanced.dynamic',
+    report.patterns.advanced.dynamic.length,
+  );
   increment(patternMap, 'advanced.hoc', report.patterns.advanced.hoc.length);
   increment(patternMap, 'advanced.memo', report.patterns.advanced.memo.length);
-  increment(patternMap, 'advanced.forwardRef', report.patterns.advanced.forwardRef.length);
-  increment(patternMap, 'advanced.portal', report.patterns.advanced.portal.length);
+  increment(
+    patternMap,
+    'advanced.forwardRef',
+    report.patterns.advanced.forwardRef.length,
+  );
+  increment(
+    patternMap,
+    'advanced.portal',
+    report.patterns.advanced.portal.length,
+  );
 }
 
 function increment(map: Map<string, number>, key: string, value: number) {
@@ -281,9 +373,13 @@ function calculatePackageDistribution(
   const packageMap = new Map<string, PackageDistribution>();
 
   for (const component of componentUsageMap.values()) {
-    if (component.source === 'unknown' || component.source === 'local') continue;
+    if (component.source === 'unknown' || component.source === 'local')
+      continue;
 
-    if (ignorePatterns.length > 0 && micromatch.isMatch(component.source, ignorePatterns)) {
+    if (
+      ignorePatterns.length > 0 &&
+      micromatch.isMatch(component.source, ignorePatterns)
+    ) {
       continue;
     }
 
@@ -316,7 +412,10 @@ function calculatePackageDistribution(
   }
 
   const distribution = Array.from(packageMap.values());
-  const totalExternalUsage = distribution.reduce((sum, pkg) => sum + pkg.usageCount, 0);
+  const totalExternalUsage = distribution.reduce(
+    (sum, pkg) => sum + pkg.usageCount,
+    0,
+  );
 
   for (const pkg of distribution) {
     pkg.percentage =

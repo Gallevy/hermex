@@ -1,0 +1,91 @@
+import chalk from 'chalk';
+import type { AggregatedReport } from './aggregator';
+import type { RuleViolation } from '../rules/evaluator';
+
+function formatRuleType(type: RuleViolation['type']): string {
+  switch (type) {
+    case 'forbid_files':
+      return 'forbid_files';
+    case 'require_files':
+      return 'require_files';
+    case 'allow_files':
+      return 'allow_files';
+  }
+}
+
+function ruleIcon(violation: RuleViolation): string {
+  if (violation.severity === 'error') return chalk.red('✗');
+  return chalk.yellow('⚠');
+}
+
+function describeViolation(v: RuleViolation): string {
+  const patterns = v.patterns.join(', ');
+  const suffix = v.message ? chalk.gray(` — ${v.message}`) : '';
+
+  if (v.type === 'forbid_files') {
+    const files = v.matchedFiles.map((f) => {
+      const parts = f.replace(/\\/g, '/').split('/');
+      return parts[parts.length - 1];
+    });
+    return `${patterns} found (${files.join(', ')})${suffix}`;
+  }
+
+  if (v.type === 'require_files') {
+    return `${patterns} not found${suffix}`;
+  }
+
+  return `${patterns} not present${suffix}`;
+}
+
+export function printRules(aggregated: AggregatedReport): void {
+  const { ruleViolations, bannedPackageViolations } = aggregated;
+  const hasRuleViolations = ruleViolations.length > 0;
+  const hasBannedViolations = bannedPackageViolations.length > 0;
+
+  if (!hasRuleViolations && !hasBannedViolations) {
+    console.log(chalk.greenBright.bold('\n✓ Compliance\n'));
+    console.log(chalk.gray('  All compliance checks passed'));
+    return;
+  }
+
+  console.log(chalk.blueBright.bold('\n🔍 Compliance\n'));
+
+  if (hasRuleViolations) {
+    for (const v of ruleViolations) {
+      const icon = ruleIcon(v);
+      const type = chalk.gray(formatRuleType(v.type).padEnd(14));
+      const severityTag =
+        v.severity === 'error' ? chalk.red('[ERROR]') : chalk.yellow('[WARN]');
+      console.log(`  ${icon}  ${type} ${describeViolation(v)}  ${severityTag}`);
+    }
+  }
+
+  if (hasBannedViolations) {
+    if (hasRuleViolations) console.log();
+    for (const v of bannedPackageViolations) {
+      const icon = v.severity === 'error' ? chalk.red('✗') : chalk.yellow('⚠');
+      const tag =
+        v.severity === 'error'
+          ? chalk.red('[BANNED]')
+          : chalk.yellow('[RESTRICTED]');
+      const msg = v.message ? chalk.gray(` — ${v.message}`) : '';
+      console.log(`  ${icon}  ${tag} ${v.packageName}${msg}`);
+    }
+  }
+
+  const errorCount = [
+    ...ruleViolations.filter((v) => v.severity === 'error'),
+    ...bannedPackageViolations.filter((v) => v.severity === 'error'),
+  ].length;
+  const warnCount = [
+    ...ruleViolations.filter((v) => v.severity === 'warn'),
+    ...bannedPackageViolations.filter((v) => v.severity === 'warn'),
+  ].length;
+
+  const parts: string[] = [];
+  if (errorCount > 0)
+    parts.push(chalk.red(`${errorCount} error${errorCount > 1 ? 's' : ''}`));
+  if (warnCount > 0)
+    parts.push(chalk.yellow(`${warnCount} warning${warnCount > 1 ? 's' : ''}`));
+  console.log(chalk.gray(`\n  ${parts.join(', ')}`));
+}

@@ -10,9 +10,11 @@ import { printComponents } from '../utils/print-components';
 import { printPatterns } from '../utils/print-patterns';
 import { printPackages } from '../utils/print-packages';
 import { printVersus } from '../utils/print-versus';
+import { printRules } from '../utils/print-rules';
 import { findFiles } from '../utils/file-utils';
 import { findAndParseLockfile } from '../lock-parser';
 import { loadConfig } from '../config/loader';
+import { evaluateRules } from '../rules/evaluator';
 import type { HermexConfig } from '../config/types';
 
 export function registerScanCommand(program: Command) {
@@ -29,7 +31,10 @@ export function registerScanCommand(program: Command) {
     });
 }
 
-export async function executeScan(config: HermexConfig, patternOverride?: string) {
+export async function executeScan(
+  config: HermexConfig,
+  patternOverride?: string,
+) {
   const startTime = Date.now();
   const spinner = ora('Parsing lockfile...').start();
 
@@ -42,7 +47,8 @@ export async function executeScan(config: HermexConfig, patternOverride?: string
       ),
     );
 
-    const pattern = patternOverride ?? config.includes[0] ?? '**/*.{tsx,jsx,ts,js}';
+    const pattern =
+      patternOverride ?? config.includes[0] ?? '**/*.{tsx,jsx,ts,js}';
     const ignorePatterns = config.excludes;
 
     spinner.start('Finding files...');
@@ -80,7 +86,15 @@ export async function executeScan(config: HermexConfig, patternOverride?: string
 
     const elapsedTime = (Date.now() - startTime) / 1000;
 
-    const aggregated = aggregateReports(reports, lockfileResult.versions, config, lockfileResult.multiVersions);
+    const aggregated = aggregateReports(
+      reports,
+      lockfileResult.versions,
+      config,
+      lockfileResult.multiVersions,
+    );
+
+    const ruleViolations = evaluateRules(process.cwd(), config.rules);
+    aggregated.ruleViolations = ruleViolations;
 
     printScanResults(aggregated, config, elapsedTime);
   } catch (error: any) {
@@ -101,6 +115,10 @@ function printScanResults(
 
   if (config.output.versus && aggregated.versusResults.length > 0) {
     printVersus(aggregated);
+  }
+
+  if (config.output.rules) {
+    printRules(aggregated);
   }
 
   if (config.output.details) {
