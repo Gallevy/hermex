@@ -77,21 +77,14 @@ export function parseCode(
 
 /**
  * Parses a file and analyzes React component usage patterns.
- * Returns null if parsing fails and ignoreErrors is true; throws otherwise.
+ * Throws on parse/read errors — callers are responsible for handling them.
  */
 export function parseFile(
   filePath: string,
   options: ParseOptions = {},
 ): UsageReport | null {
-  try {
-    const code = fs.readFileSync(filePath, 'utf8');
-    return parseCode(code, options, filePath);
-  } catch (error) {
-    if (options.ignoreErrors) {
-      return null;
-    }
-    throw error;
-  }
+  const code = fs.readFileSync(filePath, 'utf8');
+  return parseCode(code, options, filePath);
 }
 
 /**

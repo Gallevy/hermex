@@ -64,25 +64,36 @@ export async function executeScan(
 
     spinner.start('Analyzing files...');
     const reports: UsageReport[] = [];
+    const parseErrors: { file: string; message: string }[] = [];
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       spinner.text = `Analyzing files... (${i + 1}/${files.length})`;
 
       try {
-        const report = parseFile(file, { ignoreErrors: config.ignoreErrors });
+        const report = parseFile(file);
         if (report) {
           reports.push(report);
         }
       } catch (error: any) {
-        spinner.fail(chalk.red(`Failed to parse ${file}: ${error.message}`));
-        throw error;
+        parseErrors.push({ file, message: error.message ?? String(error) });
       }
     }
 
     spinner.succeed(
-      chalk.green(`Analysis complete! Analyzed ${reports.length} files`),
+      chalk.green(
+        `Analysis complete! Analyzed ${reports.length}/${files.length} files`,
+      ),
     );
+
+    if (parseErrors.length > 0) {
+      console.log(chalk.yellow(`\n⚠ ${parseErrors.length} file(s) failed to parse:`));
+      for (const { file, message } of parseErrors) {
+        console.log(chalk.yellow(`  ${file}`));
+        console.log(chalk.gray(`    ${message}`));
+      }
+      console.log('');
+    }
 
     const elapsedTime = (Date.now() - startTime) / 1000;
 
