@@ -22,20 +22,13 @@ export function registerScanCommand(program: Command) {
   program
     .command('scan')
     .description('Scan and analyze local files')
-    .argument(
-      '[pattern]',
-      'Glob pattern for files to analyze (overrides config includes)',
-    )
-    .action(async (patternArg: string | undefined) => {
+    .action(async () => {
       const config = await loadConfig(process.cwd());
-      await executeScan(config, patternArg);
+      await executeScan(config);
     });
 }
 
-export async function executeScan(
-  config: HermexConfig,
-  patternOverride?: string,
-) {
+export async function executeScan(config: HermexConfig) {
   const startTime = Date.now();
   const spinner = ora('Parsing lockfile...').start();
 
@@ -48,15 +41,15 @@ export async function executeScan(
       ),
     );
 
-    const pattern =
-      patternOverride ?? config.includes[0] ?? '**/*.{tsx,jsx,ts,js}';
-    const ignorePatterns = config.excludes;
-
     spinner.start('Finding files...');
-    const files = await findFiles(pattern, ignorePatterns);
+    const files = await findFiles(config.includes, config.excludes);
 
     if (files.length === 0) {
-      spinner.fail(chalk.red(`No files found matching pattern: ${pattern}`));
+      spinner.fail(
+        chalk.red(
+          `No files found matching includes: ${config.includes.join(', ')}`,
+        ),
+      );
       return;
     }
 

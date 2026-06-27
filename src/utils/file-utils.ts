@@ -8,7 +8,7 @@ import { glob } from 'glob';
  * @returns Array of file paths
  */
 export async function findFiles(
-  pattern: string,
+  pattern: string | string[],
   ignorePatterns: string[],
 ): Promise<string[]> {
   const files = await glob(pattern, {

@@ -41,7 +41,7 @@
     "typecheck": "tsc --noEmit",
     "build": "tsdown",
     "build:ci": "tsdown --silent",
-    "dev:scan": "pnpm run build && cd fixtures && node ../dist/cli.mjs scan \"**/*.tsx\""
+    "dev:scan": "pnpm run build && cd fixtures && node ../dist/cli.mjs scan"
   },
   "dependencies": {
     "@semantic-release/github": "^12.0.8",
