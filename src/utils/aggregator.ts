@@ -3,6 +3,7 @@ import type { UsageReport } from '../swc-parser';
 import type { HermexConfig, VersusConfig } from '../config/types';
 import type { MultiVersionMap } from '../lock-parser';
 import type { RuleViolation } from '../rules/evaluator';
+import { toArray } from '../rules/evaluator';
 import type { ReleaseAgeEntry } from '../npm-registry/types';
 
 export interface ComponentUsage {
@@ -138,6 +139,12 @@ export function aggregateReports(
     config,
   );
 
+  const requiredPackageViolations = detectRequiredPackages(
+    packageDistribution,
+    versions,
+    config,
+  );
+
   return {
     filesAnalyzed: reports.length,
     totalImports,
@@ -149,7 +156,7 @@ export function aggregateReports(
     allComponents,
     packageDistribution,
     versusResults,
-    ruleViolations: [],
+    ruleViolations: requiredPackageViolations,
     bannedPackageViolations,
     reports,
   };
@@ -184,11 +191,6 @@ function calculateVersusResults(
   });
 }
 
-function toArray<T>(val: T | T[] | undefined): T[] {
-  if (!val) return [];
-  return Array.isArray(val) ? val : [val];
-}
-
 function detectBannedPackages(
   distribution: PackageDistribution[],
   config?: HermexConfig,
@@ -207,6 +209,38 @@ function detectBannedPackages(
         });
         break;
       }
+    }
+  }
+  return violations;
+}
+
+function detectRequiredPackages(
+  distribution: PackageDistribution[],
+  versions: Record<string, string>,
+  config?: HermexConfig,
+): RuleViolation[] {
+  const requireRules = toArray(config?.rules.require_packages);
+  if (requireRules.length === 0) return [];
+
+  // All package names available: from lockfile versions + from import distribution
+  const installedNames = new Set([
+    ...Object.keys(versions),
+    ...distribution.map((p) => p.packageName),
+  ]);
+
+  const violations: RuleViolation[] = [];
+  for (const rule of requireRules) {
+    const satisfied = rule.patterns.some((p) =>
+      [...installedNames].some((name) => micromatch.isMatch(name, p)),
+    );
+    if (!satisfied) {
+      violations.push({
+        type: 'require_packages',
+        severity: rule.severity,
+        patterns: rule.patterns,
+        message: rule.message,
+        matchedFiles: [],
+      });
     }
   }
   return violations;

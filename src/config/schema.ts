@@ -36,6 +36,25 @@ export const HermexConfigSchema = z.object({
       require_files: RuleConfigOrArraySchema.optional(),
       allow_files: RuleConfigOrArraySchema.optional(),
       forbid_packages: RuleConfigOrArraySchema.optional(),
+      require_packages: RuleConfigOrArraySchema.optional(),
+      require_scripts: RuleConfigOrArraySchema.optional(),
+      require_package_fields: RuleConfigOrArraySchema.optional(),
+      engine_version: z
+        .union([
+          z.object({
+            severity: RuleSeveritySchema,
+            range: z.string(),
+            message: z.string().optional(),
+          }),
+          z.array(
+            z.object({
+              severity: RuleSeveritySchema,
+              range: z.string(),
+              message: z.string().optional(),
+            }),
+          ),
+        ])
+        .optional(),
     })
     .optional(),
   output: z

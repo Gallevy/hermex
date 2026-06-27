@@ -94,8 +94,11 @@ export async function executeScan(
       lockfileResult.multiVersions,
     );
 
-    const ruleViolations = evaluateRules(process.cwd(), config.rules);
-    aggregated.ruleViolations = ruleViolations;
+    const evaluatorViolations = evaluateRules(process.cwd(), config.rules);
+    aggregated.ruleViolations = [
+      ...aggregated.ruleViolations,
+      ...evaluatorViolations,
+    ];
 
     if (config.releaseAge.enabled) {
       spinner.start('Fetching release age from registry...');

@@ -18,11 +18,21 @@ export interface RuleConfig {
   message?: string;
 }
 
+export interface EngineVersionRule {
+  severity: RuleSeverity;
+  range: string;
+  message?: string;
+}
+
 export interface RulesConfig {
   forbid_files?: RuleConfig | RuleConfig[];
   require_files?: RuleConfig | RuleConfig[];
   allow_files?: RuleConfig | RuleConfig[];
   forbid_packages?: RuleConfig | RuleConfig[];
+  require_packages?: RuleConfig | RuleConfig[];
+  require_scripts?: RuleConfig | RuleConfig[];
+  require_package_fields?: RuleConfig | RuleConfig[];
+  engine_version?: EngineVersionRule | EngineVersionRule[];
 }
 
 export interface OutputConfig {

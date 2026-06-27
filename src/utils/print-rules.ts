@@ -10,6 +10,16 @@ function formatRuleType(type: RuleViolation['type']): string {
       return 'require_files';
     case 'allow_files':
       return 'allow_files';
+    case 'forbid_packages':
+      return 'forbid_packages';
+    case 'require_packages':
+      return 'require_packages';
+    case 'require_scripts':
+      return 'require_scripts';
+    case 'require_package_fields':
+      return 'pkg_fields';
+    case 'engine_version':
+      return 'engine_version';
   }
 }
 
@@ -30,8 +40,20 @@ function describeViolation(v: RuleViolation): string {
     return `${patterns} found (${files.join(', ')})${suffix}`;
   }
 
-  if (v.type === 'require_files') {
-    return `${patterns} not found${suffix}`;
+  if (v.type === 'require_files') return `${patterns} not found${suffix}`;
+  if (v.type === 'allow_files') return `${patterns} not present${suffix}`;
+  if (v.type === 'require_packages')
+    return `${patterns} not installed${suffix}`;
+  if (v.type === 'forbid_packages') return `${patterns} is forbidden${suffix}`;
+  if (v.type === 'require_scripts')
+    return `script ${patterns} missing in package.json${suffix}`;
+  if (v.type === 'require_package_fields')
+    return `field ${patterns} missing in package.json${suffix}`;
+
+  if (v.type === 'engine_version') {
+    if (!v.installedRange)
+      return `engines.node not specified (required ${v.requiredRange})${suffix}`;
+    return `engines.node is ${chalk.yellow(v.installedRange)}, required ${chalk.cyan(v.requiredRange)}${suffix}`;
   }
 
   return `${patterns} not present${suffix}`;
