@@ -81,6 +81,8 @@ export const HermexConfigSchema = z.object({
       rules: true,
     })),
 
+  ignoreErrors: z.boolean().default(false),
+
   releaseAge: z
     .object({
       enabled: z.boolean().default(false),

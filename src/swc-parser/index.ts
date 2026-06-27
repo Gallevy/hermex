@@ -76,7 +76,8 @@ export function parseCode(
 }
 
 /**
- * Parses a file and analyzes React component usage patterns
+ * Parses a file and analyzes React component usage patterns.
+ * Returns null if parsing fails and ignoreErrors is true; throws otherwise.
  */
 export function parseFile(
   filePath: string,
@@ -85,9 +86,11 @@ export function parseFile(
   try {
     const code = fs.readFileSync(filePath, 'utf8');
     return parseCode(code, options, filePath);
-  } catch (error: any) {
-    console.error(`❌ Error parsing ${filePath}:`, error.message);
-    return null;
+  } catch (error) {
+    if (options.ignoreErrors) {
+      return null;
+    }
+    throw error;
   }
 }
 

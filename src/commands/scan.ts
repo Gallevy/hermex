@@ -70,14 +70,13 @@ export async function executeScan(
       spinner.text = `Analyzing files... (${i + 1}/${files.length})`;
 
       try {
-        const report = parseFile(file);
+        const report = parseFile(file, { ignoreErrors: config.ignoreErrors });
         if (report) {
           reports.push(report);
         }
       } catch (error: any) {
-        spinner.stop();
-        console.error(chalk.red(`Error analyzing ${file}: ${error.message}`));
-        spinner.start();
+        spinner.fail(chalk.red(`Failed to parse ${file}: ${error.message}`));
+        throw error;
       }
     }
 
