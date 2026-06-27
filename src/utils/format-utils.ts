@@ -10,8 +10,8 @@ export function formatCount(num: number): string {
 /**
  * Format duration in seconds to a readable string
  * @param seconds - Duration in seconds
- * @returns Formatted string (e.g., 10.2s, 1.5s, 0.1s)
+ * @returns Formatted string (e.g., 10.21s, 1.57s, 0.12s)
  */
 export function formatDuration(seconds: number): string {
-  return `${seconds.toFixed(1)}s`;
+  return `${seconds.toFixed(2)}s`;
 }

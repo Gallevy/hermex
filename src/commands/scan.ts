@@ -152,6 +152,6 @@ function printScanResults(
   }
 
   if (config.output.summary) {
-    printSummary(aggregated, elapsedTime);
+    printSummary(aggregated);
   }
 }

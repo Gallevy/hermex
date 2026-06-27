@@ -19,7 +19,7 @@ export function analyzeArrayExpression(node: any, state: ParserState): void {
         .filter(Boolean),
       line: node.span?.start || 0,
     });
-    console.log('📋 Array with components found');
+    // console.log('📋 Array with components found');
   }
 }
 
@@ -43,6 +43,6 @@ export function analyzeObjectExpression(node: any, state: ParserState): void {
       })),
       line: node.span?.start || 0,
     });
-    console.log('🗺️  Object mapping with components found');
+    // console.log('🗺️  Object mapping with components found');
   }
 }

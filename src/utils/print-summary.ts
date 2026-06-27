@@ -1,16 +1,13 @@
 import chalk from 'chalk';
 import Table from 'cli-table3';
 import type { AggregatedReport } from './aggregator';
-import { formatCount, formatDuration } from './format-utils';
+import { formatCount } from './format-utils';
 
 function printHeader() {
   console.log(chalk.green.bold('\n📊 Summary\n'));
 }
 
-export function printSummary(
-  aggregated: AggregatedReport,
-  elapsedTimeSeconds: number,
-) {
+export function printSummary(aggregated: AggregatedReport) {
   printHeader();
 
   const table = new Table({
@@ -40,11 +37,4 @@ export function printSummary(
   );
 
   console.log(table.toString());
-
-  // Print elapsed time outside the table
-  console.log(
-    chalk.green(
-      `Analysis completed successfully in ${formatDuration(elapsedTimeSeconds)}\n`,
-    ),
-  );
 }

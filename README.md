@@ -1,193 +1,164 @@
-# Hermex
+# hermex
 
-A powerful SWC-based tool for analyzing React component usage patterns across codebases. Understand how UI library components are used, track dependencies with exact versions, and generate comprehensive reports.
+SWC-based AST parser for analyzing code and React component usage patterns across entire codebases
 
-## 🚀 Quick Start
+## Quick Start
 
 ```bash
-# No installation required - use npx
-npx hermex scan "src/**/*.tsx"
+# No installation required - use npx (scans current directory)
+npx hermex scan
 
 # Or install globally
 npm install -g hermex
-hermex scan "src/**/*.tsx"
+hermex scan
 
-# Or install locally
-npm install hermex
+# Scan specific directory
 npx hermex scan "src/**/*.tsx"
 ```
 
-## 📦 Requirements
+## Requirements
 
 - Node.js 20+
-<!--- Node.js @cli_build_node+ -->
 
-## 📊 Key Features
+## Key Features
 
 - **Fast SWC-based Parsing**: Lightning-fast static analysis using SWC's Rust-based parser
-- **Pattern Detection**: Identifies 10+ React usage patterns including:
-  - Direct imports and JSX usage
+- **Comprehensive Pattern Detection**: Identifies 10+ React usage patterns including:
+  - Direct imports (default, named, namespace, aliased)
+  - JSX element usage
   - Variable assignments and destructuring
-  - Conditional usage and object mappings
-  - Namespace imports and aliased imports
-  - Portal usage
+  - Conditional usage (ternary operators)
+  - Collection mappings (arrays and objects)
+  - Lazy and dynamic imports
+  - Advanced patterns (HOC, memo, forwardRef, portals)
 - **Version Tracking**: Components reported with exact package versions from lockfiles
 - **Multi-Lockfile Support**: Parses package-lock.json, yarn.lock, and pnpm-lock.yaml
 - **Flexible Output**: Table and chart visualization formats
 - **Zero Configuration**: Works out of the box with sensible defaults
 
-## 📋 Commands
-
-### `scan` Command
-
-Scan and analyze local files for React component usage patterns.
+## Installation
 
 ```bash
-hermex scan [pattern] [options]
+# Global installation
+npm install -g hermex
+
+# Or with pnpm
+pnpm add -g hermex
+
+# Or with yarn
+yarn global add hermex
 ```
 
-#### Arguments
+## CLI Usage
 
-| Argument    | Description                       | Default                |
-| ----------- | --------------------------------- | ---------------------- |
-| `[pattern]` | Glob pattern for files to analyze | `**/*.{tsx,jsx,ts,js}` |
-
-#### Options
-
-| Option                        | Description                         | Values           | Default                                           |
-| ----------------------------- | ----------------------------------- | ---------------- | ------------------------------------------------- |
-| `--ignore <pattern>`          | Glob pattern for files to ignore    | Any glob pattern | `**/node_modules/**`, `**/dist/**`, `**/build/**` |
-| `--allow-packages <pattern>`  | Glob pattern for packages to scan   | Any glob pattern | `ALL`                                             |
-| `--ignore-packages <pattern>` | Glob pattern for packages to ignore | Any glob pattern | None                                              |
-| `--summary [mode]`            | Show summary statistics             | `log`, `false`   | `log`                                             |
-| `--no-summary`                | Do not show summary stats           | -                | -                                                 |
-| `--details`                   | Show detailed pattern counts        | -                | `false`                                           |
-| `--components [mode]`         | Show components table/chart         | `table`, `chart` | `table`                                           |
-| `--no-components`             | Do not show components              | -                | -                                                 |
-| `--packages [mode]`           | Show packages table/chart           | `table`, `chart` | `table`                                           |
-| `--no-packages`               | Do not show packages                | -                | -                                                 |
-| `--patterns [mode]`           | Show patterns table/chart           | `table`, `chart` | `table`                                           |
-| `--no-patterns`               | Do not show patterns                | -                | -                                                 |
-
-#### Examples
+### Main CLI
 
 ```bash
-# Basic scan with defaults
-hermex scan
+Usage: hermex [options] [command]
 
-# Scan specific directory
-hermex scan "src/**/*.tsx"
+Analyze React component usage patterns in your codebase
 
-# Show only summary and components
-hermex scan --no-patterns --no-packages
+Options:
+  -V, --version             output the version number
+  -h, --help                display help for command
 
-# Chart visualization
-hermex scan --components chart --patterns chart
-
-# Minimal output
-hermex scan --no-summary --no-patterns
+Commands:
+  scan [options] [pattern]  Scan and analyze local files
+  help [command]            display help for command
 ```
 
-## 🎯 Example Output
+### Scan Command
 
-### Lockfile Detection
+The `scan` command analyzes local files for React component usage patterns.
 
+```bash
+Usage: hermex scan [options] [pattern]
+
+Scan and analyze local files
+
+Arguments:
+  pattern                      Glob pattern for files to analyze (defaults to
+                               current directory recursively) (default:
+                               "**/*.{tsx,jsx,ts,js}")
+
+Options:
+  --ignore <pattern>           Glob pattern for files to ignore (default:
+                               ["**/node_modules/**","**/dist/**","**/build/**"])
+  --allow-packages <pattern>   Pattern for what packages to scan (default:
+                               ["**"])
+  --ignore-packages <pattern>  Pattern for what packages to ignore (default: [])
+  --no-summary                 Hide summary
+  --components [mode]          Show components table/chart (table, chart)
+                               (default: "table")
+  --no-components              Do not show components
+  --packages [mode]            Show packages table/chart (table, chart)
+                               (default: "table")
+  --no-packages                Do not show packages
+  --patterns [mode]            Show patterns table/chart (table, chart)
+                               (default: "table")
+  --no-patterns                Do not show patterns
+  --ignore-errors              Continue scanning even if some files fail to
+                               parse
+  -h, --help                   display help for command
 ```
-✔ 📦 Found pnpm lockfile (supports: v5, v6, v9) - 156 packages
-```
 
-### File Analysis
+## Example Output
 
-```
-✔  Found 42 files
-✔ Analysis complete! Analyzed 42 files
-```
+Running a basic scan (uses default pattern `**/*.{tsx,jsx,ts,js}`):
 
-### Packages Table
-
-```
+```bash
 📦 Packages
 
-┌───────────────────────────┬─────────┬────────────┬───────┬────────────┐
-│ Package                   │ Version │ Components │ Usage │ Percentage │
-├───────────────────────────┼─────────┼────────────┼───────┼────────────┤
-│ @design-system/foundation │ 2.5.3   │ 9          │ 23    │ 88.5%      │
-├───────────────────────────┼─────────┼────────────┼───────┼────────────┤
-│ react                     │ 18.3.1  │ 1          │ 3     │ 11.5%      │
-└───────────────────────────┴─────────┴────────────┴───────┴────────────┘
+  No packages found
 
-Total: 2 packages | 10 unique components | 26 total usages
-```
+⚛️ Components
 
-### Components Table
+  No external components found
 
-```
-⚛️  Components
-
-┌────────────┬───────────────────────────┬───────┐
-│ Component  │ Package                   │ Count │
-├────────────┼───────────────────────────┼───────┤
-│ Button     │ @design-system/foundation │ 5     │
-├────────────┼───────────────────────────┼───────┤
-│ Card       │ @design-system/foundation │ 5     │
-├────────────┼───────────────────────────┼───────┤
-│ Input      │ @design-system/foundation │ 4     │
-├────────────┼───────────────────────────┼───────┤
-│ Typography │ @design-system/foundation │ 4     │
-└────────────┴───────────────────────────┴───────┘
-```
-
-### Code Patterns
-
-```
 🔍 Code Patterns
 
 ┌──────────────────────┬───────┐
 │ Pattern              │ Count │
 ├──────────────────────┼───────┤
-│ JSX Usage            │ 145   │
+│ Named Imports        │ 130   │
 ├──────────────────────┼───────┤
-│ Named Imports        │ 89    │
+│ Default Imports      │ 51    │
 ├──────────────────────┼───────┤
-│ Default Imports      │ 67    │
+│ JSX Usage            │ 45    │
 ├──────────────────────┼───────┤
-│ Variable Assignments │ 23    │
+│ Object Mappings      │ 19    │
 ├──────────────────────┼───────┤
-│ Object Mappings      │ 15    │
+│ Variable Assignments │ 9     │
 ├──────────────────────┼───────┤
-│ Conditional Usage    │ 12    │
+│ Conditional Usage    │ 7     │
+├──────────────────────┼───────┤
+│ Namespace Imports    │ 4     │
+├──────────────────────┼───────┤
+│ Aliased Imports      │ 4     │
+├──────────────────────┼───────┤
+│ Destructuring        │ 2     │
+├──────────────────────┼───────┤
+│ Portal Usage         │ 1     │
 └──────────────────────┴───────┘
 
-Total: 146 patterns detected
-```
+Total: 272 patterns detected
 
-### Summary Statistics
-
-```
 📊 Summary
 
 ┌─────────────────────┬───────┐
 │ Metric              │ Count │
 ├─────────────────────┼───────┤
-│ Files Analyzed      │ 8     │
+│ Files Analyzed      │ 46    │
 ├─────────────────────┼───────┤
-│ External Packages   │ 2     │
+│ External Packages   │ 0     │
 ├─────────────────────┼───────┤
-│ External Components │ 10    │
+│ External Components │ 0     │
 ├─────────────────────┼───────┤
-│ Total Usages        │ 26    │
+│ Total Usages        │ 0     │
 └─────────────────────┴───────┘
-
-Analysis completed successfully in 0.1s
 ```
 
-## 📚 Documentation
-
-- **[Examples](./docs/EXAMPLES.md)** - Comprehensive examples and command usage
-- **[Patterns Guide](./docs/PATTERNS.md)** - All detectable React usage patterns
-- **[Project Milestones](./docs/MILESTONES.md)** - Roadmap and future features
-
-## 🎯 Use Cases
+## Use Cases
 
 1. **Dependency Audits** - Understand library usage before migrations
 2. **Version Tracking** - Know exactly which component versions are in use
@@ -197,12 +168,12 @@ Analysis completed successfully in 0.1s
 6. **Team Insights** - Understand how your team uses component libraries
 7. **Documentation** - Generate usage reports for component library documentation
 
-## 🔍 Pattern Detection
+## Documentation
 
-Hermex detects 10+ React component usage patterns.
-See the [Patterns](./docs/PATTERNS.md) for complete details.
+- **[Examples](./docs/examples.md)** - Comprehensive examples and command usage
+- **[Patterns Guide](./docs/patterns.md)** - All detectable React usage patterns
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **Runtime**: Node.js 24
 - **Parser**: [@swc/core](https://swc.rs/)
@@ -213,16 +184,16 @@ See the [Patterns](./docs/PATTERNS.md) for complete details.
 - **Linter**: [oxlint](https://oxc-project.github.io/)
 - **Tests**: [Vitest](https://vitest.dev/)
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please read our [Contributing Guide](./CONTRIBUTING.md) for details.
 
-## 📄 License
+## License
 
 MIT License - see [LICENSE.md](./LICENSE.md)
 
-## 🔗 Links
+## Links
 
-- [GitHub Repository](https://github.com/Gallevy/hermex)
+- [GitHub Repository](https://github.com/Gallevy/hermex.git)
 - [npm Package](https://www.npmjs.com/package/hermex)
-- [Report Issues](https://github.com/Gallevy/hermex/issues)
+- [Report Issues](https://github.com/Gallevy/hermex.git/issues)

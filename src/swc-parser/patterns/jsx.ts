@@ -52,5 +52,5 @@ export function analyzeJSXOpeningElement(
     state.usagePatterns.jsxUsage.set(elementName, usage);
   }
 
-  console.log(`🎨 JSX Usage: <${elementName}>`);
+  // console.log(`🎨 JSX Usage: <${elementName}>`);
 }
