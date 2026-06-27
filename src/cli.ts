@@ -2,15 +2,8 @@
 import { Command } from 'commander';
 import { registerScanCommand } from './commands/scan';
 import packageJson from '../package.json';
-import type { HermexConfig } from './config/types';
 
 export const program = new Command();
-
-export function defineConfig(
-  config: Partial<HermexConfig>,
-): Partial<HermexConfig> {
-  return config;
-}
 
 program
   .name('hermex')

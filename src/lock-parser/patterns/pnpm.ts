@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import yaml from 'js-yaml';
+import { load } from 'js-yaml';
 import type { LockfileAdapter } from '../lock-file-adapter';
 
 export class PnpmLockfileAdapter implements LockfileAdapter {
@@ -15,7 +15,7 @@ export class PnpmLockfileAdapter implements LockfileAdapter {
   parse(lockFilePath: string): Record<string, string> {
     try {
       const content = fs.readFileSync(lockFilePath, 'utf8');
-      const lockData = yaml.load(content) as any;
+      const lockData = load(content) as any;
       const versions: Record<string, string> = {};
 
       // pnpm v9+ uses "importers" field

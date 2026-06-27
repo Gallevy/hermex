@@ -13,6 +13,7 @@ import { printPackages } from '../utils/print-packages';
 import { printVersus } from '../utils/print-versus';
 import { printRules } from '../utils/print-rules';
 import { printErrors } from '../utils/print-errors';
+import { printJson } from '../utils/print-json';
 import { findFiles } from '../utils/file-utils';
 import { findAndParseLockfile } from '../lock-parser';
 import { loadConfig } from '../config/loader';
@@ -24,15 +25,23 @@ export function registerScanCommand(program: Command) {
   program
     .command('scan')
     .description('Scan and analyze local files')
-    .action(async () => {
-      const config = await loadConfig(process.cwd());
+    .option(
+      '--config <path>',
+      'Path to hermex config file (overrides CWD discovery)',
+    )
+    .action(async (options: { config?: string }) => {
+      const config = await loadConfig(process.cwd(), options.config);
       await executeScan(config);
     });
 }
 
 export async function executeScan(config: HermexConfig) {
   const startTime = Date.now();
-  const spinner = ora('Parsing lockfile...').start();
+  const isJson = config.output.format === 'json';
+  const spinner = ora({
+    text: 'Parsing lockfile...',
+    stream: isJson ? process.stderr : process.stdout,
+  }).start();
 
   try {
     const lockfileResult = findAndParseLockfile(process.cwd());
@@ -116,7 +125,11 @@ export async function executeScan(config: HermexConfig) {
       );
     }
 
-    printScanResults(aggregated, config, elapsedTime);
+    if (isJson) {
+      printJson(aggregated);
+    } else {
+      printScanResults(aggregated, config, elapsedTime);
+    }
   } catch (error: any) {
     spinner.fail(chalk.red('Analysis failed: ' + error.message));
     console.error(error);

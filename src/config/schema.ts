@@ -80,6 +80,7 @@ export const HermexConfigSchema = z.object({
       details: z.boolean().default(false),
       versus: z.boolean().default(true),
       rules: z.boolean().default(true),
+      format: z.enum(['human', 'json']).default('human'),
     })
     .default(() => ({
       summary: 'log' as const,
@@ -89,6 +90,7 @@ export const HermexConfigSchema = z.object({
       details: false,
       versus: true,
       rules: true,
+      format: 'human' as const,
     })),
 
   releaseAge: z

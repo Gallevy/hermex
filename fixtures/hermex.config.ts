@@ -1,6 +1,6 @@
-import { defineConfig } from '../src/cli';
+import type { HermexConfigInput } from '../src/config/types.ts';
 
-export default defineConfig({
+export default {
   packages: {
     internal: ['@design-system/*'],
   },
@@ -44,4 +44,4 @@ export default defineConfig({
     details: false,
     patterns: false,
   },
-});
+} satisfies HermexConfigInput;
