@@ -14,7 +14,7 @@ This is an open source static analysis tool for frontend code called **hermex**.
 - Build tool: tsup
 - Test framework: vitest
 - Linting: oxlint
-- Formatter: biome
+- Formatter: oxfmt
 - Release: semantic-release
 - CI/CD: GitHub Actions
 
@@ -44,9 +44,8 @@ pnpm run test:ci        # Run tests once (for CI)
 # Linting & Formatting
 pnpm run lint           # Lint code with oxlint
 pnpm run lint:ci        # Lint for CI
-pnpm run format         # Format code with biome
-pnpm run format:ci      # Check formatting for CI
-pnpm run check          # Run biome checks
+pnpm run format         # Format code with oxfmt (writes in place)
+pnpm run format:ci      # Check formatting with oxfmt
 
 # Development
 pnpm run dev:scan       # Build and run scan on fixtures
