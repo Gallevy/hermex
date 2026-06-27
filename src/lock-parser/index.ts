@@ -1,7 +1,7 @@
 import { NpmLockfileAdapter } from './patterns/npm';
 import { PnpmLockfileAdapter } from './patterns/pnpm';
 import { YarnLockfileAdapter } from './patterns/yarn';
-import type { MultiVersionMap } from './lock-file-adapter';
+import type { LockfileAdapter, MultiVersionMap } from './lock-file-adapter';
 
 export type { MultiVersionMap };
 
@@ -19,7 +19,7 @@ export interface LockfileResult {
   supportedVersions: string[];
 }
 
-const LOCKFILE_ADAPTERS = [
+const LOCKFILE_ADAPTERS: LockfileAdapter[] = [
   new NpmLockfileAdapter(),
   new YarnLockfileAdapter(),
   new PnpmLockfileAdapter(),

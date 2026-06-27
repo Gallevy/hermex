@@ -31,14 +31,14 @@ export const HermexConfigSchema = z.object({
 
   packages: z
     .object({
-      internal: z.array(z.string()).default([]),
-      ignore: z.array(z.string()).default([]),
+      internal: z.array(z.string()).default(() => []),
+      ignore: z.array(z.string()).default(() => []),
     })
-    .default({}),
+    .default(() => ({ internal: [], ignore: [] })),
 
   versus: z
     .array(z.object({ name: z.string(), packages: z.array(z.string()).min(2) }))
-    .default([]),
+    .default(() => []),
 
   rules: z
     .object({
@@ -53,7 +53,7 @@ export const HermexConfigSchema = z.object({
         .union([EngineVersionRuleSchema, z.array(EngineVersionRuleSchema)])
         .optional(),
     })
-    .default({}),
+    .default(() => ({})),
 
   output: z
     .object({
@@ -71,7 +71,15 @@ export const HermexConfigSchema = z.object({
       versus: z.boolean().default(true),
       rules: z.boolean().default(true),
     })
-    .default({}),
+    .default(() => ({
+      summary: 'log' as const,
+      components: 'table' as const,
+      packages: 'table' as const,
+      patterns: 'table' as const,
+      details: false,
+      versus: true,
+      rules: true,
+    })),
 
   releaseAge: z
     .object({
@@ -84,9 +92,13 @@ export const HermexConfigSchema = z.object({
           minor: z.number().nullable().default(60),
           major: z.number().nullable().default(90),
         })
-        .default({}),
+        .default(() => ({ patch: null, minor: 60, major: 90 })),
     })
-    .default({}),
+    .default(() => ({
+      enabled: false,
+      registry: 'https://registry.npmjs.org',
+      thresholds: { patch: null, minor: 60, major: 90 },
+    })),
 });
 
 // ── Derived types ──────────────────────────────────────────────────────────────

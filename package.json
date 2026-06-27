@@ -38,8 +38,9 @@
     "lint:ci": "oxlint",
     "test": "vitest",
     "test:ci": "vitest run",
-    "build": "tsup",
-    "build:ci": "tsup --clean",
+    "typecheck": "tsc --noEmit",
+    "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && esbuild src/cli.ts --bundle --platform=node --target=node24 --format=esm --outdir=dist --sourcemap --packages=external --tree-shaking=true",
+    "build:ci": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && esbuild src/cli.ts --bundle --platform=node --target=node24 --format=esm --outdir=dist --sourcemap --packages=external --tree-shaking=true --log-level=warning",
     "dev:scan": "pnpm run build && cd fixtures && node ../dist/cli.js scan \"**/*.tsx\""
   },
   "dependencies": {
@@ -68,11 +69,11 @@
     "@types/node": "^26.0.1",
     "@types/semver": "^7.7.1",
     "@types/tmp": "^0.2.6",
+    "esbuild": "^0.28.1",
     "oxfmt": "^0.56.0",
     "oxlint": "^1.71.0",
     "semantic-release": "^25.0.5",
-    "tsup": "^8.5.1",
-    "typescript": "6.0.3",
+    "typescript": "7.0.1-rc",
     "vitest": "^4.1.9"
   },
   "engines": {
