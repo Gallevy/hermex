@@ -1,4 +1,5 @@
 # FUTURE (DO NOT THINK ABOUT AT THE MOMENT)
+
 - [ ] add props to components tracking
 - [ ] add verbose flag in scan command and make sure it works properly
 - [ ] Test coverage

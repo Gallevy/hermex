@@ -87,7 +87,9 @@ export async function executeScan(
     );
 
     if (parseErrors.length > 0) {
-      console.log(chalk.yellow(`\n⚠ ${parseErrors.length} file(s) failed to parse:`));
+      console.log(
+        chalk.yellow(`\n⚠ ${parseErrors.length} file(s) failed to parse:`),
+      );
       for (const { file, message } of parseErrors) {
         console.log(chalk.yellow(`  ${file}`));
         console.log(chalk.gray(`    ${message}`));

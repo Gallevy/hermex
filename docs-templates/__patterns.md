@@ -19,6 +19,7 @@ Comprehensive reference for all React component usage patterns detected by <!-- 
 <!-- @package name --> uses SWC's AST parser to detect over 10 distinct React component usage patterns. This guide documents all detectable patterns with code examples.
 
 **Why Pattern Detection Matters:**
+
 - Understand how components are used across your codebase
 - Identify refactoring opportunities
 - Track migration progress when moving between UI libraries
@@ -32,12 +33,14 @@ Comprehensive reference for all React component usage patterns detected by <!-- 
 Detects components imported as default exports.
 
 **Code Example:**
+
 ```typescript
 import Button from '@mui/material/Button';
 import Card from '@company/design-system/Card';
 ```
 
 **Detection:**
+
 - Pattern name: `Default Imports`
 - Tracks: Component name, source package, line number
 - Use case: Common for packages that export components as default
@@ -47,12 +50,14 @@ import Card from '@company/design-system/Card';
 Detects components imported as named exports.
 
 **Code Example:**
+
 ```typescript
 import { Button, TextField, Card } from '@mui/material';
 import { Typography, Avatar } from '@company/design-system';
 ```
 
 **Detection:**
+
 - Pattern name: `Named Imports`
 - Tracks: Component name, source package, line number
 - Use case: Most common import pattern for modern React libraries
@@ -62,6 +67,7 @@ import { Typography, Avatar } from '@company/design-system';
 Detects components imported as a namespace.
 
 **Code Example:**
+
 ```typescript
 import * as MUI from '@mui/material';
 import * as Foundation from '@company/foundation';
@@ -70,6 +76,7 @@ import * as Foundation from '@company/foundation';
 ```
 
 **Detection:**
+
 - Pattern name: `Namespace Imports`
 - Tracks: Namespace name, source package, line number
 - Use case: Common when importing entire libraries or avoiding name conflicts
@@ -79,6 +86,7 @@ import * as Foundation from '@company/foundation';
 Detects components imported with aliases.
 
 **Code Example:**
+
 ```typescript
 import { Button as MUIButton } from '@mui/material';
 import { Card as DesignCard } from '@company/design-system';
@@ -86,6 +94,7 @@ import { TextField as Input } from '@mui/material';
 ```
 
 **Detection:**
+
 - Pattern name: `Aliased Imports`
 - Tracks: Original name, alias, source package, line number
 - Use case: Avoiding name conflicts or improving code clarity
@@ -97,6 +106,7 @@ import { TextField as Input } from '@mui/material';
 Detects actual usage of components in JSX.
 
 **Code Example:**
+
 ```tsx
 function MyComponent() {
   return (
@@ -111,11 +121,13 @@ function MyComponent() {
 ```
 
 **Detection:**
+
 - Pattern name: `JSX Usage`
 - Tracks: Component name, props, line number, usage context
 - Use case: Identifies where and how components are actually rendered
 
 **Advanced JSX Detection:**
+
 ```tsx
 // Namespace usage
 <Foundation.Button />
@@ -138,6 +150,7 @@ function MyComponent() {
 Detects components assigned to variables.
 
 **Code Example:**
+
 ```typescript
 const PrimaryButton = Button;
 const MyCard = Card;
@@ -145,6 +158,7 @@ const StyledInput = styled(TextField);
 ```
 
 **Detection:**
+
 - Pattern name: `Variable Assignments`
 - Tracks: Variable name, assigned component, line number
 - Use case: Component aliases, styled-components, component composition
@@ -154,6 +168,7 @@ const StyledInput = styled(TextField);
 Detects components destructured from objects or modules.
 
 **Code Example:**
+
 ```typescript
 import * as Foundation from '@company/foundation';
 
@@ -162,6 +177,7 @@ const { Typography } = Components;
 ```
 
 **Detection:**
+
 - Pattern name: `Destructured Usage`
 - Tracks: Property name, source object, line number
 - Use case: Extracting components from namespace imports or component libraries
@@ -173,20 +189,18 @@ const { Typography } = Components;
 Detects components used in conditional expressions.
 
 **Code Example:**
+
 ```tsx
 function MyComponent({ isPrimary }) {
   // Component selection based on condition
   const ButtonComponent = isPrimary ? PrimaryButton : SecondaryButton;
-  
-  return (
-    <div>
-      {isLoading ? <Spinner /> : <Content />}
-    </div>
-  );
+
+  return <div>{isLoading ? <Spinner /> : <Content />}</div>;
 }
 ```
 
 **Detection:**
+
 - Pattern name: `Conditional Usage`
 - Tracks: Both conditional branches, line number
 - Use case: Dynamic component selection, conditional rendering patterns
@@ -198,6 +212,7 @@ function MyComponent({ isPrimary }) {
 Detects components stored in arrays.
 
 **Code Example:**
+
 ```typescript
 const components = [Button, Card, Input, TextField];
 const layouts = [HeaderLayout, FooterLayout, SidebarLayout];
@@ -207,6 +222,7 @@ const Component = components[index];
 ```
 
 **Detection:**
+
 - Pattern name: `Array Mappings`
 - Tracks: All components in array, line number
 - Use case: Dynamic component rendering, component registries
@@ -216,24 +232,26 @@ const Component = components[index];
 Detects components mapped in objects.
 
 **Code Example:**
+
 ```typescript
 const componentMap = {
   button: Button,
   card: Card,
   input: Input,
-  text: Typography
+  text: Typography,
 };
 
 const iconMap = {
   user: UserIcon,
   settings: SettingsIcon,
-  home: HomeIcon
+  home: HomeIcon,
 };
 
 // Used as: componentMap[type]
 ```
 
 **Detection:**
+
 - Pattern name: `Object Mappings`
 - Tracks: Key-value pairs, component names, line number
 - Use case: Component registries, dynamic rendering based on keys, icon maps
@@ -245,6 +263,7 @@ const iconMap = {
 Detects React lazy-loaded components.
 
 **Code Example:**
+
 ```typescript
 import { lazy } from 'react';
 
@@ -254,6 +273,7 @@ const Dashboard = lazy(() => import('./Dashboard'));
 ```
 
 **Detection:**
+
 - Pattern name: `Lazy Imports`
 - Tracks: Import source path, line number
 - Use case: Code splitting, performance optimization
@@ -263,6 +283,7 @@ const Dashboard = lazy(() => import('./Dashboard'));
 Detects dynamic import() calls.
 
 **Code Example:**
+
 ```typescript
 // Dynamic import
 const loadComponent = async () => {
@@ -277,6 +298,7 @@ if (condition) {
 ```
 
 **Detection:**
+
 - Pattern name: `Dynamic Imports`
 - Tracks: Import source path, line number
 - Use case: Runtime code loading, conditional module loading
@@ -288,6 +310,7 @@ if (condition) {
 Detects HOC patterns where components are wrapped by functions.
 
 **Code Example:**
+
 ```typescript
 const EnhancedButton = withStyles(Button);
 const ConnectedCard = connect(mapStateToProps)(Card);
@@ -295,6 +318,7 @@ const TrackedComponent = withAnalytics(MyComponent);
 ```
 
 **Detection:**
+
 - Pattern name: `HOC Usage`
 - Tracks: HOC function name, wrapped component, line number
 - Use case: Component enhancement, cross-cutting concerns
@@ -304,6 +328,7 @@ const TrackedComponent = withAnalytics(MyComponent);
 Detects components wrapped with React.memo.
 
 **Code Example:**
+
 ```typescript
 import { memo } from 'react';
 
@@ -315,6 +340,7 @@ const MemoizedComponent = memo(ExpensiveComponent, customCompare);
 ```
 
 **Detection:**
+
 - Pattern name: `Memoized Components`
 - Tracks: Memoized component name, line number
 - Use case: Performance optimization, preventing unnecessary re-renders
@@ -324,6 +350,7 @@ const MemoizedComponent = memo(ExpensiveComponent, customCompare);
 Detects components using forwardRef.
 
 **Code Example:**
+
 ```typescript
 import { forwardRef } from 'react';
 
@@ -339,6 +366,7 @@ const CustomInput = forwardRef<HTMLInputElement, Props>(
 ```
 
 **Detection:**
+
 - Pattern name: `Forward Refs`
 - Tracks: Line number
 - Use case: Ref forwarding, imperative component APIs
@@ -348,6 +376,7 @@ const CustomInput = forwardRef<HTMLInputElement, Props>(
 Detects React portal usage.
 
 **Code Example:**
+
 ```typescript
 import { createPortal } from 'react-dom';
 
@@ -367,6 +396,7 @@ function Tooltip({ content }) {
 ```
 
 **Detection:**
+
 - Pattern name: `Portal Usage`
 - Tracks: Line number
 - Use case: Rendering outside component hierarchy, modals, tooltips
@@ -389,6 +419,7 @@ When you run `<!-- @cli scan -->`, the pattern statistics show you:
 ### Reading Pattern Reports
 
 **Example Pattern Output:**
+
 ```
 🔍 Code Patterns
 
@@ -422,17 +453,20 @@ When you run `<!-- @cli scan -->`, the pattern statistics show you:
 Certain patterns indicate higher code complexity:
 
 ### Simple Patterns (Low Complexity)
+
 - Named Imports
 - Default Imports
 - JSX Usage
 
 ### Moderate Patterns (Medium Complexity)
+
 - Variable Assignments
 - Namespace Imports
 - Aliased Imports
 - Lazy Imports
 
 ### Complex Patterns (High Complexity)
+
 - Conditional Usage
 - Object Mappings
 - Array Mappings
@@ -443,24 +477,24 @@ Certain patterns indicate higher code complexity:
 
 ## Use Cases by Pattern
 
-| Pattern | Primary Use Case |
-|---------|-----------------|
-| Named Imports | Standard component imports from libraries |
-| Default Imports | Single component per file, default exports |
-| Namespace Imports | Importing entire libraries, avoiding conflicts |
-| Aliased Imports | Resolving naming conflicts |
-| JSX Usage | Actual component rendering |
-| Variable Assignments | Component aliasing, composition |
-| Destructured Usage | Extracting from namespace imports |
-| Conditional Usage | Dynamic component selection |
-| Array Mappings | Component registries, dynamic lists |
-| Object Mappings | Type-based component selection |
-| Lazy Imports | Code splitting, performance |
-| Dynamic Imports | Runtime module loading |
-| HOC Usage | Component enhancement |
-| Memo Usage | Performance optimization |
-| ForwardRef Usage | Ref forwarding |
-| Portal Usage | Rendering outside hierarchy |
+| Pattern              | Primary Use Case                               |
+| -------------------- | ---------------------------------------------- |
+| Named Imports        | Standard component imports from libraries      |
+| Default Imports      | Single component per file, default exports     |
+| Namespace Imports    | Importing entire libraries, avoiding conflicts |
+| Aliased Imports      | Resolving naming conflicts                     |
+| JSX Usage            | Actual component rendering                     |
+| Variable Assignments | Component aliasing, composition                |
+| Destructured Usage   | Extracting from namespace imports              |
+| Conditional Usage    | Dynamic component selection                    |
+| Array Mappings       | Component registries, dynamic lists            |
+| Object Mappings      | Type-based component selection                 |
+| Lazy Imports         | Code splitting, performance                    |
+| Dynamic Imports      | Runtime module loading                         |
+| HOC Usage            | Component enhancement                          |
+| Memo Usage           | Performance optimization                       |
+| ForwardRef Usage     | Ref forwarding                                 |
+| Portal Usage         | Rendering outside hierarchy                    |
 
 ## Best Practices
 
