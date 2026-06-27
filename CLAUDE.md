@@ -11,7 +11,7 @@ This is an open source static analysis tool for frontend code called **hermex**.
 
 - Runtime: Node.js 24
 - Language: TypeScript
-- Build tool: esbuild (direct)
+- Build tool: tsdown (Rolldown/Rust, TS7-compatible)
 - Test framework: vitest
 - Linting: oxlint
 - Formatter: oxfmt
@@ -34,7 +34,7 @@ This is an open source static analysis tool for frontend code called **hermex**.
 
 ```bash
 # Building
-pnpm run build          # Build with esbuild (fast, no type-check)
+pnpm run build          # Build with tsdown/Rolldown (fast, no type-check)
 pnpm run build:ci       # Build for CI (warnings only)
 pnpm run typecheck      # Type-check with tsc --noEmit (TS7 Go binary)
 

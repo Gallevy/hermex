@@ -22,7 +22,7 @@
     "url": "https://github.com/Gallevy/hermex.git"
   },
   "bin": {
-    "hermex": "./dist/cli.js"
+    "hermex": "./dist/cli.mjs"
   },
   "files": [
     "dist",
@@ -30,7 +30,7 @@
     "LICENSE.md"
   ],
   "type": "module",
-  "main": "./dist/cli.js",
+  "main": "./dist/cli.mjs",
   "scripts": {
     "format": "oxfmt --write",
     "format:ci": "oxfmt --check",
@@ -39,9 +39,9 @@
     "test": "vitest",
     "test:ci": "vitest run",
     "typecheck": "tsc --noEmit",
-    "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && esbuild src/cli.ts --bundle --platform=node --target=node24 --format=esm --outdir=dist --sourcemap --packages=external --tree-shaking=true",
-    "build:ci": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && esbuild src/cli.ts --bundle --platform=node --target=node24 --format=esm --outdir=dist --sourcemap --packages=external --tree-shaking=true --log-level=warning",
-    "dev:scan": "pnpm run build && cd fixtures && node ../dist/cli.js scan \"**/*.tsx\""
+    "build": "tsdown",
+    "build:ci": "tsdown --silent",
+    "dev:scan": "pnpm run build && cd fixtures && node ../dist/cli.mjs scan \"**/*.tsx\""
   },
   "dependencies": {
     "@semantic-release/github": "^12.0.8",
@@ -69,10 +69,10 @@
     "@types/node": "^26.0.1",
     "@types/semver": "^7.7.1",
     "@types/tmp": "^0.2.6",
-    "esbuild": "^0.28.1",
     "oxfmt": "^0.56.0",
     "oxlint": "^1.71.0",
     "semantic-release": "^25.0.5",
+    "tsdown": "^0.22.3",
     "typescript": "7.0.1-rc",
     "vitest": "^4.1.9"
   },
