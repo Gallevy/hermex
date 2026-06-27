@@ -100,7 +100,7 @@ export async function enrichWithReleaseAge(
   packages: PackageDistribution[],
   config: ReleaseAgeConfig,
 ): Promise<{ enriched: PackageDistribution[]; skipped: number }> {
-  const registryUrl = config.registry ?? 'https://registry.npmjs.org';
+  const registryUrl = config.registry;
   const targets = packages.filter((p) => !p.internal && p.version);
   const enriched = [...packages];
   let skipped = 0;

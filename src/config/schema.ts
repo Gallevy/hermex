@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+// ── Sub-schemas ────────────────────────────────────────────────────────────────
+
 const RuleSeveritySchema = z.enum(['error', 'warn']);
 
 const RuleConfigSchema = z.object({
@@ -13,23 +15,31 @@ const RuleConfigOrArraySchema = z.union([
   z.array(RuleConfigSchema),
 ]);
 
+const EngineVersionRuleSchema = z.object({
+  severity: RuleSeveritySchema,
+  range: z.string(),
+  message: z.string().optional(),
+});
+
+// ── Main schema with defaults ──────────────────────────────────────────────────
+
 export const HermexConfigSchema = z.object({
-  includes: z.array(z.string()).optional(),
-  excludes: z.array(z.string()).optional(),
+  includes: z.array(z.string()).default(['**/*.{tsx,jsx,ts,js}']),
+  excludes: z
+    .array(z.string())
+    .default(['**/node_modules/**', '**/dist/**', '**/build/**']),
+
   packages: z
     .object({
-      internal: z.array(z.string()).optional(),
-      ignore: z.array(z.string()).optional(),
+      internal: z.array(z.string()).default([]),
+      ignore: z.array(z.string()).default([]),
     })
-    .optional(),
+    .default({}),
+
   versus: z
-    .array(
-      z.object({
-        name: z.string(),
-        packages: z.array(z.string()).min(2),
-      }),
-    )
-    .optional(),
+    .array(z.object({ name: z.string(), packages: z.array(z.string()).min(2) }))
+    .default([]),
+
   rules: z
     .object({
       forbid_files: RuleConfigOrArraySchema.optional(),
@@ -40,52 +50,60 @@ export const HermexConfigSchema = z.object({
       require_scripts: RuleConfigOrArraySchema.optional(),
       require_package_fields: RuleConfigOrArraySchema.optional(),
       engine_version: z
-        .union([
-          z.object({
-            severity: RuleSeveritySchema,
-            range: z.string(),
-            message: z.string().optional(),
-          }),
-          z.array(
-            z.object({
-              severity: RuleSeveritySchema,
-              range: z.string(),
-              message: z.string().optional(),
-            }),
-          ),
-        ])
+        .union([EngineVersionRuleSchema, z.array(EngineVersionRuleSchema)])
         .optional(),
     })
-    .optional(),
+    .default({}),
+
   output: z
     .object({
-      summary: z.union([z.literal('log'), z.literal(false)]).optional(),
+      summary: z.union([z.literal('log'), z.literal(false)]).default('log'),
       components: z
         .union([z.enum(['table', 'chart']), z.literal(false)])
-        .optional(),
+        .default('table'),
       packages: z
         .union([z.enum(['table', 'chart']), z.literal(false)])
-        .optional(),
+        .default('table'),
       patterns: z
         .union([z.enum(['table', 'chart']), z.literal(false)])
-        .optional(),
-      details: z.boolean().optional(),
-      versus: z.boolean().optional(),
-      rules: z.boolean().optional(),
+        .default('table'),
+      details: z.boolean().default(false),
+      versus: z.boolean().default(true),
+      rules: z.boolean().default(true),
     })
-    .optional(),
+    .default({}),
+
   releaseAge: z
     .object({
-      enabled: z.boolean(),
-      registry: z.string().optional(),
+      enabled: z.boolean().default(false),
+      registry: z.string().default('https://registry.npmjs.org'),
       authToken: z.string().optional(),
       thresholds: z
         .object({
-          patch: z.number().nullable().optional(),
-          minor: z.number().nullable().optional(),
-          major: z.number().nullable().optional(),
+          patch: z.number().nullable().default(null),
+          minor: z.number().nullable().default(60),
+          major: z.number().nullable().default(90),
         })
-        .optional(),
+        .default({}),
     })
-    .optional(),
+    .default({}),
 });
+
+// ── Derived types ──────────────────────────────────────────────────────────────
+
+/** Config as returned after parsing — all defaults applied, all fields required */
+export type HermexConfig = z.infer<typeof HermexConfigSchema>;
+
+/** Config as accepted by the user — everything optional */
+export type HermexConfigInput = z.input<typeof HermexConfigSchema>;
+
+// Sub-types derived from the output shape so they can never drift from the schema
+export type RuleSeverity = z.infer<typeof RuleSeveritySchema>;
+export type RuleConfig = z.infer<typeof RuleConfigSchema>;
+export type EngineVersionRule = z.infer<typeof EngineVersionRuleSchema>;
+export type PackagesConfig = HermexConfig['packages'];
+export type VersusConfig = HermexConfig['versus'][number];
+export type RulesConfig = HermexConfig['rules'];
+export type OutputConfig = HermexConfig['output'];
+export type ReleaseAgeConfig = HermexConfig['releaseAge'];
+export type ReleaseAgeThresholds = HermexConfig['releaseAge']['thresholds'];
