@@ -31,7 +31,7 @@ function upgradeLevel(
   thresholds: ReleaseAgeConfig['thresholds'],
 ): UpgradeLevel | null {
   const threshold = thresholds[bump];
-  if (threshold === null || threshold === undefined) return null;
+  if (threshold === false || threshold === undefined) return null;
   if (daysAgo > threshold) {
     // major bump past its threshold → mandatory, minor/patch → needs
     return bump === 'major' ? 'mandatory_upgrade' : 'needs_upgrade';

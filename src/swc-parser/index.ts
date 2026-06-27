@@ -45,32 +45,18 @@ function swcOptionsForFile(filePath: string): SwcParseOptions {
 export function parseCode(
   code: string,
   options: ParseOptions = {},
-  filePath?: string,
+  filePath = 'file.tsx',
 ): UsageReport {
   const state = createState();
 
-  const swcOptions: SwcParseOptions = filePath
-    ? swcOptionsForFile(filePath)
-    : {
-        syntax: 'typescript',
-        tsx: true,
-        decorators: true,
-        dynamicImport: true,
-      };
-
   // Parse code to AST
-  const ast = parseSync(code, swcOptions);
+  const ast = parseSync(code, swcOptionsForFile(filePath));
 
   // Visit all nodes and analyze patterns
   visitNode(ast, state);
 
   // Generate report
   const report = generateReport(state);
-
-  // Optional: Filter by library if specified
-  if (options.libraryName) {
-    return filterReportByLibrary(report, options.libraryName);
-  }
 
   return report;
 }
@@ -79,57 +65,9 @@ export function parseCode(
  * Parses a file and analyzes React component usage patterns.
  * Throws on parse/read errors — callers are responsible for handling them.
  */
-export function parseFile(
-  filePath: string,
-  options: ParseOptions = {},
-): UsageReport | null {
+export function parseFile(filePath: string): UsageReport | null {
   const code = fs.readFileSync(filePath, 'utf8');
-  return parseCode(code, options, filePath);
-}
-
-/**
- * Filters report to only include imports/usage from a specific library
- */
-function filterReportByLibrary(
-  report: UsageReport,
-  libraryName: string,
-): UsageReport {
-  const isFromLibrary = (source: string) =>
-    source.startsWith(libraryName) || source.includes(libraryName);
-
-  return {
-    ...report,
-    patterns: {
-      imports: {
-        default: report.patterns.imports.default.filter((imp) =>
-          isFromLibrary(imp.source),
-        ),
-        named: report.patterns.imports.named.filter((imp) =>
-          isFromLibrary(imp.source),
-        ),
-        namespace: report.patterns.imports.namespace.filter((imp) =>
-          isFromLibrary(imp.source),
-        ),
-        aliased: report.patterns.imports.aliased.filter((imp) =>
-          isFromLibrary(imp.source),
-        ),
-      },
-      usage: report.patterns.usage,
-      advanced: {
-        lazy: report.patterns.advanced.lazy.filter((imp) =>
-          isFromLibrary(imp.source),
-        ),
-        dynamic: report.patterns.advanced.dynamic.filter((imp) =>
-          isFromLibrary(imp.source),
-        ),
-        hoc: report.patterns.advanced.hoc,
-        memo: report.patterns.advanced.memo,
-        forwardRef: report.patterns.advanced.forwardRef,
-        portal: report.patterns.advanced.portal,
-      },
-      props: report.patterns.props,
-    },
-  };
+  return parseCode(code, {}, filePath);
 }
 
 // Re-export types for convenience

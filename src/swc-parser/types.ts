@@ -145,9 +145,7 @@ export interface UsageReport {
   components: string[];
 }
 
-export interface ParseOptions {
-  libraryName?: string; // Optional library filter (for backward compatibility)
-}
+export interface ParseOptions {}
 
 export interface ParseError {
   file: string;

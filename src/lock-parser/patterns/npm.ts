@@ -36,10 +36,9 @@ export class NpmLockfileAdapter implements LockfileAdapter {
             if (!pkgPath || pkgPath === '') return;
 
             // Only root-level packages (no nested node_modules in path)
-            const isNested = pkgPath.split('node_modules/').length > 2;
-            if (isNested) return;
+            if (pkgPath.split('node_modules/').length > 2) return;
 
-            const pkgName = pkgPath.replace(/^node_modules\//, '');
+            const pkgName = canonicalPackageName(pkgPath);
             if (pkgData.version) {
               versions[pkgName] = pkgData.version;
             }

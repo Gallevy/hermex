@@ -1,5 +1,5 @@
 // Primitive types not represented in the config schema
-export type OutputMode = 'table' | 'chart';
+export type OutputMode = 'table' | 'chart' | 'log';
 export type UpgradeLevel = 'needs_upgrade' | 'mandatory_upgrade';
 
 // All config types are derived from the Zod schema — re-exported here for backward compat

@@ -3,6 +3,7 @@ import ora from 'ora';
 import chalk from 'chalk';
 import { parseFile } from '../swc-parser';
 import type { UsageReport } from '../swc-parser';
+import type { ParseError } from '../swc-parser/types';
 import { aggregateReports } from '../utils/aggregator';
 import { printSummary } from '../utils/print-summary';
 import { printDetails } from '../utils/print-details';
@@ -11,6 +12,7 @@ import { printPatterns } from '../utils/print-patterns';
 import { printPackages } from '../utils/print-packages';
 import { printVersus } from '../utils/print-versus';
 import { printRules } from '../utils/print-rules';
+import { printErrors } from '../utils/print-errors';
 import { findFiles } from '../utils/file-utils';
 import { findAndParseLockfile } from '../lock-parser';
 import { loadConfig } from '../config/loader';
@@ -57,7 +59,7 @@ export async function executeScan(config: HermexConfig) {
 
     spinner.start('Analyzing files...');
     const reports: UsageReport[] = [];
-    const parseErrors: { file: string; message: string }[] = [];
+    const parseErrors: ParseError[] = [];
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
@@ -79,16 +81,7 @@ export async function executeScan(config: HermexConfig) {
       ),
     );
 
-    if (parseErrors.length > 0) {
-      console.log(
-        chalk.yellow(`\n⚠ ${parseErrors.length} file(s) failed to parse:`),
-      );
-      for (const { file, message } of parseErrors) {
-        console.log(chalk.yellow(`  ${file}`));
-        console.log(chalk.gray(`    ${message}`));
-      }
-      console.log('');
-    }
+    printErrors(parseErrors);
 
     const elapsedTime = (Date.now() - startTime) / 1000;
 
@@ -99,7 +92,11 @@ export async function executeScan(config: HermexConfig) {
       lockfileResult.multiVersions,
     );
 
-    const evaluatorViolations = evaluateRules(process.cwd(), config.rules);
+    const evaluatorViolations = evaluateRules(
+      process.cwd(),
+      config.rules,
+      config.excludes,
+    );
     aggregated.ruleViolations = [
       ...aggregated.ruleViolations,
       ...evaluatorViolations,
@@ -136,7 +133,7 @@ function printScanResults(
     printPackages(aggregated, config.output.packages);
   }
 
-  if (config.output.versus && aggregated.versusResults.length > 0) {
+  if (config.output.versus) {
     printVersus(aggregated);
   }
 

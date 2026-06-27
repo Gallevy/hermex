@@ -40,7 +40,7 @@
     "test:ci": "vitest run",
     "typecheck": "tsc --noEmit",
     "build": "tsdown",
-    "build:ci": "tsdown --silent",
+    "build:ci": "tsdown",
     "dev:scan": "pnpm run build && cd fixtures && node ../dist/cli.mjs scan"
   },
   "dependencies": {

@@ -21,6 +21,8 @@ const EngineVersionRuleSchema = z.object({
   message: z.string().optional(),
 });
 
+const ThresholdSchema = z.union([z.number(), z.literal(false)]);
+
 // ── Main schema with defaults ──────────────────────────────────────────────────
 
 export const HermexConfigSchema = z.object({
@@ -31,29 +33,37 @@ export const HermexConfigSchema = z.object({
 
   packages: z
     .object({
-      internal: z.array(z.string()).default(() => []),
-      ignore: z.array(z.string()).default(() => []),
+      internal: z.array(z.string()).default([]),
+      ignore: z.array(z.string()).default([]),
     })
     .default(() => ({ internal: [], ignore: [] })),
 
   versus: z
     .array(z.object({ name: z.string(), packages: z.array(z.string()).min(2) }))
-    .default(() => []),
+    .default([]),
 
   rules: z
     .object({
-      forbid_files: RuleConfigOrArraySchema.optional(),
-      require_files: RuleConfigOrArraySchema.optional(),
-      allow_files: RuleConfigOrArraySchema.optional(),
-      forbid_packages: RuleConfigOrArraySchema.optional(),
-      require_packages: RuleConfigOrArraySchema.optional(),
-      require_scripts: RuleConfigOrArraySchema.optional(),
-      require_package_fields: RuleConfigOrArraySchema.optional(),
+      forbid_files: RuleConfigOrArraySchema.default([]),
+      require_files: RuleConfigOrArraySchema.default([]),
+      allow_files: RuleConfigOrArraySchema.default([]),
+      forbid_packages: RuleConfigOrArraySchema.default([]),
+      require_packages: RuleConfigOrArraySchema.default([]),
+      require_scripts: RuleConfigOrArraySchema.default([]),
+      require_package_fields: RuleConfigOrArraySchema.default([]),
       engine_version: z
         .union([EngineVersionRuleSchema, z.array(EngineVersionRuleSchema)])
         .optional(),
     })
-    .default(() => ({})),
+    .default(() => ({
+      forbid_files: [] as RuleConfig[],
+      require_files: [] as RuleConfig[],
+      allow_files: [] as RuleConfig[],
+      forbid_packages: [] as RuleConfig[],
+      require_packages: [] as RuleConfig[],
+      require_scripts: [] as RuleConfig[],
+      require_package_fields: [] as RuleConfig[],
+    })),
 
   output: z
     .object({
@@ -88,16 +98,16 @@ export const HermexConfigSchema = z.object({
       authToken: z.string().optional(),
       thresholds: z
         .object({
-          patch: z.number().nullable().default(null),
-          minor: z.number().nullable().default(60),
-          major: z.number().nullable().default(90),
+          patch: ThresholdSchema.default(30),
+          minor: ThresholdSchema.default(45),
+          major: ThresholdSchema.default(60),
         })
-        .default(() => ({ patch: null, minor: 60, major: 90 })),
+        .default(() => ({ patch: 30, minor: 45, major: 60 })),
     })
     .default(() => ({
       enabled: false,
       registry: 'https://registry.npmjs.org',
-      thresholds: { patch: null, minor: 60, major: 90 },
+      thresholds: { patch: 30, minor: 45, major: 60 },
     })),
 });
 

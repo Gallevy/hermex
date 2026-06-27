@@ -6,6 +6,10 @@ import type { RuleViolation } from '../rules/evaluator';
 import { toArray } from '../rules/evaluator';
 import type { ReleaseAgeEntry } from '../npm-registry/types';
 
+function toPercentage(count: number, total: number): number {
+  return total > 0 ? (count / total) * 100 : 0;
+}
+
 export interface ComponentUsage {
   name: string;
   source: string;
@@ -182,7 +186,7 @@ function calculateVersusResults(
     const totalCount = entries.reduce((sum, e) => sum + e.count, 0);
 
     for (const entry of entries) {
-      entry.percentage = totalCount > 0 ? (entry.count / totalCount) * 100 : 0;
+      entry.percentage = toPercentage(entry.count, totalCount);
     }
 
     entries.sort((a, b) => b.count - a.count);
@@ -196,7 +200,9 @@ function detectBannedPackages(
   config?: HermexConfig,
 ): BannedPackageViolation[] {
   const forbidRules = toArray(config?.rules.forbid_packages);
-  if (forbidRules.length === 0) return [];
+  if (forbidRules.length === 0) {
+    return [];
+  }
 
   const violations: BannedPackageViolation[] = [];
   for (const pkg of distribution) {
