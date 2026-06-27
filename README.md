@@ -18,6 +18,7 @@ npx hermex scan "src/**/*.tsx"
 ```
 
 ## 📦 Requirements
+
 - Node.js 20+
 <!--- Node.js @cli_build_node+ -->
 
@@ -47,26 +48,26 @@ hermex scan [pattern] [options]
 
 #### Arguments
 
-| Argument | Description | Default |
-|----------|-------------|---------|
+| Argument    | Description                       | Default                |
+| ----------- | --------------------------------- | ---------------------- |
 | `[pattern]` | Glob pattern for files to analyze | `**/*.{tsx,jsx,ts,js}` |
 
 #### Options
 
-| Option | Description | Values | Default |
-|--------|-------------|--------|---------|
-| `--ignore <pattern>` | Glob pattern for files to ignore | Any glob pattern | `**/node_modules/**`, `**/dist/**`, `**/build/**` |
-| `--allow-packages <pattern>` | Glob pattern for packages to scan | Any glob pattern | `ALL` |
-| `--ignore-packages <pattern>` | Glob pattern for packages to ignore | Any glob pattern | None |
-| `--summary [mode]` | Show summary statistics | `log`, `false` | `log` |
-| `--no-summary` | Do not show summary stats | - | - |
-| `--details` | Show detailed pattern counts | - | `false` |
-| `--components [mode]` | Show components table/chart | `table`, `chart` | `table` |
-| `--no-components` | Do not show components | - | - |
-| `--packages [mode]` | Show packages table/chart | `table`, `chart` | `table` |
-| `--no-packages` | Do not show packages | - | - |
-| `--patterns [mode]` | Show patterns table/chart | `table`, `chart` | `table` |
-| `--no-patterns` | Do not show patterns | - | - |
+| Option                        | Description                         | Values           | Default                                           |
+| ----------------------------- | ----------------------------------- | ---------------- | ------------------------------------------------- |
+| `--ignore <pattern>`          | Glob pattern for files to ignore    | Any glob pattern | `**/node_modules/**`, `**/dist/**`, `**/build/**` |
+| `--allow-packages <pattern>`  | Glob pattern for packages to scan   | Any glob pattern | `ALL`                                             |
+| `--ignore-packages <pattern>` | Glob pattern for packages to ignore | Any glob pattern | None                                              |
+| `--summary [mode]`            | Show summary statistics             | `log`, `false`   | `log`                                             |
+| `--no-summary`                | Do not show summary stats           | -                | -                                                 |
+| `--details`                   | Show detailed pattern counts        | -                | `false`                                           |
+| `--components [mode]`         | Show components table/chart         | `table`, `chart` | `table`                                           |
+| `--no-components`             | Do not show components              | -                | -                                                 |
+| `--packages [mode]`           | Show packages table/chart           | `table`, `chart` | `table`                                           |
+| `--no-packages`               | Do not show packages                | -                | -                                                 |
+| `--patterns [mode]`           | Show patterns table/chart           | `table`, `chart` | `table`                                           |
+| `--no-patterns`               | Do not show patterns                | -                | -                                                 |
 
 #### Examples
 
@@ -90,17 +91,20 @@ hermex scan --no-summary --no-patterns
 ## 🎯 Example Output
 
 ### Lockfile Detection
+
 ```
 ✔ 📦 Found pnpm lockfile (supports: v5, v6, v9) - 156 packages
 ```
 
 ### File Analysis
+
 ```
 ✔  Found 42 files
 ✔ Analysis complete! Analyzed 42 files
 ```
 
 ### Packages Table
+
 ```
 📦 Packages
 
@@ -116,6 +120,7 @@ Total: 2 packages | 10 unique components | 26 total usages
 ```
 
 ### Components Table
+
 ```
 ⚛️  Components
 
@@ -133,6 +138,7 @@ Total: 2 packages | 10 unique components | 26 total usages
 ```
 
 ### Code Patterns
+
 ```
 🔍 Code Patterns
 
@@ -156,6 +162,7 @@ Total: 146 patterns detected
 ```
 
 ### Summary Statistics
+
 ```
 📊 Summary
 
@@ -196,6 +203,7 @@ Hermex detects 10+ React component usage patterns.
 See the [Patterns](./docs/PATTERNS.md) for complete details.
 
 ## 🛠️ Tech Stack
+
 - **Runtime**: Node.js 24
 - **Parser**: [@swc/core](https://swc.rs/)
 - **CLI**: [Commander.js](https://github.com/tj/commander.js)

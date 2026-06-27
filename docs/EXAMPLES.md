@@ -30,6 +30,7 @@ hermex scan "code-examples/patterns/01-direct-usage.tsx"
 ```
 
 **Output:**
+
 ```
 ✔  Found 1 files
 ✔  Analysis complete! Analyzed 1 files
@@ -89,6 +90,7 @@ hermex scan "code-examples/patterns/*.tsx"
 ```
 
 **Output:**
+
 ```
 ✔  Found 8 files
 ✔  Analysis complete! Analyzed 8 files
@@ -157,6 +159,7 @@ hermex scan --help
 ```
 
 **Output:**
+
 ```
 Usage: hermex scan [options] [pattern]
 
@@ -187,6 +190,7 @@ hermex scan "code-examples/patterns/02-variable-assignment.tsx" --details
 ```
 
 **Output:**
+
 ```
 ✔  Found 1 files
 ✔  Analysis complete! Analyzed 1 files
@@ -259,6 +263,7 @@ hermex scan "code-examples/patterns/*.tsx" --top-components table
 ```
 
 **Output:**
+
 ```
 ✔  Found 8 files
 ✔  Analysis complete! Analyzed 8 files
@@ -310,6 +315,7 @@ hermex scan "code-examples/patterns/03-object-mapping.tsx" --components-usage ch
 ```
 
 **Output:**
+
 ```
 ✔  Found 1 files
 ✔  Analysis complete! Analyzed 1 files
@@ -363,6 +369,7 @@ hermex scan "code-examples/patterns/01-direct-usage.tsx" --summary false --top-c
 ```
 
 **Output:**
+
 ```
 ✔  Found 1 files
 ✔  Analysis complete! Analyzed 1 files
@@ -379,6 +386,7 @@ hermex scan "src/**/*.tsx" --details --top-components table --patterns chart
 ```
 
 This shows:
+
 - ✅ Summary statistics
 - ✅ Detailed pattern breakdown
 - ✅ Top components as a table
@@ -400,6 +408,7 @@ hermex scan "src/**/*.tsx" | grep "@old-ui-library"
 ```
 
 **Use this to:**
+
 - Identify all components that need migration
 - Understand usage patterns (simple vs complex)
 - Estimate migration effort based on pattern complexity
@@ -417,6 +426,7 @@ hermex scan "src/**/*.tsx" > component-audit-report.txt
 ```
 
 **Use this to:**
+
 - Identify unused components (candidates for deprecation)
 - Find most-used components (prioritize for optimization)
 - Track adoption of new components over time
@@ -431,6 +441,7 @@ hermex scan "src/**/*.tsx" --summary false --top-components false --components-u
 ```
 
 **Look for:**
+
 - High counts of conditional usage (may indicate over-abstraction)
 - Many object mappings (could be simplified)
 - Excessive variable assignments (naming inconsistency)
@@ -449,6 +460,7 @@ hermex scan "packages/shared/src/**/*.tsx" > reports/shared-analysis.txt
 ```
 
 **Use this to:**
+
 - Identify shared components used differently across apps
 - Find opportunities for consolidation
 - Track component library consistency
@@ -462,6 +474,7 @@ hermex scan "src/components/ComplexForm.tsx" --verbose --details
 ```
 
 The `--verbose` flag is not shown in the output above, but it provides file-by-file pattern detection as the analysis runs, showing:
+
 - 📦 Import discoveries
 - 🎨 JSX usage
 - 📝 Variable assignments
@@ -479,6 +492,7 @@ hermex scan "src/**/*.tsx" --summary log --details false --top-components false 
 ```
 
 **Output:**
+
 ```
 ✔  Found 42 files
 ✔  Analysis complete! Analyzed 42 files
@@ -530,6 +544,7 @@ Breaks down the total pattern count by type, helping you understand the complexi
 ### Top Components Section
 
 **List format (default):**
+
 ```
 🏆 Top Components
 --------------------------------------------------------
@@ -540,6 +555,7 @@ Breaks down the total pattern count by type, helping you understand the complexi
 ```
 
 **Table format (`--top-components table`):**
+
 ```
 ┌──────┬───────────┬──────────────────────────┬───────┐
 │ Rank │ Component │ Source                   │ Count │
@@ -572,6 +588,7 @@ Shows the most frequently used components across your codebase.
 ### Code Patterns
 
 **Table format (default):**
+
 ```
 🔍 Code Patterns
 
@@ -585,6 +602,7 @@ Shows the most frequently used components across your codebase.
 ```
 
 **Chart format (`--patterns chart`):**
+
 ```
 🔍 Code Patterns
 
@@ -598,31 +616,41 @@ Shows how components are being used - simple imports, complex mappings, conditio
 ## Tips & Best Practices
 
 ### Start Simple
+
 Begin with default options to get an overview:
+
 ```bash
 hermex scan "src/**/*.tsx"
 ```
 
 ### Add Details When Investigating
+
 Use `--details` flag when you need to understand patterns:
+
 ```bash
 hermex scan "src/**/*.tsx" --details
 ```
 
 ### Use Charts for Quick Visual Analysis
+
 Charts are great for presentations or quick comparisons:
+
 ```bash
 hermex scan "src/**/*.tsx" --components-usage chart --patterns chart
 ```
 
 ### Combine Options for Custom Reports
+
 Mix and match to get exactly what you need:
+
 ```bash
 hermex scan "src/**/*.tsx" --details --top-components table --patterns chart
 ```
 
 ### Be Specific with Patterns
+
 Narrow down your glob pattern for faster, more focused analysis:
+
 ```bash
 # Good - Specific
 hermex scan "src/features/dashboard/**/*.tsx"
@@ -632,7 +660,9 @@ hermex scan "**/*.tsx"
 ```
 
 ### Export Results
+
 Save analysis for later review or comparison:
+
 ```bash
 hermex scan "src/**/*.tsx" > analysis-$(date +%Y%m%d).txt
 ```
@@ -641,18 +671,18 @@ hermex scan "src/**/*.tsx" > analysis-$(date +%Y%m%d).txt
 
 Hermex automatically detects various React usage patterns. Here are the patterns you'll see in the output:
 
-| Pattern | What It Detects | Example |
-|---------|----------------|---------|
-| **Default Imports** | `import Button from '@lib/button'` | Direct default imports |
-| **Named Imports** | `import { Button } from '@lib'` | Named exports |
-| **Aliased Imports** | `import { Button as Btn } from '@lib'` | Renamed imports |
-| **Namespace Imports** | `import * as UI from '@lib'` | Wildcard imports |
-| **JSX Usage** | `<Button>Click</Button>` | Component rendering |
-| **Variable Assignments** | `const MyBtn = Button` | Component aliasing |
-| **Conditional Usage** | `const C = flag ? A : B` | Conditional component selection |
-| **Object Mappings** | `const map = { btn: Button }` | Components in objects |
-| **Destructuring** | `const { Button } = UI` | Destructuring patterns |
-| **Portal Usage** | `createPortal(<Modal />)` | React portals |
+| Pattern                  | What It Detects                        | Example                         |
+| ------------------------ | -------------------------------------- | ------------------------------- |
+| **Default Imports**      | `import Button from '@lib/button'`     | Direct default imports          |
+| **Named Imports**        | `import { Button } from '@lib'`        | Named exports                   |
+| **Aliased Imports**      | `import { Button as Btn } from '@lib'` | Renamed imports                 |
+| **Namespace Imports**    | `import * as UI from '@lib'`           | Wildcard imports                |
+| **JSX Usage**            | `<Button>Click</Button>`               | Component rendering             |
+| **Variable Assignments** | `const MyBtn = Button`                 | Component aliasing              |
+| **Conditional Usage**    | `const C = flag ? A : B`               | Conditional component selection |
+| **Object Mappings**      | `const map = { btn: Button }`          | Components in objects           |
+| **Destructuring**        | `const { Button } = UI`                | Destructuring patterns          |
+| **Portal Usage**         | `createPortal(<Modal />)`              | React portals                   |
 
 See [PATTERNS.md](./PATTERNS.md) for complete pattern documentation with complexity ratings.
 
