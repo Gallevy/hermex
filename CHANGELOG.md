@@ -1,3 +1,30 @@
+# [1.3.0-beta.1](https://github.com/Gallevy/hermex/compare/v1.2.0...v1.3.0-beta.1) (2026-06-27)
+
+
+### Bug Fixes
+
+* address all PR review comments ([3e26706](https://github.com/Gallevy/hermex/commit/3e26706993856ac23df4dfae9eebf8614b5b1743))
+* address remaining PR review comments ([4cd7a99](https://github.com/Gallevy/hermex/commit/4cd7a991650a035ebf04d894c368d6b7fc4103c9))
+* derive SWC parse options from file extension ([daadd80](https://github.com/Gallevy/hermex/commit/daadd8063d59a84496e578615b5f3cacddbd2a67))
+* remove hardcoded DEFAULT_EXCLUDES from evaluator, require caller to pass config.excludes ([7714584](https://github.com/Gallevy/hermex/commit/7714584f6adc2361ef21301b41c49c07ad311d08))
+* wire ignoreErrors from config into parseFile, remove noisy console.error ([7f13499](https://github.com/Gallevy/hermex/commit/7f134995a60f56049bfac294f8ddc5d797c43eae))
+
+
+### Features
+
+* additional compliance rule types ([56e2eba](https://github.com/Gallevy/hermex/commit/56e2eba61a20d83ce011f6d412776401a81ba524))
+* compliance rules + banned packages ([61cc277](https://github.com/Gallevy/hermex/commit/61cc2773e6f11f0a8047759563de8991b0461dd8))
+* config file system + internal package marking ([0569d7f](https://github.com/Gallevy/hermex/commit/0569d7fc0f46e0713eac4378d3321dd18cd78052))
+* multiple version detection in lockfile ([ea07de5](https://github.com/Gallevy/hermex/commit/ea07de5d15910d6fa6340ac6bcd667ed7e55d5e2))
+* release age + deprecated package detection ([ed7c3b5](https://github.com/Gallevy/hermex/commit/ed7c3b53e5e8941d0f7cc5b6d09b2e30587dda9b))
+* upgrade to TypeScript 7 RC + replace tsup with esbuild ([dea350f](https://github.com/Gallevy/hermex/commit/dea350f95bad4bcb5f675ab25a45132e07ac29e7))
+* versus package comparison + split tracking ([03a1b61](https://github.com/Gallevy/hermex/commit/03a1b613226a3a1a0174aa9cf956371cba2d955a))
+
+
+### Reverts
+
+* restore CHANGELOG.md to pre-merge state ([2eedcec](https://github.com/Gallevy/hermex/commit/2eedcec04025d0a993bca2783f969f3675cd8ff2))
+
 # [1.2.0](https://github.com/Gallevy/hermex/compare/v1.1.2...v1.2.0) (2025-12-06)
 
 
