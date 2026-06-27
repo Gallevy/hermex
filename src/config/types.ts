@@ -2,16 +2,9 @@ export type OutputMode = 'table' | 'chart';
 export type RuleSeverity = 'error' | 'warn';
 export type UpgradeLevel = 'needs_upgrade' | 'mandatory_upgrade';
 
-export interface BannedPackage {
-  name: string;
-  severity: RuleSeverity;
-  message?: string;
-}
-
 export interface PackagesConfig {
   internal: string[];
   ignore: string[];
-  banned: BannedPackage[];
 }
 
 export interface VersusConfig {
@@ -29,6 +22,7 @@ export interface RulesConfig {
   forbid_files?: RuleConfig | RuleConfig[];
   require_files?: RuleConfig | RuleConfig[];
   allow_files?: RuleConfig | RuleConfig[];
+  forbid_packages?: RuleConfig | RuleConfig[];
 }
 
 export interface OutputConfig {
@@ -70,7 +64,6 @@ export const DEFAULT_CONFIG: HermexConfig = {
   packages: {
     internal: [],
     ignore: [],
-    banned: [],
   },
   versus: [],
   rules: {},

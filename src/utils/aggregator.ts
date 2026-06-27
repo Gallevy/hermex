@@ -184,20 +184,22 @@ function calculateVersusResults(
   });
 }
 
+function toArray<T>(val: T | T[] | undefined): T[] {
+  if (!val) return [];
+  return Array.isArray(val) ? val : [val];
+}
+
 function detectBannedPackages(
   distribution: PackageDistribution[],
   config?: HermexConfig,
 ): BannedPackageViolation[] {
-  const bannedRules = config?.packages.banned ?? [];
-  if (bannedRules.length === 0) return [];
+  const forbidRules = toArray(config?.rules.forbid_packages);
+  if (forbidRules.length === 0) return [];
 
   const violations: BannedPackageViolation[] = [];
   for (const pkg of distribution) {
-    for (const rule of bannedRules) {
-      const isMatch =
-        micromatch.isMatch(pkg.packageName, rule.name) ||
-        pkg.packageName === rule.name;
-      if (isMatch) {
+    for (const rule of forbidRules) {
+      if (micromatch.isMatch(pkg.packageName, rule.patterns)) {
         violations.push({
           packageName: pkg.packageName,
           severity: rule.severity,

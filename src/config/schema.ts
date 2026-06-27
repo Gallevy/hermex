@@ -20,15 +20,6 @@ export const HermexConfigSchema = z.object({
     .object({
       internal: z.array(z.string()).optional(),
       ignore: z.array(z.string()).optional(),
-      banned: z
-        .array(
-          z.object({
-            name: z.string(),
-            severity: RuleSeveritySchema,
-            message: z.string().optional(),
-          }),
-        )
-        .optional(),
     })
     .optional(),
   versus: z
@@ -44,6 +35,7 @@ export const HermexConfigSchema = z.object({
       forbid_files: RuleConfigOrArraySchema.optional(),
       require_files: RuleConfigOrArraySchema.optional(),
       allow_files: RuleConfigOrArraySchema.optional(),
+      forbid_packages: RuleConfigOrArraySchema.optional(),
     })
     .optional(),
   output: z
