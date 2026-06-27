@@ -127,7 +127,7 @@ export async function executeScan(config: HermexConfig) {
 function printScanResults(
   aggregated: ReturnType<typeof aggregateReports>,
   config: HermexConfig,
-  elapsedTime: number,
+  _elapsedTime: number,
 ) {
   if (config.output.packages) {
     printPackages(aggregated, config.output.packages);

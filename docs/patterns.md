@@ -403,55 +403,7 @@ function Tooltip({ content }) {
 
 ## Pattern Statistics
 
-When you run `📦 Packages
-
-No packages found
-
-⚛️ Components
-
-No external components found
-
-🔍 Code Patterns
-
-┌──────────────────────┬───────┐
-│ Pattern │ Count │
-├──────────────────────┼───────┤
-│ Named Imports │ 130 │
-├──────────────────────┼───────┤
-│ Default Imports │ 51 │
-├──────────────────────┼───────┤
-│ JSX Usage │ 45 │
-├──────────────────────┼───────┤
-│ Object Mappings │ 19 │
-├──────────────────────┼───────┤
-│ Variable Assignments │ 9 │
-├──────────────────────┼───────┤
-│ Conditional Usage │ 7 │
-├──────────────────────┼───────┤
-│ Namespace Imports │ 4 │
-├──────────────────────┼───────┤
-│ Aliased Imports │ 4 │
-├──────────────────────┼───────┤
-│ Destructuring │ 2 │
-├──────────────────────┼───────┤
-│ Portal Usage │ 1 │
-└──────────────────────┴───────┘
-
-Total: 272 patterns detected
-
-📊 Summary
-
-┌─────────────────────┬───────┐
-│ Metric │ Count │
-├─────────────────────┼───────┤
-│ Files Analyzed │ 46 │
-├─────────────────────┼───────┤
-│ External Packages │ 0 │
-├─────────────────────┼───────┤
-│ External Components │ 0 │
-├─────────────────────┼───────┤
-│ Total Usages │ 0 │
-└─────────────────────┴───────┘`, the pattern statistics show you:
+When you run `hermex scan`, the pattern statistics show you:
 
 ### What Gets Counted
 

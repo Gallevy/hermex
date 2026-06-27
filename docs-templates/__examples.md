@@ -1,372 +1,237 @@
 # <!-- @package name --> - Examples Guide
 
-Comprehensive examples demonstrating how to use <!-- @package name --> for analyzing React component usage patterns.
+Practical examples for configuring and running <!-- @package name --> v2.
 
-## Table of Contents
+## Getting Started
 
-- [Basic Usage](#basic-usage)
-- [File Filtering](#file-filtering)
-- [Package Filtering](#package-filtering)
-- [Output Customization](#output-customization)
-- [Visualization Modes](#visualization-modes)
-- [Real-World Examples](#real-world-examples)
-
-## Basic Usage
-
-### Scan Current Directory
-
-Scan all TypeScript and JavaScript files in the current directory and subdirectories:
+<!-- @package name --> is fully config-driven. All configuration lives in `hermex.config.ts` at your project root — there are no CLI flags.
 
 ```bash
-$ npx <!-- @package name --> scan
-<!-- @cli scan -->
-```
-
-### Scan Specific Directory
-
-Target a specific directory with a glob pattern:
-
-```bash
-# Scan only src directory
-npx <!-- @package name --> scan "src/**/*.tsx"
-
-# Scan multiple directories
-npx <!-- @package name --> scan "src/**/*.{tsx,jsx}"
-npx <!-- @package name --> scan "{src,components}/**/*.tsx"
-```
-
-### Scan Specific File Types
-
-```bash
-# Only TypeScript files
-npx <!-- @package name --> scan "**/*.tsx"
-
-# Only JavaScript files
-npx <!-- @package name --> scan "**/*.jsx"
-
-# Both TypeScript and JavaScript (default)
 npx <!-- @package name --> scan
 ```
 
-**Note:** The default pattern is `**/*.{tsx,jsx,ts,js}`, so you don't need to specify it.
+## Minimal Config
 
-## File Filtering
+```ts
+// hermex.config.ts
+import { defineConfig } from '<!-- @package name -->';
 
-### Ignore Patterns
-
-Exclude specific directories or files from analysis:
-
-```bash
-# Ignore test files
-npx <!-- @package name --> scan --ignore "**/*.test.tsx"
-
-# Ignore multiple patterns
-npx <!-- @package name --> scan --ignore "**/*.test.tsx" --ignore "**/*.spec.tsx"
-
-# Ignore specific directories
-npx <!-- @package name --> scan --ignore "**/test/**" --ignore "**/mocks/**"
+export default defineConfig({});
 ```
 
-**Default ignored patterns:**
+Running `<!-- @package name --> scan` with no config (or an empty one) uses defaults: scans `**/*.{tsx,jsx,ts,js}`, excludes `node_modules/dist/build`, shows packages + components + summary.
 
-- `**/node_modules/**`
-- `**/dist/**`
-- `**/build/**`
+## File Targeting
 
-### Custom File Patterns
+Control which files are analyzed via `includes` and `excludes`:
 
-```bash
-# Only component files
-npx <!-- @package name --> scan "src/components/**/*.tsx"
-
-# Only page files
-npx <!-- @package name --> scan "src/pages/**/*.tsx"
-
-# Specific subdirectories
-npx <!-- @package name --> scan "src/{components,pages,layouts}/**/*.tsx"
+```ts
+export default defineConfig({
+  includes: ['src/**/*.{tsx,jsx}'],
+  excludes: [
+    '**/node_modules/**',
+    '**/dist/**',
+    '**/*.test.tsx',
+    '**/*.stories.tsx',
+  ],
+});
 ```
 
-## Package Filtering
+## Internal Package Marking
 
-### Allow Specific Packages
+Mark your own packages so they're visually separated in the packages table and skipped during release age checks:
 
-Only analyze components from specific packages:
-
-```bash
-# Only Material-UI components
-npx <!-- @package name --> scan --allow-packages "@mui/*"
-
-# Only design system components
-npx <!-- @package name --> scan --allow-packages "@company/design-system"
-
-# Multiple package patterns
-npx <!-- @package name --> scan --allow-packages "@mui/*" --allow-packages "react-router-dom"
+```ts
+export default defineConfig({
+  packages: {
+    internal: ['@myorg/*', '@company/design-system'],
+    ignore: ['react', 'react-dom'], // exclude from output entirely
+  },
+});
 ```
 
-### Ignore Specific Packages
+Internal packages show an `[int]` badge in the packages table.
 
-Exclude certain packages from analysis:
+## Versus — Migration Tracking
 
-```bash
-# Ignore all React internal packages
-npx <!-- @package name --> scan --ignore-packages "react" --ignore-packages "react-dom"
+Track usage split between competing packages:
 
-# Ignore testing libraries
-npx <!-- @package name --> scan --ignore-packages "@testing-library/*"
+```ts
+export default defineConfig({
+  versus: [
+    {
+      name: 'Design System Migration',
+      packages: ['@old/foundation', '@new/arc'],
+    },
+    {
+      name: 'Icon Library',
+      packages: ['@icons/heroicons', '@icons/feather'],
+    },
+  ],
+});
 ```
 
-### Combine Allow and Ignore
+Output shows a neutral bar split per group — no directional assumption, just usage percentages.
 
-```bash
-# Allow all @mui packages except @mui/lab
-npx <!-- @package name --> scan --allow-packages "@mui/*" --ignore-packages "@mui/lab"
+## Compliance Rules
+
+### File Rules
+
+```ts
+export default defineConfig({
+  rules: {
+    forbid_files: [
+      {
+        severity: 'error',
+        patterns: ['jest.config.*', '.babelrc'],
+        message: 'Use vitest + Vite',
+      },
+      { severity: 'warn', patterns: ['.eslintrc*'], message: 'Use oxlint' },
+    ],
+    require_files: [
+      { severity: 'error', patterns: ['.nvmrc', 'vitest.config.*'] },
+    ],
+    allow_files: [{ severity: 'warn', patterns: ['.editorconfig'] }],
+  },
+});
 ```
 
-## Output Customization
+### Banned Packages
 
-### Show Only Specific Views
-
-Show only components table:
-
-```bash
-$ npx <!-- @package name --> scan --no-packages --no-patterns --no-summary
-<!-- @cli scan --no-packages --no-patterns --no-summary -->
+```ts
+export default defineConfig({
+  rules: {
+    forbid_packages: [
+      {
+        severity: 'error',
+        patterns: ['moment'],
+        message: 'Use date-fns or dayjs',
+      },
+      {
+        severity: 'warn',
+        patterns: ['lodash'],
+        message: 'Use lodash-es or native JS',
+      },
+    ],
+    require_packages: [
+      {
+        severity: 'error',
+        patterns: ['typescript'],
+        message: 'TypeScript is required',
+      },
+    ],
+  },
+});
 ```
 
-Show only packages table:
+Banned packages get a `[BANNED]` or `[RESTRICTED]` badge in the packages table and appear in the Compliance section.
 
-```bash
-$ npx <!-- @package name --> scan --no-components --no-patterns --no-summary
-<!-- @cli scan --no-components --no-patterns --no-summary -->
+### Script and Field Requirements
+
+```ts
+export default defineConfig({
+  rules: {
+    require_scripts: [
+      {
+        severity: 'error',
+        patterns: ['build', 'test'],
+        message: 'Required npm scripts',
+      },
+    ],
+    require_package_fields: [
+      { severity: 'warn', patterns: ['engines', 'license', 'repository'] },
+    ],
+    engine_version: {
+      severity: 'error',
+      range: '>=20',
+      message: 'Node 20+ required',
+    },
+  },
+});
 ```
 
-Show only patterns table:
+## Release Age (opt-in)
 
-```bash
-$ npx <!-- @package name --> scan --no-components --no-packages --no-summary
-<!-- @cli scan --no-components --no-packages --no-summary -->
+Fetches version timeline from the registry and flags packages that are behind:
+
+```ts
+export default defineConfig({
+  releaseAge: {
+    enabled: true,
+    registry: 'https://registry.npmjs.org',
+    // authToken: process.env.NPM_TOKEN,  // for private registries
+    thresholds: {
+      patch: 30, // flag if a patch has been available for 30+ days
+      minor: 45, // flag if a minor has been available for 45+ days
+      major: 60, // flag if a major has been available for 60+ days
+      // patch: false,  // set to false to skip that level
+    },
+  },
+});
 ```
 
-### Hide Specific Views
+Adds an `Upgrades` column to the packages table. Deprecated packages get a `[DEPRECATED]` badge regardless of whether release age is enabled.
 
-Hide the summary statistics:
+## Output Control
 
-```bash
-$ npx <!-- @package name --> scan --no-summary
-<!-- @cli scan --no-summary -->
+All output sections are toggled in config, not via CLI flags:
+
+```ts
+export default defineConfig({
+  output: {
+    summary: 'log', // 'log' | false
+    packages: 'table', // 'table' | 'chart' | false
+    components: 'table', // 'table' | 'chart' | false
+    patterns: false, // hide patterns section
+    details: false, // hide per-file details
+    versus: true, // show versus section
+    rules: true, // show compliance section
+  },
+});
 ```
 
-### Minimal Output
+## Full Example
 
-Show only components with minimal output (no packages, patterns, or summary):
+```ts
+import { defineConfig } from '<!-- @package name -->';
 
-```bash
-$ npx <!-- @package name --> scan --no-packages --no-patterns --no-summary
-<!-- @cli scan --no-packages --no-patterns --no-summary -->
+export default defineConfig({
+  includes: ['src/**/*.{tsx,jsx,ts,js}'],
+  excludes: ['**/node_modules/**', '**/dist/**', '**/*.test.*'],
+
+  packages: {
+    internal: ['@myorg/*'],
+    ignore: [],
+  },
+
+  versus: [
+    { name: 'UI Library', packages: ['@mui/material', '@chakra-ui/react'] },
+  ],
+
+  rules: {
+    forbid_files: [
+      { severity: 'error', patterns: ['jest.config.*'], message: 'Use vitest' },
+    ],
+    require_files: [{ severity: 'error', patterns: ['.nvmrc'] }],
+    forbid_packages: [
+      { severity: 'warn', patterns: ['moment'], message: 'Use date-fns' },
+    ],
+    require_scripts: [{ severity: 'error', patterns: ['build', 'test'] }],
+    engine_version: { severity: 'error', range: '>=20' },
+  },
+
+  releaseAge: {
+    enabled: true,
+    thresholds: { patch: 30, minor: 45, major: 60 },
+  },
+
+  output: {
+    summary: 'log',
+    packages: 'table',
+    components: 'table',
+    patterns: 'table',
+    versus: true,
+    rules: true,
+  },
+});
 ```
-
-## Visualization Modes
-
-### Table Mode (Default)
-
-Display results in table format (default behavior):
-
-```bash
-$ npx <!-- @package name --> scan
-<!-- @cli scan -->
-```
-
-### Chart Mode
-
-Display all results as bar charts:
-
-```bash
-$ npx <!-- @package name --> scan --components chart --packages chart --patterns chart
-<!-- @cli scan --components chart --packages chart --patterns chart -->
-```
-
-Display only components as a chart:
-
-```bash
-$ npx <!-- @package name --> scan --components chart --no-packages --no-patterns
-<!-- @cli scan --components chart --no-packages --no-patterns -->
-```
-
-### Mixed Visualization
-
-Combine different visualization modes - packages as chart, components and patterns as tables:
-
-```bash
-$ npx <!-- @package name --> scan --packages chart --components table --patterns table
-<!-- @cli scan --packages chart --components table --patterns table -->
-```
-
-## Real-World Examples
-
-### Pre-Migration Analysis
-
-Before migrating from one UI library to another:
-
-```bash
-# Analyze current Material-UI usage
-npx <!-- @package name --> scan "src/**/*.tsx" --allow-packages "@mui/*"
-```
-
-**Use case:** Understand which Material-UI components are used and how frequently before planning a migration to another UI library.
-
-### Design System Audit
-
-Audit usage of your company's design system:
-
-```bash
-# Analyze design system components only
-npx <!-- @package name --> scan --allow-packages "@company/design-system"
-```
-
-**Use case:** Track which design system components are most popular and identify components that may need improvement.
-
-### Component Library Health Check
-
-Check overall component library usage:
-
-```bash
-# Full analysis with charts
-npx <!-- @package name --> scan "src/**/*.tsx" --components chart --packages chart
-```
-
-**Use case:** Get visual insights into component distribution across packages.
-
-### Dependency Version Tracking
-
-Identify exact versions of components in use:
-
-```bash
-$ npx <!-- @package name --> scan --no-components --no-patterns --no-summary
-<!-- @cli scan --no-components --no-patterns --no-summary -->
-```
-
-**Use case:** Before upgrading a package, see exactly which version is currently in use and where.
-
-### Pattern Analysis
-
-Understand how components are being used:
-
-```bash
-$ npx <!-- @package name --> scan --no-packages --no-components --no-summary
-<!-- @cli scan --no-packages --no-components --no-summary -->
-```
-
-**Use case:** Identify complex usage patterns that may indicate code smells or refactoring opportunities.
-
-### Quick Component Count
-
-Get a quick count of component usage:
-
-```bash
-$ npx <!-- @package name --> scan --no-packages --no-patterns --no-summary
-<!-- @cli scan --no-packages --no-patterns --no-summary -->
-```
-
-**Use case:** Quick check to see which components are being used in a specific directory.
-
-### Full Analysis Report
-
-Generate a comprehensive report with all details:
-
-```bash
-# Everything in table mode
-npx <!-- @package name --> scan "src/**/*.tsx"
-```
-
-**Use case:** Complete analysis for documentation or reporting purposes.
-
-### Testing Library Analysis
-
-Analyze test files separately:
-
-```bash
-# Only test files
-npx <!-- @package name --> scan "**/*.test.tsx" --allow-packages "@testing-library/*"
-```
-
-**Use case:** Understand testing library usage patterns across test files.
-
-### Monorepo Analysis
-
-Analyze specific packages in a monorepo:
-
-```bash
-# Specific package
-npx <!-- @package name --> scan "packages/app/**/*.tsx"
-
-# All packages
-npx <!-- @package name --> scan "packages/**/src/**/*.tsx"
-```
-
-**Use case:** Analyze component usage per package in a monorepo.
-
-## Advanced Examples
-
-### Filtering Build Output
-
-```bash
-# Ignore all build and generated files
-npx <!-- @package name --> scan \
-  --ignore "**/dist/**" \
-  --ignore "**/build/**" \
-  --ignore "**/.next/**" \
-  --ignore "**/coverage/**"
-```
-
-### CI/CD Integration
-
-```bash
-# Minimal output for CI/CD pipelines
-npx <!-- @package name --> scan \
-  "src/**/*.tsx" \
-  --no-summary \
-  --components table \
-  --no-patterns
-```
-
-### Custom Analysis Workflow
-
-```bash
-# Step 1: Analyze design system usage
-npx <!-- @package name --> scan --allow-packages "@company/design-system"
-
-# Step 2: Analyze third-party libraries
-npx <!-- @package name --> scan --ignore-packages "@company/*" --ignore-packages "react"
-```
-
-## Tips and Best Practices
-
-1. **Start broad, then narrow**: Begin with a full scan, then use filters to focus on specific packages or patterns.
-
-2. **Use glob patterns effectively**: Leverage glob patterns to target exactly the files you want to analyze.
-
-3. **Combine filters**: Use `--allow-packages` and `--ignore-packages` together for precise package filtering.
-
-4. **Choose the right visualization**: Use tables for detailed data, charts for quick visual insights.
-
-5. **Ignore what you don't need**: Use `--no-*` flags to hide irrelevant views and reduce noise.
-
-6. **Version tracking**: Always check the packages view to see exact versions of dependencies.
-
-7. **Pattern analysis**: Use pattern detection to identify refactoring opportunities and code quality issues.
-
-## Getting Help
-
-```bash
-<!-- @cli --help -->
-```
-
-```bash
-<!-- @cli scan --help -->
-```
-
-For more information, see:
-
-- [Main README](./README.md)
-- [Patterns Guide](./PATTERNS.md)
-- [GitHub Repository](<!-- @package repository.url -->)

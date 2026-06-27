@@ -145,8 +145,6 @@ export interface UsageReport {
   components: string[];
 }
 
-export interface ParseOptions {}
-
 export interface ParseError {
   file: string;
   message: string;
