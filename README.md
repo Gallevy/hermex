@@ -102,6 +102,18 @@ Options:
   -h, --help                   display help for command
 ```
 
+## Configuration
+
+### Environment variables
+
+- `HERMEX_REGISTRY_AUTH_TOKEN` — auth token used when querying the npm registry
+  for release age analysis (`releaseAge`). Used as a fallback when
+  `releaseAge.authToken` is not set in the config file.
+
+> **Tip**: Instead of storing `authToken` in your config file, set the
+> `HERMEX_REGISTRY_AUTH_TOKEN` environment variable. The config field takes
+> precedence if both are set.
+
 ## Example Output
 
 Running a basic scan (uses default pattern `**/*.{tsx,jsx,ts,js}`):
