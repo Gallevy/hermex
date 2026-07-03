@@ -1,3 +1,10 @@
+# [1.3.0-beta.4](https://github.com/Gallevy/hermex/compare/v1.3.0-beta.3...v1.3.0-beta.4) (2026-07-03)
+
+
+### Bug Fixes
+
+* JSX in .js files, absolute paths in output, stale --version ([2cbb495](https://github.com/Gallevy/hermex/commit/2cbb49522f88cdb7b63e58abdb3f1a02c138909a))
+
 # [1.3.0-beta.3](https://github.com/Gallevy/hermex/compare/v1.3.0-beta.2...v1.3.0-beta.3) (2026-07-03)
 
 
