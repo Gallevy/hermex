@@ -1,3 +1,17 @@
+# [2.0.0-beta.1](https://github.com/Gallevy/hermex/compare/v1.3.0-beta.4...v2.0.0-beta.1) (2026-07-03)
+
+
+* feat(comply)!: add comply command and fix releaseAge/rules reporting ([6d7a232](https://github.com/Gallevy/hermex/commit/6d7a2323387569d4249db17ab324223b516a5fbb)), closes [#14](https://github.com/Gallevy/hermex/issues/14) [#18](https://github.com/Gallevy/hermex/issues/18) [#17](https://github.com/Gallevy/hermex/issues/17)
+
+
+### BREAKING CHANGES
+
+* forbid_files and allow_files rule types have been
+removed. Use detect_files (with severity: 'warn'/'error') in place of
+forbid_files, and require_files in place of allow_files.
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+
 # [1.3.0-beta.4](https://github.com/Gallevy/hermex/compare/v1.3.0-beta.3...v1.3.0-beta.4) (2026-07-03)
 
 
