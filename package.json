@@ -44,7 +44,6 @@
     "dev:scan": "pnpm run build && cd fixtures && node ../dist/cli.mjs scan"
   },
   "dependencies": {
-    "@semantic-release/github": "^12.0.8",
     "@swc/core": "^1.15.43",
     "@swc/types": "^0.1.27",
     "@yarnpkg/lockfile": "^1.1.0",
@@ -62,13 +61,13 @@
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/commit-analyzer": "^13.0.1",
     "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^12.0.8",
     "@semantic-release/npm": "^13.1.5",
     "@semantic-release/release-notes-generator": "^14.1.1",
     "@types/js-yaml": "^4.0.9",
     "@types/micromatch": "^4.0.10",
     "@types/node": "^26.0.1",
     "@types/semver": "^7.7.1",
-    "@types/tmp": "^0.2.6",
     "oxfmt": "^0.56.0",
     "oxlint": "^1.71.0",
     "semantic-release": "^25.0.5",

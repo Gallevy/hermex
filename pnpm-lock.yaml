@@ -8,9 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@semantic-release/github':
-        specifier: ^12.0.8
-        version: 12.0.8(semantic-release@25.0.5(typescript@7.0.1-rc))
       '@swc/core':
         specifier: ^1.15.43
         version: 1.15.43
@@ -57,6 +54,9 @@ importers:
       '@semantic-release/git':
         specifier: ^10.0.1
         version: 10.0.1(semantic-release@25.0.5(typescript@7.0.1-rc))
+      '@semantic-release/github':
+        specifier: ^12.0.8
+        version: 12.0.8(semantic-release@25.0.5(typescript@7.0.1-rc))
       '@semantic-release/npm':
         specifier: ^13.1.5
         version: 13.1.5(semantic-release@25.0.5(typescript@7.0.1-rc))
@@ -75,9 +75,6 @@ importers:
       '@types/semver':
         specifier: ^7.7.1
         version: 7.7.1
-      '@types/tmp':
-        specifier: ^0.2.6
-        version: 0.2.6
       oxfmt:
         specifier: ^0.56.0
         version: 0.56.0
@@ -1001,9 +998,6 @@ packages:
 
   '@types/semver@7.7.1':
     resolution: {integrity: sha512-FmgJfu+MOcQ370SD0ev7EI8TlCAfKYU+B4m5T3yXc1CiRN94g/SZPtsCkk506aUDtlMnFZvasDwHHUcZUEaYuA==}
-
-  '@types/tmp@0.2.6':
-    resolution: {integrity: sha512-chhaNf2oKHlRkDGt+tiKE2Z5aJ6qalm7Z9rlLdBwmOiAAf09YQvvoLXjWK4HWPF1xU/fqvMgfNfpVoBscA/tKA==}
 
   '@typescript/typescript-aix-ppc64@7.0.1-rc':
     resolution: {integrity: sha512-oqq2ZfEJ7BQuufcC3QBQndZLPNyamYNHLao8lKRBeeSkZKypBqxPSgkzrcFZtbYcIaBvpiyUnQP9MT7DEYHWbw==}
@@ -3329,8 +3323,6 @@ snapshots:
   '@types/normalize-package-data@2.4.4': {}
 
   '@types/semver@7.7.1': {}
-
-  '@types/tmp@0.2.6': {}
 
   '@typescript/typescript-aix-ppc64@7.0.1-rc':
     optional: true
