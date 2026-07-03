@@ -79,8 +79,9 @@ export async function executeScan(config: HermexConfig) {
         if (report) {
           reports.push(report);
         }
-      } catch (error: any) {
-        parseErrors.push({ file, message: error.message ?? String(error) });
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        parseErrors.push({ file, message });
       }
     }
 
@@ -130,8 +131,9 @@ export async function executeScan(config: HermexConfig) {
     } else {
       printScanResults(aggregated, config, elapsedTime);
     }
-  } catch (error: any) {
-    spinner.fail(chalk.red('Analysis failed: ' + error.message));
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    spinner.fail(chalk.red('Analysis failed: ' + message));
     console.error(error);
     process.exit(1);
   }

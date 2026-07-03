@@ -17,7 +17,6 @@ export function analyzeLazyImport(node: any, state: ParserState): void {
           source,
           line: node.span?.start || 0,
         });
-        // console.log(`🔄 Found lazy import: ${source}`);
       }
     }
   }
@@ -33,6 +32,5 @@ export function analyzeDynamicImport(node: any, state: ParserState): void {
       source,
       line: node.span?.start || 0,
     });
-    // console.log(`⚡ Found dynamic import: ${source}`);
   }
 }
