@@ -1,0 +1,9 @@
+# yarn lockfile v1
+
+chalk@^5.0.0:
+  version "5.3.0"
+  resolved "https://registry.npmjs.org/chalk/-/chalk-5.3.0.tgz"
+
+vitest@^1.0.0:
+  version "1.6.0"
+  resolved "https://registry.npmjs.org/vitest/-/vitest-1.6.0.tgz"
