@@ -1,3 +1,15 @@
+# [1.3.0-beta.3](https://github.com/Gallevy/hermex/compare/v1.3.0-beta.2...v1.3.0-beta.3) (2026-07-03)
+
+
+### Bug Fixes
+
+* move @semantic-release/github to devDependencies, remove unused @types/tmp ([7daa927](https://github.com/Gallevy/hermex/commit/7daa9273abfbf70798865e142653604feb7cb328))
+
+
+### Features
+
+* support HERMEX_REGISTRY_AUTH_TOKEN environment variable ([f8cb0c0](https://github.com/Gallevy/hermex/commit/f8cb0c06a0705be3431237623149f8024171562a))
+
 # [1.3.0-beta.2](https://github.com/Gallevy/hermex/compare/v1.3.0-beta.1...v1.3.0-beta.2) (2026-06-27)
 
 
