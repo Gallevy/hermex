@@ -1,7 +1,9 @@
 import type { AggregatedReport } from './aggregator';
+import { getVersion } from './version';
 
 export function printJson(aggregated: AggregatedReport): void {
   const result = {
+    version: getVersion(),
     summary: {
       filesAnalyzed: aggregated.filesAnalyzed,
       totalImports: aggregated.totalImports,

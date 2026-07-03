@@ -34,6 +34,12 @@ describe('CLI smoke tests', () => {
     expect(result.stdout).toMatch(/Analysis complete/);
   });
 
+  it('scan output includes the current version', () => {
+    const result = run(['scan']);
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain(`hermex v${packageJson.version}`);
+  });
+
   it('--config loads an explicit config file', () => {
     const configPath = join(FIXTURES, 'hermex.config.ts');
     const result = run(['scan', '--config', configPath], ROOT);
@@ -65,6 +71,7 @@ describe('CLI smoke tests', () => {
     const result = run(['scan', '--config', configPath]);
     expect(result.status).toBe(0);
     const parsed = JSON.parse(result.stdout);
+    expect(parsed.version).toBe(packageJson.version);
     expect(parsed).toHaveProperty('summary');
     expect(parsed).toHaveProperty('packages');
     expect(parsed).toHaveProperty('components');

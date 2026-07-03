@@ -224,6 +224,7 @@ describe('printJson', () => {
     const parsed = JSON.parse(written);
 
     expect(Object.keys(parsed)).toEqual([
+      'version',
       'summary',
       'packages',
       'components',

@@ -33,7 +33,7 @@ function swcOptionsForFile(filePath: string): SwcParseOptions {
   // .js / .mjs / .cjs
   return {
     syntax: 'ecmascript',
-    jsx: false,
+    jsx: true,
     decorators: true,
     importAssertions: true,
   };

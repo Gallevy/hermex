@@ -14,11 +14,10 @@ export async function findFiles(
   const files = await glob(pattern, {
     ignore: ignorePatterns,
     nodir: true,
-    absolute: true,
     windowsPathsNoEscape: true,
   });
 
-  return files;
+  return files.map((f) => f.replace(/\\/g, '/'));
 }
 
 /**

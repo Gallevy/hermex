@@ -34,7 +34,7 @@ export function findMatches(
   const matches: string[] = [];
   for (const pattern of patterns) {
     const found = globSync(pattern, { cwd: repoPath, nodir: true, ignore });
-    matches.push(...found.map((f) => path.join(repoPath, f)));
+    matches.push(...found.map((f) => f.replace(/\\/g, '/')));
   }
   return [...new Set(matches)];
 }

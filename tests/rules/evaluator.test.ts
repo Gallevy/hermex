@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { mkdirSync, writeFileSync, rmSync, mkdtempSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, isAbsolute } from 'node:path';
 import { tmpdir } from 'node:os';
 import type { RulesConfig } from '../../src/config/types';
 import { evaluateRules } from '../../src/rules/evaluator';
@@ -68,6 +68,10 @@ describe('evaluateFileRules', () => {
     expect(result[0].type).toBe('forbid_files');
     expect(result[0].severity).toBe('error');
     expect(result[0].matchedFiles.length).toBeGreaterThan(0);
+    for (const file of result[0].matchedFiles) {
+      expect(isAbsolute(file)).toBe(false);
+    }
+    expect(result[0].matchedFiles).toContain('src/legacy.js');
   });
 
   it('no violation when require_files pattern matches a file', () => {

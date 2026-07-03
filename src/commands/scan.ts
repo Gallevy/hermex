@@ -19,6 +19,7 @@ import { findAndParseLockfile } from '../lock-parser';
 import { loadConfig } from '../config/loader';
 import { evaluateRules } from '../rules/evaluator';
 import { enrichWithReleaseAge } from '../npm-registry/enricher';
+import { getVersion } from '../utils/version';
 import type { HermexConfig } from '../config/types';
 
 export function registerScanCommand(program: Command) {
@@ -38,6 +39,8 @@ export function registerScanCommand(program: Command) {
 export async function executeScan(config: HermexConfig) {
   const startTime = Date.now();
   const isJson = config.output.format === 'json';
+  const versionStream = isJson ? process.stderr : process.stdout;
+  versionStream.write(chalk.gray(`hermex v${getVersion()}\n`));
   const spinner = ora({
     text: 'Parsing lockfile...',
     stream: isJson ? process.stderr : process.stdout,
