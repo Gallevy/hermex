@@ -73,21 +73,17 @@ export interface LazyImport {
 
 // State management
 export interface UsagePatterns {
-  directImports: Set<string>;
   namedImports: Set<ImportPattern>;
   namespaceImports: Set<ImportPattern>;
   defaultImports: Set<ImportPattern>;
   aliasedImports: Map<string, AliasedImport>;
   variableAssignments: Map<string, VariableAssignment>;
-  componentMappings: Set<string>;
   lazyImports: Set<LazyImport>;
   dynamicImports: Set<LazyImport>;
   conditionalUsage: Set<ConditionalUsage>;
   arrayMappings: Set<ArrayMapping>;
   objectMappings: Set<{ mappings: ObjectMapping[]; line?: number }>;
   hocUsage: Set<HOCUsage>;
-  renderProps: Set<string>;
-  contextUsage: Set<string>;
   forwardedRefs: Set<{ line?: number }>;
   memoizedComponents: Set<{ component: string; line?: number }>;
   portalUsage: Set<{ line?: number }>;
