@@ -1,3 +1,10 @@
+# [1.3.0-beta.2](https://github.com/Gallevy/hermex/compare/v1.3.0-beta.1...v1.3.0-beta.2) (2026-06-27)
+
+
+### Features
+
+* --config flag, output.format json, fix js-yaml default import, replace defineConfig with import type pattern ([36699c4](https://github.com/Gallevy/hermex/commit/36699c40ee09081afc24925a9c31c87407385a35))
+
 # [1.3.0-beta.1](https://github.com/Gallevy/hermex/compare/v1.2.0...v1.3.0-beta.1) (2026-06-27)
 
 
