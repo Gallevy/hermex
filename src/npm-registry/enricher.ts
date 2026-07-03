@@ -101,6 +101,8 @@ export async function enrichWithReleaseAge(
   config: ReleaseAgeConfig,
 ): Promise<{ enriched: PackageDistribution[]; skipped: number }> {
   const registryUrl = config.registry;
+  const authToken =
+    config.authToken ?? process.env['HERMEX_REGISTRY_AUTH_TOKEN'];
   const targets = packages.filter((p) => !p.internal && p.version);
   const enriched = [...packages];
   let skipped = 0;
@@ -113,7 +115,7 @@ export async function enrichWithReleaseAge(
         const info = await fetchPackageInfo(
           pkg.packageName,
           registryUrl,
-          config.authToken,
+          authToken,
         );
         if (!info || !info.time) {
           skipped++;
