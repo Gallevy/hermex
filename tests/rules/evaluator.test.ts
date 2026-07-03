@@ -12,9 +12,8 @@ import { evaluateEngineVersion } from '../../src/rules/engine-version';
 let tempDir: string;
 
 const emptyRules: RulesConfig = {
-  forbid_files: [],
+  detect_files: [],
   require_files: [],
-  allow_files: [],
   forbid_packages: [],
   require_packages: [],
   require_scripts: [],
@@ -43,29 +42,29 @@ afterAll(() => {
 });
 
 describe('evaluateFileRules', () => {
-  it('no violation when forbid_files pattern matches nothing', () => {
+  it('no violation when detect_files pattern matches nothing', () => {
     const result = evaluateFileRules(
       tempDir,
       {
         ...emptyRules,
-        forbid_files: [{ severity: 'error', patterns: ['**/*.java'] }],
+        detect_files: [{ severity: 'error', patterns: ['**/*.java'] }],
       },
       [],
     );
     expect(result).toHaveLength(0);
   });
 
-  it('violation when forbid_files pattern matches a file', () => {
+  it('violation when detect_files pattern matches a file', () => {
     const result = evaluateFileRules(
       tempDir,
       {
         ...emptyRules,
-        forbid_files: [{ severity: 'error', patterns: ['src/legacy.js'] }],
+        detect_files: [{ severity: 'error', patterns: ['src/legacy.js'] }],
       },
       [],
     );
     expect(result).toHaveLength(1);
-    expect(result[0].type).toBe('forbid_files');
+    expect(result[0].type).toBe('detect_files');
     expect(result[0].severity).toBe('error');
     expect(result[0].matchedFiles.length).toBeGreaterThan(0);
     for (const file of result[0].matchedFiles) {
@@ -105,10 +104,72 @@ describe('evaluateFileRules', () => {
       tempDir,
       {
         ...emptyRules,
-        forbid_files: [{ severity: 'error', patterns: ['src/legacy.js'] }],
+        detect_files: [{ severity: 'error', patterns: ['src/legacy.js'] }],
       },
       ['src/legacy.js'],
     );
+    expect(result).toHaveLength(0);
+  });
+
+  it('detect_files with severity info produces an info-severity violation when the file is present', () => {
+    const result = evaluateFileRules(
+      tempDir,
+      {
+        ...emptyRules,
+        detect_files: [
+          {
+            severity: 'info',
+            patterns: ['src/legacy.js'],
+            message: 'legacy detected',
+          },
+        ],
+      },
+      [],
+    );
+    expect(result).toHaveLength(1);
+    expect(result[0].type).toBe('detect_files');
+    expect(result[0].severity).toBe('info');
+    expect(result[0].matchedFiles).toContain('src/legacy.js');
+  });
+
+  it('detect_files produces nothing when the file is absent', () => {
+    const result = evaluateFileRules(
+      tempDir,
+      {
+        ...emptyRules,
+        detect_files: [{ severity: 'info', patterns: ['src/missing.ts'] }],
+      },
+      [],
+    );
+    expect(result).toHaveLength(0);
+  });
+
+  it('detect_files supports warn and error severities', () => {
+    const warnResult = evaluateFileRules(
+      tempDir,
+      {
+        ...emptyRules,
+        detect_files: [{ severity: 'warn', patterns: ['src/legacy.js'] }],
+      },
+      [],
+    );
+    expect(warnResult[0].severity).toBe('warn');
+
+    const errorResult = evaluateFileRules(
+      tempDir,
+      {
+        ...emptyRules,
+        detect_files: [{ severity: 'error', patterns: ['src/legacy.js'] }],
+      },
+      [],
+    );
+    expect(errorResult[0].severity).toBe('error');
+  });
+});
+
+describe('evaluateFileRules — schema defaults', () => {
+  it('parses successfully with detect_files/require_files defaulting to []', () => {
+    const result = evaluateFileRules(tempDir, emptyRules, []);
     expect(result).toHaveLength(0);
   });
 });
@@ -178,13 +239,13 @@ describe('evaluateRules — integration', () => {
       tempDir,
       {
         ...emptyRules,
-        forbid_files: [{ severity: 'error', patterns: ['src/legacy.js'] }],
+        detect_files: [{ severity: 'error', patterns: ['src/legacy.js'] }],
         require_scripts: [{ severity: 'warn', patterns: ['typecheck'] }],
       },
       [],
     );
     const types = result.map((v) => v.type);
-    expect(types).toContain('forbid_files');
+    expect(types).toContain('detect_files');
     expect(types).toContain('require_scripts');
   });
 

@@ -20,7 +20,7 @@ your row when done.
 | [008](008-test-print-utils.md) | Test coverage: print utility smoke tests | P3 | M | 005 | DONE |
 | [010](010-authtoken-env-var.md) | Support HERMEX_REGISTRY_AUTH_TOKEN env var | P3 | M | — | DONE |
 | [011](011-read-fixture-error-handling.md) | Improve readFixture error messages | P3 | S | — | DONE |
-| [012](012-aggregator-split.md) | Split aggregator.ts into focused modules | P3 | L | 006 | TODO |
+| [012](012-aggregator-split.md) | Split aggregator.ts into focused modules | P3 | L | 006 | DONE |
 | [013](013-fix-line-numbers.md) | Fix line numbers — span.start is byte offset, not line | P1 | M | — | TODO |
 | [014](014-yarn-adapter-version-tracking.md) | Fix yarn adapter version overwrite + add parseMultiVersion | P2 | S | — | TODO |
 | [015](015-swc-parser-unit-tests.md) | SWC parser pattern and utility unit tests | P2 | M | — | TODO |
@@ -70,7 +70,7 @@ Status values: `TODO` | `IN PROGRESS` | `DONE` | `BLOCKED: <reason>` | `REJECTED
 - **BUG-07 (JSX double processing)**: `analyzeJSXOpeningElement` is called twice per JSXElement but the second call is rejected by the Map guard (`if (!jsxUsage.has(...))`). No correctness impact. Not worth a plan.
 - **LOGIC-04 (null concatenation in extractAssignmentInfo)**: `"null.PropertyName"` string is never in `componentNames`, so it's discarded immediately by `isKnownComponent`. Harmless in practice.
 - **LOGIC-02 (jsxUsage only stores first JSX occurrence)**: By design — the Map is keyed by component name, storing first-seen props. This is a deliberate design choice for the current data model.
-- **allow_files semantics**: `allow_files` and `require_files` both produce violations on zero matches. Whether this is a bug or by-design requires clarification from the maintainer. Medium confidence — not planned.
+- **allow_files semantics**: RESOLVED 2026-07-03 (GitHub issues #14, #17, #18) — confirmed as unintentional duplication. `allow_files` and `forbid_files` were removed outright (no backward-compat aliasing needed pre-1.0); `require_files` and the new `detect_files` (which also gained an `'info'` severity for non-enforcing presence detection) are now the only two file-rule types. See `src/rules/file-rules.ts`.
 - **engine-version prerelease false positive**: `semver.minVersion(">=18.0.0-rc.1")` returns `18.0.0-rc.1` which does not satisfy `>=18.0.0`. Edge case for unusual engine ranges. Low priority.
 - **pnpm regex non-semver**: `/\/(.+?)\/(\d+\.\d+\.\d+.*?)(?:_|$)/` only matches v6-8 format; workspace packages fail silently. Very edge case in practice.
 - **isFromLibrary substring matching**: `source.includes(libraryName)` can match unintended paths. Low confidence — depends on what users pass as libraryName.

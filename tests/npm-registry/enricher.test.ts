@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import semver from 'semver';
 import { enrichWithReleaseAge } from '../../src/npm-registry/enricher';
 import { createMockPackage } from '../helpers/mock-reports';
 
@@ -16,6 +17,7 @@ const BASE_CONFIG = {
   enabled: true,
   registry: 'https://registry.npmjs.org',
   thresholds: DEFAULT_THRESHOLDS,
+  enforceOn: [],
 };
 
 function daysAgo(n: number): string {
@@ -128,5 +130,104 @@ describe('enrichWithReleaseAge — batching', () => {
     expect(enriched).toHaveLength(2);
     expect(skipped).toBe(0);
     expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('enrichWithReleaseAge — latest version reporting (#14)', () => {
+  it('surfaces the newest stable release per tier, not the original alpha/rc', async () => {
+    const pkg = createMockPackage('react-router-dom', { version: '5.3.4' });
+    mockFetch.mockResolvedValueOnce({
+      name: 'react-router-dom',
+      time: {
+        '5.3.4': daysAgo(2000),
+        '6.0.0-alpha.0': daysAgo(2344),
+        '6.30.1': daysAgo(12),
+      },
+      'dist-tags': { latest: '6.30.1' },
+      versions: {},
+    });
+    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const upgrade = enriched[0].releaseAge?.upgrades.find(
+      (u) => u.semverBump === 'major',
+    );
+    expect(upgrade?.version).toBe('6.30.1');
+    expect(upgrade?.releasedDaysAgo).toBe(12);
+    expect(upgrade?.isLatest).toBe(true);
+  });
+
+  it('reflects dist-tags.latest exactly via latestVersion/latestReleasedDaysAgo', async () => {
+    const pkg = createMockPackage('lucide-react', { version: '0.545.0' });
+    mockFetch.mockResolvedValueOnce({
+      name: 'lucide-react',
+      time: {
+        '0.545.0': daysAgo(300),
+        '1.0.0-rc.0': daysAgo(104),
+        '1.2.0': daysAgo(2),
+      },
+      'dist-tags': { latest: '1.2.0' },
+      versions: {},
+    });
+    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    expect(enriched[0].releaseAge?.latestVersion).toBe('1.2.0');
+    expect(enriched[0].releaseAge?.latestReleasedDaysAgo).toBe(2);
+  });
+
+  it('latestVersion is always >= any version in upgrades (semver order)', async () => {
+    const pkg = createMockPackage('react', { version: '17.0.0' });
+    mockFetch.mockResolvedValueOnce({
+      name: 'react',
+      time: {
+        '17.0.0': daysAgo(900),
+        '18.0.0': daysAgo(500),
+        '19.0.0': daysAgo(90),
+      },
+      'dist-tags': { latest: '19.0.0' },
+      versions: {},
+    });
+    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const entry = enriched[0].releaseAge!;
+    for (const upgrade of entry.upgrades) {
+      expect(semver.gte(entry.latestVersion!, upgrade.version)).toBe(true);
+    }
+  });
+});
+
+describe('enrichWithReleaseAge — enforceOn severity scoping (#18)', () => {
+  it('marks matched packages error and everything else warn when enforceOn is set', async () => {
+    const packages = [
+      createMockPackage('@my-org/internal-pkg', { version: '1.0.0' }),
+      createMockPackage('react', { version: '17.0.0' }),
+    ];
+    mockFetch.mockResolvedValue({
+      name: 'pkg',
+      time: { '2.0.0': daysAgo(90) },
+      versions: {},
+    });
+    const { enriched } = await enrichWithReleaseAge(packages, {
+      ...BASE_CONFIG,
+      enforceOn: ['@my-org/*'],
+    });
+    const internal = enriched.find(
+      (p) => p.packageName === '@my-org/internal-pkg',
+    );
+    const external = enriched.find((p) => p.packageName === 'react');
+    expect(internal?.releaseAge?.severity).toBe('error');
+    expect(external?.releaseAge?.severity).toBe('warn');
+  });
+
+  it('defaults everything to error severity when enforceOn is not set', async () => {
+    const packages = [
+      createMockPackage('@my-org/internal-pkg', { version: '1.0.0' }),
+      createMockPackage('react', { version: '17.0.0' }),
+    ];
+    mockFetch.mockResolvedValue({
+      name: 'pkg',
+      time: { '2.0.0': daysAgo(90) },
+      versions: {},
+    });
+    const { enriched } = await enrichWithReleaseAge(packages, BASE_CONFIG);
+    for (const pkg of enriched) {
+      expect(pkg.releaseAge?.severity).toBe('error');
+    }
   });
 });

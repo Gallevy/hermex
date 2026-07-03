@@ -6,7 +6,7 @@ import type { PackageDistribution } from './package-distribution';
 
 export interface BannedPackageViolation {
   packageName: string;
-  severity: 'error' | 'warn';
+  severity: 'error' | 'warn' | 'info';
   message?: string;
 }
 

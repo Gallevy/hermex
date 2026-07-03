@@ -6,6 +6,7 @@ export interface AvailableUpgrade {
   releasedDaysAgo: number;
   semverBump: SemverBump;
   level: UpgradeLevel;
+  isLatest?: boolean;
 }
 
 export interface ReleaseAgeEntry {
@@ -13,6 +14,11 @@ export interface ReleaseAgeEntry {
   upgrades: AvailableUpgrade[];
   worstLevel: UpgradeLevel | null;
   deprecated?: string;
+  latestVersion?: string;
+  latestReleasedDaysAgo?: number;
+  minCompliantVersion?: string;
+  minCompliantReleasedDaysAgo?: number;
+  severity: 'error' | 'warn';
 }
 
 export interface RegistryPackageInfo {
@@ -20,4 +26,5 @@ export interface RegistryPackageInfo {
   time: Record<string, string>;
   deprecated?: string;
   versions: Record<string, { deprecated?: string }>;
+  'dist-tags'?: Record<string, string>;
 }

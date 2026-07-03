@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 // ── Sub-schemas ────────────────────────────────────────────────────────────────
 
-const RuleSeveritySchema = z.enum(['error', 'warn']);
+const RuleSeveritySchema = z.enum(['error', 'warn', 'info']);
 
 const RuleConfigSchema = z.object({
   severity: RuleSeveritySchema,
@@ -44,9 +44,8 @@ export const HermexConfigSchema = z.object({
 
   rules: z
     .object({
-      forbid_files: RuleConfigOrArraySchema.default([]),
+      detect_files: RuleConfigOrArraySchema.default([]),
       require_files: RuleConfigOrArraySchema.default([]),
-      allow_files: RuleConfigOrArraySchema.default([]),
       forbid_packages: RuleConfigOrArraySchema.default([]),
       require_packages: RuleConfigOrArraySchema.default([]),
       require_scripts: RuleConfigOrArraySchema.default([]),
@@ -56,9 +55,8 @@ export const HermexConfigSchema = z.object({
         .optional(),
     })
     .default(() => ({
-      forbid_files: [] as RuleConfig[],
+      detect_files: [] as RuleConfig[],
       require_files: [] as RuleConfig[],
-      allow_files: [] as RuleConfig[],
       forbid_packages: [] as RuleConfig[],
       require_packages: [] as RuleConfig[],
       require_scripts: [] as RuleConfig[],
@@ -105,11 +103,13 @@ export const HermexConfigSchema = z.object({
           major: ThresholdSchema.default(60),
         })
         .default(() => ({ patch: 30, minor: 45, major: 60 })),
+      enforceOn: z.array(z.string()).default([]),
     })
     .default(() => ({
       enabled: false,
       registry: 'https://registry.npmjs.org',
       thresholds: { patch: 30, minor: 45, major: 60 },
+      enforceOn: [],
     })),
 });
 

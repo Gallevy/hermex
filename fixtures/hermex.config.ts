@@ -11,7 +11,7 @@ export default {
     },
   ],
   rules: {
-    forbid_files: [
+    detect_files: [
       {
         severity: 'error',
         patterns: ['jest.config.*', '.babelrc'],
@@ -21,8 +21,10 @@ export default {
     forbid_packages: [
       { severity: 'error', patterns: ['moment'], message: 'Use date-fns or dayjs' },
     ],
-    require_files: { severity: 'error', patterns: ['.nvmrc'] },
-    allow_files: { severity: 'warn', patterns: ['.editorconfig'] },
+    require_files: [
+      { severity: 'error', patterns: ['.nvmrc'] },
+      { severity: 'warn', patterns: ['.editorconfig'] },
+    ],
     require_packages: [
       {
         severity: 'error',

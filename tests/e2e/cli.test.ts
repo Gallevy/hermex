@@ -79,3 +79,66 @@ describe('CLI smoke tests', () => {
     expect(parsed.summary).toHaveProperty('filesAnalyzed');
   });
 });
+
+describe('comply command', () => {
+  it('exits 1 when an error-severity rule violation is present', () => {
+    const configPath = join(
+      ROOT,
+      'tests',
+      'e2e',
+      'hermex-comply-fail.config.ts',
+    );
+    const result = run(['comply', '--config', configPath]);
+    expect(result.status).toBe(1);
+    expect(result.stdout).toMatch(/NOT COMPLIANT/);
+  });
+
+  it('exits 0 when there are no mandatory violations', () => {
+    const configPath = join(
+      ROOT,
+      'tests',
+      'e2e',
+      'hermex-comply-pass.config.ts',
+    );
+    const result = run(['comply', '--config', configPath]);
+    expect(result.status).toBe(0);
+    expect(result.stdout).toMatch(/COMPLIANT/);
+  });
+
+  it('exits 2 when no files match includes', () => {
+    const configPath = join(
+      ROOT,
+      'tests',
+      'e2e',
+      'hermex-comply-nofiles.config.ts',
+    );
+    const result = run(['comply', '--config', configPath]);
+    expect(result.status).toBe(2);
+  });
+
+  it('output.format json emits valid JSON and still exits non-zero on violations', () => {
+    const configPath = join(
+      ROOT,
+      'tests',
+      'e2e',
+      'hermex-comply-json.config.ts',
+    );
+    const result = run(['comply', '--config', configPath]);
+    expect(result.status).toBe(1);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed).toHaveProperty('ruleViolations');
+    expect(parsed.ruleViolations).toHaveLength(1);
+    expect(parsed.ruleViolations[0].severity).toBe('error');
+  });
+
+  it('runs the full pipeline and reports all violations, not just the first', () => {
+    // fixtures/hermex.config.ts has multiple error-severity rules configured
+    // and none of the required conditions are met — comply must not fail fast.
+    const result = run(['comply']);
+    expect(result.status).toBe(1);
+    const errorLines = result.stdout
+      .split('\n')
+      .filter((line) => line.includes('[ERROR]'));
+    expect(errorLines.length).toBeGreaterThan(1);
+  });
+});

@@ -33,19 +33,25 @@ function formatPackageName(
 
 function formatUpgradeCell(releaseAge?: ReleaseAgeEntry): string {
   if (!releaseAge) return '';
-  const { worstLevel, upgrades } = releaseAge;
+  const { worstLevel, upgrades, severity } = releaseAge;
   if (!worstLevel) return chalk.green('✓');
 
   const top = upgrades[0];
   if (!top) return chalk.green('✓');
 
+  const suffix = severity === 'warn' ? chalk.gray(' [not enforced]') : '';
+
   if (worstLevel === 'mandatory_upgrade') {
-    return chalk.red(
-      `⚠ ${top.semverBump} ${top.version} (${top.releasedDaysAgo}d)`,
+    const color = severity === 'warn' ? chalk.yellow : chalk.red;
+    return (
+      color(`⚠ ${top.semverBump} ${top.version} (${top.releasedDaysAgo}d)`) +
+      suffix
     );
   }
-  return chalk.yellow(
-    `↑ ${top.semverBump} ${top.version} (${top.releasedDaysAgo}d)`,
+  return (
+    chalk.yellow(
+      `↑ ${top.semverBump} ${top.version} (${top.releasedDaysAgo}d)`,
+    ) + suffix
   );
 }
 

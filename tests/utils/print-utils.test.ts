@@ -11,7 +11,12 @@ import { printVersus } from '../../src/utils/print-versus';
 import { printRules } from '../../src/utils/print-rules';
 import { printErrors } from '../../src/utils/print-errors';
 import { printJson } from '../../src/utils/print-json';
-import { createMockPackage } from '../helpers/mock-reports';
+import { printComplianceVerdict } from '../../src/utils/print-compliance';
+import { computeCompliance } from '../../src/utils/compliance';
+import {
+  createMockPackage,
+  createMockReleaseAge,
+} from '../helpers/mock-reports';
 
 /**
  * Creates a minimal AggregatedReport with all required fields.
@@ -145,6 +150,88 @@ describe('printRules', () => {
       .join('\n');
     expect(output).toContain('eslint');
     expect(output).toContain('not installed');
+  });
+
+  it('info-severity violations do not affect errorCount/warnCount in the summary line', () => {
+    const infoViolation: RuleViolation = {
+      type: 'detect_files',
+      severity: 'info',
+      patterns: ['orbis.config.*'],
+      message: 'Orbis detected',
+      matchedFiles: ['orbis.config.ts'],
+    };
+    const aggregated = makeAggregated({ ruleViolations: [infoViolation] });
+    expect(() => printRules(aggregated)).not.toThrow();
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).not.toContain('error');
+    expect(output).not.toContain('warning');
+  });
+
+  it('renders info-severity violations with a distinct tag from warn/error', () => {
+    const infoViolation: RuleViolation = {
+      type: 'detect_files',
+      severity: 'info',
+      patterns: ['orbis.config.*'],
+      matchedFiles: ['orbis.config.ts'],
+    };
+    const aggregated = makeAggregated({ ruleViolations: [infoViolation] });
+    printRules(aggregated);
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('[INFO]');
+    expect(output).not.toContain('[ERROR]');
+    expect(output).not.toContain('[WARN]');
+  });
+});
+
+describe('printComplianceVerdict', () => {
+  it('prints COMPLIANT when there are no mandatory violations', () => {
+    const compliance = computeCompliance(makeAggregated());
+    expect(() => printComplianceVerdict(compliance)).not.toThrow();
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('COMPLIANT');
+    expect(output).not.toContain('NOT COMPLIANT');
+  });
+
+  it('prints NOT COMPLIANT with a count when mandatory violations are present', () => {
+    const errorViolation: RuleViolation = {
+      type: 'require_files',
+      severity: 'error',
+      patterns: ['.nvmrc'],
+      matchedFiles: [],
+    };
+    const pkg = createMockPackage('@my-org/internal', {
+      releaseAge: createMockReleaseAge({
+        worstLevel: 'mandatory_upgrade',
+        severity: 'error',
+        upgrades: [
+          {
+            version: '2.0.0',
+            releasedDaysAgo: 90,
+            semverBump: 'major',
+            level: 'mandatory_upgrade',
+          },
+        ],
+      }),
+    });
+    const aggregated = makeAggregated({
+      ruleViolations: [errorViolation],
+      packageDistribution: [pkg],
+    });
+    const compliance = computeCompliance(aggregated);
+    expect(compliance.compliant).toBe(false);
+    printComplianceVerdict(compliance);
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('NOT COMPLIANT');
+    expect(output).toContain('2 mandatory violations');
+    expect(output).toContain('@my-org/internal');
   });
 });
 

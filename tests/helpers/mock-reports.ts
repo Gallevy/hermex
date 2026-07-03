@@ -69,6 +69,7 @@ export function createMockReleaseAge(
     installedVersion: '1.0.0',
     upgrades: [],
     worstLevel: null,
+    severity: 'error',
     ...overrides,
   };
 }

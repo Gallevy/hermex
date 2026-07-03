@@ -4,12 +4,10 @@ import type { RuleViolation } from '../rules/evaluator';
 
 function formatRuleType(type: RuleViolation['type']): string {
   switch (type) {
-    case 'forbid_files':
-      return 'forbid_files';
+    case 'detect_files':
+      return 'detect_files';
     case 'require_files':
       return 'require_files';
-    case 'allow_files':
-      return 'allow_files';
     case 'forbid_packages':
       return 'forbid_packages';
     case 'require_packages':
@@ -25,6 +23,7 @@ function formatRuleType(type: RuleViolation['type']): string {
 
 function ruleIcon(violation: RuleViolation): string {
   if (violation.severity === 'error') return chalk.red('✗');
+  if (violation.severity === 'info') return chalk.blue('ℹ');
   return chalk.yellow('⚠');
 }
 
@@ -32,16 +31,15 @@ function describeViolation(v: RuleViolation): string {
   const patterns = v.patterns.join(', ');
   const suffix = v.message ? chalk.gray(` — ${v.message}`) : '';
 
-  if (v.type === 'forbid_files') {
+  if (v.type === 'detect_files') {
     const files = v.matchedFiles.map((f) => {
       const parts = f.replace(/\\/g, '/').split('/');
       return parts[parts.length - 1];
     });
-    return `${patterns} found (${files.join(', ')})${suffix}`;
+    return `${patterns} detected (${files.join(', ')})${suffix}`;
   }
 
   if (v.type === 'require_files') return `${patterns} not found${suffix}`;
-  if (v.type === 'allow_files') return `${patterns} not present${suffix}`;
   if (v.type === 'require_packages')
     return `${patterns} not installed${suffix}`;
   if (v.type === 'forbid_packages') return `${patterns} is forbidden${suffix}`;
@@ -77,7 +75,11 @@ export function printRules(aggregated: AggregatedReport): void {
       const icon = ruleIcon(v);
       const type = chalk.gray(formatRuleType(v.type).padEnd(14));
       const severityTag =
-        v.severity === 'error' ? chalk.red('[ERROR]') : chalk.yellow('[WARN]');
+        v.severity === 'error'
+          ? chalk.red('[ERROR]')
+          : v.severity === 'info'
+            ? chalk.blue('[INFO]')
+            : chalk.yellow('[WARN]');
       console.log(`  ${icon}  ${type} ${describeViolation(v)}  ${severityTag}`);
     }
   }

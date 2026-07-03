@@ -1,4 +1,5 @@
 import semver from 'semver';
+import micromatch from 'micromatch';
 import type { PackageDistribution } from '../utils/aggregator';
 import type { ReleaseAgeConfig } from '../config/types';
 import type {
@@ -44,8 +45,12 @@ function computeReleaseAge(
   timeMap: Record<string, string>,
   deprecated: string | undefined,
   thresholds: ReleaseAgeConfig['thresholds'],
+  distTags: Record<string, string> | undefined,
+  severity: 'error' | 'warn',
 ): ReleaseAgeEntry {
-  const upgrades: AvailableUpgrade[] = [];
+  const byBump = new Map<SemverBump, { version: string; daysAgo: number }[]>();
+  let minCompliantVersion: string | undefined;
+  let minCompliantReleasedDaysAgo: number | undefined;
 
   for (const [version, dateStr] of Object.entries(timeMap)) {
     if (version === 'created' || version === 'modified') continue;
@@ -56,29 +61,58 @@ function computeReleaseAge(
     if (!bump) continue;
 
     const daysAgo = daysSince(dateStr);
-    const level = upgradeLevel(daysAgo, bump, thresholds);
+    const list = byBump.get(bump) ?? [];
+    list.push({ version, daysAgo });
+    byBump.set(bump, list);
+
+    // Track the oldest patch-bump version that's still within the patch threshold
+    const threshold = thresholds.patch;
+    if (
+      bump === 'patch' &&
+      threshold !== false &&
+      threshold !== undefined &&
+      daysAgo <= threshold &&
+      (minCompliantReleasedDaysAgo === undefined ||
+        daysAgo > minCompliantReleasedDaysAgo)
+    ) {
+      minCompliantVersion = version;
+      minCompliantReleasedDaysAgo = daysAgo;
+    }
+  }
+
+  // A bump tier is "breached" if its oldest available version is older than the
+  // tier's threshold — report the newest version in that tier as the upgrade
+  // target, not the version that happened to trigger the breach.
+  const upgrades: AvailableUpgrade[] = [];
+  for (const [bump, versions] of byBump.entries()) {
+    const oldestDaysAgo = Math.max(...versions.map((v) => v.daysAgo));
+    const level = upgradeLevel(oldestDaysAgo, bump, thresholds);
     if (!level) continue;
 
+    const newest = versions.reduce((a, b) => (a.daysAgo < b.daysAgo ? a : b));
     upgrades.push({
-      version,
-      releasedDaysAgo: daysAgo,
+      version: newest.version,
+      releasedDaysAgo: newest.daysAgo,
       semverBump: bump,
       level,
     });
   }
 
-  // Keep only the oldest (most stable) release per bump level
-  const worstPerBump = new Map<SemverBump, AvailableUpgrade>();
-  for (const upgrade of upgrades) {
-    const existing = worstPerBump.get(upgrade.semverBump);
-    if (!existing || upgrade.releasedDaysAgo > existing.releasedDaysAgo) {
-      worstPerBump.set(upgrade.semverBump, upgrade);
-    }
-  }
-
-  const finalUpgrades = Array.from(worstPerBump.values()).sort(
+  const finalUpgrades = upgrades.sort(
     (a, b) => b.releasedDaysAgo - a.releasedDaysAgo,
   );
+
+  const latestVersion = distTags?.['latest'];
+  const latestEntry = latestVersion ? timeMap[latestVersion] : undefined;
+  const latestReleasedDaysAgo = latestEntry
+    ? daysSince(latestEntry)
+    : undefined;
+
+  for (const upgrade of finalUpgrades) {
+    if (latestVersion && upgrade.version === latestVersion) {
+      upgrade.isLatest = true;
+    }
+  }
 
   const worstLevel: UpgradeLevel | null = finalUpgrades.some(
     (u) => u.level === 'mandatory_upgrade',
@@ -93,6 +127,11 @@ function computeReleaseAge(
     upgrades: finalUpgrades,
     worstLevel,
     deprecated,
+    latestVersion,
+    latestReleasedDaysAgo,
+    minCompliantVersion,
+    minCompliantReleasedDaysAgo,
+    severity,
   };
 }
 
@@ -125,11 +164,19 @@ export async function enrichWithReleaseAge(
         const deprecated =
           info.versions?.[pkg.version!]?.deprecated ?? info.deprecated;
 
+        const severity: 'error' | 'warn' =
+          config.enforceOn.length === 0 ||
+          micromatch.isMatch(pkg.packageName, config.enforceOn)
+            ? 'error'
+            : 'warn';
+
         const entry = computeReleaseAge(
           pkg.version!,
           info.time,
           typeof deprecated === 'string' ? deprecated : undefined,
           config.thresholds,
+          info['dist-tags'],
+          severity,
         );
 
         return { pkg, entry };

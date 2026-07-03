@@ -9,11 +9,11 @@ export function evaluateFileRules(
 ): RuleViolation[] {
   const violations: RuleViolation[] = [];
 
-  for (const rule of toArray(rulesConfig.forbid_files)) {
+  for (const rule of toArray(rulesConfig.detect_files)) {
     const matches = findMatches(rule.patterns, repoPath, excludes);
     if (matches.length > 0) {
       violations.push({
-        type: 'forbid_files',
+        type: 'detect_files',
         severity: rule.severity,
         patterns: rule.patterns,
         message: rule.message,
@@ -27,19 +27,6 @@ export function evaluateFileRules(
     if (matches.length === 0) {
       violations.push({
         type: 'require_files',
-        severity: rule.severity,
-        patterns: rule.patterns,
-        message: rule.message,
-        matchedFiles: [],
-      });
-    }
-  }
-
-  for (const rule of toArray(rulesConfig.allow_files)) {
-    const matches = findMatches(rule.patterns, repoPath, excludes);
-    if (matches.length === 0) {
-      violations.push({
-        type: 'allow_files',
         severity: rule.severity,
         patterns: rule.patterns,
         message: rule.message,

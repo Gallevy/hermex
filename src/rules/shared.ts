@@ -4,15 +4,14 @@ import path from 'path';
 
 export interface RuleViolation {
   type:
-    | 'forbid_files'
+    | 'detect_files'
     | 'require_files'
-    | 'allow_files'
     | 'forbid_packages'
     | 'require_packages'
     | 'require_scripts'
     | 'require_package_fields'
     | 'engine_version';
-  severity: 'error' | 'warn';
+  severity: 'error' | 'warn' | 'info';
   patterns: string[];
   message?: string;
   matchedFiles: string[];
