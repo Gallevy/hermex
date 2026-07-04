@@ -3,14 +3,14 @@ import semver from 'semver';
 import { enrichWithReleaseAge } from '../../src/npm-registry/enricher';
 import { createMockPackage } from '../helpers/mock-reports';
 
-// Mock the client module — no network in tests
-vi.mock('../../src/npm-registry/client', () => ({
-  fetchPackageInfo: vi.fn(),
+// Mock the cache module — no network or disk I/O in tests
+vi.mock('../../src/npm-registry/cache', () => ({
+  getPackageInfo: vi.fn(),
 }));
 
-import { fetchPackageInfo } from '../../src/npm-registry/client';
+import { getPackageInfo } from '../../src/npm-registry/cache';
 
-const mockFetch = fetchPackageInfo as ReturnType<typeof vi.fn>;
+const mockFetch = getPackageInfo as ReturnType<typeof vi.fn>;
 
 const DEFAULT_THRESHOLDS = { patch: 30, minor: 45, major: 60 };
 const BASE_CONFIG = {

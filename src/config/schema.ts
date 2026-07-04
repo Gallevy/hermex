@@ -104,12 +104,15 @@ export const HermexConfigSchema = z.object({
         })
         .default(() => ({ patch: 30, minor: 45, major: 60 })),
       enforceOn: z.array(z.string()).default([]),
+      cacheTtlMs: z.number().int().positive().optional(),
+      cacheDisabled: z.boolean().default(false),
     })
     .default(() => ({
       enabled: false,
       registry: 'https://registry.npmjs.org',
       thresholds: { patch: 30, minor: 45, major: 60 },
       enforceOn: [],
+      cacheDisabled: false,
     })),
 });
 

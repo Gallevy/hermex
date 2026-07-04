@@ -8,7 +8,7 @@ import type {
   SemverBump,
   UpgradeLevel,
 } from './types';
-import { fetchPackageInfo } from './client';
+import { getPackageInfo, type CacheOptions } from './cache';
 
 const CONCURRENCY = 8;
 
@@ -147,15 +147,24 @@ export async function enrichWithReleaseAge(
   const enriched = [...packages];
   let skipped = 0;
 
+  const envTtl = Number(process.env['HERMEX_REGISTRY_CACHE_TTL_MS']);
+  const cacheOptions: CacheOptions = {
+    ttlMs: Number.isFinite(envTtl) && envTtl > 0 ? envTtl : config.cacheTtlMs,
+    disabled:
+      process.env['HERMEX_REGISTRY_CACHE_DISABLED'] === '1' ||
+      config.cacheDisabled === true,
+  };
+
   // Process in batches of CONCURRENCY
   for (let i = 0; i < targets.length; i += CONCURRENCY) {
     const batch = targets.slice(i, i + CONCURRENCY);
     const results = await Promise.all(
       batch.map(async (pkg) => {
-        const info = await fetchPackageInfo(
+        const info = await getPackageInfo(
           pkg.packageName,
           registryUrl,
           authToken,
+          cacheOptions,
         );
         if (!info || !info.time) {
           skipped++;
