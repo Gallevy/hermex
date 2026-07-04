@@ -1,3 +1,10 @@
+# [2.0.0-beta.5](https://github.com/Gallevy/hermex/compare/v2.0.0-beta.4...v2.0.0-beta.5) (2026-07-04)
+
+
+### Bug Fixes
+
+* populate hasVersionConflict/allVersions for yarn and pnpm lockfiles ([19a4695](https://github.com/Gallevy/hermex/commit/19a4695dd3a0520a5383f2dd8ef2015acd97dacd)), closes [#15](https://github.com/Gallevy/hermex/issues/15)
+
 # [2.0.0-beta.4](https://github.com/Gallevy/hermex/compare/v2.0.0-beta.3...v2.0.0-beta.4) (2026-07-04)
 
 
