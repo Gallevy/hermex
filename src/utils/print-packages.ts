@@ -102,7 +102,7 @@ function printPackagesTable(
   packages.forEach((pkg) => {
     const versionCell = pkg.hasVersionConflict
       ? chalk.yellow(
-          `⚠ ${pkg.allVersions.join(', ')} (multiple — bundle impact)`,
+          `⚠ ${pkg.allVersions.join(', ')} (${pkg.allVersions.length} versions — bundle impact)`,
         )
       : pkg.version || 'N/A';
 

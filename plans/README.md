@@ -22,7 +22,7 @@ your row when done.
 | [011](011-read-fixture-error-handling.md) | Improve readFixture error messages | P3 | S | — | DONE |
 | [012](012-aggregator-split.md) | Split aggregator.ts into focused modules | P3 | L | 006 | DONE |
 | [013](013-fix-line-numbers.md) | Fix line numbers — span.start is byte offset, not line | P1 | M | — | TODO |
-| [014](014-yarn-adapter-version-tracking.md) | Fix yarn adapter version overwrite + add parseMultiVersion | P2 | S | — | TODO |
+| [014](014-yarn-adapter-version-tracking.md) | Fix yarn adapter version overwrite + add parseMultiVersion | P2 | S | — | DONE |
 | [015](015-swc-parser-unit-tests.md) | SWC parser pattern and utility unit tests | P2 | M | — | TODO |
 | [016](016-parsefile-error-handling-tests.md) | parseFile null on error + state/report unit tests | P2 | S | — | TODO |
 | [017](017-yagni-component-files-field.md) | YAGNI: remove unused ComponentUsage.files field | P3 | S | — | TODO |

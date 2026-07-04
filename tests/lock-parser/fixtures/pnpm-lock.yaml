@@ -10,3 +10,19 @@ importers:
       vitest:
         specifier: ^1.0.0
         version: 1.6.0
+
+packages:
+  chalk@5.3.0:
+    resolution: {integrity: sha512-example}
+
+  vitest@1.6.0:
+    resolution: {integrity: sha512-example}
+
+  lodash@3.10.1:
+    resolution: {integrity: sha512-example}
+
+  lodash@4.17.21:
+    resolution: {integrity: sha512-example}
+
+  '@scope/pkg@1.0.0(peer@2.0.0)':
+    resolution: {integrity: sha512-example}

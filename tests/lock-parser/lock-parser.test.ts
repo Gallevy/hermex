@@ -41,6 +41,23 @@ describe('PnpmLockfileAdapter', () => {
     const result = adapter.detect(join(FIXTURES, 'does-not-exist'));
     expect(result).toBeNull();
   });
+
+  it('parseMultiVersion collects all distinct versions per package', () => {
+    const multiVersions = adapter.parseMultiVersion(
+      join(FIXTURES, 'pnpm-lock.yaml'),
+    );
+    expect(multiVersions['lodash']).toEqual(['3.10.1', '4.17.21']);
+    expect(multiVersions['chalk']).toEqual(['5.3.0']);
+    expect(multiVersions['vitest']).toEqual(['1.6.0']);
+    expect(multiVersions['@scope/pkg']).toEqual(['1.0.0']);
+  });
+
+  it('parseMultiVersion returns empty object when file does not exist', () => {
+    const multiVersions = adapter.parseMultiVersion(
+      join(FIXTURES, 'nonexistent.yaml'),
+    );
+    expect(multiVersions).toEqual({});
+  });
 });
 
 describe('NpmLockfileAdapter', () => {
@@ -75,5 +92,21 @@ describe('YarnLockfileAdapter', () => {
   it('returns empty object when file does not exist', () => {
     const versions = adapter.parse(join(FIXTURES, 'nonexistent.lock'));
     expect(versions).toEqual({});
+  });
+
+  it('parseMultiVersion collects all distinct versions per package', () => {
+    const multiVersions = adapter.parseMultiVersion(
+      join(FIXTURES, 'yarn.lock'),
+    );
+    expect(multiVersions['lodash']).toEqual(['3.10.1', '4.17.21']);
+    expect(multiVersions['chalk']).toEqual(['5.3.0']);
+    expect(multiVersions['vitest']).toEqual(['1.6.0']);
+  });
+
+  it('parseMultiVersion returns empty object when file does not exist', () => {
+    const multiVersions = adapter.parseMultiVersion(
+      join(FIXTURES, 'nonexistent.lock'),
+    );
+    expect(multiVersions).toEqual({});
   });
 });
