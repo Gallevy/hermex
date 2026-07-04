@@ -1,3 +1,10 @@
+# [2.0.0-beta.2](https://github.com/Gallevy/hermex/compare/v2.0.0-beta.1...v2.0.0-beta.2) (2026-07-04)
+
+
+### Bug Fixes
+
+* exclude prerelease versions from releaseAge minCompliantVersion/upgrades ([518962b](https://github.com/Gallevy/hermex/commit/518962b102eb53373db3e8a4abdda04ccc5ffc50)), closes [#20](https://github.com/Gallevy/hermex/issues/20)
+
 # [2.0.0-beta.1](https://github.com/Gallevy/hermex/compare/v1.3.0-beta.4...v2.0.0-beta.1) (2026-07-03)
 
 
