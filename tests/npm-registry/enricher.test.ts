@@ -140,7 +140,8 @@ describe('enrichWithReleaseAge — latest version reporting (#14)', () => {
       name: 'react-router-dom',
       time: {
         '5.3.4': daysAgo(2000),
-        '6.0.0-alpha.0': daysAgo(2344),
+        '6.0.0': daysAgo(90),
+        '6.30.1-rc.0': daysAgo(5),
         '6.30.1': daysAgo(12),
       },
       'dist-tags': { latest: '6.30.1' },
@@ -189,6 +190,57 @@ describe('enrichWithReleaseAge — latest version reporting (#14)', () => {
     for (const upgrade of entry.upgrades) {
       expect(semver.gte(entry.latestVersion!, upgrade.version)).toBe(true);
     }
+  });
+});
+
+describe('enrichWithReleaseAge — prerelease exclusion (#20)', () => {
+  it('minCompliantVersion skips a prerelease even when it is the most recent qualifying version', async () => {
+    const pkg = createMockPackage('@guestyci/localize', { version: '4.1.12' });
+    mockFetch.mockResolvedValueOnce({
+      name: '@guestyci/localize',
+      time: {
+        '4.1.12': daysAgo(200),
+        '4.1.16-alpha.218.0': daysAgo(5),
+        '4.1.16': daysAgo(10),
+      },
+      versions: {},
+    });
+    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    expect(enriched[0].releaseAge?.minCompliantVersion).toBe('4.1.16');
+    expect(enriched[0].releaseAge?.minCompliantReleasedDaysAgo).toBe(10);
+  });
+
+  it('upgrades[] never targets a prerelease as the newest-in-tier version', async () => {
+    const pkg = createMockPackage('react', { version: '18.0.0' });
+    mockFetch.mockResolvedValueOnce({
+      name: 'react',
+      time: {
+        '18.0.0': daysAgo(200),
+        '18.0.1': daysAgo(40),
+        '18.0.2-alpha.0': daysAgo(5),
+      },
+      versions: {},
+    });
+    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const upgrade = enriched[0].releaseAge?.upgrades.find(
+      (u) => u.semverBump === 'patch',
+    );
+    expect(upgrade?.version).toBe('18.0.1');
+  });
+
+  it('does not fall back to a prerelease when no stable version is within threshold', async () => {
+    const pkg = createMockPackage('react', { version: '18.0.0' });
+    mockFetch.mockResolvedValueOnce({
+      name: 'react',
+      time: {
+        '18.0.0': daysAgo(200),
+        '18.0.1-alpha.0': daysAgo(5),
+      },
+      versions: {},
+    });
+    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    expect(enriched[0].releaseAge?.minCompliantVersion).toBeUndefined();
+    expect(enriched[0].releaseAge?.minCompliantReleasedDaysAgo).toBeUndefined();
   });
 });
 

@@ -55,6 +55,7 @@ function computeReleaseAge(
   for (const [version, dateStr] of Object.entries(timeMap)) {
     if (version === 'created' || version === 'modified') continue;
     if (!semver.valid(version)) continue;
+    if (semver.prerelease(version)) continue;
     if (semver.lte(version, installedVersion)) continue;
 
     const bump = classifyBump(installedVersion, version);
