@@ -30,7 +30,14 @@
     "LICENSE.md"
   ],
   "type": "module",
-  "main": "./dist/cli.mjs",
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    }
+  },
   "scripts": {
     "format": "oxfmt --write",
     "format:ci": "oxfmt --check",
