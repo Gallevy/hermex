@@ -1,3 +1,10 @@
+# [2.0.0-beta.4](https://github.com/Gallevy/hermex/compare/v2.0.0-beta.3...v2.0.0-beta.4) (2026-07-04)
+
+
+### Features
+
+* **releaseAge:** cache npm registry responses ([05d6dd2](https://github.com/Gallevy/hermex/commit/05d6dd2b29a5dcfa29378033f7e8e2d26bc28e22))
+
 # [2.0.0-beta.3](https://github.com/Gallevy/hermex/compare/v2.0.0-beta.2...v2.0.0-beta.3) (2026-07-04)
 
 
