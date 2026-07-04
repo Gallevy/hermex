@@ -1,3 +1,10 @@
+# [2.0.0-beta.3](https://github.com/Gallevy/hermex/compare/v2.0.0-beta.2...v2.0.0-beta.3) (2026-07-04)
+
+
+### Features
+
+* ship library entry point with typed config and scan result ([d5296f2](https://github.com/Gallevy/hermex/commit/d5296f23f51316cb5ac3a164207f2ee1014102b9))
+
 # [2.0.0-beta.2](https://github.com/Gallevy/hermex/compare/v2.0.0-beta.1...v2.0.0-beta.2) (2026-07-04)
 
 
