@@ -19,21 +19,28 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-
       - name: Setup pnpm CLI
         uses: pnpm/action-setup@v4
         with:
           version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: 'pnpm'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Run format
         run: pnpm run format:ci
+
+      - name: Run lint
+        run: pnpm run lint:ci
+
+      - name: Run typecheck
+        run: pnpm run typecheck
 
       - name: Run tests
         run: pnpm run test:ci
