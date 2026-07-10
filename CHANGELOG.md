@@ -1,3 +1,10 @@
+# [2.0.0-beta.6](https://github.com/Gallevy/hermex/compare/v2.0.0-beta.5...v2.0.0-beta.6) (2026-07-10)
+
+
+### Features
+
+* populate ComponentUsage.files with the files using each component ([5c6c333](https://github.com/Gallevy/hermex/commit/5c6c333860f1b6a6b21ff54c365cec75b5ea6c4c))
+
 # [2.0.0-beta.5](https://github.com/Gallevy/hermex/compare/v2.0.0-beta.4...v2.0.0-beta.5) (2026-07-04)
 
 
