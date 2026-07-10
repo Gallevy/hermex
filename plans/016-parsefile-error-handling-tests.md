@@ -1,4 +1,4 @@
-# Plan 016: parseFile error handling + state/report unit tests
+# Plan 016: parseFile returns null on I/O error, pipeline records skipped files
 
 > **Executor instructions**: Follow this plan step by step. Run every
 > verification command and confirm the expected result before moving to the
@@ -7,79 +7,72 @@
 > in `plans/README.md`.
 >
 > **Drift check (run first)**:
-> `git diff --stat 36699c4..HEAD -- src/swc-parser/index.ts src/swc-parser/core/ tests/swc-parser/`
-> If these files changed since this plan was written, compare before proceeding.
+> `git diff --stat 19a4695..HEAD -- src/swc-parser/index.ts src/commands/pipeline.ts tests/swc-parser/`
+> If these files changed since this plan was written, compare the "Current
+> state" excerpts against the live code before proceeding; on a mismatch,
+> treat it as a STOP condition.
 
 ## Status
 
 - **Priority**: P2
 - **Effort**: S
 - **Risk**: LOW
-- **Depends on**: none
+- **Depends on**: none (coordinate with Plan 013 — both edit `src/swc-parser/index.ts`; run 013 first if both are queued)
 - **Category**: bug / tests
-- **Planned at**: commit `36699c4`, 2026-06-27
+- **Planned at**: commit `19a4695`, 2026-07-04 (rewrites the 2026-06-27 version: the caller moved from `scan.ts` into `pipeline.ts`, which changes the fix)
 
 ## Why this matters
 
-**parseFile silently throws**: `src/swc-parser/index.ts:50`:
+`parseFile` declares `UsageReport | null` but never returns null — it throws
+on any I/O error:
+
 ```ts
+// src/swc-parser/index.ts:49-52
 export function parseFile(filePath: string): UsageReport | null {
-  const code = fs.readFileSync(filePath, 'utf8');  // throws on missing file
+  const code = fs.readFileSync(filePath, 'utf8');
   return parseCode(code, filePath);
 }
 ```
-`parseFile` declares `UsageReport | null` as its return type — signaling that
-null is a valid "not found" response. But for a missing file it throws (ENOENT)
-instead of returning null. The caller in `scan.ts` wraps this in try-catch,
-so the crash is caught, but the `null` return path is unreachable. The type
-contract says null, the code says throw — they disagree.
 
-The fix is simple: wrap the `readFileSync` in try-catch and return null on I/O
-errors, matching what the type signature promises.
+The type contract and the behavior disagree. Worse, the (currently
+unreachable) null path in the caller **silently drops files**:
 
-**State initialization and report generation are untested**: `createState()` and
-`generateReport()` are foundational — every parse goes through them — but have
-no unit tests. A change to `UsagePatterns` fields that breaks the pattern count
-calculation would only surface as a wrong total in a snapshot.
+```ts
+// src/commands/pipeline.ts:54-63
+try {
+  const report = parseFile(file);
+  if (report) {
+    reports.push(report);      // ← null would fall through with NO error recorded
+  }
+} catch (error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  parseErrors.push({ file, message });
+}
+```
+
+If `parseFile` is ever "fixed" to return null without also fixing the
+pipeline, unreadable files would vanish from the report with no entry in
+`parseErrors`. This plan fixes both ends coherently: `parseFile` returns null
+on I/O errors (honoring its signature), and the pipeline records a
+`ParseError` when it receives null.
 
 ## Current state
 
-**`src/swc-parser/index.ts`** (entire file):
-```ts
-import { parseSync } from '@swc/core';
-import type { ParseOptions as SwcParseOptions } from '@swc/core';
-import fs from 'node:fs';
-import path from 'node:path';
-import type { UsageReport } from './types';
-import { createState } from './core/state';
-import { visitNode } from './core/visitor';
-import { generateReport } from './core/report';
-
-// ... swcOptionsForFile(filePath) ...
-
-export function parseCode(code: string, filePath = 'file.tsx'): UsageReport {
-  const state = createState();
-  const ast = parseSync(code, swcOptionsForFile(filePath));
-  visitNode(ast, state);
-  return generateReport(state);
-}
-
-export function parseFile(filePath: string): UsageReport | null {
-  const code = fs.readFileSync(filePath, 'utf8');   // ← throws, doesn't return null
-  return parseCode(code, filePath);
-}
-```
-
-**`src/swc-parser/core/state.ts`** — `createState()` initializes `ParserState`.
-
-**`src/swc-parser/core/report.ts`** — `generateReport(state)` converts state
-to `UsageReport`. `calculateTotalPatterns` (a private function) sums Set/Map sizes.
+- `src/swc-parser/index.ts` — `parseFile` at lines 49–52 (excerpt above);
+  `parseCode` at 42–47.
+- `src/commands/pipeline.ts` — parse loop at lines 50–63 (excerpt above);
+  `parseErrors: ParseError[]` is declared at line 48 and printed via
+  `printErrors(parseErrors)` at line 71. `ParseError` is
+  `{ file: string; message: string }` (`src/swc-parser/types.ts:144-147`).
+- Fixture for a real-file test: `fixtures/patterns/01-direct-usage.tsx`
+  (note: it moved — an older version of this plan cited `fixtures/01-direct-usage.tsx`).
+- Test conventions: vitest, see `tests/utils/compliance.test.ts` for style.
 
 ## Commands you will need
 
 | Purpose   | Command              | Expected on success |
 |-----------|----------------------|---------------------|
-| Typecheck | `pnpm run typecheck` | exit 0, no errors   |
+| Typecheck | `pnpm run typecheck` | exit 0              |
 | Build     | `pnpm run build`     | exit 0              |
 | Tests     | `pnpm run test:ci`   | all pass            |
 | Lint      | `pnpm run lint`      | exit 0              |
@@ -87,31 +80,27 @@ to `UsageReport`. `calculateTotalPatterns` (a private function) sums Set/Map siz
 ## Scope
 
 **In scope**:
-- `src/swc-parser/index.ts` — add try-catch to `parseFile`
-- `tests/swc-parser/parse-file.test.ts` — create (error handling tests)
-- `tests/swc-parser/core/state.test.ts` — create (state shape tests)
-- `tests/swc-parser/core/report.test.ts` — create (report generation tests)
+- `src/swc-parser/index.ts` — wrap `readFileSync` in try/catch
+- `src/commands/pipeline.ts` — record a `ParseError` on null report
+- `tests/swc-parser/parse-file.test.ts` — create
 
 **Out of scope** (do NOT touch):
-- `src/swc-parser/core/state.ts` — no source changes, tests only
-- `src/swc-parser/core/report.ts` — no source changes, tests only
-- `src/swc-parser/core/visitor.ts`
+- `src/swc-parser/core/*` — no changes
+- `src/commands/scan.ts`, `src/commands/comply.ts` — their catch blocks are
+  for pipeline-level failures, unrelated
 - Any pattern file
-- `src/commands/scan.ts` — the try-catch there already catches thrown errors;
-  fixing `parseFile` to return null makes the contract cleaner but does not
-  change scan.ts behavior (it still handles errors via try-catch)
 
 ## Git workflow
 
 - Branch: `advisor/016-parsefile-error-handling`
-- Commit message: `fix: parseFile returns null on I/O error; add state/report unit tests`
+- Commit message: `fix: parseFile returns null on I/O error; pipeline records skipped files`
 - Do NOT push or open a PR unless instructed.
 
 ## Steps
 
-### Step 1: Fix parseFile to return null on I/O error
+### Step 1: Make parseFile honor its signature
 
-In `src/swc-parser/index.ts`, wrap the `readFileSync` call:
+In `src/swc-parser/index.ts`:
 
 ```ts
 export function parseFile(filePath: string): UsageReport | null {
@@ -125,18 +114,33 @@ export function parseFile(filePath: string): UsageReport | null {
 }
 ```
 
-**Verify**:
-```
-pnpm run typecheck
-```
-→ exits 0.
+Parse errors (invalid syntax) from `parseCode` still throw — that is
+intentional: the pipeline distinguishes "unreadable" (null) from "unparsable"
+(throw), and both end up in `parseErrors`.
 
-```
-pnpm run build
-```
-→ exits 0.
+**Verify**: `pnpm run typecheck` → exit 0.
 
-### Step 2: Create tests/swc-parser/parse-file.test.ts
+### Step 2: Record null reports as errors in the pipeline
+
+In `src/commands/pipeline.ts`, change the loop body:
+
+```ts
+try {
+  const report = parseFile(file);
+  if (report) {
+    reports.push(report);
+  } else {
+    parseErrors.push({ file, message: 'Could not read file' });
+  }
+} catch (error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  parseErrors.push({ file, message });
+}
+```
+
+**Verify**: `pnpm run typecheck` → exit 0, `pnpm run build` → exit 0.
+
+### Step 3: Create tests/swc-parser/parse-file.test.ts
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -144,199 +148,80 @@ import { join } from 'node:path';
 import { parseCode, parseFile } from '../../src/swc-parser';
 
 describe('parseCode', () => {
-  it('returns a UsageReport for empty code', () => {
+  it('returns an empty report for empty code', () => {
     const report = parseCode('', 'file.tsx');
-    expect(report).toBeDefined();
-    expect(report.imports).toHaveLength(0);
-    expect(report.jsxUsage).toHaveLength(0);
-    expect(report.totalPatterns).toBe(0);
+    expect(report.summary.totalImports).toBe(0);
+    expect(report.patterns.usage.jsx).toHaveLength(0);
+    expect(report.summary.totalUsagePatterns).toBe(0);
   });
 
-  it('returns a UsageReport for a single export statement', () => {
-    const report = parseCode(`export const x = 1;`, 'file.ts');
-    expect(report).toBeDefined();
-    expect(report.imports).toHaveLength(0);
-  });
-
-  it('does not throw on a file with only comments', () => {
-    expect(() => parseCode('// just a comment\n/* block */\n', 'file.ts')).not.toThrow();
+  it('does not throw on comment-only input', () => {
+    expect(() => parseCode('// c\n/* b */\n', 'file.ts')).not.toThrow();
   });
 });
 
 describe('parseFile', () => {
   it('returns null for a non-existent file', () => {
-    const result = parseFile('/absolute/path/that/does/not/exist/file.tsx');
-    expect(result).toBeNull();
+    expect(parseFile(join(__dirname, 'does-not-exist.tsx'))).toBeNull();
   });
 
-  it('returns null for a directory path (not a file)', () => {
-    // Directories cannot be read with utf8 encoding
-    const result = parseFile(join(__dirname, '..'));
-    expect(result).toBeNull();
+  it('returns null for a directory path', () => {
+    expect(parseFile(__dirname)).toBeNull();
   });
 
-  it('returns a UsageReport for an existing fixture file', () => {
-    // Use the existing E2E fixture
-    const fixturePath = join(__dirname, '..', '..', 'fixtures', '01-direct-usage.tsx');
-    const result = parseFile(fixturePath);
+  it('parses an existing fixture file', () => {
+    const fixture = join(
+      __dirname, '..', '..', 'fixtures', 'patterns', '01-direct-usage.tsx',
+    );
+    const result = parseFile(fixture);
     expect(result).not.toBeNull();
-    expect(result?.imports.length).toBeGreaterThan(0);
+    expect(result!.summary.totalImports).toBeGreaterThan(0);
   });
 });
 ```
 
-**Verify**: `pnpm run test:ci --reporter=verbose` — all parse-file tests pass.
+If `__dirname` is unavailable (ESM test context), use
+`new URL('.', import.meta.url).pathname` or `import.meta.dirname` — match
+whatever `tests/helpers/read-fixture.ts` already does.
 
-### Step 3: Create tests/swc-parser/core/state.test.ts
+**Verify**: `pnpm run test:ci` → all pass.
 
-Read `src/swc-parser/core/state.ts` first to get exact field names, then:
-
-```ts
-import { describe, it, expect } from 'vitest';
-import { createState } from '../../../src/swc-parser/core/state';
-
-describe('createState', () => {
-  it('creates a state with empty collections', () => {
-    const state = createState();
-    expect(state.componentNames.size).toBe(0);
-    expect(state.allIdentifiers.size).toBe(0);
-  });
-
-  it('creates a fresh state each call (not shared reference)', () => {
-    const s1 = createState();
-    const s2 = createState();
-    s1.componentNames.add('Button');
-    expect(s2.componentNames.size).toBe(0);
-  });
-
-  it('creates usagePatterns with all required Set/Map fields', () => {
-    const state = createState();
-    const p = state.usagePatterns;
-    // Verify the main tracked patterns are present and empty
-    expect(p.jsxUsage instanceof Map).toBe(true);
-    expect(p.jsxUsage.size).toBe(0);
-    expect(p.lazyComponents instanceof Set).toBe(true);
-    expect(p.dynamicImports instanceof Set).toBe(true);
-    expect(p.variableAssignments instanceof Map).toBe(true);
-    expect(p.arrayMappings instanceof Set).toBe(true);
-    expect(p.objectMappings instanceof Set).toBe(true);
-  });
-});
-```
-
-**Note**: Adjust field names to match the actual `UsagePatterns` interface in
-`src/swc-parser/types.ts`. If Plan 002 has been executed, the dead fields
-(`directImports`, `componentMappings`, `renderProps`, `contextUsage`) will
-already be removed — do not assert on them.
-
-**Verify**: `pnpm run test:ci --reporter=verbose` — all state tests pass.
-
-### Step 4: Create tests/swc-parser/core/report.test.ts
-
-```ts
-import { describe, it, expect } from 'vitest';
-import { generateReport } from '../../../src/swc-parser/core/report';
-import { createState } from '../../../src/swc-parser/core/state';
-import { parseCode } from '../../../src/swc-parser';
-
-describe('generateReport on empty state', () => {
-  it('returns a report with zero totals for fresh state', () => {
-    const state = createState();
-    const report = generateReport(state);
-    expect(report.totalPatterns).toBe(0);
-    expect(report.imports).toHaveLength(0);
-    expect(report.jsxUsage).toHaveLength(0);
-  });
-});
-
-describe('totalPatterns count', () => {
-  it('counts each JSX usage as a pattern', () => {
-    const code = `
-      import { Button, Card } from '@ui/components';
-      function App() { return <><Button /><Card /></>; }
-    `;
-    const report = parseCode(code);
-    // 2 JSX usages should contribute to totalPatterns
-    expect(report.totalPatterns).toBeGreaterThanOrEqual(2);
-  });
-
-  it('counts imports separately from JSX patterns', () => {
-    const code = `
-      import { Button } from '@ui/button';
-    `;
-    const report = parseCode(code);
-    // Imports are tracked; check that imports count is 1
-    expect(report.imports).toHaveLength(1);
-    // totalPatterns reflects detected usage patterns, not import count
-    // (exact behavior depends on implementation — adjust assertion if needed)
-    expect(report.totalPatterns).toBeGreaterThanOrEqual(0);
-  });
-
-  it('totalPatterns increases when patterns are added', () => {
-    const codeA = `import { Button } from '@ui/button';`;
-    const codeB = `
-      import { Button } from '@ui/button';
-      function App() { return <Button />; }
-    `;
-    const reportA = parseCode(codeA);
-    const reportB = parseCode(codeB);
-    expect(reportB.totalPatterns).toBeGreaterThan(reportA.totalPatterns);
-  });
-});
-```
-
-**Verify**: `pnpm run test:ci --reporter=verbose` — all report tests pass.
-
-### Step 5: Final validation
+### Step 4: Full suite
 
 ```
-pnpm run build && pnpm run test:ci && pnpm run lint
+pnpm run build && pnpm run test:ci && pnpm run lint && pnpm run typecheck
 ```
 
-All must exit 0.
+All exit 0.
 
 ## Test plan
 
-The tests in this plan ARE the test plan:
-- `parse-file.test.ts` — 6 tests covering null return + edge case inputs
-- `core/state.test.ts` — 3 tests validating fresh state shape
-- `core/report.test.ts` — 4 tests validating report generation logic
-
-Total: ~13 new tests
+Step 3: 2 `parseCode` edge tests + 3 `parseFile` contract tests. The
+directory-path test may behave differently per OS — if reading a directory
+does not throw on your platform, replace it with a second non-existent-path
+variant and note that in the commit message.
 
 ## Done criteria
 
-- [ ] `src/swc-parser/index.ts` `parseFile` wraps `readFileSync` in try-catch and returns null on error
-- [ ] `tests/swc-parser/parse-file.test.ts` exists and all tests pass
-- [ ] `tests/swc-parser/core/state.test.ts` exists and all tests pass
-- [ ] `tests/swc-parser/core/report.test.ts` exists and all tests pass
-- [ ] `pnpm run typecheck` exits 0
-- [ ] `pnpm run build` exits 0
-- [ ] `pnpm run test:ci` exits 0
-- [ ] `pnpm run lint` exits 0
+- [ ] `parseFile` returns null on unreadable input (verified by tests)
+- [ ] `pipeline.ts` pushes a `ParseError` when `parseFile` returns null
+- [ ] `tests/swc-parser/parse-file.test.ts` exists, all tests pass
+- [ ] `pnpm run typecheck`, `pnpm run build`, `pnpm run test:ci`, `pnpm run lint` all exit 0
+- [ ] Only in-scope files modified (`git status`)
 - [ ] `plans/README.md` status updated to DONE
 
 ## STOP conditions
 
-- The existing fixture at `fixtures/01-direct-usage.tsx` does not exist when
-  Step 2 runs. Check the fixtures directory: `ls fixtures/`. If the file is
-  named differently, update the test path.
-- `generateReport` is not exported from `src/swc-parser/core/report.ts`
-  (it might be an internal). If so, test it indirectly through `parseCode()`
-  in the report tests — do not import it directly; instead just use `parseCode`.
-- `createState` is not exported from `core/state.ts`. Same fix: if it's
-  internal, test through `parseCode()`.
-- `parseFile` on a directory path does not return null on some platforms
-  (some OSes allow reading a directory as a buffer). If the directory-path test
-  fails, change that test to use a known non-existent path instead.
+- `pipeline.ts` no longer contains the excerpted loop (drift) — report.
+- The fixture `fixtures/patterns/01-direct-usage.tsx` does not exist — check
+  `ls fixtures/patterns/` and report what you find.
+- Any existing e2e test fails after Step 2 — the "Could not read file"
+  message may have leaked into expected output; report rather than adapting
+  e2e expectations.
 
 ## Maintenance notes
 
-- `parseFile` returning null instead of throwing is now the documented contract.
-  `scan.ts` already wraps `parseFile` in try-catch — that catch block can now
-  be simplified to handle both null and thrown errors, but that cleanup is out
-  of scope for this plan.
-- When new fields are added to `UsagePatterns`, add a corresponding assertion to
-  `state.test.ts` confirming the field is initialized as an empty Set/Map.
-- The `generateReport` tests work through `parseCode()` to avoid coupling to
-  internal module structure. Prefer this pattern over importing private functions.
+- The contract is now: null = unreadable file, throw = unparsable content.
+  Both are surfaced through `printErrors`. Keep new callers consistent.
+- Plan 019 (parallel parsing) rewrites this loop — it must preserve the
+  null-vs-throw handling added here; its plan references this one.

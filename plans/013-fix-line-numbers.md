@@ -1,4 +1,4 @@
-# Plan 013: Fix line numbers — span.start is a byte offset, not a line number
+# Plan 013: Fix line numbers — SWC span.start is a 1-based UTF-8 byte offset, not a line number
 
 > **Executor instructions**: Follow this plan step by step. Run every
 > verification command and confirm the expected result before moving to the
@@ -7,9 +7,10 @@
 > in `plans/README.md`.
 >
 > **Drift check (run first)**:
-> `git diff --stat 36699c4..HEAD -- src/swc-parser/`
+> `git diff --stat 19a4695..HEAD -- src/swc-parser/`
 > If the swc-parser directory changed since this plan was written, compare
-> "Current state" excerpts before proceeding.
+> the "Current state" excerpts against the live code before proceeding; on a
+> mismatch, treat it as a STOP condition.
 
 ## Status
 
@@ -18,34 +19,35 @@
 - **Risk**: LOW
 - **Depends on**: none
 - **Category**: bug / correctness
-- **Planned at**: commit `36699c4`, 2026-06-27
+- **Planned at**: commit `19a4695`, 2026-07-04 (rewrites the 2026-06-27 version of this plan, which had drifted)
 
 ## Why this matters
 
-Every pattern analyzer stores component line numbers using `node.span?.start || 0`.
-In SWC, `span.start` is a **byte offset from the start of the source file**, not a
-line number. A component on line 10 of a typical file has a span.start in the
-hundreds (byte position), not `10`. This means every `line` field in every
-`JSXUsage`, `LazyComponentUsage`, `PropsAnalysis`, etc. is completely wrong.
+Every pattern analyzer stores component "line numbers" as `node.span?.start || 0`.
+In SWC, `span.start` is **not a line number** — it is a **1-based byte offset**
+into the UTF-8 encoding of the source file. A component on line 10 of a typical
+file gets a `line` value in the hundreds. Every `line` field in every
+`JSXUsage`, `LazyImport`, `HOCUsage`, etc. that hermex reports is wrong today.
 
-Affected fields include:
-- `JSXUsage.line` — `src/swc-parser/patterns/jsx.ts:46`
-- `ArrayMappingEntry.line` — `src/swc-parser/patterns/collections.ts:20`
-- `ObjectMappingEntry.line` — `src/swc-parser/patterns/collections.ts:44`
-- `VariableAssignment.line` — `src/swc-parser/patterns/variables.ts:23`
-- `DestructuredUsage.line` — `src/swc-parser/patterns/variables.ts:59`
-- `LazyComponentUsage.line` — `src/swc-parser/patterns/lazy-dynamic.ts:17`
-- `DynamicImportUsage.line` — `src/swc-parser/patterns/lazy-dynamic.ts:34`
-- `HOCUsage.line` — `src/swc-parser/patterns/advanced.ts:26`
-- `MemoUsage.line` — `src/swc-parser/patterns/advanced.ts:37`
-- `ForwardRefUsage.line` — `src/swc-parser/patterns/advanced.ts:47`
-- `PortalUsage.line` — `src/swc-parser/patterns/advanced.ts:65`
-- `ConditionalComponent.line` — `src/swc-parser/patterns/conditionals.ts:22`
-- `PropsAnalysis.line` — `src/swc-parser/patterns/props.ts:20`
+Three facts were verified against the installed `@swc/core@1.15.43` (do not
+skip these — they shape the fix):
+
+1. **Offsets are 1-based**: parsing `const x = 1;` yields `span.start === 1`
+   for the first token, not 0.
+2. **Offsets are UTF-8 bytes, not JS string indices**: for the source
+   `'// hi 😀\nconst x = 1;'`, `code.indexOf('const')` is 9 (UTF-16 chars) but
+   SWC reports `span.start === 12` (1-based byte offset — the emoji is 4 bytes).
+   Line offsets must therefore be computed over `Buffer.from(source, 'utf8')`,
+   not over the string.
+3. **Spans reset per parse call** in this version (both `parseSync` and
+   concurrent async `parse` calls start each module at offset 1). Older SWC
+   versions accumulated spans globally across calls — the test plan below adds
+   a two-file regression test so an SWC upgrade that reintroduces accumulation
+   fails loudly instead of silently corrupting line numbers.
 
 ## Current state
 
-**`src/swc-parser/index.ts`** — entry point that creates state, visits AST, returns report:
+**`src/swc-parser/index.ts:42-47`** — entry point:
 ```ts
 export function parseCode(code: string, filePath = 'file.tsx'): UsageReport {
   const state = createState();
@@ -55,61 +57,38 @@ export function parseCode(code: string, filePath = 'file.tsx'): UsageReport {
 }
 ```
 
-**`src/swc-parser/types.ts`** — `ParserState` includes:
+**`src/swc-parser/types.ts:95-99`** — `ParserState` (note: no `filePath` field
+exists; an older version of this plan claimed one did):
 ```ts
 export interface ParserState {
-  filePath: string;
+  usagePatterns: UsagePatterns;
   componentNames: Set<string>;
   allIdentifiers: Set<string>;
-  usagePatterns: UsagePatterns;
 }
 ```
 
-**Usage in a pattern file** (jsx.ts:46):
-```ts
-line: node.span?.start || 0,
-```
+**All 16 occurrences of the bug** (verified at the planned-at commit with
+`grep -rn "span?.start" src/swc-parser/patterns/`):
 
-## The fix
+| File | Lines |
+|------|-------|
+| `src/swc-parser/patterns/advanced.ts` | 10, 25, 35, 44 |
+| `src/swc-parser/patterns/imports.ts` | 45, 62, 80, 89 |
+| `src/swc-parser/patterns/jsx.ts` | 46 |
+| `src/swc-parser/patterns/variables.ts` | 23, 58 |
+| `src/swc-parser/patterns/conditionals.ts` | 22 |
+| `src/swc-parser/patterns/lazy-dynamic.ts` | 18, 33 |
+| `src/swc-parser/patterns/collections.ts` | 20, 43 |
 
-**Step A** — Create `src/swc-parser/utils/line-map.ts` with two pure functions:
-
-```ts
-/** Build an array of byte offsets where each line begins. Index 0 = line 1. */
-export function buildLineOffsets(source: string): number[] {
-  const offsets = [0];
-  for (let i = 0; i < source.length; i++) {
-    if (source[i] === '\n') offsets.push(i + 1);
-  }
-  return offsets;
-}
-
-/** Convert a byte offset to a 1-based line number using binary search. */
-export function byteOffsetToLine(offset: number, lineOffsets: number[]): number {
-  let lo = 0;
-  let hi = lineOffsets.length - 1;
-  while (lo < hi) {
-    const mid = (lo + hi + 1) >> 1;
-    if (lineOffsets[mid] <= offset) lo = mid;
-    else hi = mid - 1;
-  }
-  return lo + 1; // 1-based
-}
-```
-
-**Step B** — Add `lineOffsets` to `ParserState` so pattern functions can access it
-without needing extra parameters.
-
-**Step C** — Populate `lineOffsets` in `parseCode()` before visiting.
-
-**Step D** — Update every pattern function that uses `node.span?.start` to call
-`byteOffsetToLine(node.span?.start ?? 0, state.lineOffsets)`.
+Each looks like `line: node.span?.start || 0,` (variables.ts:58 uses
+`pattern.span?.start || 0`). `props.ts` no longer stores line numbers — do not
+modify it.
 
 ## Commands you will need
 
 | Purpose   | Command              | Expected on success |
 |-----------|----------------------|---------------------|
-| Typecheck | `pnpm run typecheck` | exit 0, no errors   |
+| Typecheck | `pnpm run typecheck` | exit 0              |
 | Build     | `pnpm run build`     | exit 0              |
 | Tests     | `pnpm run test:ci`   | all pass            |
 | Lint      | `pnpm run lint`      | exit 0              |
@@ -120,43 +99,51 @@ without needing extra parameters.
 - `src/swc-parser/utils/line-map.ts` — create new
 - `src/swc-parser/types.ts` — add `lineOffsets: number[]` to `ParserState`
 - `src/swc-parser/core/state.ts` — initialize `lineOffsets: []`
-- `src/swc-parser/index.ts` — populate `lineOffsets` before `visitNode`
-- `src/swc-parser/patterns/jsx.ts` — update line extraction
-- `src/swc-parser/patterns/collections.ts` — update line extraction
-- `src/swc-parser/patterns/variables.ts` — update line extraction
-- `src/swc-parser/patterns/lazy-dynamic.ts` — update line extraction
-- `src/swc-parser/patterns/advanced.ts` — update line extraction
-- `src/swc-parser/patterns/conditionals.ts` — update line extraction
-- `src/swc-parser/patterns/props.ts` — update line extraction
+- `src/swc-parser/index.ts` — populate `lineOffsets` in `parseCode` before `visitNode`
+- The 7 pattern files listed in the table above
+- `tests/swc-parser/utils/line-map.test.ts` — create new
+- `tests/swc-parser/patterns/__snapshots__/jsx.test.tsx.snap` — regenerate only
 
 **Out of scope** (do NOT touch):
-- `src/swc-parser/core/visitor.ts` — visitor does not store line numbers
-- `src/swc-parser/core/report.ts` — reads state fields, not raw spans
-- `src/swc-parser/patterns/imports.ts` — imports do not store line numbers; confirm this before skipping
-- Any test or fixture file
+- `src/swc-parser/patterns/props.ts` — stores no line numbers
+- `src/swc-parser/core/visitor.ts`, `src/swc-parser/core/report.ts`
+- Any file outside `src/swc-parser/` and `tests/swc-parser/`
 
 ## Git workflow
 
 - Branch: `advisor/013-fix-line-numbers`
-- Commit message: `fix: convert SWC byte offsets to real line numbers`
+- Commit message: `fix: convert SWC byte-offset spans to real line numbers`
 - Do NOT push or open a PR unless instructed.
 
 ## Steps
 
 ### Step 1: Create src/swc-parser/utils/line-map.ts
 
-Create a new file with exactly this content:
-
 ```ts
+/**
+ * Byte offsets (0-based, UTF-8) at which each line begins. Index 0 = line 1.
+ * SWC spans count UTF-8 bytes, so offsets must be computed over the encoded
+ * source, not over JS string indices (which are UTF-16 code units).
+ */
 export function buildLineOffsets(source: string): number[] {
+  const bytes = Buffer.from(source, 'utf8');
   const offsets = [0];
-  for (let i = 0; i < source.length; i++) {
-    if (source[i] === '\n') offsets.push(i + 1);
+  for (let i = 0; i < bytes.length; i++) {
+    if (bytes[i] === 0x0a) offsets.push(i + 1);
   }
   return offsets;
 }
 
-export function byteOffsetToLine(offset: number, lineOffsets: number[]): number {
+/**
+ * Converts an SWC span start (1-based UTF-8 byte offset) to a 1-based line
+ * number. Returns 0 for missing spans (spanStart <= 0).
+ */
+export function spanStartToLine(
+  spanStart: number,
+  lineOffsets: number[],
+): number {
+  if (spanStart <= 0 || lineOffsets.length === 0) return 0;
+  const offset = spanStart - 1; // SWC offsets are 1-based
   let lo = 0;
   let hi = lineOffsets.length - 1;
   while (lo < hi) {
@@ -168,215 +155,212 @@ export function byteOffsetToLine(offset: number, lineOffsets: number[]): number 
 }
 ```
 
-**Verify**: `pnpm run typecheck` — may pass or fail depending on whether types.ts
-references `lineOffsets` yet. Either way, proceed.
+**Verify**: `pnpm run typecheck` → exit 0.
 
-### Step 2: Add lineOffsets to ParserState
+### Step 2: Add lineOffsets to ParserState and createState
 
-In `src/swc-parser/types.ts`, add `lineOffsets: number[]` to the `ParserState`
-interface. Find the existing interface and add the field:
+In `src/swc-parser/types.ts`, extend the interface:
 
 ```ts
 export interface ParserState {
-  filePath: string;
+  usagePatterns: UsagePatterns;
   componentNames: Set<string>;
   allIdentifiers: Set<string>;
-  usagePatterns: UsagePatterns;
-  lineOffsets: number[];   // ← add this
+  lineOffsets: number[];
 }
 ```
 
-**Verify**: `pnpm run typecheck` — fails on `state.ts` (expected — `createState()` must be updated). Proceed.
+In `src/swc-parser/core/state.ts`, add `lineOffsets: [],` to the object
+returned by `createState()`.
 
-### Step 3: Initialize lineOffsets in createState()
+**Verify**: `pnpm run typecheck` → exit 0.
 
-In `src/swc-parser/core/state.ts`, add `lineOffsets: []` to the object returned
-by `createState()`:
+### Step 3: Populate lineOffsets in parseCode
 
-```ts
-export function createState(): ParserState {
-  return {
-    filePath: '',
-    componentNames: new Set(),
-    allIdentifiers: new Set(),
-    lineOffsets: [],      // ← add this
-    usagePatterns: {
-      // ... existing fields unchanged
-    },
-  };
-}
-```
-
-**Verify**: `pnpm run typecheck` → should now exit 0 (both interface and
-implementation match). Fix any remaining type errors before proceeding.
-
-### Step 4: Populate lineOffsets in parseCode()
-
-In `src/swc-parser/index.ts`, populate `lineOffsets` after creating state and
-before visiting the AST:
+In `src/swc-parser/index.ts`:
 
 ```ts
 import { buildLineOffsets } from './utils/line-map';
 
 export function parseCode(code: string, filePath = 'file.tsx'): UsageReport {
   const state = createState();
-  state.lineOffsets = buildLineOffsets(code);   // ← add this line
+  state.lineOffsets = buildLineOffsets(code);
   const ast = parseSync(code, swcOptionsForFile(filePath));
   visitNode(ast, state);
   return generateReport(state);
 }
 ```
 
-`parseFile` does not need changes — it calls `parseCode` which now handles this.
+**Verify**: `pnpm run typecheck` → exit 0.
 
-**Verify**: `pnpm run typecheck` → exits 0.
+### Step 4: Replace all 16 span usages in the 7 pattern files
 
-### Step 5: Update all pattern files to use byteOffsetToLine
-
-In each of the following files, add this import at the top:
-```ts
-import { byteOffsetToLine } from '../utils/line-map';
-```
-
-Then replace every occurrence of `node.span?.start || 0` and `node.span?.start ?? 0`
-with `byteOffsetToLine(node.span?.start ?? 0, state.lineOffsets)`.
-
-**Files to update and their occurrences** (at the planned-at commit):
-
-**`src/swc-parser/patterns/jsx.ts`** (1 occurrence — line 46):
-```ts
-// Before:
-line: node.span?.start || 0,
-
-// After:
-line: byteOffsetToLine(node.span?.start ?? 0, state.lineOffsets),
-```
-
-**`src/swc-parser/patterns/collections.ts`** (2 occurrences — lines 20, 44):
-```ts
-// Both occurrences:
-line: node.span?.start || 0,
-// Replace with:
-line: byteOffsetToLine(node.span?.start ?? 0, state.lineOffsets),
-```
-
-**`src/swc-parser/patterns/variables.ts`** (2 occurrences — lines 23, 59):
-```ts
-line: node.span?.start || 0,
-// Replace with:
-line: byteOffsetToLine(node.span?.start ?? 0, state.lineOffsets),
-```
-
-**`src/swc-parser/patterns/lazy-dynamic.ts`** (2 occurrences — lines 17, 34):
-Same replacement.
-
-**`src/swc-parser/patterns/advanced.ts`** (4 occurrences — lines 26, 37, 47, 65):
-Same replacement.
-
-**`src/swc-parser/patterns/conditionals.ts`** (1 occurrence — line 22):
-Same replacement.
-
-**`src/swc-parser/patterns/props.ts`** (1 occurrence — line 20):
-Same replacement.
-
-After updating all files, run:
-```
-grep -rn "span?.start" src/swc-parser/patterns/
-```
-→ should return no matches (all occurrences replaced).
-
-**Verify**: `pnpm run typecheck` → exits 0.
-
-### Step 6: Check imports.ts
-
-Read `src/swc-parser/patterns/imports.ts` and confirm it does not store any
-`span.start` as a line number. If it does, apply the same fix. If not, no change
-needed.
-
-### Step 7: Run the full suite
-
-```
-pnpm run build && pnpm run test:ci && pnpm run lint
-```
-
-All must exit 0.
-
-**Note**: The snapshot test in `tests/swc-parser/patterns/jsx.test.tsx` will likely
-FAIL because line numbers in the snapshot are now real line numbers (small integers)
-instead of large byte offsets. Update the snapshot:
-```
-pnpm run test -- --update-snapshots
-```
-Then confirm the updated snapshot has small integers (1–100 range for a small
-fixture file) instead of large offsets (100s–1000s).
-
-## Test plan
-
-The existing snapshot test at `tests/swc-parser/patterns/jsx.test.tsx` exercises
-the `line` field. After running `--update-snapshots`, the snapshot values should
-change to small integers. If they remain large integers, the fix did not work.
-
-**Add one explicit unit test** to verify the utility functions, either in a new file
-`tests/swc-parser/utils/line-map.test.ts` or inline in this step:
+In each file from the table in "Current state", add the import:
 
 ```ts
-import { buildLineOffsets, byteOffsetToLine } from '../../../src/swc-parser/utils/line-map';
+import { spanStartToLine } from '../utils/line-map';
+```
+
+and replace every `line: node.span?.start || 0,` (and the one
+`line: pattern.span?.start || 0,` in variables.ts:58) with:
+
+```ts
+line: spanStartToLine(node.span?.start ?? 0, state.lineOffsets),
+```
+
+(using `pattern.span?.start ?? 0` at variables.ts:58). Every one of these
+functions already receives `state` — if one does not, that is a STOP condition.
+
+**Verify**: `grep -rn "span?.start" src/swc-parser/patterns/` → **no matches**.
+Then `pnpm run typecheck` → exit 0.
+
+### Step 5: Regenerate the snapshot
+
+```
+pnpm run test:ci
+```
+
+The snapshot test `tests/swc-parser/patterns/jsx.test.tsx` will fail because
+line values changed from byte offsets to real lines. Regenerate:
+
+```
+pnpm run test:ci -- --update
+```
+
+Open `tests/swc-parser/patterns/__snapshots__/jsx.test.tsx.snap` and confirm
+every `"line":` value is a small integer consistent with the fixture file's
+actual line count (the fixture `fixtures/patterns/01-direct-usage.tsx` is under
+100 lines), not in the hundreds/thousands.
+
+### Step 6: Add unit + regression tests
+
+Create `tests/swc-parser/utils/line-map.test.ts`:
+
+```ts
 import { describe, it, expect } from 'vitest';
+import {
+  buildLineOffsets,
+  spanStartToLine,
+} from '../../../src/swc-parser/utils/line-map';
+import { parseCode } from '../../../src/swc-parser';
 
 describe('buildLineOffsets', () => {
   it('single line has only offset 0', () => {
     expect(buildLineOffsets('hello')).toEqual([0]);
   });
-
   it('two lines returns two offsets', () => {
     expect(buildLineOffsets('hello\nworld')).toEqual([0, 6]);
   });
+  it('empty string returns [0]', () => {
+    expect(buildLineOffsets('')).toEqual([0]);
+  });
+  it('counts bytes, not chars, for multibyte content', () => {
+    // '😀' is 4 UTF-8 bytes; line 2 starts at byte 5, not char index 3
+    expect(buildLineOffsets('😀\nx')).toEqual([0, 5]);
+  });
 });
 
-describe('byteOffsetToLine', () => {
-  const offsets = [0, 6, 12]; // lines at: 0–5, 6–11, 12+
+describe('spanStartToLine', () => {
+  const offsets = [0, 6, 12]; // three lines
+  it('maps 1-based span 1 (byte 0) to line 1', () => {
+    expect(spanStartToLine(1, offsets)).toBe(1);
+  });
+  it('maps span 7 (byte 6, first char of line 2) to line 2', () => {
+    expect(spanStartToLine(7, offsets)).toBe(2);
+  });
+  it('maps span 16 to line 3', () => {
+    expect(spanStartToLine(16, offsets)).toBe(3);
+  });
+  it('returns 0 for missing span', () => {
+    expect(spanStartToLine(0, offsets)).toBe(0);
+  });
+});
 
-  it('byte 0 is line 1', () => {
-    expect(byteOffsetToLine(0, offsets)).toBe(1);
+describe('line numbers end to end', () => {
+  const CODE = [
+    `import { Button } from '@ui/button';`, // line 1
+    ``, // line 2
+    `export function App() {`, // line 3
+    `  return <Button />;`, // line 4
+    `}`, // line 5
+  ].join('\n');
+
+  it('reports the real line of a JSX usage', () => {
+    const report = parseCode(CODE, 'test.tsx');
+    const usage = report.patterns.usage.jsx.find(
+      (u) => u.component === 'Button',
+    );
+    expect(usage?.line).toBe(4);
   });
 
-  it('byte 5 is still line 1', () => {
-    expect(byteOffsetToLine(5, offsets)).toBe(1);
+  it('stays correct on the second file parsed in one process', () => {
+    // Regression guard: some @swc/core versions accumulated span offsets
+    // globally across parse calls. If an upgrade reintroduces that, the
+    // second parse would report huge line numbers.
+    parseCode(`const filler = 1;\n`.repeat(50), 'first.ts');
+    const report = parseCode(CODE, 'second.tsx');
+    const usage = report.patterns.usage.jsx.find(
+      (u) => u.component === 'Button',
+    );
+    expect(usage?.line).toBe(4);
   });
 
-  it('byte 6 is line 2', () => {
-    expect(byteOffsetToLine(6, offsets)).toBe(2);
-  });
-
-  it('byte 15 is line 3', () => {
-    expect(byteOffsetToLine(15, offsets)).toBe(3);
+  it('is not skewed by multibyte characters earlier in the file', () => {
+    const report = parseCode(
+      `// 😀😀😀\n` + CODE,
+      'emoji.tsx',
+    );
+    const usage = report.patterns.usage.jsx.find(
+      (u) => u.component === 'Button',
+    );
+    expect(usage?.line).toBe(5);
   });
 });
 ```
 
+**Verify**: `pnpm run test:ci` → all pass.
+
+### Step 7: Full suite
+
+```
+pnpm run build && pnpm run test:ci && pnpm run lint && pnpm run typecheck
+```
+
+All exit 0.
+
+## Test plan
+
+Covered by Step 6: 4 `buildLineOffsets` unit tests, 4 `spanStartToLine` unit
+tests, 3 end-to-end tests (real line, second-file regression, multibyte skew).
+The regenerated snapshot from Step 5 is the characterization check for all
+other pattern types.
+
 ## Done criteria
 
-- [ ] `src/swc-parser/utils/line-map.ts` exists with `buildLineOffsets` and `byteOffsetToLine`
-- [ ] `ParserState` has `lineOffsets: number[]`
-- [ ] `parseCode()` calls `buildLineOffsets(code)` and sets `state.lineOffsets`
+- [ ] `src/swc-parser/utils/line-map.ts` exists with `buildLineOffsets` and `spanStartToLine`
 - [ ] `grep -rn "span?.start" src/swc-parser/patterns/` → no matches
-- [ ] Snapshot test updated; line numbers are in the 1–200 range (not hundreds/thousands)
-- [ ] `pnpm run typecheck` exits 0
-- [ ] `pnpm run build` exits 0
-- [ ] `pnpm run test:ci` exits 0
-- [ ] `pnpm run lint` exits 0
+- [ ] Snapshot line values are small integers (< 100 for the fixture)
+- [ ] The three end-to-end tests in Step 6 pass, including the second-file regression test
+- [ ] `pnpm run typecheck`, `pnpm run build`, `pnpm run test:ci`, `pnpm run lint` all exit 0
+- [ ] Only in-scope files modified (`git status`)
 - [ ] `plans/README.md` status updated to DONE
 
 ## STOP conditions
 
-- `pnpm run typecheck` after Step 5 reports errors in files OTHER than the 8 pattern files listed. Something else references `span.start` — read the error, fix it, and continue.
-- The snapshot test shows line numbers still in the 100s–1000s range after `--update-snapshots`. This means `byteOffsetToLine` is not being called, or `state.lineOffsets` is empty. Check that Step 4 actually sets `state.lineOffsets` before `visitNode`.
-- `buildLineOffsets` with empty string doesn't return `[0]` — this would break zero-byte files. If empty string produces `[]`, fix by initializing `const offsets = [0]` unconditionally.
-- Any test OTHER than the snapshot test fails after the change. The fix is purely additive to existing data; this should not happen.
+- A pattern function using `span?.start` does not receive `state` — report it
+  rather than threading new parameters ad hoc.
+- The end-to-end test expects line 4 but gets a large number (hundreds): spans
+  are accumulating across parses in your @swc/core version. STOP and report —
+  the fix then requires a per-parse base offset, which is a design change.
+- The multibyte test fails: `buildLineOffsets` is iterating the string instead
+  of the UTF-8 buffer. Fix per Step 1 and re-run; if it still fails, STOP.
+- Typecheck errors appear in files outside the in-scope list.
 
 ## Maintenance notes
 
-- `lineOffsets` is computed per file in `parseCode()`. It is never written by the visitor — it is read-only during traversal.
-- Future pattern files that store line numbers must use `byteOffsetToLine(node.span?.start ?? 0, state.lineOffsets)` — the utility is in `src/swc-parser/utils/line-map.ts`.
-- The `byteOffsetToLine` binary search is O(log n) per call where n is the number of lines. For a 5000-line file this is ~13 operations per lookup — negligible.
-- SWC also provides `column` information via `span.start` (same byte offset). Converting to column requires: `offset - lineOffsets[lineIndex - 1]`. Not in scope here, but the same line-map utility can support it.
+- Future pattern files that store line numbers must use
+  `spanStartToLine(node.span?.start ?? 0, state.lineOffsets)`.
+- If Plan 019 (parallel async parsing) lands, the second-file regression test
+  also guards the concurrent case — async `parse()` was verified to reset
+  spans per call on 1.15.43, but keep the test.
+- `line: 0` now consistently means "unknown position" (missing span).
