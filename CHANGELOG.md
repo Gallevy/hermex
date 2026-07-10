@@ -1,3 +1,12 @@
+# [2.0.0-beta.8](https://github.com/Gallevy/hermex/compare/v2.0.0-beta.7...v2.0.0-beta.8) (2026-07-10)
+
+
+### Bug Fixes
+
+* compute minCompliantVersion for every semver bump tier ([#21](https://github.com/Gallevy/hermex/issues/21)) ([7fbbeaa](https://github.com/Gallevy/hermex/commit/7fbbeaa01940e1cbe53c266f9c5f1999800caea7))
+* route parse-error diagnostics to stderr under output.format json ([#23](https://github.com/Gallevy/hermex/issues/23)) ([19f988d](https://github.com/Gallevy/hermex/commit/19f988dd008e5d3e3df7e99e632426dcca9e4ff8))
+* skip .d.ts/.d.mts/.d.cts files instead of parsing them ([#22](https://github.com/Gallevy/hermex/issues/22)) ([ab68b88](https://github.com/Gallevy/hermex/commit/ab68b886779c3257feeba35884a4e51f02db99a4))
+
 # [2.0.0-beta.7](https://github.com/Gallevy/hermex/compare/v2.0.0-beta.6...v2.0.0-beta.7) (2026-07-10)
 
 
