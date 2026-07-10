@@ -18,6 +18,7 @@ const emptyRules: RulesConfig = {
   require_packages: [],
   require_scripts: [],
   require_package_fields: [],
+  forbid_package_fields: [],
   engine_version: undefined,
 };
 
@@ -33,6 +34,8 @@ beforeAll(() => {
       scripts: { build: 'tsc', test: 'vitest' },
       engines: { node: '>=18.0.0' },
       license: 'MIT',
+      packageManager: 'pnpm@10.12.0',
+      jest: {},
     }),
   );
 });
@@ -209,6 +212,119 @@ describe('evaluatePackageFieldRules', () => {
     });
     expect(result).toHaveLength(1);
     expect(result[0].type).toBe('require_package_fields');
+  });
+
+  it('no violation when required dot-path field is present', () => {
+    const result = evaluatePackageFieldRules(tempDir, {
+      ...emptyRules,
+      require_package_fields: [
+        { severity: 'error', patterns: ['engines.node'] },
+      ],
+    });
+    expect(result).toHaveLength(0);
+  });
+
+  it('violation when required dot-path field is missing', () => {
+    const result = evaluatePackageFieldRules(tempDir, {
+      ...emptyRules,
+      require_package_fields: [
+        { severity: 'error', patterns: ['engines.npm'] },
+      ],
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0].type).toBe('require_package_fields');
+  });
+
+  it('no violation when required field value matches the values pattern', () => {
+    const result = evaluatePackageFieldRules(tempDir, {
+      ...emptyRules,
+      require_package_fields: [
+        {
+          severity: 'error',
+          patterns: ['packageManager'],
+          values: ['pnpm@*'],
+        },
+      ],
+    });
+    expect(result).toHaveLength(0);
+  });
+
+  it('violation with fieldPath and actualValue when required field value does not match the values pattern', () => {
+    const result = evaluatePackageFieldRules(tempDir, {
+      ...emptyRules,
+      require_package_fields: [
+        {
+          severity: 'error',
+          patterns: ['packageManager'],
+          values: ['yarn@*'],
+        },
+      ],
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0].type).toBe('require_package_fields');
+    expect(result[0].fieldPath).toBe('packageManager');
+    expect(result[0].actualValue).toBe('pnpm@10.12.0');
+  });
+
+  it('violation with fieldPath when a forbidden field is present', () => {
+    const result = evaluatePackageFieldRules(tempDir, {
+      ...emptyRules,
+      forbid_package_fields: [{ severity: 'error', patterns: ['jest'] }],
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0].type).toBe('forbid_package_fields');
+    expect(result[0].fieldPath).toBe('jest');
+  });
+
+  it('no violation when a forbidden field is absent', () => {
+    const result = evaluatePackageFieldRules(tempDir, {
+      ...emptyRules,
+      forbid_package_fields: [
+        { severity: 'error', patterns: ['eslintConfig'] },
+      ],
+    });
+    expect(result).toHaveLength(0);
+  });
+
+  it('no violation when forbidden field value does not match the values pattern', () => {
+    const result = evaluatePackageFieldRules(tempDir, {
+      ...emptyRules,
+      forbid_package_fields: [
+        { severity: 'error', patterns: ['license'], values: ['GPL*'] },
+      ],
+    });
+    expect(result).toHaveLength(0);
+  });
+
+  it('violation when forbidden field value matches the values pattern', () => {
+    const result = evaluatePackageFieldRules(tempDir, {
+      ...emptyRules,
+      forbid_package_fields: [
+        { severity: 'error', patterns: ['license'], values: ['MIT'] },
+      ],
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0].type).toBe('forbid_package_fields');
+  });
+
+  it('require rules violate and forbid rules do not when package.json is absent', () => {
+    const emptyDir = mkdtempSync(join(tmpdir(), 'hermex-rules-test-empty-'));
+    try {
+      const requireResult = evaluatePackageFieldRules(emptyDir, {
+        ...emptyRules,
+        require_package_fields: [{ severity: 'error', patterns: ['name'] }],
+      });
+      expect(requireResult).toHaveLength(1);
+      expect(requireResult[0].type).toBe('require_package_fields');
+
+      const forbidResult = evaluatePackageFieldRules(emptyDir, {
+        ...emptyRules,
+        forbid_package_fields: [{ severity: 'error', patterns: ['jest'] }],
+      });
+      expect(forbidResult).toHaveLength(0);
+    } finally {
+      rmSync(emptyDir, { recursive: true, force: true });
+    }
   });
 });
 

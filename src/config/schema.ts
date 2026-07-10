@@ -15,6 +15,16 @@ const RuleConfigOrArraySchema = z.union([
   z.array(RuleConfigSchema),
 ]);
 
+const PackageFieldRuleSchema = RuleConfigSchema.extend({
+  /** Optional micromatch patterns the field's stringified value must match */
+  values: z.array(z.string()).optional(),
+});
+
+const PackageFieldRuleOrArraySchema = z.union([
+  PackageFieldRuleSchema,
+  z.array(PackageFieldRuleSchema),
+]);
+
 const EngineVersionRuleSchema = z.object({
   severity: RuleSeveritySchema,
   range: z.string(),
@@ -49,7 +59,8 @@ export const HermexConfigSchema = z.object({
       forbid_packages: RuleConfigOrArraySchema.default([]),
       require_packages: RuleConfigOrArraySchema.default([]),
       require_scripts: RuleConfigOrArraySchema.default([]),
-      require_package_fields: RuleConfigOrArraySchema.default([]),
+      require_package_fields: PackageFieldRuleOrArraySchema.default([]),
+      forbid_package_fields: PackageFieldRuleOrArraySchema.default([]),
       engine_version: z
         .union([EngineVersionRuleSchema, z.array(EngineVersionRuleSchema)])
         .optional(),
@@ -60,7 +71,8 @@ export const HermexConfigSchema = z.object({
       forbid_packages: [] as RuleConfig[],
       require_packages: [] as RuleConfig[],
       require_scripts: [] as RuleConfig[],
-      require_package_fields: [] as RuleConfig[],
+      require_package_fields: [] as PackageFieldRule[],
+      forbid_package_fields: [] as PackageFieldRule[],
     })),
 
   output: z
@@ -127,6 +139,7 @@ export type HermexConfigInput = z.input<typeof HermexConfigSchema>;
 // Sub-types derived from the output shape so they can never drift from the schema
 export type RuleSeverity = z.infer<typeof RuleSeveritySchema>;
 export type RuleConfig = z.infer<typeof RuleConfigSchema>;
+export type PackageFieldRule = z.infer<typeof PackageFieldRuleSchema>;
 export type EngineVersionRule = z.infer<typeof EngineVersionRuleSchema>;
 export type PackagesConfig = HermexConfig['packages'];
 export type VersusConfig = HermexConfig['versus'][number];

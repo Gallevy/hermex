@@ -10,6 +10,7 @@ export interface RuleViolation {
     | 'require_packages'
     | 'require_scripts'
     | 'require_package_fields'
+    | 'forbid_package_fields'
     | 'engine_version';
   severity: 'error' | 'warn' | 'info';
   patterns: string[];
@@ -18,6 +19,9 @@ export interface RuleViolation {
   // engine_version only
   installedRange?: string;
   requiredRange?: string;
+  // package-field rules only
+  fieldPath?: string;
+  actualValue?: string;
 }
 
 export function toArray<T>(val: T | T[] | undefined): T[] {

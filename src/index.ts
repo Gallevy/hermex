@@ -6,6 +6,7 @@ export type {
   HermexConfigInput,
   RuleSeverity,
   RuleConfig,
+  PackageFieldRule,
   EngineVersionRule,
   PackagesConfig,
   VersusConfig,

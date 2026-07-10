@@ -16,6 +16,8 @@ function formatRuleType(type: RuleViolation['type']): string {
       return 'require_scripts';
     case 'require_package_fields':
       return 'pkg_fields';
+    case 'forbid_package_fields':
+      return 'pkg_fields';
     case 'engine_version':
       return 'engine_version';
   }
@@ -45,8 +47,13 @@ function describeViolation(v: RuleViolation): string {
   if (v.type === 'forbid_packages') return `${patterns} is forbidden${suffix}`;
   if (v.type === 'require_scripts')
     return `script ${patterns} missing in package.json${suffix}`;
-  if (v.type === 'require_package_fields')
+  if (v.type === 'require_package_fields') {
+    if (v.fieldPath && v.actualValue !== undefined)
+      return `field ${v.fieldPath} is ${chalk.yellow(v.actualValue)}, does not match required value${suffix}`;
     return `field ${patterns} missing in package.json${suffix}`;
+  }
+  if (v.type === 'forbid_package_fields')
+    return `field ${v.fieldPath ?? patterns} is forbidden in package.json${suffix}`;
 
   if (v.type === 'engine_version') {
     if (!v.installedRange)
