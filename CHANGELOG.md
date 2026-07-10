@@ -1,3 +1,16 @@
+# [2.0.0-beta.7](https://github.com/Gallevy/hermex/compare/v2.0.0-beta.6...v2.0.0-beta.7) (2026-07-10)
+
+
+### Bug Fixes
+
+* unwrap SWC argument/element expression wrappers in pattern analyzers ([d3e2656](https://github.com/Gallevy/hermex/commit/d3e265665a1fcce6e327b9178f156e4340484398))
+
+
+### Features
+
+* **rules:** codeowners coverage rule — unowned scanned files fail comply ([d605ed9](https://github.com/Gallevy/hermex/commit/d605ed9c228027ff9c073afd0d09e0ad7f8b1e70))
+* **rules:** forbid_package_fields, dot-path fields, and value assertions ([7a35675](https://github.com/Gallevy/hermex/commit/7a356752b1d553fec57c4e7355759dc9c3d9bd7a))
+
 # [2.0.0-beta.6](https://github.com/Gallevy/hermex/compare/v2.0.0-beta.5...v2.0.0-beta.6) (2026-07-10)
 
 
