@@ -9,46 +9,45 @@ Reconciliation 2026-07-04: the 12 plans completed since the first audit
 The 4 remaining TODO plans had all drifted and were rewritten against `19a4695`
 (013, 015, 016; 017 reversed direction — see its header). Plans 018–022 are new.
 
+Reconciliation 2026-07-10: 8 plans executed and merged to `beta` this session
+(015, 017, 018, 020, 021, 023, 024, 025) were verified DONE against the code
+and **deleted**. Plan 025 was a new finding discovered mid-execution of 015 —
+see its entry in "Unplanned findings" below for the underlying bug. 4 plans
+remain TODO: 013, 016, 019, 022.
+
 ## Execution order & status
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
-| [018](018-ci-gates-cache-audit.md) | CI runs lint + typecheck, pnpm caching, picomatch advisory fixed | P1 | S | — | TODO |
 | [013](013-fix-line-numbers.md) | Fix line numbers — SWC spans are 1-based UTF-8 byte offsets | P1 | M | — | TODO |
 | [016](016-parsefile-error-handling-tests.md) | parseFile returns null on I/O error; pipeline records skipped files | P2 | S | 013 (ordering only) | TODO |
-| [017](017-populate-component-files-field.md) | Populate ComponentUsage.files (was: remove it) | P2 | S | 013, 016 (ordering only) | DONE (2026-07-10, commit `5c6c333`, merged to `beta`) |
-| [025](025-fix-swc-ast-argument-unwrapping.md) | Fix dead pattern detection: unwrap SWC `{spread, expression}` wrappers | P1 | S | — | DONE (2026-07-10, commit `d3e2656`, merged to `beta`) |
-| [021](021-utils-unit-tests.md) | Unit tests: package-distribution, versus, pattern-counter, package-rules | P2 | M | — | DONE (2026-07-10, commit `4cd5716`, merged to `beta`) |
-| [015](015-swc-parser-unit-tests.md) | SWC parser pattern + matcher unit tests (amended — see plan header) | P2 | M | — | DONE (2026-07-10, commit `4548d36`, merged to `beta`) |
-| [019](019-parallel-file-parsing.md) | Parse files concurrently with async SWC parse() | P2 | M | 013, 016, 017 | TODO |
-| [020](020-unify-cli-error-handling.md) | Unify scan/comply error handling + shared command setup | P3 | S | — | DONE (2026-07-10, commit `5200c5e`, merged to `beta`) |
+| [019](019-parallel-file-parsing.md) | Parse files concurrently with async SWC parse() | P2 | M | 013, 016, 017 (017 done) | TODO |
 | [022](022-small-cleanups-docs-sync.md) | Small cleanups: dead reports field, enricher lookup, config-v2, docs sync | P3 | S | — | TODO |
-| [023](023-package-json-standards-rules.md) | package.json standards: forbid fields, value assertions, dot-paths | P3 | M | — | DONE (2026-07-10, commit `7a35675`, merged to `beta`) |
-| [024](024-codeowners-coverage-rule.md) | CODEOWNERS coverage rule (unowned scanned files fail comply) | P3 | M | 023 | DONE (2026-07-10, commit `d605ed9`, merged to `beta`) |
 
 Status values: `TODO` | `IN PROGRESS` | `DONE` | `BLOCKED: <reason>` | `REJECTED: <reason>`
 
+### Done this session (2026-07-10, all merged to `beta`, plan files deleted)
+
+| Plan | Title | Commit |
+|------|-------|--------|
+| 015 | SWC parser pattern + matcher unit tests (amended — advanced/collections split to 025) | `4548d36` |
+| 017 | Populate ComponentUsage.files | `5c6c333` |
+| 018 | CI lint + typecheck gates, pnpm caching, picomatch advisory fixed (via `pnpm.overrides` fallback) | `cee1c81` |
+| 020 | Unify scan/comply error handling + shared command setup | `5200c5e` |
+| 021 | Unit tests: package-distribution, versus, pattern-counter, package-rules | `4cd5716` |
+| 023 | package.json standards: forbid fields, value assertions, dot-paths | `7a35675` |
+| 024 | CODEOWNERS coverage rule (unowned scanned files fail comply) | `d605ed9` |
+| 025 | Fix dead pattern detection: unwrap SWC `{spread, expression}` wrappers | `d3e2656` |
+
 ## Dependency notes
 
-- **013 → 016 → 017 → 019** is ordering, not hard dependency, for the first
-  three: all four touch `src/swc-parser/index.ts`, and 019's excerpts assume
-  the other three have landed. Execute in that order to avoid conflicts.
-- **019 requires 013/016/017 to be DONE** (its steps reference `lineOffsets`,
-  the null contract, and the `generateReport(state, filePath)` signature).
-- 015, 018, 020, 021, 022, 025 are independent of everything else and of each
-  other. 025 was discovered during 015's execution (2026-07-10): the executor
-  found that lazy/dynamic/HOC/memo/array detection never fires (SWC AST
-  wrapper bug, reviewer-verified against the live AST). 015 was amended in
-  place — its advanced/collections test files moved to 025 as that fix's
-  regression suite. 013 touches the same `line:` expressions as 025; land
-  order doesn't matter but rebase carefully if both are in flight.
-- **024 requires 023** — both extend the `RuleViolation` union,
-  `print-rules.ts`, and `evaluator.test.ts`; 024's excerpts assume 023 landed.
-  024 also touches `pipeline.ts` (adds a parameter to `evaluateRules`), so if
-  016/019 are queued, land them before 024 to avoid pipeline conflicts.
-- Recommended batches: **(1)** 018 alone (makes CI catch mistakes in all later
-  plans), **(2)** 013, 016, 017 in order, **(3)** 015, 020, 021, 022, 023 in
-  any order, **(4)** 019, then 024 last.
+- **013 → 016 → 019** is ordering, not hard dependency: both touch
+  `src/swc-parser/index.ts`, and 019's excerpts assume 013/016 have landed
+  (017 already has). Execute in that order to avoid conflicts.
+- **019 requires 013/016 to be DONE** (its steps reference `lineOffsets`, the
+  null contract, and the `generateReport(state, filePath)` signature — 017's
+  part of that signature is already live).
+- 022 is independent of everything else.
 
 ## Direction options (maintainer decisions, not plans)
 
@@ -76,6 +75,14 @@ none of these were planned; they are recorded so the evidence isn't lost.
 
 ## Unplanned findings (real, but below the leverage bar)
 
+- **SWC argument/element wrapper bug (fixed, Plan 025)**: discovered
+  2026-07-10 during Plan 015's execution. `@swc/core`'s `CallExpression.arguments[i]`
+  and `ArrayExpression.elements[i]` are `{ spread, expression }` wrapper
+  objects; five pattern analyzers read `.type`/`.value` directly off the
+  wrapper instead of `.expression`, so `advanced.lazy`, `advanced.dynamic`,
+  `advanced.hoc`, `advanced.memo`, and `usage.arrays` detection was dead code
+  on any input. Fixed in commit `d3e2656` (merged 2026-07-10) — kept here as
+  the historical record since the plan file was deleted after landing.
 - **Conditional pattern ignores JSX-branch ternaries** (found 2026-07-10
   during Plan 015): `analyzeConditionalExpression`
   (`src/swc-parser/patterns/conditionals.ts`) only matches `Identifier`
