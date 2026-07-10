@@ -78,6 +78,22 @@ describe('CLI smoke tests', () => {
     expect(parsed).toHaveProperty('patterns');
     expect(parsed.summary).toHaveProperty('filesAnalyzed');
   });
+
+  it('skips .d.ts files instead of reporting them as parse errors (#22)', () => {
+    const configPath = join(ROOT, 'tests', 'e2e', 'hermex-dts.config.ts');
+    const result = run(['scan', '--config', configPath]);
+    expect(result.status).toBe(0);
+    const parsed = JSON.parse(result.stdout);
+    // Only consumer.tsx is analyzed — shim.d.ts is excluded, not parsed and
+    // not reported as a parse error.
+    expect(parsed.summary.filesAnalyzed).toBe(1);
+  });
+
+  it('scan stdout has no "failed to parse" warning for a .d.ts-only fixture', () => {
+    const configPath = join(ROOT, 'tests', 'e2e', 'hermex-dts.config.ts');
+    const result = run(['scan', '--config', configPath]);
+    expect(result.stdout + result.stderr).not.toMatch(/failed to parse/i);
+  });
 });
 
 describe('comply command', () => {

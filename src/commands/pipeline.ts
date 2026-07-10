@@ -12,6 +12,12 @@ import { evaluateRules } from '../rules/evaluator';
 import { enrichWithReleaseAge } from '../npm-registry/enricher';
 import type { HermexConfig } from '../config/types';
 
+const DECLARATION_FILE_RE = /\.d\.(ts|mts|cts)$/;
+
+function isDeclarationFile(filePath: string): boolean {
+  return DECLARATION_FILE_RE.test(filePath);
+}
+
 /**
  * Runs the shared parse → aggregate → rules → release-age pipeline used by
  * both `scan` and `comply`. Returns `null` if no files matched (the spinner
@@ -30,7 +36,8 @@ export async function runPipeline(
   );
 
   spinner.start('Finding files...');
-  const files = await findFiles(config.includes, config.excludes);
+  const discovered = await findFiles(config.includes, config.excludes);
+  const files = discovered.filter((f) => !isDeclarationFile(f));
 
   if (files.length === 0) {
     spinner.fail(
