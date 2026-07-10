@@ -6,8 +6,8 @@ import type { ParserState } from '../types';
 export function analyzeArrayExpression(node: any, state: ParserState): void {
   // Check if array contains components
   const hasComponents = node.elements?.some((elem: any) => {
-    if (elem?.type === 'Identifier') {
-      return state.componentNames.has(elem.value);
+    if (elem?.expression?.type === 'Identifier') {
+      return state.componentNames.has(elem.expression.value);
     }
     return false;
   });
@@ -15,7 +15,7 @@ export function analyzeArrayExpression(node: any, state: ParserState): void {
   if (hasComponents) {
     state.usagePatterns.arrayMappings.add({
       components: node.elements
-        ?.map((elem: any) => elem?.value)
+        ?.map((elem: any) => elem?.expression?.value)
         .filter(Boolean),
       line: node.span?.start || 0,
     });
