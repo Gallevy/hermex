@@ -66,10 +66,14 @@ function computeReleaseAge(
     list.push({ version, daysAgo });
     byBump.set(bump, list);
 
-    // Track the oldest patch-bump version that's still within the patch threshold
-    const threshold = thresholds.patch;
+    // Track the oldest release, at whichever bump tier it belongs to, that's
+    // still within that tier's configured age threshold (#21) — generalizes
+    // what was previously a patch-only check to all three tiers, since the
+    // same "is this candidate old enough to be safely adopted" question
+    // applies identically to patch, minor, and major bumps, just against a
+    // different configured threshold per tier.
+    const threshold = thresholds[bump];
     if (
-      bump === 'patch' &&
       threshold !== false &&
       threshold !== undefined &&
       daysAgo <= threshold &&

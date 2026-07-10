@@ -244,6 +244,128 @@ describe('enrichWithReleaseAge — prerelease exclusion (#20)', () => {
   });
 });
 
+describe('enrichWithReleaseAge — minCompliantVersion for all bump tiers (#21)', () => {
+  it('finds a compliant release inside an intermediate major line, not just the latest', async () => {
+    // Mirrors the @guestyci/foundation example from the issue: installed
+    // 10.x. 11.0.0 is old enough (400d) to breach the 60-day major
+    // threshold and drive worstLevel to mandatory_upgrade; 12.0.0 (55d) is
+    // still within that threshold and should become minCompliantVersion —
+    // the whole point of #21 is that this doesn't have to be the newest
+    // release (13.5.5, 10d) to count as compliant.
+    const pkg = createMockPackage('@guestyci/foundation', {
+      version: '10.0.43',
+    });
+    mockFetch.mockResolvedValueOnce({
+      name: '@guestyci/foundation',
+      time: {
+        '10.0.43': daysAgo(900),
+        '11.0.0': daysAgo(400),
+        '12.0.0': daysAgo(55),
+        '13.5.5': daysAgo(10),
+      },
+      'dist-tags': { latest: '13.5.5' },
+      versions: {},
+    });
+    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    expect(enriched[0].releaseAge?.worstLevel).toBe('mandatory_upgrade');
+    expect(enriched[0].releaseAge?.minCompliantVersion).toBe('12.0.0');
+    expect(enriched[0].releaseAge?.minCompliantReleasedDaysAgo).toBe(55);
+  });
+
+  it('leaves minCompliantVersion undefined when every major-line candidate has already aged past the threshold', async () => {
+    const pkg = createMockPackage('react', { version: '17.0.0' });
+    mockFetch.mockResolvedValueOnce({
+      name: 'react',
+      time: {
+        '17.0.0': daysAgo(900),
+        '18.0.0': daysAgo(90), // the only candidate, and it's past the 60-day threshold
+      },
+      'dist-tags': { latest: '18.0.0' },
+      versions: {},
+    });
+    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    expect(enriched[0].releaseAge?.worstLevel).toBe('mandatory_upgrade');
+    expect(enriched[0].releaseAge?.minCompliantVersion).toBeUndefined();
+  });
+
+  it('prefers the oldest still-compliant major-line release over a newer compliant one', async () => {
+    const pkg = createMockPackage('@guestyci/arc', { version: '0.15.1' });
+    mockFetch.mockResolvedValueOnce({
+      name: '@guestyci/arc',
+      time: {
+        '0.15.1': daysAgo(900),
+        '1.0.0': daysAgo(400), // breaches the 60-day threshold, drives mandatory_upgrade
+        '1.5.0': daysAgo(55), // compliant, oldest of the compliant set — should win
+        '1.10.0': daysAgo(30), // compliant, but newer than 1.5.0
+        '1.17.1': daysAgo(5), // latest, compliant, newest of all
+      },
+      versions: {},
+    });
+    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    expect(enriched[0].releaseAge?.worstLevel).toBe('mandatory_upgrade');
+    expect(enriched[0].releaseAge?.minCompliantVersion).toBe('1.5.0');
+    expect(enriched[0].releaseAge?.minCompliantReleasedDaysAgo).toBe(55);
+  });
+
+  it('finds a compliant release for a minor-only bump (previously unhandled — no bug report, but same gap)', async () => {
+    const pkg = createMockPackage('some-lib', { version: '2.1.0' });
+    mockFetch.mockResolvedValueOnce({
+      name: 'some-lib',
+      time: {
+        '2.1.0': daysAgo(300),
+        '2.5.0': daysAgo(50), // breaches the 45-day minor threshold, drives needs_upgrade
+        '2.3.0': daysAgo(40), // within the 45-day minor threshold — compliant
+      },
+      versions: {},
+    });
+    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    expect(enriched[0].releaseAge?.worstLevel).toBe('needs_upgrade');
+    expect(enriched[0].releaseAge?.minCompliantVersion).toBe('2.3.0');
+    expect(enriched[0].releaseAge?.minCompliantReleasedDaysAgo).toBe(40);
+  });
+
+  it('minCompliantVersion can come from whichever tier has the oldest compliant candidate, spanning tiers', async () => {
+    // A minor candidate at 40d (within its 45-day threshold) and a major
+    // candidate at 55d (within its 60-day threshold) are both compliant;
+    // the major one is older overall (55 > 40) and should win, even though
+    // it's a different tier from the minor candidate. 3.0.0 at 400d is
+    // there only to breach the major threshold and give this scenario a
+    // realistic worstLevel.
+    const pkg = createMockPackage('mixed-tier-lib', { version: '1.0.0' });
+    mockFetch.mockResolvedValueOnce({
+      name: 'mixed-tier-lib',
+      time: {
+        '1.0.0': daysAgo(900),
+        '1.5.0': daysAgo(40), // minor, compliant
+        '2.0.0': daysAgo(55), // major, compliant, oldest compliant overall — should win
+        '3.0.0': daysAgo(400), // major, breaches the threshold, drives mandatory_upgrade
+      },
+      versions: {},
+    });
+    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    expect(enriched[0].releaseAge?.worstLevel).toBe('mandatory_upgrade');
+    expect(enriched[0].releaseAge?.minCompliantVersion).toBe('2.0.0');
+    expect(enriched[0].releaseAge?.minCompliantReleasedDaysAgo).toBe(55);
+  });
+
+  it('respects thresholds.minor === false by never treating minor candidates as compliant', async () => {
+    const pkg = createMockPackage('some-lib', { version: '2.1.0' });
+    mockFetch.mockResolvedValueOnce({
+      name: 'some-lib',
+      time: {
+        '2.1.0': daysAgo(300),
+        '2.3.0': daysAgo(40),
+      },
+      versions: {},
+    });
+    const { enriched } = await enrichWithReleaseAge([pkg], {
+      ...BASE_CONFIG,
+      thresholds: { ...DEFAULT_THRESHOLDS, minor: false },
+    });
+    expect(enriched[0].releaseAge?.minCompliantVersion).toBeUndefined();
+  });
+});
+
 describe('enrichWithReleaseAge — enforceOn severity scoping (#18)', () => {
   it('marks matched packages error and everything else warn when enforceOn is set', async () => {
     const packages = [
