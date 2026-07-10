@@ -6,6 +6,7 @@ export type {
   RuleConfig,
   PackageFieldRule,
   EngineVersionRule,
+  CodeownersRule,
   PackagesConfig,
   VersusConfig,
   RulesConfig,

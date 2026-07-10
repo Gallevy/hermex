@@ -20,6 +20,8 @@ function formatRuleType(type: RuleViolation['type']): string {
       return 'pkg_fields';
     case 'engine_version':
       return 'engine_version';
+    case 'codeowners':
+      return 'codeowners';
   }
 }
 
@@ -59,6 +61,15 @@ function describeViolation(v: RuleViolation): string {
     if (!v.installedRange)
       return `engines.node not specified (required ${v.requiredRange})${suffix}`;
     return `engines.node is ${chalk.yellow(v.installedRange)}, required ${chalk.cyan(v.requiredRange)}${suffix}`;
+  }
+
+  if (v.type === 'codeowners') {
+    if (v.matchedFiles.length === 0)
+      return `CODEOWNERS not found (looked in ${patterns})${suffix}`;
+    const shown = v.matchedFiles.slice(0, 3).join(', ');
+    const more =
+      v.matchedFiles.length > 3 ? ` and ${v.matchedFiles.length - 3} more` : '';
+    return `${v.matchedFiles.length} scanned file(s) have no owner: ${shown}${more}${suffix}`;
   }
 
   return `${patterns} not present${suffix}`;

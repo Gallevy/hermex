@@ -20,6 +20,7 @@ const emptyRules: RulesConfig = {
   require_package_fields: [],
   forbid_package_fields: [],
   engine_version: undefined,
+  codeowners: undefined,
 };
 
 beforeAll(() => {

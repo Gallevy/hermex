@@ -11,7 +11,8 @@ export interface RuleViolation {
     | 'require_scripts'
     | 'require_package_fields'
     | 'forbid_package_fields'
-    | 'engine_version';
+    | 'engine_version'
+    | 'codeowners';
   severity: 'error' | 'warn' | 'info';
   patterns: string[];
   message?: string;

@@ -81,6 +81,7 @@ export async function runPipeline(
     process.cwd(),
     config.rules,
     config.excludes,
+    files,
   );
   aggregated.ruleViolations = [
     ...aggregated.ruleViolations,

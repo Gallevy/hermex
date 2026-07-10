@@ -31,6 +31,11 @@ const EngineVersionRuleSchema = z.object({
   message: z.string().optional(),
 });
 
+const CodeownersRuleSchema = z.object({
+  severity: RuleSeveritySchema,
+  message: z.string().optional(),
+});
+
 const ThresholdSchema = z.union([z.number(), z.literal(false)]);
 
 // ── Main schema with defaults ──────────────────────────────────────────────────
@@ -64,6 +69,7 @@ export const HermexConfigSchema = z.object({
       engine_version: z
         .union([EngineVersionRuleSchema, z.array(EngineVersionRuleSchema)])
         .optional(),
+      codeowners: CodeownersRuleSchema.optional(),
     })
     .default(() => ({
       detect_files: [] as RuleConfig[],
@@ -141,6 +147,7 @@ export type RuleSeverity = z.infer<typeof RuleSeveritySchema>;
 export type RuleConfig = z.infer<typeof RuleConfigSchema>;
 export type PackageFieldRule = z.infer<typeof PackageFieldRuleSchema>;
 export type EngineVersionRule = z.infer<typeof EngineVersionRuleSchema>;
+export type CodeownersRule = z.infer<typeof CodeownersRuleSchema>;
 export type PackagesConfig = HermexConfig['packages'];
 export type VersusConfig = HermexConfig['versus'][number];
 export type RulesConfig = HermexConfig['rules'];
