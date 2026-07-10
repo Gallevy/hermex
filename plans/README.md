@@ -17,14 +17,14 @@ The 4 remaining TODO plans had all drifted and were rewritten against `19a4695`
 | [013](013-fix-line-numbers.md) | Fix line numbers — SWC spans are 1-based UTF-8 byte offsets | P1 | M | — | TODO |
 | [016](016-parsefile-error-handling-tests.md) | parseFile returns null on I/O error; pipeline records skipped files | P2 | S | 013 (ordering only) | TODO |
 | [017](017-populate-component-files-field.md) | Populate ComponentUsage.files (was: remove it) | P2 | S | 013, 016 (ordering only) | DONE (2026-07-10, commit `5c6c333`, merged to `beta`) |
-| [025](025-fix-swc-ast-argument-unwrapping.md) | Fix dead pattern detection: unwrap SWC `{spread, expression}` wrappers | P1 | S | — | TODO |
+| [025](025-fix-swc-ast-argument-unwrapping.md) | Fix dead pattern detection: unwrap SWC `{spread, expression}` wrappers | P1 | S | — | DONE (2026-07-10, commit `d3e2656`, merged to `beta`) |
 | [021](021-utils-unit-tests.md) | Unit tests: package-distribution, versus, pattern-counter, package-rules | P2 | M | — | DONE (2026-07-10, commit `4cd5716`, merged to `beta`) |
 | [015](015-swc-parser-unit-tests.md) | SWC parser pattern + matcher unit tests (amended — see plan header) | P2 | M | — | DONE (2026-07-10, commit `4548d36`, merged to `beta`) |
 | [019](019-parallel-file-parsing.md) | Parse files concurrently with async SWC parse() | P2 | M | 013, 016, 017 | TODO |
 | [020](020-unify-cli-error-handling.md) | Unify scan/comply error handling + shared command setup | P3 | S | — | DONE (2026-07-10, commit `5200c5e`, merged to `beta`) |
 | [022](022-small-cleanups-docs-sync.md) | Small cleanups: dead reports field, enricher lookup, config-v2, docs sync | P3 | S | — | TODO |
-| [023](023-package-json-standards-rules.md) | package.json standards: forbid fields, value assertions, dot-paths | P3 | M | — | TODO |
-| [024](024-codeowners-coverage-rule.md) | CODEOWNERS coverage rule (unowned scanned files fail comply) | P3 | M | 023 | TODO |
+| [023](023-package-json-standards-rules.md) | package.json standards: forbid fields, value assertions, dot-paths | P3 | M | — | DONE (2026-07-10, commit `7a35675`, merged to `beta`) |
+| [024](024-codeowners-coverage-rule.md) | CODEOWNERS coverage rule (unowned scanned files fail comply) | P3 | M | 023 | DONE (2026-07-10, commit `d605ed9`, merged to `beta`) |
 
 Status values: `TODO` | `IN PROGRESS` | `DONE` | `BLOCKED: <reason>` | `REJECTED: <reason>`
 
