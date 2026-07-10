@@ -1,5 +1,4 @@
 import { Command } from 'commander';
-import ora from 'ora';
 import chalk from 'chalk';
 import { printJson } from '../utils/print-json';
 import { printRules } from '../utils/print-rules';
@@ -7,8 +6,8 @@ import { printPackages } from '../utils/print-packages';
 import { printComplianceVerdict } from '../utils/print-compliance';
 import { computeCompliance } from '../utils/compliance';
 import { loadConfig } from '../config/loader';
-import { getVersion } from '../utils/version';
 import { runPipeline } from './pipeline';
+import { createCommandContext } from './command-context';
 import type { HermexConfig } from '../config/types';
 
 export function registerComplyCommand(program: Command) {
@@ -28,13 +27,7 @@ export function registerComplyCommand(program: Command) {
 }
 
 export async function executeComply(config: HermexConfig) {
-  const isJson = config.output.format === 'json';
-  const versionStream = isJson ? process.stderr : process.stdout;
-  versionStream.write(chalk.gray(`hermex v${getVersion()}\n`));
-  const spinner = ora({
-    text: 'Parsing lockfile...',
-    stream: isJson ? process.stderr : process.stdout,
-  }).start();
+  const { isJson, spinner } = createCommandContext(config);
 
   try {
     // Runs the full pipeline to completion regardless of violations found —
@@ -61,7 +54,6 @@ export async function executeComply(config: HermexConfig) {
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     spinner.fail(chalk.red('Compliance check failed: ' + message));
-    console.error(error);
     process.exitCode = 2;
   }
 }

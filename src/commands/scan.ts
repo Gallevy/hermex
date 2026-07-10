@@ -1,5 +1,4 @@
 import { Command } from 'commander';
-import ora from 'ora';
 import chalk from 'chalk';
 import { aggregateReports } from '../utils/aggregator';
 import { printSummary } from '../utils/print-summary';
@@ -11,8 +10,8 @@ import { printVersus } from '../utils/print-versus';
 import { printRules } from '../utils/print-rules';
 import { printJson } from '../utils/print-json';
 import { loadConfig } from '../config/loader';
-import { getVersion } from '../utils/version';
 import { runPipeline } from './pipeline';
+import { createCommandContext } from './command-context';
 import type { HermexConfig } from '../config/types';
 
 export function registerScanCommand(program: Command) {
@@ -30,13 +29,7 @@ export function registerScanCommand(program: Command) {
 }
 
 export async function executeScan(config: HermexConfig) {
-  const isJson = config.output.format === 'json';
-  const versionStream = isJson ? process.stderr : process.stdout;
-  versionStream.write(chalk.gray(`hermex v${getVersion()}\n`));
-  const spinner = ora({
-    text: 'Parsing lockfile...',
-    stream: isJson ? process.stderr : process.stdout,
-  }).start();
+  const { isJson, spinner } = createCommandContext(config);
 
   try {
     const aggregated = await runPipeline(config, spinner);
@@ -50,8 +43,7 @@ export async function executeScan(config: HermexConfig) {
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     spinner.fail(chalk.red('Analysis failed: ' + message));
-    console.error(error);
-    process.exit(1);
+    process.exitCode = 1;
   }
 }
 
