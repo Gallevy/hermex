@@ -32,7 +32,7 @@ export async function executeComply(config: HermexConfig) {
   try {
     // Runs the full pipeline to completion regardless of violations found —
     // comply must report everything in one pass, not fail on the first issue.
-    const aggregated = await runPipeline(config, spinner);
+    const aggregated = await runPipeline(config, spinner, isJson);
     if (!aggregated) {
       process.exitCode = 2;
       return;

@@ -32,7 +32,7 @@ export async function executeScan(config: HermexConfig) {
   const { isJson, spinner } = createCommandContext(config);
 
   try {
-    const aggregated = await runPipeline(config, spinner);
+    const aggregated = await runPipeline(config, spinner, isJson);
     if (!aggregated) return;
 
     if (isJson) {

@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AggregatedReport } from '../../src/utils/aggregator';
 import type { RuleViolation } from '../../src/rules/evaluator';
-import type { ParseError } from '../../src/swc-parser/types';
 import { printSummary } from '../../src/utils/print-summary';
 import { printPackages } from '../../src/utils/print-packages';
 import { printComponents } from '../../src/utils/print-components';
@@ -271,22 +270,44 @@ describe('printVersus', () => {
 });
 
 describe('printErrors', () => {
-  it('prints nothing on an empty error list', () => {
-    expect(() => printErrors([])).not.toThrow();
-    expect(consoleSpy).not.toHaveBeenCalled();
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
-  it('prints file and message for each error', () => {
-    const errors: ParseError[] = [
-      { file: 'src/App.tsx', message: 'Unexpected token' },
-    ];
-    expect(() => printErrors(errors)).not.toThrow();
-    expect(consoleSpy).toHaveBeenCalled();
-    const output = consoleSpy.mock.calls
-      .map((call) => call.join(' '))
-      .join('\n');
-    expect(output).toContain('src/App.tsx');
-    expect(output).toContain('Unexpected token');
+  it('writes to stdout when isJson is false', () => {
+    const stdoutSpy = vi
+      .spyOn(process.stdout, 'write')
+      .mockImplementation(() => true);
+    const stderrSpy = vi
+      .spyOn(process.stderr, 'write')
+      .mockImplementation(() => true);
+    printErrors([{ file: 'a.tsx', message: 'boom' }], false);
+    expect(stdoutSpy).toHaveBeenCalled();
+    expect(stderrSpy).not.toHaveBeenCalled();
+  });
+
+  it('writes to stderr when isJson is true', () => {
+    const stdoutSpy = vi
+      .spyOn(process.stdout, 'write')
+      .mockImplementation(() => true);
+    const stderrSpy = vi
+      .spyOn(process.stderr, 'write')
+      .mockImplementation(() => true);
+    printErrors([{ file: 'a.tsx', message: 'boom' }], true);
+    expect(stderrSpy).toHaveBeenCalled();
+    expect(stdoutSpy).not.toHaveBeenCalled();
+  });
+
+  it('writes nothing when there are no errors', () => {
+    const stdoutSpy = vi
+      .spyOn(process.stdout, 'write')
+      .mockImplementation(() => true);
+    const stderrSpy = vi
+      .spyOn(process.stderr, 'write')
+      .mockImplementation(() => true);
+    printErrors([], true);
+    expect(stdoutSpy).not.toHaveBeenCalled();
+    expect(stderrSpy).not.toHaveBeenCalled();
   });
 });
 

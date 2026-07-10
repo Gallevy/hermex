@@ -26,6 +26,7 @@ function isDeclarationFile(filePath: string): boolean {
 export async function runPipeline(
   config: HermexConfig,
   spinner: Ora,
+  isJson: boolean,
 ): Promise<AggregatedReport | null> {
   const lockfileResult = findAndParseLockfile(process.cwd());
 
@@ -75,7 +76,7 @@ export async function runPipeline(
     ),
   );
 
-  printErrors(parseErrors);
+  printErrors(parseErrors, isJson);
 
   const aggregated = aggregateReports(
     reports,

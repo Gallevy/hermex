@@ -94,6 +94,36 @@ describe('CLI smoke tests', () => {
     const result = run(['scan', '--config', configPath]);
     expect(result.stdout + result.stderr).not.toMatch(/failed to parse/i);
   });
+
+  it('routes parse-error diagnostics to stderr under output.format json, leaving stdout pure JSON (#23)', () => {
+    const configPath = join(
+      ROOT,
+      'tests',
+      'e2e',
+      'hermex-broken-json.config.ts',
+    );
+    const result = run(['scan', '--config', configPath]);
+    expect(result.status).toBe(0);
+    // stdout must be valid JSON on its own, no leading diagnostic text
+    expect(() => JSON.parse(result.stdout)).not.toThrow();
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed).toHaveProperty('summary');
+    // the diagnostic must have gone to stderr instead
+    expect(result.stderr).toMatch(/failed to parse/i);
+    expect(result.stderr).toMatch(/unparseable\.tsx/);
+  });
+
+  it('keeps parse-error diagnostics on stdout in human (non-JSON) mode', () => {
+    const configPath = join(
+      ROOT,
+      'tests',
+      'e2e',
+      'hermex-broken-human.config.ts',
+    );
+    const result = run(['scan', '--config', configPath]);
+    expect(result.status).toBe(0);
+    expect(result.stdout).toMatch(/failed to parse/i);
+  });
 });
 
 describe('comply command', () => {
