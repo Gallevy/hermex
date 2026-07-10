@@ -223,5 +223,11 @@ variant and note that in the commit message.
 
 - The contract is now: null = unreadable file, throw = unparsable content.
   Both are surfaced through `printErrors`. Keep new callers consistent.
-- Plan 019 (parallel parsing) rewrites this loop — it must preserve the
-  null-vs-throw handling added here; its plan references this one.
+- If a future plan converts this loop to run concurrently (a prior plan for
+  this, 019, was dropped by maintainer decision 2026-07-10 — not executed),
+  it must preserve the null-vs-throw handling added here.
+- `printErrors` now takes an `isJson: boolean` second parameter (landed via
+  plan 028, 2026-07-10, commit `19f988d`) — when implementing this plan's
+  `parseErrors.push({ file, message: 'Could not read file' })` change, the
+  existing `printErrors(parseErrors, isJson)` call site in `pipeline.ts`
+  already threads `isJson` through; no signature change needed here.

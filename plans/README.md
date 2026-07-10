@@ -15,13 +15,25 @@ and **deleted**. Plan 025 was a new finding discovered mid-execution of 015 —
 see its entry in "Unplanned findings" below for the underlying bug. 4 plans
 remain TODO: 013, 016, 019, 022.
 
+Targeted pass 2026-07-10 (commit `155c7ad`): plans 026–028 written against
+three specific GitHub issues (#21, #22, #23) at the user's request, not from a
+fresh full audit. All three were independently verified still reproducing on
+this branch before planning (see each plan's "Why this matters" section for
+the direct repro). None were rejected as already-fixed. All three were then
+executed the same session — see "Done this session" below.
+
+Reconciliation 2026-07-10 (second pass, same day): plans 026, 027, 028
+executed via dispatched executor + tech-lead review, verified DONE, merged
+to `beta`, and **deleted**. Plan 019 (parallel file parsing) was **dropped**
+by explicit maintainer decision — not executed, not superseded, just no
+longer wanted — and its file deleted without implementation.
+
 ## Execution order & status
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
 | [013](013-fix-line-numbers.md) | Fix line numbers — SWC spans are 1-based UTF-8 byte offsets | P1 | M | — | TODO |
 | [016](016-parsefile-error-handling-tests.md) | parseFile returns null on I/O error; pipeline records skipped files | P2 | S | 013 (ordering only) | TODO |
-| [019](019-parallel-file-parsing.md) | Parse files concurrently with async SWC parse() | P2 | M | 013, 016, 017 (017 done) | TODO |
 | [022](022-small-cleanups-docs-sync.md) | Small cleanups: dead reports field, enricher lookup, config-v2, docs sync | P3 | S | — | TODO |
 
 Status values: `TODO` | `IN PROGRESS` | `DONE` | `BLOCKED: <reason>` | `REJECTED: <reason>`
@@ -38,15 +50,36 @@ Status values: `TODO` | `IN PROGRESS` | `DONE` | `BLOCKED: <reason>` | `REJECTED
 | 023 | package.json standards: forbid fields, value assertions, dot-paths | `7a35675` |
 | 024 | CODEOWNERS coverage rule (unowned scanned files fail comply) | `d605ed9` |
 | 025 | Fix dead pattern detection: unwrap SWC `{spread, expression}` wrappers | `d3e2656` |
+| 026 | Skip `.d.ts`/`.d.mts`/`.d.cts` files instead of parsing them (#22) | `ab68b88` |
+| 027 | Compute `minCompliantVersion` for every semver bump tier, not just patch (#21) | `7fbbeaa` |
+| 028 | Route parse-error diagnostics to stderr under `output.format: json` (#23), plus an oxfmt follow-up fix | `19f988d`, `9c9835c` |
+
+Notes on 026–028, kept for history since the plan files are gone:
+- **026 (#22)** rejected the issue's own suggested fix (extend
+  `swcOptionsForFile` to pass through `.d.ts`-aware SWC options) — verified
+  directly against the installed `@swc/core@1.15.43` that no such option
+  exists, even via the filename-aware `parseFileSync`. Shipped fix instead
+  skips declaration files before they reach the parser.
+- **027 (#21)** was generalized beyond the issue's literal ask: rather than a
+  second hardcoded `bump === 'major'` branch, the fix is a single
+  `thresholds[bump]` lookup working for patch/minor/major uniformly — this
+  also fixed an un-reported identical gap on the `minor` tier.
+- **028 (#23)**'s executor caught that none of the three plans listed
+  `pnpm run format:ci` as a verification command even though it's a real CI
+  gate (`.github/workflows/*.yaml` both run it) — a one-line oxfmt violation
+  in `print-errors.ts` slipped through all three plans' own verification
+  steps and was only caught in the tech-lead review pass before merge, fixed
+  in a follow-up commit. **Future plans against this repo should add
+  `pnpm run format:ci` to their verification command table**, not just
+  lint/typecheck/test/build.
+- Plan **019** (parallel file parsing) referenced 026 as touching the same
+  `pipeline.ts` parse loop; that coordination note is now moot since 019 was
+  dropped rather than executed.
 
 ## Dependency notes
 
-- **013 → 016 → 019** is ordering, not hard dependency: both touch
-  `src/swc-parser/index.ts`, and 019's excerpts assume 013/016 have landed
-  (017 already has). Execute in that order to avoid conflicts.
-- **019 requires 013/016 to be DONE** (its steps reference `lineOffsets`, the
-  null contract, and the `generateReport(state, filePath)` signature — 017's
-  part of that signature is already live).
+- **013 → 016** is ordering, not hard dependency: both touch
+  `src/swc-parser/index.ts`. Execute in that order to avoid conflicts.
 - 022 is independent of everything else.
 
 ## Direction options (maintainer decisions, not plans)

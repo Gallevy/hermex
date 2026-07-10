@@ -360,7 +360,9 @@ other pattern types.
 
 - Future pattern files that store line numbers must use
   `spanStartToLine(node.span?.start ?? 0, state.lineOffsets)`.
-- If Plan 019 (parallel async parsing) lands, the second-file regression test
-  also guards the concurrent case — async `parse()` was verified to reset
-  spans per call on 1.15.43, but keep the test.
+- If a future plan converts file parsing to run concurrently (a prior plan
+  for this, 019, was dropped by maintainer decision 2026-07-10 — not
+  executed), the second-file regression test also guards the concurrent
+  case — async `parse()` was verified to reset spans per call on 1.15.43,
+  but keep the test.
 - `line: 0` now consistently means "unknown position" (missing span).
