@@ -3,8 +3,12 @@ import type { ParserState, UsageReport } from '../types';
 /**
  * Generates a comprehensive usage report from parser state
  */
-export function generateReport(state: ParserState): UsageReport {
+export function generateReport(
+  state: ParserState,
+  filePath: string,
+): UsageReport {
   const report: UsageReport = {
+    filePath,
     summary: {
       totalImports:
         state.usagePatterns.defaultImports.size +

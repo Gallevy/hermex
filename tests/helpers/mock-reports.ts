@@ -10,6 +10,7 @@ export function createMockReport(
   overrides: Partial<UsageReport> = {},
 ): UsageReport {
   return {
+    filePath: 'mock.tsx',
     summary: { totalImports: 0, totalComponents: 0, totalUsagePatterns: 0 },
     patterns: {
       imports: { default: [], named: [], namespace: [], aliased: [] },

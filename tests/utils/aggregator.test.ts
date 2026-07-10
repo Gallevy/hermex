@@ -82,6 +82,33 @@ describe('aggregateReports — component counting', () => {
   });
 });
 
+describe('aggregateReports — component files', () => {
+  it('tracks each distinct file where a component is used', () => {
+    const reportA = reportWithNamedImport('Button', 'react');
+    reportA.filePath = 'a.tsx';
+    const reportB = reportWithNamedImport('Button', 'react');
+    reportB.filePath = 'b.tsx';
+
+    const result = aggregateReports([reportA, reportB], { react: '18.0.0' });
+
+    expect(result.componentUsage.get('Button')?.files).toEqual(
+      new Set(['a.tsx', 'b.tsx']),
+    );
+  });
+
+  it('dedupes the same file when a component is used multiple times in it', () => {
+    const report = reportWithNamedImport('Button', 'react');
+    report.filePath = 'a.tsx';
+    report.patterns.usage.jsx.push(jsxUsage('Button'));
+
+    const result = aggregateReports([report], { react: '18.0.0' });
+
+    const button = result.componentUsage.get('Button');
+    expect(button?.files).toEqual(new Set(['a.tsx']));
+    expect(button?.count).toBe(2);
+  });
+});
+
 describe('aggregateReports — package distribution', () => {
   it('resolves component to its package', () => {
     const report = reportWithNamedImport('Button', 'react');

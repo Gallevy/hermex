@@ -108,6 +108,7 @@ export interface VisitorContext {
 
 // Report types
 export interface UsageReport {
+  filePath: string;
   summary: {
     totalImports: number;
     totalComponents: number;

@@ -56,6 +56,7 @@ export function aggregateReports(
 
       if (existing) {
         existing.count++;
+        existing.files.add(report.filePath);
       } else {
         const source = findComponentSource(
           jsx.component,
@@ -66,7 +67,7 @@ export function aggregateReports(
           name: jsx.component,
           source,
           count: 1,
-          files: new Set(),
+          files: new Set([report.filePath]),
         });
       }
     }

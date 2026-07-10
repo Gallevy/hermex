@@ -43,7 +43,7 @@ export function parseCode(code: string, filePath = 'file.tsx'): UsageReport {
   const state = createState();
   const ast = parseSync(code, swcOptionsForFile(filePath));
   visitNode(ast, state);
-  return generateReport(state);
+  return generateReport(state, filePath);
 }
 
 export function parseFile(filePath: string): UsageReport | null {
