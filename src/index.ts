@@ -1,5 +1,6 @@
-// Library entry point — types only, safe to import from `hermex.config.ts`
-// without pulling in any CLI runtime code.
+// Library entry point — safe to import from `hermex.config.ts` without
+// pulling in any CLI runtime code (parsing, SWC, registry calls, etc.).
+// `defineConfig` is the one runtime export; everything else is type-only.
 
 export type {
   HermexConfig,
@@ -16,6 +17,18 @@ export type {
   ReleaseAgeConfig,
   ReleaseAgeThresholds,
 } from './config/types';
+import type { HermexConfigInput } from './config/types';
+
+/**
+ * Identity helper for authoring `hermex.config.ts` with full type inference
+ * and autocomplete — mirrors the same `defineConfig` convention used by
+ * Vite, ESLint's flat config, and Vitest. Returns its argument unchanged;
+ * `loadConfig` (`src/config/loader.ts`) accepts a plain object default
+ * export either way, so this is purely a DX affordance, not a requirement.
+ */
+export function defineConfig(config: HermexConfigInput): HermexConfigInput {
+  return config;
+}
 
 export type { PatternCount } from './utils/pattern-counter';
 export type {

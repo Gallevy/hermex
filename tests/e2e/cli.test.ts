@@ -66,6 +66,18 @@ describe('CLI smoke tests', () => {
     expect(result.stdout).toMatch(/Analysis complete/);
   });
 
+  it('a config authored with defineConfig loads and runs (#19)', () => {
+    const configPath = join(
+      ROOT,
+      'tests',
+      'e2e',
+      'hermex-defineconfig.config.ts',
+    );
+    const result = run(['scan', '--config', configPath]);
+    expect(result.status).toBe(0);
+    expect(result.stdout).toMatch(/Analysis complete/);
+  });
+
   it('output.format json emits valid JSON to stdout', () => {
     const configPath = join(ROOT, 'tests', 'e2e', 'hermex-json.config.ts');
     const result = run(['scan', '--config', configPath]);
