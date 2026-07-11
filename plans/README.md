@@ -28,6 +28,15 @@ to `beta`, and **deleted**. Plan 019 (parallel file parsing) was **dropped**
 by explicit maintainer decision — not executed, not superseded, just no
 longer wanted — and its file deleted without implementation.
 
+Targeted pass 2026-07-10 (third pass, commit `b8a6478`): plan 029 written
+against [GitHub issue #19](https://github.com/Gallevy/hermex/issues/19).
+Two of the issue's three complaints were verified already fixed on this
+branch (`.d.ts` publishing, `HermexScanResult` field coverage) — only the
+missing `defineConfig` export (documented in `docs/examples.md`, never
+implemented) was a real, still-reproducing gap. Executed the same session
+via dispatched executor + tech-lead review, verified DONE, merged to
+`beta` locally (not pushed, per instruction), and **deleted**.
+
 ## Execution order & status
 
 | Plan | Title | Priority | Effort | Depends on | Status |
@@ -53,6 +62,7 @@ Status values: `TODO` | `IN PROGRESS` | `DONE` | `BLOCKED: <reason>` | `REJECTED
 | 026 | Skip `.d.ts`/`.d.mts`/`.d.cts` files instead of parsing them (#22) | `ab68b88` |
 | 027 | Compute `minCompliantVersion` for every semver bump tier, not just patch (#21) | `7fbbeaa` |
 | 028 | Route parse-error diagnostics to stderr under `output.format: json` (#23), plus an oxfmt follow-up fix | `19f988d`, `9c9835c` |
+| 029 | Add `defineConfig` export documented in examples but never implemented (#19) — merged locally, not pushed | `cb1f149` |
 
 Notes on 026–028, kept for history since the plan files are gone:
 - **026 (#22)** rejected the issue's own suggested fix (extend
@@ -75,6 +85,18 @@ Notes on 026–028, kept for history since the plan files are gone:
 - Plan **019** (parallel file parsing) referenced 026 as touching the same
   `pipeline.ts` parse loop; that coordination note is now moot since 019 was
   dropped rather than executed.
+- **029 (#19)** turned out to be a "two-thirds already fixed" issue: the
+  `.d.ts`-publishing gap and `HermexScanResult` field-coverage gap it
+  reported were both already resolved on `beta` by the time it was picked
+  up (verified directly, not assumed — `npm pack --dry-run` for the former,
+  a line-by-line field comparison against `print-json.ts` for the latter).
+  The only real, still-reproducing gap was `defineConfig` — documented as
+  the primary config-authoring pattern in `docs/examples.md` (11 examples)
+  but never implemented in `src/index.ts`, so every doc example failed at
+  runtime with a Node ESM "does not provide an export" error. Fixed as a
+  one-line identity function (same convention as Vite/ESLint/Vitest's own
+  `defineConfig`), following the project's existing `HermexConfigInput`
+  type — no change to `loadConfig` or the config schema needed.
 
 ## Dependency notes
 
