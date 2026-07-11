@@ -1,3 +1,10 @@
+# [2.0.0-beta.9](https://github.com/Gallevy/hermex/compare/v2.0.0-beta.8...v2.0.0-beta.9) (2026-07-11)
+
+
+### Features
+
+* add defineConfig export documented in examples but never implemented ([#19](https://github.com/Gallevy/hermex/issues/19)) ([1e5d110](https://github.com/Gallevy/hermex/commit/1e5d1108403d251891d0e2c202f1dc8d110f9064))
+
 # [2.0.0-beta.8](https://github.com/Gallevy/hermex/compare/v2.0.0-beta.7...v2.0.0-beta.8) (2026-07-10)
 
 
