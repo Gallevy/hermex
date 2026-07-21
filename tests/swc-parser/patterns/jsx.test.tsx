@@ -12,7 +12,7 @@ describe('Parser - Direct Import', () => {
   });
 
   test('should parse direct import', () => {
-    const ast = parseCode(code);
+    const ast = parseCode(code, '01-direct-usage.tsx');
 
     expect(ast).toMatchSnapshot();
   });

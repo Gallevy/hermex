@@ -73,21 +73,17 @@ export interface LazyImport {
 
 // State management
 export interface UsagePatterns {
-  directImports: Set<string>;
   namedImports: Set<ImportPattern>;
   namespaceImports: Set<ImportPattern>;
   defaultImports: Set<ImportPattern>;
   aliasedImports: Map<string, AliasedImport>;
   variableAssignments: Map<string, VariableAssignment>;
-  componentMappings: Set<string>;
   lazyImports: Set<LazyImport>;
   dynamicImports: Set<LazyImport>;
   conditionalUsage: Set<ConditionalUsage>;
   arrayMappings: Set<ArrayMapping>;
   objectMappings: Set<{ mappings: ObjectMapping[]; line?: number }>;
   hocUsage: Set<HOCUsage>;
-  renderProps: Set<string>;
-  contextUsage: Set<string>;
   forwardedRefs: Set<{ line?: number }>;
   memoizedComponents: Set<{ component: string; line?: number }>;
   portalUsage: Set<{ line?: number }>;
@@ -112,6 +108,7 @@ export interface VisitorContext {
 
 // Report types
 export interface UsageReport {
+  filePath: string;
   summary: {
     totalImports: number;
     totalComponents: number;
@@ -143,11 +140,6 @@ export interface UsageReport {
     props: Array<{ component: string; analysis: PropsAnalysis }>;
   };
   components: string[];
-}
-
-export interface ParseOptions {
-  libraryName?: string; // Optional library filter (for backward compatibility)
-  ignoreErrors?: boolean; // If true, catch parse errors and return error info instead of throwing
 }
 
 export interface ParseError {

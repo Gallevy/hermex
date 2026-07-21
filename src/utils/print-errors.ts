@@ -1,33 +1,13 @@
 import chalk from 'chalk';
-import Table from 'cli-table3';
-import type { AggregatedReport } from './aggregator';
+import type { ParseError } from '../swc-parser/types';
 
-function printHeader(errorCount: number) {
-  console.log(chalk.red.bold(`\n❌ Parse Errors (${errorCount})\n`));
-}
-
-export function printErrors(aggregated: AggregatedReport) {
-  const errors = aggregated.errors;
-
-  if (errors.length === 0) {
-    return; // Don't show section if no errors
+export function printErrors(errors: ParseError[], isJson: boolean): void {
+  if (errors.length === 0) return;
+  const stream = isJson ? process.stderr : process.stdout;
+  stream.write(chalk.yellow(`\n⚠ ${errors.length} file(s) failed to parse:\n`));
+  for (const { file, message } of errors) {
+    stream.write(chalk.yellow(`  ${file}\n`));
+    stream.write(chalk.gray(`    ${message}\n`));
   }
-
-  printHeader(errors.length);
-
-  const table = new Table({
-    head: ['File', 'Error'],
-    style: {
-      head: ['cyan'],
-      border: ['gray'],
-    },
-    colWidths: [50, 80],
-    wordWrap: true,
-  });
-
-  errors.forEach((error) => {
-    table.push([chalk.yellow(error.file), chalk.red(error.message)]);
-  });
-
-  console.log(table.toString());
+  stream.write('\n');
 }

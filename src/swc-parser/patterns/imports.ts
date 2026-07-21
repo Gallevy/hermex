@@ -14,8 +14,6 @@ export function analyzeImportDeclaration(
 ): void {
   const source = node.source.value;
 
-  // console.log(`📦 Found import: ${source}`);
-
   for (const spec of node.specifiers) {
     switch (spec.type) {
       case 'ImportDefaultSpecifier':

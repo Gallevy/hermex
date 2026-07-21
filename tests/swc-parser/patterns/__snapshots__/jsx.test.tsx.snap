@@ -9,6 +9,7 @@ exports[`Parser - Direct Import > should parse direct import 1`] = `
     "Input",
     "Typography",
   ],
+  "filePath": "01-direct-usage.tsx",
   "patterns": {
     "advanced": {
       "dynamic": [],

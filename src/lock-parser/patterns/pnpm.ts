@@ -1,7 +1,22 @@
 import fs from 'fs';
 import path from 'path';
-import yaml from 'js-yaml';
-import type { LockfileAdapter } from '../lock-file-adapter';
+import { load } from 'js-yaml';
+import type { LockfileAdapter, MultiVersionMap } from '../lock-file-adapter';
+
+function parsePackageKey(
+  rawKey: string,
+): { name: string; version: string } | null {
+  const key = rawKey.startsWith('/') ? rawKey.slice(1) : rawKey;
+  const withoutPeerSuffix = key.replace(/\(.*\)$/, '');
+
+  const atMatch = withoutPeerSuffix.match(/^(.+)@(\d+\.\d+\.\d+[^/]*)$/);
+  if (atMatch) return { name: atMatch[1], version: atMatch[2] };
+
+  const slashMatch = withoutPeerSuffix.match(/^(.+?)\/(\d+\.\d+\.\d+.*)$/);
+  if (slashMatch) return { name: slashMatch[1], version: slashMatch[2] };
+
+  return null;
+}
 
 export class PnpmLockfileAdapter implements LockfileAdapter {
   name = 'pnpm';
@@ -15,7 +30,7 @@ export class PnpmLockfileAdapter implements LockfileAdapter {
   parse(lockFilePath: string): Record<string, string> {
     try {
       const content = fs.readFileSync(lockFilePath, 'utf8');
-      const lockData = yaml.load(content) as any;
+      const lockData = load(content) as any;
       const versions: Record<string, string> = {};
 
       // pnpm v9+ uses "importers" field
@@ -86,6 +101,31 @@ export class PnpmLockfileAdapter implements LockfileAdapter {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.warn(`Warning: Could not parse pnpm-lock.yaml: ${message}`);
+      return {};
+    }
+  }
+
+  parseMultiVersion(lockFilePath: string): MultiVersionMap {
+    try {
+      const content = fs.readFileSync(lockFilePath, 'utf8');
+      const lockData = load(content) as any;
+      const versionSets: Record<string, Set<string>> = {};
+
+      if (lockData.packages) {
+        Object.keys(lockData.packages).forEach((key) => {
+          const parsed = parsePackageKey(key);
+          if (!parsed) return;
+          if (!versionSets[parsed.name]) versionSets[parsed.name] = new Set();
+          versionSets[parsed.name].add(parsed.version);
+        });
+      }
+
+      const result: MultiVersionMap = {};
+      for (const [pkg, versions] of Object.entries(versionSets)) {
+        result[pkg] = Array.from(versions).sort();
+      }
+      return result;
+    } catch {
       return {};
     }
   }

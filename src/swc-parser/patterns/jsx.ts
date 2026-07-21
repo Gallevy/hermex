@@ -51,6 +51,4 @@ export function analyzeJSXOpeningElement(
   if (!state.usagePatterns.jsxUsage.has(elementName)) {
     state.usagePatterns.jsxUsage.set(elementName, usage);
   }
-
-  // console.log(`🎨 JSX Usage: <${elementName}>`);
 }

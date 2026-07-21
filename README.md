@@ -64,8 +64,15 @@ Options:
 
 Commands:
   scan [options] [pattern]  Scan and analyze local files
+  comply [options]          Check compliance with hermex.config.ts rules and
+                            release-age policy (exits non-zero if not
+                            compliant)
   help [command]            display help for command
 ```
+
+### Comply Command
+
+`scan` is informational and always exits `0`. Use `comply` to gate CI — it runs the same pipeline, reports every violation, then exits `0` (compliant), `1` (not compliant), or `2` (couldn't run the check). See [docs/examples.md](docs/examples.md#compliance-checking) for details.
 
 ### Scan Command
 
@@ -101,6 +108,18 @@ Options:
                                parse
   -h, --help                   display help for command
 ```
+
+## Configuration
+
+### Environment variables
+
+- `HERMEX_REGISTRY_AUTH_TOKEN` — auth token used when querying the npm registry
+  for release age analysis (`releaseAge`). Used as a fallback when
+  `releaseAge.authToken` is not set in the config file.
+
+> **Tip**: Instead of storing `authToken` in your config file, set the
+> `HERMEX_REGISTRY_AUTH_TOKEN` environment variable. The config field takes
+> precedence if both are set.
 
 ## Example Output
 

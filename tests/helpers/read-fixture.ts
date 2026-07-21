@@ -1,8 +1,14 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-export async function readFixture(fixtureName: string) {
-  const path = join(__dirname, '../..', 'fixtures', fixtureName);
+export async function readFixture(fixtureName: string): Promise<string> {
+  const fixturePath = join(__dirname, '../..', 'fixtures', fixtureName);
 
-  return readFileSync(path, 'utf8');
+  try {
+    return readFileSync(fixturePath, 'utf8');
+  } catch {
+    throw new Error(
+      `Fixture not found: "${fixtureName}" — expected at ${fixturePath}`,
+    );
+  }
 }

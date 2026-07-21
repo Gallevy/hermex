@@ -8,17 +8,16 @@ import { glob } from 'glob';
  * @returns Array of file paths
  */
 export async function findFiles(
-  pattern: string,
+  pattern: string | string[],
   ignorePatterns: string[],
 ): Promise<string[]> {
   const files = await glob(pattern, {
     ignore: ignorePatterns,
     nodir: true,
-    absolute: true,
     windowsPathsNoEscape: true,
   });
 
-  return files;
+  return files.map((f) => f.replace(/\\/g, '/'));
 }
 
 /**

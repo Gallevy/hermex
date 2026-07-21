@@ -3,8 +3,12 @@ import type { ParserState, UsageReport } from '../types';
 /**
  * Generates a comprehensive usage report from parser state
  */
-export function generateReport(state: ParserState): UsageReport {
+export function generateReport(
+  state: ParserState,
+  filePath: string,
+): UsageReport {
   const report: UsageReport = {
+    filePath,
     summary: {
       totalImports:
         state.usagePatterns.defaultImports.size +
@@ -58,17 +62,10 @@ export function generateReport(state: ParserState): UsageReport {
  * Calculates total number of usage patterns found
  */
 function calculateTotalPatterns(state: ParserState): number {
-  let sum = 0;
-  const patterns = state.usagePatterns;
-
-  for (const key in patterns) {
-    const pattern = (patterns as any)[key];
-    if (pattern instanceof Set) {
-      sum += pattern.size;
-    } else if (pattern instanceof Map) {
-      sum += pattern.size;
+  return Object.values(state.usagePatterns).reduce((sum, collection) => {
+    if (collection instanceof Set || collection instanceof Map) {
+      return sum + collection.size;
     }
-  }
-
-  return sum;
+    return sum;
+  }, 0);
 }

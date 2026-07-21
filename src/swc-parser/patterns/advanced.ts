@@ -6,17 +6,16 @@ import type { ParserState } from '../types';
 export function analyzeHOCUsage(node: any, state: ParserState): void {
   state.usagePatterns.hocUsage.add({
     function: node.callee?.value || '[unknown]',
-    component: node.arguments?.[0]?.value || '[unknown]',
+    component: node.arguments?.[0]?.expression?.value || '[unknown]',
     line: node.span?.start || 0,
   });
-  // console.log(`🎁 HOC usage found`);
 }
 
 /**
  * Analyzes React.memo() usage
  */
 export function analyzeMemoUsage(node: any, state: ParserState): void {
-  const component = node.arguments?.[0];
+  const component = node.arguments?.[0]?.expression;
   if (
     component?.type === 'Identifier' &&
     state.componentNames.has(component.value)
@@ -25,7 +24,6 @@ export function analyzeMemoUsage(node: any, state: ParserState): void {
       component: component.value,
       line: node.span?.start || 0,
     });
-    // console.log(`🧠 Memoized component: ${component.value}`);
   }
 }
 
@@ -36,7 +34,6 @@ export function analyzeForwardRefUsage(node: any, state: ParserState): void {
   state.usagePatterns.forwardedRefs.add({
     line: node.span?.start || 0,
   });
-  // console.log('↗️ ForwardRef usage found');
 }
 
 /**
@@ -46,7 +43,6 @@ export function analyzePortalUsage(node: any, state: ParserState): void {
   state.usagePatterns.portalUsage.add({
     line: node.span?.start || 0,
   });
-  // console.log('🌀 Portal usage found');
 }
 
 /**
@@ -64,7 +60,6 @@ export function analyzeMemberExpression(node: any, state: ParserState): void {
     if (propertyName) {
       // Track namespace property access
       state.componentNames.add(propertyName);
-      // console.log(`🔗 Namespace access: ${namespaceName}.${propertyName}`);
     }
   }
 }
@@ -78,7 +73,8 @@ export function isHOCPattern(node: any, state: ParserState): boolean {
     node.callee?.type === 'Identifier' &&
     node.arguments?.some(
       (arg: any) =>
-        arg.type === 'Identifier' && state.componentNames.has(arg.value),
+        arg.expression?.type === 'Identifier' &&
+        state.componentNames.has(arg.expression.value),
     )
   );
 }
