@@ -90,6 +90,59 @@ describe('printPackages', () => {
       .join('\n');
     expect(output).toContain('react');
   });
+
+  it('renders "days overdue" for a package past its release-age threshold', () => {
+    const aggregated = makeAggregated({
+      packageDistribution: [
+        createMockPackage('lodash', {
+          releaseAge: createMockReleaseAge({
+            worstLevel: 'mandatory_upgrade',
+            severity: 'error',
+            upgrades: [
+              {
+                version: '4.17.21',
+                releasedDaysAgo: 100,
+                semverBump: 'major',
+                level: 'mandatory_upgrade',
+                thresholdDays: 60,
+              },
+            ],
+          }),
+        }),
+      ],
+    });
+    printPackages(aggregated, 'table');
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('40 days overdue');
+    expect(output).not.toContain('100d');
+  });
+
+  it('renders "days remaining" for a package approaching its threshold', () => {
+    const aggregated = makeAggregated({
+      packageDistribution: [
+        createMockPackage('axios', {
+          releaseAge: createMockReleaseAge({
+            worstLevel: null,
+            severity: 'error',
+            pendingUpgrade: {
+              version: '1.6.0',
+              semverBump: 'minor',
+              releasedDaysAgo: 33,
+              thresholdDays: 45,
+              daysRemaining: 12,
+            },
+          }),
+        }),
+      ],
+    });
+    printPackages(aggregated, 'table');
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('12 days remaining');
+  });
 });
 
 describe('printComponents', () => {
@@ -168,7 +221,7 @@ describe('printRules', () => {
     expect(output).not.toContain('warning');
   });
 
-  it('renders info-severity violations with a distinct tag from warn/error', () => {
+  it('renders info-severity violations with a distinct icon from warn/error', () => {
     const infoViolation: RuleViolation = {
       type: 'detect_files',
       severity: 'info',
@@ -180,9 +233,64 @@ describe('printRules', () => {
     const output = consoleSpy.mock.calls
       .map((call) => call.join(' '))
       .join('\n');
-    expect(output).toContain('[INFO]');
-    expect(output).not.toContain('[ERROR]');
-    expect(output).not.toContain('[WARN]');
+    expect(output).toContain('🔵');
+    expect(output).not.toContain('🔴');
+    expect(output).not.toContain('🟡');
+  });
+
+  it('renders require_package_fields/forbid_package_fields violations under the package_fields label', () => {
+    const violation: RuleViolation = {
+      type: 'require_package_fields',
+      severity: 'warn',
+      patterns: ['license'],
+      matchedFiles: [],
+    };
+    const aggregated = makeAggregated({ ruleViolations: [violation] });
+    printRules(aggregated);
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('package_fields');
+    expect(output).not.toContain('pkg_fields');
+  });
+
+  it('truncates a detect_files violation with many matched files instead of listing them all', () => {
+    const violation: RuleViolation = {
+      type: 'detect_files',
+      severity: 'error',
+      patterns: ['*.config.js'],
+      matchedFiles: [
+        'cypress.config.js',
+        'tsconfig.json',
+        'webpack.config.js',
+        'babel.config.js',
+        'jest.config.js',
+      ],
+    };
+    const aggregated = makeAggregated({ ruleViolations: [violation] });
+    printRules(aggregated);
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain(
+      'cypress.config.js, tsconfig.json and 3 other files',
+    );
+    expect(output).not.toContain('webpack.config.js');
+  });
+
+  it('renders a forbid_packages (banned/restricted) violation through the same line shape as other rules', () => {
+    const aggregated = makeAggregated({
+      bannedPackageViolations: [
+        { packageName: 'moment', severity: 'warn', message: 'Use dayjs' },
+      ],
+    });
+    printRules(aggregated);
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('forbid_packages');
+    expect(output).toContain('moment is forbidden');
+    expect(output).toContain('🟡');
   });
 });
 
@@ -197,7 +305,7 @@ describe('printComplianceVerdict', () => {
     expect(output).not.toContain('NOT COMPLIANT');
   });
 
-  it('prints NOT COMPLIANT with a count when mandatory violations are present', () => {
+  it('prints NOT COMPLIANT with a count when mandatory violations are present, without repeating per-violation detail', () => {
     const errorViolation: RuleViolation = {
       type: 'require_files',
       severity: 'error',
@@ -214,6 +322,7 @@ describe('printComplianceVerdict', () => {
             releasedDaysAgo: 90,
             semverBump: 'major',
             level: 'mandatory_upgrade',
+            thresholdDays: 60,
           },
         ],
       }),
@@ -230,7 +339,11 @@ describe('printComplianceVerdict', () => {
       .join('\n');
     expect(output).toContain('NOT COMPLIANT');
     expect(output).toContain('2 mandatory violations');
-    expect(output).toContain('@my-org/internal');
+    // per-violation detail belongs to the Compliance/Packages sections above
+    // the verdict, not the verdict itself — see printPackages tests for the
+    // "days overdue" phrasing this same data renders as there.
+    expect(output).not.toContain('@my-org/internal');
+    expect(output).not.toContain('release age');
   });
 });
 

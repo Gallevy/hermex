@@ -6,7 +6,12 @@ import type {
   PackageDistribution,
 } from './aggregator';
 import type { ReleaseAgeEntry } from '../npm-registry/types';
-import { formatCount } from './format-utils';
+import {
+  formatCount,
+  formatDaysOverdue,
+  formatDaysRemaining,
+} from './format-utils';
+import { severityIcon, severityColor } from './severity-format';
 
 function printHeader() {
   console.log(chalk.blueBright.bold('\n📦 Packages\n'));
@@ -18,41 +23,41 @@ function formatPackageName(
 ): string {
   let prefix = '';
   if (pkg.releaseAge?.deprecated) {
-    prefix += chalk.red('[DEPRECATED] ');
+    prefix += severityColor('error')('[DEPRECATED] ');
   }
   if (banned) {
     prefix +=
       banned.severity === 'error'
-        ? chalk.red('[BANNED] ')
-        : chalk.yellow('[RESTRICTED] ');
+        ? severityColor('error')('[BANNED] ')
+        : severityColor('warn')('[RESTRICTED] ');
   } else if (pkg.internal) {
-    prefix += chalk.yellow('[int] ');
+    prefix += severityColor('warn')('[int] ');
   }
   return prefix + pkg.packageName;
 }
 
 function formatUpgradeCell(releaseAge?: ReleaseAgeEntry): string {
   if (!releaseAge) return '';
-  const { worstLevel, upgrades, severity } = releaseAge;
-  if (!worstLevel) return chalk.green('✓');
+  const { worstLevel, upgrades, severity, pendingUpgrade } = releaseAge;
+
+  if (!worstLevel) {
+    if (pendingUpgrade) {
+      return `${severityIcon('info')} ${pendingUpgrade.semverBump} ${pendingUpgrade.version} (${formatDaysRemaining(pendingUpgrade.daysRemaining)})`;
+    }
+    return severityIcon('success');
+  }
 
   const top = upgrades[0];
-  if (!top) return chalk.green('✓');
+  if (!top) return severityIcon('success');
 
   const suffix = severity === 'warn' ? chalk.gray(' [not enforced]') : '';
+  const overdue = formatDaysOverdue(top.releasedDaysAgo, top.thresholdDays);
 
   if (worstLevel === 'mandatory_upgrade') {
-    const color = severity === 'warn' ? chalk.yellow : chalk.red;
-    return (
-      color(`⚠ ${top.semverBump} ${top.version} (${top.releasedDaysAgo}d)`) +
-      suffix
-    );
+    const icon = severityIcon(severity === 'warn' ? 'warn' : 'error');
+    return `${icon} ${top.semverBump} ${top.version} (${overdue})${suffix}`;
   }
-  return (
-    chalk.yellow(
-      `↑ ${top.semverBump} ${top.version} (${top.releasedDaysAgo}d)`,
-    ) + suffix
-  );
+  return `${severityIcon('warn')} ${top.semverBump} ${top.version} (${overdue})${suffix}`;
 }
 
 function getBannedViolation(

@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import type { AggregatedReport, VersusResult } from './aggregator';
+import { formatTruncatedList } from './format-utils';
 
 const BAR_WIDTH = 30;
 
@@ -7,14 +8,6 @@ function renderBar(percentage: number): string {
   const filled = Math.round((percentage / 100) * BAR_WIDTH);
   const empty = BAR_WIDTH - filled;
   return chalk.cyan('█'.repeat(filled)) + chalk.gray('░'.repeat(empty));
-}
-
-function formatComponents(components: string[], max = 3): string {
-  if (components.length === 0) return '';
-  const shown = components.slice(0, max);
-  const rest = components.length - max;
-  const list = shown.join(', ');
-  return rest > 0 ? `${list} (+${rest} more)` : list;
 }
 
 function printVersusResult(result: VersusResult) {
@@ -32,7 +25,7 @@ function printVersusResult(result: VersusResult) {
     const usage = chalk.gray(`(${entry.count} usages)`);
     const components =
       entry.components.length > 0
-        ? chalk.gray(`  ${formatComponents(entry.components)}`)
+        ? chalk.gray(`  ${formatTruncatedList(entry.components, 'component')}`)
         : '';
 
     console.log(`  ${name}  ${bar} ${pct} ${usage}${components}`);

@@ -1,13 +1,15 @@
-import { Command } from 'commander';
+import { Command, Option } from 'commander';
 import chalk from 'chalk';
 import { printJson } from '../utils/print-json';
 import { printRules } from '../utils/print-rules';
 import { printPackages } from '../utils/print-packages';
+import { printVersus } from '../utils/print-versus';
 import { printComplianceVerdict } from '../utils/print-compliance';
 import { computeCompliance } from '../utils/compliance';
 import { loadConfig } from '../config/loader';
 import { runPipeline } from './pipeline';
 import { createCommandContext } from './command-context';
+import type { CommandContextOptions } from './command-context';
 import type { HermexConfig } from '../config/types';
 
 export function registerComplyCommand(program: Command) {
@@ -20,14 +22,33 @@ export function registerComplyCommand(program: Command) {
       '--config <path>',
       'Path to hermex config file (overrides CWD discovery)',
     )
-    .action(async (options: { config?: string }) => {
-      const config = await loadConfig(process.cwd(), options.config);
-      await executeComply(config);
-    });
+    .addOption(
+      new Option(
+        '--format <format>',
+        'Output format, overrides output.format in the config file',
+      ).choices(['human', 'json']),
+    )
+    .option('--no-color', 'Disable colored output (see also NO_COLOR env var)')
+    .action(
+      async (options: {
+        config?: string;
+        format?: 'human' | 'json';
+        color?: boolean;
+      }) => {
+        const config = await loadConfig(process.cwd(), options.config);
+        await executeComply(config, {
+          format: options.format,
+          color: options.color,
+        });
+      },
+    );
 }
 
-export async function executeComply(config: HermexConfig) {
-  const { isJson, spinner } = createCommandContext(config);
+export async function executeComply(
+  config: HermexConfig,
+  contextOptions: CommandContextOptions = {},
+) {
+  const { isJson, spinner } = createCommandContext(config, contextOptions);
 
   try {
     // Runs the full pipeline to completion regardless of violations found —
@@ -46,6 +67,9 @@ export async function executeComply(config: HermexConfig) {
       printRules(aggregated);
       if (config.releaseAge.enabled) {
         printPackages(aggregated, 'table');
+      }
+      if (config.output.versus) {
+        printVersus(aggregated);
       }
       printComplianceVerdict(compliance);
     }

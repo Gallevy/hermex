@@ -136,6 +136,44 @@ describe('CLI smoke tests', () => {
     expect(result.status).toBe(0);
     expect(result.stdout).toMatch(/failed to parse/i);
   });
+
+  it('--format json overrides a human-format config and emits valid JSON', () => {
+    const result = run(['scan', '--format', 'json']);
+    expect(result.status).toBe(0);
+    expect(() => JSON.parse(result.stdout)).not.toThrow();
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed).toHaveProperty('summary');
+  });
+
+  it('--format bogus exits non-zero with a clear message', () => {
+    const result = run(['scan', '--format', 'bogus']);
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toMatch(/human|json/i);
+  });
+
+  it('NO_COLOR=1 strips all ANSI escape codes from stdout, even when color would otherwise be forced on', () => {
+    const result = spawnSync('node', [CLI, 'scan'], {
+      cwd: FIXTURES,
+      encoding: 'utf8',
+      env: { ...process.env, FORCE_COLOR: '1', NO_COLOR: '1' },
+    });
+    expect(result.status).toBe(0);
+    // oxlint-disable-next-line no-control-regex -- asserting the ANSI escape byte is absent
+    expect(result.stdout).not.toMatch(/\x1b\[/);
+  });
+
+  it('--no-color strips all ANSI escape codes from stdout, even when color would otherwise be forced on', () => {
+    const env = { ...process.env, FORCE_COLOR: '1' };
+    delete env.NO_COLOR;
+    const result = spawnSync('node', [CLI, 'scan', '--no-color'], {
+      cwd: FIXTURES,
+      encoding: 'utf8',
+      env,
+    });
+    expect(result.status).toBe(0);
+    // oxlint-disable-next-line no-control-regex -- asserting the ANSI escape byte is absent
+    expect(result.stdout).not.toMatch(/\x1b\[/);
+  });
 });
 
 describe('comply command', () => {
@@ -196,7 +234,15 @@ describe('comply command', () => {
     expect(result.status).toBe(1);
     const errorLines = result.stdout
       .split('\n')
-      .filter((line) => line.includes('[ERROR]'));
+      .filter((line) => line.includes('🔴'));
     expect(errorLines.length).toBeGreaterThan(1);
+  });
+
+  it('includes the Versus section, same as scan', () => {
+    // fixtures/hermex.config.ts also configures a `versus` comparison —
+    // comply should show it too, not just scan.
+    const result = run(['comply']);
+    expect(result.stdout).toMatch(/Versus/);
+    expect(result.stdout).toContain('Design System Migration');
   });
 });

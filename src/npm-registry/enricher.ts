@@ -4,6 +4,7 @@ import type { PackageDistribution } from '../utils/aggregator';
 import type { ReleaseAgeConfig } from '../config/types';
 import type {
   AvailableUpgrade,
+  PendingUpgrade,
   ReleaseAgeEntry,
   SemverBump,
   UpgradeLevel,
@@ -24,6 +25,13 @@ function classifyBump(installed: string, candidate: string): SemverBump | null {
   if (diff === 'minor' || diff === 'preminor') return 'minor';
   if (diff === 'major' || diff === 'premajor') return 'major';
   return null;
+}
+
+function pickNewest(versions: { version: string; daysAgo: number }[]): {
+  version: string;
+  daysAgo: number;
+} {
+  return versions.reduce((a, b) => (a.daysAgo < b.daysAgo ? a : b));
 }
 
 function upgradeLevel(
@@ -94,12 +102,13 @@ function computeReleaseAge(
     const level = upgradeLevel(oldestDaysAgo, bump, thresholds);
     if (!level) continue;
 
-    const newest = versions.reduce((a, b) => (a.daysAgo < b.daysAgo ? a : b));
+    const newest = pickNewest(versions);
     upgrades.push({
       version: newest.version,
       releasedDaysAgo: newest.daysAgo,
       semverBump: bump,
       level,
+      thresholdDays: thresholds[bump] as number,
     });
   }
 
@@ -127,10 +136,37 @@ function computeReleaseAge(
       ? 'needs_upgrade'
       : null;
 
+  // Only surface a "coming due" advisory when nothing has breached yet — a
+  // package that's already in violation on one tier doesn't also need an
+  // "N days remaining" note about another, unbreached tier.
+  let pendingUpgrade: PendingUpgrade | undefined;
+  if (worstLevel === null) {
+    for (const [bump, versions] of byBump.entries()) {
+      const threshold = thresholds[bump];
+      if (threshold === false || threshold === undefined) continue;
+
+      const oldestDaysAgo = Math.max(...versions.map((v) => v.daysAgo));
+      const daysRemaining = threshold - oldestDaysAgo;
+      if (daysRemaining <= 0) continue;
+
+      if (!pendingUpgrade || daysRemaining < pendingUpgrade.daysRemaining) {
+        const newest = pickNewest(versions);
+        pendingUpgrade = {
+          version: newest.version,
+          semverBump: bump,
+          releasedDaysAgo: newest.daysAgo,
+          thresholdDays: threshold,
+          daysRemaining,
+        };
+      }
+    }
+  }
+
   return {
     installedVersion,
     upgrades: finalUpgrades,
     worstLevel,
+    pendingUpgrade,
     deprecated,
     latestVersion,
     latestReleasedDaysAgo,

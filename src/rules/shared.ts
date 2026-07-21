@@ -6,7 +6,6 @@ export interface RuleViolation {
   type:
     | 'detect_files'
     | 'require_files'
-    | 'forbid_packages'
     | 'require_packages'
     | 'require_scripts'
     | 'require_package_fields'

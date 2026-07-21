@@ -87,6 +87,7 @@ describe('enrichWithReleaseAge — upgrade detection', () => {
     const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
     expect(enriched[0].releaseAge?.worstLevel).toBe('needs_upgrade');
     expect(enriched[0].releaseAge?.upgrades[0].semverBump).toBe('patch');
+    expect(enriched[0].releaseAge?.upgrades[0].thresholdDays).toBe(30);
   });
 
   it('detects mandatory_upgrade when major version exceeds threshold', async () => {
@@ -98,6 +99,44 @@ describe('enrichWithReleaseAge — upgrade detection', () => {
     });
     const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
     expect(enriched[0].releaseAge?.worstLevel).toBe('mandatory_upgrade');
+    expect(enriched[0].releaseAge?.upgrades[0].thresholdDays).toBe(60);
+  });
+
+  it('sets pendingUpgrade with daysRemaining when an upgrade is approaching but has not breached its threshold', async () => {
+    const pkg = createMockPackage('axios', { version: '1.5.0' });
+    mockFetch.mockResolvedValueOnce({
+      name: 'axios',
+      // minor threshold is 45d; this candidate is 33d old, so 12 days remain
+      time: { '1.5.0': daysAgo(200), '1.6.0': daysAgo(33) },
+      versions: {},
+    });
+    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    expect(enriched[0].releaseAge?.worstLevel).toBeNull();
+    expect(enriched[0].releaseAge?.pendingUpgrade).toEqual({
+      version: '1.6.0',
+      semverBump: 'minor',
+      releasedDaysAgo: 33,
+      thresholdDays: 45,
+      daysRemaining: 12,
+    });
+  });
+
+  it('does not set pendingUpgrade when the package already has a violation on another tier', async () => {
+    const pkg = createMockPackage('mixed-lib', { version: '1.0.0' });
+    mockFetch.mockResolvedValueOnce({
+      name: 'mixed-lib',
+      time: {
+        '1.0.0': daysAgo(500),
+        // major candidate breaches the 60-day threshold → mandatory_upgrade
+        '2.0.0': daysAgo(90),
+        // minor candidate is still within its 45-day threshold
+        '1.5.0': daysAgo(33),
+      },
+      versions: {},
+    });
+    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    expect(enriched[0].releaseAge?.worstLevel).toBe('mandatory_upgrade');
+    expect(enriched[0].releaseAge?.pendingUpgrade).toBeUndefined();
   });
 
   it('surfaces deprecation notice from versions field', async () => {

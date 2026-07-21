@@ -1,6 +1,8 @@
 import chalk from 'chalk';
 import type { AggregatedReport } from './aggregator';
 import type { RuleViolation } from '../rules/evaluator';
+import { formatTruncatedList } from './format-utils';
+import { severityIcon, formatViolationLine } from './severity-format';
 
 function formatRuleType(type: RuleViolation['type']): string {
   switch (type) {
@@ -8,27 +10,19 @@ function formatRuleType(type: RuleViolation['type']): string {
       return 'detect_files';
     case 'require_files':
       return 'require_files';
-    case 'forbid_packages':
-      return 'forbid_packages';
     case 'require_packages':
       return 'require_packages';
     case 'require_scripts':
       return 'require_scripts';
     case 'require_package_fields':
-      return 'pkg_fields';
+      return 'package_fields';
     case 'forbid_package_fields':
-      return 'pkg_fields';
+      return 'package_fields';
     case 'engine_version':
       return 'engine_version';
     case 'codeowners':
       return 'codeowners';
   }
-}
-
-function ruleIcon(violation: RuleViolation): string {
-  if (violation.severity === 'error') return chalk.red('✗');
-  if (violation.severity === 'info') return chalk.blue('ℹ');
-  return chalk.yellow('⚠');
 }
 
 function describeViolation(v: RuleViolation): string {
@@ -40,13 +34,12 @@ function describeViolation(v: RuleViolation): string {
       const parts = f.replace(/\\/g, '/').split('/');
       return parts[parts.length - 1];
     });
-    return `${patterns} detected (${files.join(', ')})${suffix}`;
+    return `${patterns} detected (${formatTruncatedList(files, 'file')})${suffix}`;
   }
 
   if (v.type === 'require_files') return `${patterns} not found${suffix}`;
   if (v.type === 'require_packages')
     return `${patterns} not installed${suffix}`;
-  if (v.type === 'forbid_packages') return `${patterns} is forbidden${suffix}`;
   if (v.type === 'require_scripts')
     return `script ${patterns} missing in package.json${suffix}`;
   if (v.type === 'require_package_fields') {
@@ -66,10 +59,7 @@ function describeViolation(v: RuleViolation): string {
   if (v.type === 'codeowners') {
     if (v.matchedFiles.length === 0)
       return `CODEOWNERS not found (looked in ${patterns})${suffix}`;
-    const shown = v.matchedFiles.slice(0, 3).join(', ');
-    const more =
-      v.matchedFiles.length > 3 ? ` and ${v.matchedFiles.length - 3} more` : '';
-    return `${v.matchedFiles.length} scanned file(s) have no owner: ${shown}${more}${suffix}`;
+    return `${v.matchedFiles.length} scanned file(s) have no owner: ${formatTruncatedList(v.matchedFiles, 'file')}${suffix}`;
   }
 
   return `${patterns} not present${suffix}`;
@@ -81,7 +71,9 @@ export function printRules(aggregated: AggregatedReport): void {
   const hasBannedViolations = bannedPackageViolations.length > 0;
 
   if (!hasRuleViolations && !hasBannedViolations) {
-    console.log(chalk.greenBright.bold('\n✓ Compliance\n'));
+    console.log(
+      chalk.greenBright.bold(`\n${severityIcon('success')} Compliance\n`),
+    );
     console.log(chalk.gray('  All compliance checks passed'));
     return;
   }
@@ -90,28 +82,26 @@ export function printRules(aggregated: AggregatedReport): void {
 
   if (hasRuleViolations) {
     for (const v of ruleViolations) {
-      const icon = ruleIcon(v);
-      const type = chalk.gray(formatRuleType(v.type).padEnd(14));
-      const severityTag =
-        v.severity === 'error'
-          ? chalk.red('[ERROR]')
-          : v.severity === 'info'
-            ? chalk.blue('[INFO]')
-            : chalk.yellow('[WARN]');
-      console.log(`  ${icon}  ${type} ${describeViolation(v)}  ${severityTag}`);
+      console.log(
+        formatViolationLine({
+          icon: severityIcon(v.severity),
+          label: formatRuleType(v.type),
+          description: describeViolation(v),
+        }),
+      );
     }
   }
 
   if (hasBannedViolations) {
-    if (hasRuleViolations) console.log();
     for (const v of bannedPackageViolations) {
-      const icon = v.severity === 'error' ? chalk.red('✗') : chalk.yellow('⚠');
-      const tag =
-        v.severity === 'error'
-          ? chalk.red('[BANNED]')
-          : chalk.yellow('[RESTRICTED]');
       const msg = v.message ? chalk.gray(` — ${v.message}`) : '';
-      console.log(`  ${icon}  ${tag} ${v.packageName}${msg}`);
+      console.log(
+        formatViolationLine({
+          icon: severityIcon(v.severity),
+          label: 'forbid_packages',
+          description: `${v.packageName} is forbidden${msg}`,
+        }),
+      );
     }
   }
 
