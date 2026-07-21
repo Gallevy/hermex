@@ -1,6 +1,6 @@
 {
   "name": "hermex",
-  "version": "2.0.0-beta.9",
+  "version": "2.0.0-beta.10",
   "description": "SWC-based AST parser for analyzing code and React component usage patterns across entire codebases",
   "keywords": [
     "analysis",

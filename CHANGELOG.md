@@ -1,3 +1,10 @@
+# [2.0.0-beta.10](https://github.com/Gallevy/hermex/compare/v2.0.0-beta.9...v2.0.0-beta.10) (2026-07-21)
+
+
+### Features
+
+* improve human-readable output — CLI format flag, color safety, severity icons ([7828e05](https://github.com/Gallevy/hermex/commit/7828e051a6deaa4747c1845ed79d0ef46a954946))
+
 # [2.0.0-beta.9](https://github.com/Gallevy/hermex/compare/v2.0.0-beta.8...v2.0.0-beta.9) (2026-07-11)
 
 
