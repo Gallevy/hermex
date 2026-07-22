@@ -1,3 +1,11 @@
+## [2.0.1](https://github.com/Gallevy/hermex/compare/v2.0.0...v2.0.1) (2026-07-22)
+
+
+### Bug Fixes
+
+* compute overdue days from the release that breached the threshold, not the upgrade target ([#24](https://github.com/Gallevy/hermex/issues/24)) ([91929b8](https://github.com/Gallevy/hermex/commit/91929b873e76c14d32c853489b8dee71a5065058)), closes [#14](https://github.com/Gallevy/hermex/issues/14)
+* parse pnpm peer-suffixed dependency versions with @pnpm/dependency-path ([#25](https://github.com/Gallevy/hermex/issues/25)) ([6e8c904](https://github.com/Gallevy/hermex/commit/6e8c90495ea704e95b30afa9ab2161d6d915fb0d))
+
 # [2.0.0](https://github.com/Gallevy/hermex/compare/v1.2.0...v2.0.0) (2026-07-21)
 
 
