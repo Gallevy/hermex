@@ -3,7 +3,7 @@ import type { ComplianceResult } from './compliance';
 import { severityIcon } from './severity-format';
 
 /**
- * Prints only the bottom-line verdict — the Compliance and Packages sections
+ * Prints only the bottom-line verdict — the Rules and Packages sections
  * printed above this already itemize every violation (rule and release-age
  * alike), so repeating them here would just restate the same 🔴 rows.
  */
@@ -11,7 +11,7 @@ export function printComplianceVerdict(result: ComplianceResult): void {
   const mandatoryCount =
     result.errorRuleViolations.length +
     result.errorBannedPackageViolations.length +
-    result.mandatoryReleaseAgeViolations.length;
+    result.releaseAgeViolations.length;
 
   if (result.compliant) {
     console.log(

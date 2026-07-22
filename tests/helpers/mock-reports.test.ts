@@ -24,7 +24,7 @@ describe('mock report factory', () => {
   });
 
   it('createMockReleaseAge returns a valid ReleaseAgeEntry', () => {
-    const entry = createMockReleaseAge({ worstLevel: 'needs_upgrade' });
-    expect(entry.worstLevel).toBe('needs_upgrade');
+    const entry = createMockReleaseAge({ worstLevel: 'minor_overdue' });
+    expect(entry.worstLevel).toBe('minor_overdue');
   });
 });

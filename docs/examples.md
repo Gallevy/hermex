@@ -207,7 +207,7 @@ If `enforceOn` is omitted, every package's release age counts toward compliance 
 hermex comply
 ```
 
-- **Exit `0`** — compliant: no `error`-severity rule violations, no `error`-severity banned packages, no `error`-severity `mandatory_upgrade` release-age entries.
+- **Exit `0`** — compliant: no `error`-severity rule violations, no `error`-severity banned packages, no `error`-severity release-age threshold breaches (minor/patch or major).
 - **Exit `1`** — not compliant: at least one mandatory violation found.
 - **Exit `2`** — hermex couldn't run the check at all (no files matched, or an internal error).
 
