@@ -74,7 +74,13 @@ function buildPackagesSection(aggregated: AggregatedReport): string {
   for (const pkg of flagged) {
     const banned = getBannedViolation(pkg, aggregated.bannedPackageViolations);
     const name = formatPackageName(pkg, banned);
-    const upgrade = formatUpgradeCell(pkg.releaseAge);
+    // Only show the upgrade cell when there's an actual recommendation to
+    // report — otherwise a deprecated-only or banned-only row would render a
+    // bare "success" glyph next to it, which reads as a contradiction here.
+    const hasUpgradeInfo =
+      pkg.releaseAge?.worstLevel != null ||
+      pkg.releaseAge?.pendingUpgrade !== undefined;
+    const upgrade = hasUpgradeInfo ? formatUpgradeCell(pkg.releaseAge) : '';
     lines.push(`- ${name}${upgrade ? ` ${upgrade}` : ''}`);
   }
 

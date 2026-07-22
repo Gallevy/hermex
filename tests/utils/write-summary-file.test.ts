@@ -96,6 +96,20 @@ describe('writeSummaryFile', () => {
     expect(content).not.toContain('react');
   });
 
+  it('does not show a "success" glyph next to a deprecated-only package with no upgrade info', () => {
+    const deprecated = createMockPackage('left-pad', {
+      releaseAge: createMockReleaseAge({ deprecated: '2020-01-01' }),
+    });
+    const aggregated = makeAggregated({ packageDistribution: [deprecated] });
+    writeSummaryFile(summaryPath, aggregated, computeCompliance(aggregated));
+
+    const content = readFileSync(summaryPath, 'utf8');
+    const packageLine = content
+      .split('\n')
+      .find((line) => line.includes('left-pad'));
+    expect(packageLine).toBe('- [DEPRECATED] left-pad');
+  });
+
   it('omits Versus content, even when versusResults is populated', () => {
     const aggregated = makeAggregated({
       versusResults: [
