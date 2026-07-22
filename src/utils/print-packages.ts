@@ -17,7 +17,7 @@ function printHeader() {
   console.log(chalk.blueBright.bold('\n📦 Packages\n'));
 }
 
-function formatPackageName(
+export function formatPackageName(
   pkg: PackageDistribution,
   banned?: BannedPackageViolation,
 ): string {
@@ -36,7 +36,7 @@ function formatPackageName(
   return prefix + pkg.packageName;
 }
 
-function formatUpgradeCell(releaseAge?: ReleaseAgeEntry): string {
+export function formatUpgradeCell(releaseAge?: ReleaseAgeEntry): string {
   if (!releaseAge) return '';
   const { worstLevel, upgrades, severity, pendingUpgrade } = releaseAge;
 
@@ -66,7 +66,7 @@ function formatUpgradeCell(releaseAge?: ReleaseAgeEntry): string {
   return `${severityIcon('warn')} ${top.semverBump} ${top.version} (${overdue})${suffix}`;
 }
 
-function getBannedViolation(
+export function getBannedViolation(
   pkg: PackageDistribution,
   violations: BannedPackageViolation[],
 ): BannedPackageViolation | undefined {
@@ -99,7 +99,7 @@ function printPackagesTable(
   }
 
   const hasReleaseAge = packages.some((p) => p.releaseAge !== undefined);
-  const head = ['Package', 'Version', 'Components', 'Usage', 'Percentage'];
+  const head = ['Package', 'Version'];
   if (hasReleaseAge) head.push('Upgrades');
 
   const table = new Table({
@@ -120,9 +120,6 @@ function printPackagesTable(
     const row = [
       formatPackageName(pkg, getBannedViolation(pkg, violations)),
       versionCell,
-      formatCount(pkg.componentCount),
-      formatCount(pkg.usageCount),
-      `${pkg.percentage.toFixed(1)}%`,
     ];
     if (hasReleaseAge) row.push(formatUpgradeCell(pkg.releaseAge));
     table.push(row);
@@ -130,16 +127,7 @@ function printPackagesTable(
 
   console.log(table.toString());
 
-  const totalComponents = packages.reduce(
-    (sum, p) => sum + p.componentCount,
-    0,
-  );
-  const totalExternalUsage = packages.reduce((sum, p) => sum + p.usageCount, 0);
-  console.log(
-    chalk.gray(
-      `\nTotal: ${formatCount(packages.length)} packages | ${formatCount(totalComponents)} unique components | ${formatCount(totalExternalUsage)} total usages`,
-    ),
-  );
+  console.log(chalk.gray(`\nTotal: ${formatCount(packages.length)} packages`));
 }
 
 function printPackagesChart(

@@ -32,11 +32,11 @@ export async function runPipeline(
 
   spinner.succeed(
     chalk.blue(
-      `📦 Found ${lockfileResult.lockfileType} lockfile (supports: ${lockfileResult.supportedVersions.join(', ')}) - ${Object.keys(lockfileResult.versions).length} packages`,
+      `Found ${lockfileResult.lockfileType} lockfile (supports: ${lockfileResult.supportedVersions.join(', ')}) - ${Object.keys(lockfileResult.versions).length} packages`,
     ),
   );
 
-  spinner.start('Finding files...');
+  if (spinner.isEnabled) spinner.start('Finding files...');
   const discovered = await findFiles(config.includes, config.excludes);
   const files = discovered.filter((f) => !isDeclarationFile(f));
 
@@ -49,15 +49,16 @@ export async function runPipeline(
     return null;
   }
 
-  spinner.succeed(chalk.green(` Found ${files.length} files`));
+  spinner.succeed(chalk.green(`Found ${files.length} files`));
 
-  spinner.start('Analyzing files...');
+  if (spinner.isEnabled) spinner.start('Analyzing files...');
   const reports: UsageReport[] = [];
   const parseErrors: ParseError[] = [];
 
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
-    spinner.text = `Analyzing files... (${i + 1}/${files.length})`;
+    if (spinner.isEnabled)
+      spinner.text = `Analyzing files... (${i + 1}/${files.length})`;
 
     try {
       const report = parseFile(file);
@@ -97,7 +98,8 @@ export async function runPipeline(
   ];
 
   if (config.releaseAge.enabled) {
-    spinner.start('Fetching release age from registry...');
+    if (spinner.isEnabled)
+      spinner.start('Fetching release age from registry...');
     const { enriched, skipped } = await enrichWithReleaseAge(
       aggregated.packageDistribution,
       config.releaseAge,
@@ -105,7 +107,7 @@ export async function runPipeline(
     aggregated.packageDistribution = enriched;
     spinner.succeed(
       chalk.blue(
-        `📅 Release age fetched${skipped > 0 ? chalk.gray(` (${skipped} packages skipped — registry unreachable or not found)`) : ''}`,
+        `Release age fetched${skipped > 0 ? chalk.gray(` (${skipped} packages skipped — registry unreachable or not found)`) : ''}`,
       ),
     );
   }

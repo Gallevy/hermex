@@ -91,6 +91,43 @@ describe('printPackages', () => {
     expect(output).toContain('react');
   });
 
+  it('drops the Components/Usage/Percentage columns from the table (they only made sense for a design-system-only listing)', () => {
+    const aggregated = makeAggregated({
+      packageDistribution: [
+        createMockPackage('react', {
+          componentCount: 2,
+          usageCount: 8,
+          percentage: 100,
+        }),
+      ],
+    });
+    printPackages(aggregated, 'table');
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('Package');
+    expect(output).toContain('Version');
+    expect(output).not.toContain('Components');
+    expect(output).not.toContain('Usage');
+    expect(output).not.toContain('Percentage');
+  });
+
+  it('reports just the package count in the trailer, with no unique-components/total-usages numbers', () => {
+    const aggregated = makeAggregated({
+      packageDistribution: [
+        createMockPackage('react', { componentCount: 2, usageCount: 8 }),
+        createMockPackage('vue', { componentCount: 1, usageCount: 1 }),
+      ],
+    });
+    printPackages(aggregated, 'table');
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('Total: 2 packages');
+    expect(output).not.toContain('unique components');
+    expect(output).not.toContain('total usages');
+  });
+
   it('renders "days overdue" for a package past its release-age threshold', () => {
     const aggregated = makeAggregated({
       packageDistribution: [
@@ -443,6 +480,60 @@ describe('printVersus', () => {
       .join('\n');
     expect(output).toContain('ui-kits');
     expect(output).toContain('react');
+  });
+
+  it('does not print the components list — Versus is a package-vs-package comparison, not a component breakdown', () => {
+    const aggregated = makeAggregated({
+      versusResults: [
+        {
+          name: 'ui-kits',
+          packages: ['react', 'vue'],
+          entries: [
+            {
+              packageName: 'react',
+              count: 3,
+              percentage: 100,
+              components: ['Button', 'Input'],
+            },
+            { packageName: 'vue', count: 0, percentage: 0, components: [] },
+          ],
+          totalCount: 3,
+        },
+      ],
+    });
+    printVersus(aggregated);
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).not.toContain('Button');
+    expect(output).not.toContain('Input');
+  });
+
+  it('prints the header with a single space after the emoji, matching every other section header', () => {
+    printVersus(
+      makeAggregated({
+        versusResults: [
+          {
+            name: 'ui-kits',
+            packages: ['react'],
+            entries: [
+              {
+                packageName: 'react',
+                count: 1,
+                percentage: 100,
+                components: [],
+              },
+            ],
+            totalCount: 1,
+          },
+        ],
+      }),
+    );
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('⚖️ Versus');
+    expect(output).not.toContain('⚖️  Versus');
   });
 });
 
