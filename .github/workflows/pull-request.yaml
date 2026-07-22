@@ -71,13 +71,17 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run tests with coverage
-        run: pnpm run test:coverage
+        # --if-present: the main branch won't have this script until this
+        # workflow's own PR merges — skip cleanly instead of failing when
+        # comparing against a main checkout that predates it.
+        run: pnpm run --if-present test:coverage
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v7
         with:
           name: coverage-${{ matrix.artifact }}
           path: coverage
+          if-no-files-found: ignore
 
   report-coverage:
     needs: coverage
@@ -93,12 +97,21 @@ jobs:
           path: coverage
 
       - name: Download main coverage
+        # No artifact exists yet the first time this runs (main predates the
+        # coverage tooling) — don't fail the job over a baseline that
+        # doesn't exist yet.
+        continue-on-error: true
         uses: actions/download-artifact@v8
         with:
           name: coverage-main
           path: coverage-main
 
-      - name: Report coverage
+      - name: Report coverage (vs main)
+        if: hashFiles('coverage-main/coverage-summary.json') != ''
         uses: davelosert/vitest-coverage-report-action@v2
         with:
           json-summary-compare-path: coverage-main/coverage-summary.json
+
+      - name: Report coverage (no main baseline yet)
+        if: hashFiles('coverage-main/coverage-summary.json') == ''
+        uses: davelosert/vitest-coverage-report-action@v2
