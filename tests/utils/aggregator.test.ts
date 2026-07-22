@@ -165,6 +165,30 @@ describe('aggregateReports — package distribution', () => {
     expect(dist.version).toBe('2.0.0');
     expect(dist.internal).toBe(true);
   });
+
+  it('surfaces a lockfile-only, side-effect-imported package that matches releaseAge.enforceOn (#27)', () => {
+    // No component ever imports '@guestyci/arc-styles' — it's a CSS
+    // package pulled in only via `import '@guestyci/arc-styles/button.css'`,
+    // which has no specifiers and never shows up in JSX/import usage.
+    const report = reportWithNamedImport('Button', 'react');
+    const config = createConfig({
+      releaseAge: { enabled: true, enforceOn: ['@guestyci/arc-styles'] },
+    });
+
+    const result = aggregateReports(
+      [report],
+      { react: '18.0.0', '@guestyci/arc-styles': '3.4.0' },
+      config,
+    );
+
+    const arcStyles = result.packageDistribution.find(
+      (p) => p.packageName === '@guestyci/arc-styles',
+    );
+    expect(arcStyles).toBeDefined();
+    expect(arcStyles?.version).toBe('3.4.0');
+    expect(arcStyles?.usageCount).toBe(0);
+    expect(arcStyles?.componentCount).toBe(0);
+  });
 });
 
 describe('aggregateReports — banned packages', () => {

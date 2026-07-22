@@ -146,6 +146,49 @@ export function calculatePackageDistribution(
     }
   }
 
+  // A dependency can be installed and listed in the lockfile yet never
+  // imported as a component — e.g. a CSS/side-effect-only import like
+  // `import '@guestyci/arc-styles/button.css'` has no specifiers, so the
+  // usage scan above never sees it. That makes it invisible to releaseAge
+  // even when it's explicitly enforced. Surface any lockfile package that
+  // matches `releaseAge.enforceOn` so compliance can still see it, with
+  // zero usage/component counts (#27). Scoped to enforceOn matches (not
+  // the whole lockfile) to avoid firing a registry lookup for every
+  // transitive dependency when enforceOn is left at its default `[]`.
+  const enforceOnPatterns = config?.releaseAge.enforceOn ?? [];
+  if (config?.releaseAge.enabled && enforceOnPatterns.length > 0) {
+    for (const packageName of Object.keys(versions)) {
+      if (packageMap.has(packageName)) continue;
+      if (!micromatch.isMatch(packageName, enforceOnPatterns)) continue;
+      if (
+        ignorePatterns.length > 0 &&
+        micromatch.isMatch(packageName, ignorePatterns)
+      ) {
+        continue;
+      }
+
+      const isInternal =
+        internalPatterns.length > 0
+          ? micromatch.isMatch(packageName, internalPatterns)
+          : false;
+
+      const allVersions = multiVersions[packageName] ?? [];
+      const hasVersionConflict = allVersions.length > 1;
+
+      packageMap.set(packageName, {
+        packageName,
+        version: getPackageVersion(packageName, versions),
+        componentCount: 0,
+        usageCount: 0,
+        percentage: 0,
+        components: [],
+        internal: isInternal,
+        hasVersionConflict,
+        allVersions,
+      });
+    }
+  }
+
   const distribution = Array.from(packageMap.values());
   const totalExternalUsage = distribution.reduce(
     (sum, pkg) => sum + pkg.usageCount,
