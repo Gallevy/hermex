@@ -1,3 +1,12 @@
+## [2.0.2](https://github.com/Gallevy/hermex/compare/v2.0.1...v2.0.2) (2026-07-22)
+
+
+### Bug Fixes
+
+* fall back minCompliantVersion to latest when no in-window upgrade exists ([#26](https://github.com/Gallevy/hermex/issues/26)) ([ea4c217](https://github.com/Gallevy/hermex/commit/ea4c217213f049cf10f1b1b02e9f58aed145ec44))
+* surface lockfile-only enforceOn deps in packageDistribution ([#27](https://github.com/Gallevy/hermex/issues/27)) ([a042651](https://github.com/Gallevy/hermex/commit/a042651dd437699814365fed3fb85d5f0475c09d))
+* treat minCompliantVersion-via-latest-fallback as fully compliant, not mandatory ([21c8c72](https://github.com/Gallevy/hermex/commit/21c8c723a3add8555d91a2e815e26f04e00357ad))
+
 ## [2.0.1](https://github.com/Gallevy/hermex/compare/v2.0.0...v2.0.1) (2026-07-22)
 
 
