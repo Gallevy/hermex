@@ -1,3 +1,10 @@
+## [2.0.3](https://github.com/Gallevy/hermex/compare/v2.0.2...v2.0.3) (2026-07-22)
+
+
+### Bug Fixes
+
+* comply gate on minor/patch release-age breaches and preserve worstLevel on latest-fallback ([#28](https://github.com/Gallevy/hermex/issues/28), [#29](https://github.com/Gallevy/hermex/issues/29)) ([59770cc](https://github.com/Gallevy/hermex/commit/59770cc80554fd3b3053e536d5c13fa0481e4c4d))
+
 ## [2.0.2](https://github.com/Gallevy/hermex/compare/v2.0.1...v2.0.2) (2026-07-22)
 
 
