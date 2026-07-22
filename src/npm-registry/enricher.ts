@@ -106,6 +106,7 @@ function computeReleaseAge(
     upgrades.push({
       version: newest.version,
       releasedDaysAgo: newest.daysAgo,
+      breachReleasedDaysAgo: oldestDaysAgo,
       semverBump: bump,
       level,
       thresholdDays: thresholds[bump] as number,

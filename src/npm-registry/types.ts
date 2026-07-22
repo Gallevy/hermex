@@ -4,6 +4,13 @@ export type SemverBump = 'patch' | 'minor' | 'major';
 export interface AvailableUpgrade {
   version: string;
   releasedDaysAgo: number;
+  /**
+   * Age (in days) of the oldest release in this bump tier — the one that
+   * actually breached `thresholdDays` and drove `level`. Distinct from
+   * `releasedDaysAgo`, which is the newest/recommended upgrade target and
+   * may be much younger than the release that triggered the breach (#24).
+   */
+  breachReleasedDaysAgo: number;
   semverBump: SemverBump;
   level: UpgradeLevel;
   thresholdDays: number;

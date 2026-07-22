@@ -444,3 +444,64 @@ describe('enrichWithReleaseAge — enforceOn severity scoping (#18)', () => {
     }
   });
 });
+
+describe('enrichWithReleaseAge — overdue basis uses oldest breach, not newest target (#24)', () => {
+  it('reports breachReleasedDaysAgo from the oldest release in the tier while releasedDaysAgo stays on the newest target', async () => {
+    // Mirrors the @guestyci/feature-toggle-fe example from the issue:
+    // the major line breached its 60-day threshold ~1000 days ago, but the
+    // recommended upgrade target (latest) was only published 14 days ago.
+    // upgradeLevel is (correctly) driven by the oldest release; the overdue
+    // basis must match, even though the target version itself is fresh.
+    const pkg = createMockPackage('@guestyci/feature-toggle-fe', {
+      version: '2.1.5',
+    });
+    mockFetch.mockResolvedValueOnce({
+      name: '@guestyci/feature-toggle-fe',
+      time: {
+        '2.1.5': daysAgo(1330),
+        '3.0.0': daysAgo(1000),
+        '4.0.7': daysAgo(57),
+        '4.0.16': daysAgo(14),
+      },
+      'dist-tags': { latest: '4.0.16' },
+      versions: {},
+    });
+    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const entry = enriched[0].releaseAge!;
+    expect(entry.worstLevel).toBe('mandatory_upgrade');
+
+    const upgrade = entry.upgrades.find((u) => u.semverBump === 'major');
+    // Unchanged #14 behavior: the target is still the newest stable release.
+    expect(upgrade?.version).toBe('4.0.16');
+    expect(upgrade?.releasedDaysAgo).toBe(14);
+    // #24 fix: the breach basis reflects the oldest release in the tier.
+    expect(upgrade?.breachReleasedDaysAgo).toBe(1000);
+  });
+
+  it('computes breachReleasedDaysAgo independently per bump tier', async () => {
+    const pkg = createMockPackage('mixed-lib', { version: '1.0.0' });
+    mockFetch.mockResolvedValueOnce({
+      name: 'mixed-lib',
+      time: {
+        '1.0.0': daysAgo(900),
+        // minor tier: oldest breaches at 50d (>45 threshold), newest target at 12d
+        '1.5.0': daysAgo(50),
+        '1.6.0': daysAgo(12),
+        // major tier: oldest breaches at 400d (>60 threshold), newest target at 5d
+        '2.0.0': daysAgo(400),
+        '2.1.0': daysAgo(5),
+      },
+      versions: {},
+    });
+    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const entry = enriched[0].releaseAge!;
+
+    const minor = entry.upgrades.find((u) => u.semverBump === 'minor');
+    expect(minor?.releasedDaysAgo).toBe(12);
+    expect(minor?.breachReleasedDaysAgo).toBe(50);
+
+    const major = entry.upgrades.find((u) => u.semverBump === 'major');
+    expect(major?.releasedDaysAgo).toBe(5);
+    expect(major?.breachReleasedDaysAgo).toBe(400);
+  });
+});

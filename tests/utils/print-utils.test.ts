@@ -102,6 +102,7 @@ describe('printPackages', () => {
               {
                 version: '4.17.21',
                 releasedDaysAgo: 100,
+                breachReleasedDaysAgo: 100,
                 semverBump: 'major',
                 level: 'mandatory_upgrade',
                 thresholdDays: 60,
@@ -117,6 +118,39 @@ describe('printPackages', () => {
       .join('\n');
     expect(output).toContain('40 days overdue');
     expect(output).not.toContain('100d');
+  });
+
+  it('computes "days overdue" from the oldest breaching release, not the newest recommended target (#24)', () => {
+    // The upgrade target (releasedDaysAgo) is a fresh 14-day-old release,
+    // but the tier only breached its 60-day threshold because a 1000-day-old
+    // release already exists in it — overdue must be based on that breach,
+    // not on how new the recommended target happens to be.
+    const aggregated = makeAggregated({
+      packageDistribution: [
+        createMockPackage('@guestyci/feature-toggle-fe', {
+          releaseAge: createMockReleaseAge({
+            worstLevel: 'mandatory_upgrade',
+            severity: 'error',
+            upgrades: [
+              {
+                version: '4.0.16',
+                releasedDaysAgo: 14,
+                breachReleasedDaysAgo: 1000,
+                semverBump: 'major',
+                level: 'mandatory_upgrade',
+                thresholdDays: 60,
+              },
+            ],
+          }),
+        }),
+      ],
+    });
+    printPackages(aggregated, 'table');
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('940 days overdue');
+    expect(output).not.toContain('14 days overdue');
   });
 
   it('renders "days remaining" for a package approaching its threshold', () => {
@@ -320,6 +354,7 @@ describe('printComplianceVerdict', () => {
           {
             version: '2.0.0',
             releasedDaysAgo: 90,
+            breachReleasedDaysAgo: 90,
             semverBump: 'major',
             level: 'mandatory_upgrade',
             thresholdDays: 60,

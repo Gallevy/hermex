@@ -51,7 +51,10 @@ function formatUpgradeCell(releaseAge?: ReleaseAgeEntry): string {
   if (!top) return severityIcon('success');
 
   const suffix = severity === 'warn' ? chalk.gray(' [not enforced]') : '';
-  const overdue = formatDaysOverdue(top.releasedDaysAgo, top.thresholdDays);
+  const overdue = formatDaysOverdue(
+    top.breachReleasedDaysAgo,
+    top.thresholdDays,
+  );
 
   if (worstLevel === 'mandatory_upgrade') {
     const icon = severityIcon(severity === 'warn' ? 'warn' : 'error');
