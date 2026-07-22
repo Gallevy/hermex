@@ -101,7 +101,7 @@ describe('printPackages', () => {
             upgrades: [
               {
                 version: '4.17.21',
-                releasedDaysAgo: 100,
+                releasedDaysAgo: 10,
                 breachReleasedDaysAgo: 100,
                 semverBump: 'major',
                 level: 'mandatory_upgrade',
@@ -151,6 +151,35 @@ describe('printPackages', () => {
       .join('\n');
     expect(output).toContain('940 days overdue');
     expect(output).not.toContain('14 days overdue');
+  });
+
+  it('omits a day count when even the recommended target is past its own threshold (#26)', () => {
+    const aggregated = makeAggregated({
+      packageDistribution: [
+        createMockPackage('react', {
+          releaseAge: createMockReleaseAge({
+            worstLevel: 'mandatory_upgrade',
+            severity: 'error',
+            upgrades: [
+              {
+                version: '18.0.0',
+                releasedDaysAgo: 90,
+                breachReleasedDaysAgo: 90,
+                semverBump: 'major',
+                level: 'mandatory_upgrade',
+                thresholdDays: 60,
+              },
+            ],
+          }),
+        }),
+      ],
+    });
+    printPackages(aggregated, 'table');
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('no compliant release available');
+    expect(output).not.toContain('days overdue');
   });
 
   it('renders "days remaining" for a package approaching its threshold', () => {

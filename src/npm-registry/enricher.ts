@@ -123,6 +123,21 @@ function computeReleaseAge(
     ? daysSince(latestEntry)
     : undefined;
 
+  // If nothing newer than installed ever fell inside its tier's threshold,
+  // the only real landing spot is latest — treat it as the compliant target
+  // even though it's itself past the window, since there's no fresher
+  // release to upgrade to instead (#26).
+  if (
+    minCompliantVersion === undefined &&
+    latestVersion &&
+    latestReleasedDaysAgo !== undefined &&
+    !semver.prerelease(latestVersion) &&
+    semver.gt(latestVersion, installedVersion)
+  ) {
+    minCompliantVersion = latestVersion;
+    minCompliantReleasedDaysAgo = latestReleasedDaysAgo;
+  }
+
   for (const upgrade of finalUpgrades) {
     if (latestVersion && upgrade.version === latestVersion) {
       upgrade.isLatest = true;

@@ -51,10 +51,13 @@ function formatUpgradeCell(releaseAge?: ReleaseAgeEntry): string {
   if (!top) return severityIcon('success');
 
   const suffix = severity === 'warn' ? chalk.gray(' [not enforced]') : '';
-  const overdue = formatDaysOverdue(
-    top.breachReleasedDaysAgo,
-    top.thresholdDays,
-  );
+  // When even the recommended target is past its own threshold, there's no
+  // fresher release to have grabbed instead — a day count would imply a
+  // countdown that was never achievable, so omit it (#26).
+  const overdue =
+    top.releasedDaysAgo > top.thresholdDays
+      ? 'no compliant release available'
+      : formatDaysOverdue(top.breachReleasedDaysAgo, top.thresholdDays);
 
   if (worstLevel === 'mandatory_upgrade') {
     const icon = severityIcon(severity === 'warn' ? 'warn' : 'error');

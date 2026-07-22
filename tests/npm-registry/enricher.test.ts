@@ -311,7 +311,7 @@ describe('enrichWithReleaseAge — minCompliantVersion for all bump tiers (#21)'
     expect(enriched[0].releaseAge?.minCompliantReleasedDaysAgo).toBe(55);
   });
 
-  it('leaves minCompliantVersion undefined when every major-line candidate has already aged past the threshold', async () => {
+  it('falls back to latestVersion as minCompliantVersion when every major-line candidate has already aged past the threshold (#26)', async () => {
     const pkg = createMockPackage('react', { version: '17.0.0' });
     mockFetch.mockResolvedValueOnce({
       name: 'react',
@@ -324,7 +324,8 @@ describe('enrichWithReleaseAge — minCompliantVersion for all bump tiers (#21)'
     });
     const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
     expect(enriched[0].releaseAge?.worstLevel).toBe('mandatory_upgrade');
-    expect(enriched[0].releaseAge?.minCompliantVersion).toBeUndefined();
+    expect(enriched[0].releaseAge?.minCompliantVersion).toBe('18.0.0');
+    expect(enriched[0].releaseAge?.minCompliantReleasedDaysAgo).toBe(90);
   });
 
   it('prefers the oldest still-compliant major-line release over a newer compliant one', async () => {
@@ -401,6 +402,56 @@ describe('enrichWithReleaseAge — minCompliantVersion for all bump tiers (#21)'
       ...BASE_CONFIG,
       thresholds: { ...DEFAULT_THRESHOLDS, minor: false },
     });
+    expect(enriched[0].releaseAge?.minCompliantVersion).toBeUndefined();
+  });
+});
+
+describe('enrichWithReleaseAge — minCompliantVersion falls back to latest (#26)', () => {
+  it('falls back to latest even when both a breached minor and a breached major tier exist and neither has an in-window candidate', async () => {
+    const pkg = createMockPackage('@guestyci/stale-lib', { version: '1.0.0' });
+    mockFetch.mockResolvedValueOnce({
+      name: '@guestyci/stale-lib',
+      time: {
+        '1.0.0': daysAgo(900),
+        '1.5.0': daysAgo(50), // minor, breaches the 45-day threshold
+        '2.0.0': daysAgo(90), // major, breaches the 60-day threshold and is also latest
+      },
+      'dist-tags': { latest: '2.0.0' },
+      versions: {},
+    });
+    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    expect(enriched[0].releaseAge?.worstLevel).toBe('mandatory_upgrade');
+    expect(enriched[0].releaseAge?.minCompliantVersion).toBe('2.0.0');
+    expect(enriched[0].releaseAge?.minCompliantReleasedDaysAgo).toBe(90);
+  });
+
+  it('does not fall back when installed is already on latest — nothing newer exists, so it is already compliant', async () => {
+    const pkg = createMockPackage('react', { version: '18.2.0' });
+    mockFetch.mockResolvedValueOnce({
+      name: 'react',
+      time: {
+        '18.2.0': daysAgo(400),
+      },
+      'dist-tags': { latest: '18.2.0' },
+      versions: {},
+    });
+    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    expect(enriched[0].releaseAge?.worstLevel).toBeNull();
+    expect(enriched[0].releaseAge?.minCompliantVersion).toBeUndefined();
+  });
+
+  it('does not fall back onto a prerelease latest tag', async () => {
+    const pkg = createMockPackage('some-lib', { version: '1.0.0' });
+    mockFetch.mockResolvedValueOnce({
+      name: 'some-lib',
+      time: {
+        '1.0.0': daysAgo(900),
+        '2.0.0-rc.0': daysAgo(90),
+      },
+      'dist-tags': { latest: '2.0.0-rc.0' },
+      versions: {},
+    });
+    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
     expect(enriched[0].releaseAge?.minCompliantVersion).toBeUndefined();
   });
 });
