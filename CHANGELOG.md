@@ -1,3 +1,16 @@
+# [2.2.0](https://github.com/Gallevy/hermex/compare/v2.1.0...v2.2.0) (2026-07-22)
+
+
+### Bug Fixes
+
+* bump upload-artifact/download-artifact to their current major versions ([5ba5e7c](https://github.com/Gallevy/hermex/commit/5ba5e7c5d48954afb071ed54679d706ad34f7b08))
+* handle the coverage job's bootstrap PR gracefully ([c0c7266](https://github.com/Gallevy/hermex/commit/c0c72660c4a9a20912ab8f02f77af10154057ccf))
+
+
+### Features
+
+* report test coverage on pull requests, compared to main ([a88a5ff](https://github.com/Gallevy/hermex/commit/a88a5fff5d069e71ff2d6810039805f1f2edc57f))
+
 # [2.1.0](https://github.com/Gallevy/hermex/compare/v2.0.3...v2.1.0) (2026-07-22)
 
 
