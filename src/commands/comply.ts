@@ -6,6 +6,7 @@ import { printPackages } from '../utils/print-packages';
 import { printVersus } from '../utils/print-versus';
 import { printComplianceVerdict } from '../utils/print-compliance';
 import { computeCompliance } from '../utils/compliance';
+import { writeSummaryFile } from '../utils/write-summary-file';
 import { loadConfig } from '../config/loader';
 import { runPipeline } from './pipeline';
 import { createCommandContext } from './command-context';
@@ -29,17 +30,26 @@ export function registerComplyCommand(program: Command) {
       ).choices(['human', 'json']),
     )
     .option('--no-color', 'Disable colored output (see also NO_COLOR env var)')
+    .option(
+      '--summary-file <path>',
+      'Write a concise, ANSI-free markdown summary (rules, flagged packages, verdict) to this path, for a CI job summary or PR comment',
+    )
     .action(
       async (options: {
         config?: string;
         format?: 'human' | 'json';
         color?: boolean;
+        summaryFile?: string;
       }) => {
         const config = await loadConfig(process.cwd(), options.config);
-        await executeComply(config, {
-          format: options.format,
-          color: options.color,
-        });
+        await executeComply(
+          config,
+          {
+            format: options.format,
+            color: options.color,
+          },
+          options.summaryFile,
+        );
       },
     );
 }
@@ -47,6 +57,7 @@ export function registerComplyCommand(program: Command) {
 export async function executeComply(
   config: HermexConfig,
   contextOptions: CommandContextOptions = {},
+  summaryFile?: string,
 ) {
   const { isJson, spinner } = createCommandContext(config, contextOptions);
 
@@ -72,6 +83,10 @@ export async function executeComply(
         printVersus(aggregated);
       }
       printComplianceVerdict(compliance);
+    }
+
+    if (summaryFile) {
+      writeSummaryFile(summaryFile, aggregated, compliance);
     }
 
     process.exitCode = compliance.compliant ? 0 : 1;

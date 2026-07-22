@@ -5,7 +5,7 @@ import type {
   BannedPackageViolation,
   PackageDistribution,
 } from './aggregator';
-import type { ReleaseAgeEntry } from '../npm-registry/types';
+import type { AvailableUpgrade, ReleaseAgeEntry } from '../npm-registry/types';
 import {
   formatCount,
   formatDaysOverdue,
@@ -17,7 +17,7 @@ function printHeader() {
   console.log(chalk.blueBright.bold('\n📦 Packages\n'));
 }
 
-function formatPackageName(
+export function formatPackageName(
   pkg: PackageDistribution,
   banned?: BannedPackageViolation,
 ): string {
@@ -36,7 +36,18 @@ function formatPackageName(
   return prefix + pkg.packageName;
 }
 
-function formatUpgradeCell(releaseAge?: ReleaseAgeEntry): string {
+// When even the recommended target is past its own threshold, there's no
+// fresher release to have grabbed instead — a day count would imply a
+// countdown that was never achievable, so omit it (#26).
+export function describeUpgradeTarget(top: AvailableUpgrade): string {
+  const overdue =
+    top.releasedDaysAgo > top.thresholdDays
+      ? 'no compliant release available'
+      : formatDaysOverdue(top.breachReleasedDaysAgo, top.thresholdDays);
+  return `${top.semverBump} ${top.version} (${overdue})`;
+}
+
+export function formatUpgradeCell(releaseAge?: ReleaseAgeEntry): string {
   if (!releaseAge) return '';
   const { worstLevel, upgrades, severity, pendingUpgrade } = releaseAge;
 
@@ -51,22 +62,16 @@ function formatUpgradeCell(releaseAge?: ReleaseAgeEntry): string {
   if (!top) return severityIcon('success');
 
   const suffix = severity === 'warn' ? chalk.gray(' [not enforced]') : '';
-  // When even the recommended target is past its own threshold, there's no
-  // fresher release to have grabbed instead — a day count would imply a
-  // countdown that was never achievable, so omit it (#26).
-  const overdue =
-    top.releasedDaysAgo > top.thresholdDays
-      ? 'no compliant release available'
-      : formatDaysOverdue(top.breachReleasedDaysAgo, top.thresholdDays);
+  const description = describeUpgradeTarget(top);
 
   if (worstLevel === 'major_overdue') {
     const icon = severityIcon(severity === 'warn' ? 'warn' : 'error');
-    return `${icon} ${top.semverBump} ${top.version} (${overdue})${suffix}`;
+    return `${icon} ${description}${suffix}`;
   }
-  return `${severityIcon('warn')} ${top.semverBump} ${top.version} (${overdue})${suffix}`;
+  return `${severityIcon('warn')} ${description}${suffix}`;
 }
 
-function getBannedViolation(
+export function getBannedViolation(
   pkg: PackageDistribution,
   violations: BannedPackageViolation[],
 ): BannedPackageViolation | undefined {
@@ -99,7 +104,7 @@ function printPackagesTable(
   }
 
   const hasReleaseAge = packages.some((p) => p.releaseAge !== undefined);
-  const head = ['Package', 'Version', 'Components', 'Usage', 'Percentage'];
+  const head = ['Package', 'Version'];
   if (hasReleaseAge) head.push('Upgrades');
 
   const table = new Table({
@@ -120,9 +125,6 @@ function printPackagesTable(
     const row = [
       formatPackageName(pkg, getBannedViolation(pkg, violations)),
       versionCell,
-      formatCount(pkg.componentCount),
-      formatCount(pkg.usageCount),
-      `${pkg.percentage.toFixed(1)}%`,
     ];
     if (hasReleaseAge) row.push(formatUpgradeCell(pkg.releaseAge));
     table.push(row);
@@ -130,16 +132,7 @@ function printPackagesTable(
 
   console.log(table.toString());
 
-  const totalComponents = packages.reduce(
-    (sum, p) => sum + p.componentCount,
-    0,
-  );
-  const totalExternalUsage = packages.reduce((sum, p) => sum + p.usageCount, 0);
-  console.log(
-    chalk.gray(
-      `\nTotal: ${formatCount(packages.length)} packages | ${formatCount(totalComponents)} unique components | ${formatCount(totalExternalUsage)} total usages`,
-    ),
-  );
+  console.log(chalk.gray(`\nTotal: ${formatCount(packages.length)} packages`));
 }
 
 function printPackagesChart(

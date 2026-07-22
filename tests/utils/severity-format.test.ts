@@ -5,6 +5,7 @@ import {
   severityColor,
   formatViolationLine,
   resolveColorLevel,
+  stripAnsi,
 } from '../../src/utils/severity-format';
 
 describe('severityIcon', () => {
@@ -58,5 +59,21 @@ describe('resolveColorLevel', () => {
 
   it('returns undefined (defer to chalk auto-detection) when nothing is set', () => {
     expect(resolveColorLevel({})).toBeUndefined();
+  });
+});
+
+describe('stripAnsi', () => {
+  it('removes color escapes from a chalk-colored string', () => {
+    const original = chalk.level;
+    chalk.level = 1;
+    const colored = chalk.red('NOT COMPLIANT');
+    chalk.level = original;
+
+    expect(colored).not.toBe('NOT COMPLIANT');
+    expect(stripAnsi(colored)).toBe('NOT COMPLIANT');
+  });
+
+  it('leaves plain text untouched', () => {
+    expect(stripAnsi('plain text, no color')).toBe('plain text, no color');
   });
 });

@@ -4,7 +4,7 @@ import type { RuleViolation } from '../rules/evaluator';
 import { formatTruncatedList } from './format-utils';
 import { severityIcon, formatViolationLine } from './severity-format';
 
-function formatRuleType(type: RuleViolation['type']): string {
+export function formatRuleType(type: RuleViolation['type']): string {
   switch (type) {
     case 'detect_files':
       return 'detect_files';
@@ -25,7 +25,7 @@ function formatRuleType(type: RuleViolation['type']): string {
   }
 }
 
-function describeViolation(v: RuleViolation): string {
+export function describeViolation(v: RuleViolation): string {
   const patterns = v.patterns.join(', ');
   const suffix = v.message ? chalk.gray(` — ${v.message}`) : '';
 

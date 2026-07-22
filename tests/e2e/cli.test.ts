@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { spawnSync, execSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
+import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import packageJson from '../../package.json';
 
 const ROOT = resolve(__dirname, '../..');
@@ -244,5 +246,89 @@ describe('comply command', () => {
     const result = run(['comply']);
     expect(result.stdout).toMatch(/Versus/);
     expect(result.stdout).toContain('Design System Migration');
+  });
+
+  it('--summary-file writes an ANSI-free markdown summary alongside the normal report (#31)', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'hermex-summary-e2e-'));
+    try {
+      const summaryPath = join(tempDir, 'summary.md');
+      const configPath = join(
+        ROOT,
+        'tests',
+        'e2e',
+        'hermex-comply-fail.config.ts',
+      );
+      const result = run([
+        'comply',
+        '--config',
+        configPath,
+        '--summary-file',
+        summaryPath,
+      ]);
+      expect(result.status).toBe(1);
+      expect(result.stdout).toMatch(/NOT COMPLIANT/); // full report on stdout, unchanged
+      expect(existsSync(summaryPath)).toBe(true);
+      const content = readFileSync(summaryPath, 'utf8');
+      // oxlint-disable-next-line no-control-regex -- asserting the ANSI escape byte is absent
+      expect(content).not.toMatch(/\x1b\[/);
+      expect(content).toMatch(/NOT COMPLIANT/);
+      expect(content).not.toMatch(/Versus/);
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('--summary-file writes a COMPLIANT summary when there are no mandatory violations', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'hermex-summary-e2e-'));
+    try {
+      const summaryPath = join(tempDir, 'summary.md');
+      const configPath = join(
+        ROOT,
+        'tests',
+        'e2e',
+        'hermex-comply-pass.config.ts',
+      );
+      const result = run([
+        'comply',
+        '--config',
+        configPath,
+        '--summary-file',
+        summaryPath,
+      ]);
+      expect(result.status).toBe(0);
+      expect(existsSync(summaryPath)).toBe(true);
+      const content = readFileSync(summaryPath, 'utf8');
+      expect(content).toMatch(/COMPLIANT/);
+      expect(content).not.toMatch(/NOT COMPLIANT/);
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('--summary-file still writes the file when the primary format is json', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'hermex-summary-e2e-'));
+    try {
+      const summaryPath = join(tempDir, 'summary.md');
+      const configPath = join(
+        ROOT,
+        'tests',
+        'e2e',
+        'hermex-comply-json.config.ts',
+      );
+      const result = run([
+        'comply',
+        '--config',
+        configPath,
+        '--summary-file',
+        summaryPath,
+      ]);
+      expect(result.status).toBe(1);
+      expect(() => JSON.parse(result.stdout)).not.toThrow();
+      expect(existsSync(summaryPath)).toBe(true);
+      const content = readFileSync(summaryPath, 'utf8');
+      expect(content).toMatch(/NOT COMPLIANT/);
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
   });
 });

@@ -4,7 +4,7 @@ import type { AggregatedReport, PatternCount } from './aggregator';
 import { renderBarChart } from './chart-renderer';
 
 function printHeader() {
-  console.log(chalk.blue.bold('\n🔍 Code Patterns\n'));
+  console.log(chalk.blue.bold('\n🧩 Code Patterns\n'));
 }
 
 export function printPatterns(
