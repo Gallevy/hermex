@@ -7,15 +7,15 @@ export interface ComplianceResult {
   compliant: boolean;
   errorRuleViolations: RuleViolation[];
   errorBannedPackageViolations: BannedPackageViolation[];
-  mandatoryReleaseAgeViolations: PackageDistribution[];
+  releaseAgeViolations: PackageDistribution[];
 }
 
 /**
- * A package is a mandatory compliance failure only when its releaseAge
- * severity is 'error' (i.e. it's in scope per `releaseAge.enforceOn`) AND
- * its worstLevel is 'mandatory_upgrade' — 'needs_upgrade' (patch/minor) is
- * advisory even for enforced packages, matching the existing "mandatory"
- * vocabulary already used by upgradeLevel().
+ * A package is a compliance failure when its releaseAge severity is 'error'
+ * (i.e. it's in scope per `releaseAge.enforceOn`) AND it has any breached
+ * threshold at all (worstLevel is non-null) — both 'minor_overdue' and
+ * 'major_overdue' fail comply for an enforced package; only severity
+ * decides mandatory vs advisory, not which tier breached (#28).
  */
 export function computeCompliance(
   aggregated: AggregatedReport,
@@ -25,19 +25,18 @@ export function computeCompliance(
   );
   const errorBannedPackageViolations =
     aggregated.bannedPackageViolations.filter((v) => v.severity === 'error');
-  const mandatoryReleaseAgeViolations = aggregated.packageDistribution.filter(
+  const releaseAgeViolations = aggregated.packageDistribution.filter(
     (p) =>
-      p.releaseAge?.severity === 'error' &&
-      p.releaseAge?.worstLevel === 'mandatory_upgrade',
+      p.releaseAge?.severity === 'error' && p.releaseAge?.worstLevel !== null,
   );
 
   return {
     compliant:
       errorRuleViolations.length === 0 &&
       errorBannedPackageViolations.length === 0 &&
-      mandatoryReleaseAgeViolations.length === 0,
+      releaseAgeViolations.length === 0,
     errorRuleViolations,
     errorBannedPackageViolations,
-    mandatoryReleaseAgeViolations,
+    releaseAgeViolations,
   };
 }

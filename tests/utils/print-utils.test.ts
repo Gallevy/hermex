@@ -96,7 +96,7 @@ describe('printPackages', () => {
       packageDistribution: [
         createMockPackage('lodash', {
           releaseAge: createMockReleaseAge({
-            worstLevel: 'mandatory_upgrade',
+            worstLevel: 'major_overdue',
             severity: 'error',
             upgrades: [
               {
@@ -104,7 +104,7 @@ describe('printPackages', () => {
                 releasedDaysAgo: 10,
                 breachReleasedDaysAgo: 100,
                 semverBump: 'major',
-                level: 'mandatory_upgrade',
+                level: 'major_overdue',
                 thresholdDays: 60,
               },
             ],
@@ -129,7 +129,7 @@ describe('printPackages', () => {
       packageDistribution: [
         createMockPackage('@guestyci/feature-toggle-fe', {
           releaseAge: createMockReleaseAge({
-            worstLevel: 'mandatory_upgrade',
+            worstLevel: 'major_overdue',
             severity: 'error',
             upgrades: [
               {
@@ -137,7 +137,7 @@ describe('printPackages', () => {
                 releasedDaysAgo: 14,
                 breachReleasedDaysAgo: 1000,
                 semverBump: 'major',
-                level: 'mandatory_upgrade',
+                level: 'major_overdue',
                 thresholdDays: 60,
               },
             ],
@@ -158,7 +158,7 @@ describe('printPackages', () => {
       packageDistribution: [
         createMockPackage('react', {
           releaseAge: createMockReleaseAge({
-            worstLevel: 'mandatory_upgrade',
+            worstLevel: 'major_overdue',
             severity: 'error',
             upgrades: [
               {
@@ -166,7 +166,7 @@ describe('printPackages', () => {
                 releasedDaysAgo: 90,
                 breachReleasedDaysAgo: 90,
                 semverBump: 'major',
-                level: 'mandatory_upgrade',
+                level: 'major_overdue',
                 thresholdDays: 60,
               },
             ],
@@ -246,7 +246,7 @@ describe('printRules', () => {
     const output = consoleSpy.mock.calls
       .map((call) => call.join(' '))
       .join('\n');
-    expect(output).toContain('All compliance checks passed');
+    expect(output).toContain('All rule checks passed');
   });
 
   it('prints violations when present', () => {
@@ -377,7 +377,7 @@ describe('printComplianceVerdict', () => {
     };
     const pkg = createMockPackage('@my-org/internal', {
       releaseAge: createMockReleaseAge({
-        worstLevel: 'mandatory_upgrade',
+        worstLevel: 'major_overdue',
         severity: 'error',
         upgrades: [
           {
@@ -385,7 +385,7 @@ describe('printComplianceVerdict', () => {
             releasedDaysAgo: 90,
             breachReleasedDaysAgo: 90,
             semverBump: 'major',
-            level: 'mandatory_upgrade',
+            level: 'major_overdue',
             thresholdDays: 60,
           },
         ],
@@ -403,7 +403,7 @@ describe('printComplianceVerdict', () => {
       .join('\n');
     expect(output).toContain('NOT COMPLIANT');
     expect(output).toContain('2 mandatory violations');
-    // per-violation detail belongs to the Compliance/Packages sections above
+    // per-violation detail belongs to the Rules/Packages sections above
     // the verdict, not the verdict itself — see printPackages tests for the
     // "days overdue" phrasing this same data renders as there.
     expect(output).not.toContain('@my-org/internal');

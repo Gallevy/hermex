@@ -42,8 +42,7 @@ function upgradeLevel(
   const threshold = thresholds[bump];
   if (threshold === false || threshold === undefined) return null;
   if (daysAgo > threshold) {
-    // major bump past its threshold → mandatory, minor/patch → needs
-    return bump === 'major' ? 'mandatory_upgrade' : 'needs_upgrade';
+    return bump === 'major' ? 'major_overdue' : 'minor_overdue';
   }
   return null;
 }
@@ -138,12 +137,6 @@ function computeReleaseAge(
     minCompliantVersion = latestVersion;
     minCompliantReleasedDaysAgo = latestReleasedDaysAgo;
   }
-  // True only when *every* touched tier never had an achievable compliant
-  // candidate (the fallback above is what set minCompliantVersion) — the
-  // threshold exists to catch avoidable staleness, not to penalize an
-  // install for the ecosystem not having shipped anything fresher (#26).
-  const compliantByLatestFallback =
-    !hadInWindowCandidate && minCompliantVersion !== undefined;
 
   for (const upgrade of finalUpgrades) {
     if (latestVersion && upgrade.version === latestVersion) {
@@ -151,13 +144,17 @@ function computeReleaseAge(
     }
   }
 
-  const worstLevel: UpgradeLevel | null = compliantByLatestFallback
-    ? null
-    : finalUpgrades.some((u) => u.level === 'mandatory_upgrade')
-      ? 'mandatory_upgrade'
-      : finalUpgrades.length > 0
-        ? 'needs_upgrade'
-        : null;
+  // The latest-fallback above is a display convenience for "closest
+  // achievable target" — it must not also erase worstLevel. A package with
+  // breached upgrades is still overdue even when latest itself is past the
+  // threshold and there's nothing fresher to recommend instead (#29).
+  const worstLevel: UpgradeLevel | null = finalUpgrades.some(
+    (u) => u.level === 'major_overdue',
+  )
+    ? 'major_overdue'
+    : finalUpgrades.length > 0
+      ? 'minor_overdue'
+      : null;
 
   // Only surface a "coming due" advisory when nothing has breached yet — a
   // package that's already in violation on one tier doesn't also need an

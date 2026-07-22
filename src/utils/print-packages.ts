@@ -59,7 +59,7 @@ function formatUpgradeCell(releaseAge?: ReleaseAgeEntry): string {
       ? 'no compliant release available'
       : formatDaysOverdue(top.breachReleasedDaysAgo, top.thresholdDays);
 
-  if (worstLevel === 'mandatory_upgrade') {
+  if (worstLevel === 'major_overdue') {
     const icon = severityIcon(severity === 'warn' ? 'warn' : 'error');
     return `${icon} ${top.semverBump} ${top.version} (${overdue})${suffix}`;
   }

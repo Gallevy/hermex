@@ -1,4 +1,4 @@
-export type UpgradeLevel = 'needs_upgrade' | 'mandatory_upgrade';
+export type UpgradeLevel = 'minor_overdue' | 'major_overdue';
 export type SemverBump = 'patch' | 'minor' | 'major';
 
 export interface AvailableUpgrade {
@@ -30,10 +30,11 @@ export interface ReleaseAgeEntry {
   installedVersion: string;
   upgrades: AvailableUpgrade[];
   /**
-   * `null` when compliant, including when no release newer than
-   * `installedVersion` has ever fallen inside its bump tier's threshold —
-   * in that case the only achievable target is `latestVersion` itself, so
-   * there's nothing avoidably stale to flag (#26).
+   * `null` only when there are no breached upgrades at all. Independent of
+   * whether `minCompliantVersion` fell back to `latestVersion` — a package
+   * can still be overdue on a breached tier even when latest itself is past
+   * that tier's threshold and there's nothing fresher to recommend instead
+   * (#29).
    */
   worstLevel: UpgradeLevel | null;
   pendingUpgrade?: PendingUpgrade;

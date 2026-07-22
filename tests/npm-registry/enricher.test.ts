@@ -77,7 +77,7 @@ describe('enrichWithReleaseAge — upgrade detection', () => {
     expect(enriched[0].releaseAge?.upgrades).toHaveLength(0);
   });
 
-  it('detects needs_upgrade when patch version exceeds threshold', async () => {
+  it('detects minor_overdue when patch version exceeds threshold', async () => {
     const pkg = createMockPackage('react', { version: '18.0.0' });
     mockFetch.mockResolvedValueOnce({
       name: 'react',
@@ -85,12 +85,12 @@ describe('enrichWithReleaseAge — upgrade detection', () => {
       versions: {},
     });
     const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
-    expect(enriched[0].releaseAge?.worstLevel).toBe('needs_upgrade');
+    expect(enriched[0].releaseAge?.worstLevel).toBe('minor_overdue');
     expect(enriched[0].releaseAge?.upgrades[0].semverBump).toBe('patch');
     expect(enriched[0].releaseAge?.upgrades[0].thresholdDays).toBe(30);
   });
 
-  it('detects mandatory_upgrade when major version exceeds threshold', async () => {
+  it('detects major_overdue when major version exceeds threshold', async () => {
     const pkg = createMockPackage('react', { version: '17.0.0' });
     mockFetch.mockResolvedValueOnce({
       name: 'react',
@@ -98,7 +98,7 @@ describe('enrichWithReleaseAge — upgrade detection', () => {
       versions: {},
     });
     const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
-    expect(enriched[0].releaseAge?.worstLevel).toBe('mandatory_upgrade');
+    expect(enriched[0].releaseAge?.worstLevel).toBe('major_overdue');
     expect(enriched[0].releaseAge?.upgrades[0].thresholdDays).toBe(60);
   });
 
@@ -127,7 +127,7 @@ describe('enrichWithReleaseAge — upgrade detection', () => {
       name: 'mixed-lib',
       time: {
         '1.0.0': daysAgo(500),
-        // major candidate breaches the 60-day threshold → mandatory_upgrade
+        // major candidate breaches the 60-day threshold → major_overdue
         '2.0.0': daysAgo(90),
         // minor candidate is still within its 45-day threshold
         '1.5.0': daysAgo(33),
@@ -135,7 +135,7 @@ describe('enrichWithReleaseAge — upgrade detection', () => {
       versions: {},
     });
     const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
-    expect(enriched[0].releaseAge?.worstLevel).toBe('mandatory_upgrade');
+    expect(enriched[0].releaseAge?.worstLevel).toBe('major_overdue');
     expect(enriched[0].releaseAge?.pendingUpgrade).toBeUndefined();
   });
 
@@ -287,7 +287,7 @@ describe('enrichWithReleaseAge — minCompliantVersion for all bump tiers (#21)'
   it('finds a compliant release inside an intermediate major line, not just the latest', async () => {
     // Mirrors the @guestyci/foundation example from the issue: installed
     // 10.x. 11.0.0 is old enough (400d) to breach the 60-day major
-    // threshold and drive worstLevel to mandatory_upgrade; 12.0.0 (55d) is
+    // threshold and drive worstLevel to major_overdue; 12.0.0 (55d) is
     // still within that threshold and should become minCompliantVersion —
     // the whole point of #21 is that this doesn't have to be the newest
     // release (13.5.5, 10d) to count as compliant.
@@ -306,12 +306,12 @@ describe('enrichWithReleaseAge — minCompliantVersion for all bump tiers (#21)'
       versions: {},
     });
     const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
-    expect(enriched[0].releaseAge?.worstLevel).toBe('mandatory_upgrade');
+    expect(enriched[0].releaseAge?.worstLevel).toBe('major_overdue');
     expect(enriched[0].releaseAge?.minCompliantVersion).toBe('12.0.0');
     expect(enriched[0].releaseAge?.minCompliantReleasedDaysAgo).toBe(55);
   });
 
-  it('falls back to latestVersion as minCompliantVersion — and reports compliant, not mandatory — when every major-line candidate has already aged past the threshold (#26)', async () => {
+  it('falls back to latestVersion as minCompliantVersion, but still reports major_overdue, when every major-line candidate has already aged past the threshold (#26, #29)', async () => {
     const pkg = createMockPackage('react', { version: '17.0.0' });
     mockFetch.mockResolvedValueOnce({
       name: 'react',
@@ -324,9 +324,10 @@ describe('enrichWithReleaseAge — minCompliantVersion for all bump tiers (#21)'
     });
     const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
     // 18.0.0 is the only thing that has ever existed to upgrade to, and it's
-    // latest — there was never an achievable fresher target, so this isn't
-    // an avoidable-staleness violation.
-    expect(enriched[0].releaseAge?.worstLevel).toBeNull();
+    // latest, so minCompliantVersion falls back to it as the closest
+    // achievable display target — but the package is still genuinely overdue
+    // on the major tier, so worstLevel must keep reflecting that (#29).
+    expect(enriched[0].releaseAge?.worstLevel).toBe('major_overdue');
     expect(enriched[0].releaseAge?.minCompliantVersion).toBe('18.0.0');
     expect(enriched[0].releaseAge?.minCompliantReleasedDaysAgo).toBe(90);
   });
@@ -337,7 +338,7 @@ describe('enrichWithReleaseAge — minCompliantVersion for all bump tiers (#21)'
       name: '@guestyci/arc',
       time: {
         '0.15.1': daysAgo(900),
-        '1.0.0': daysAgo(400), // breaches the 60-day threshold, drives mandatory_upgrade
+        '1.0.0': daysAgo(400), // breaches the 60-day threshold, drives major_overdue
         '1.5.0': daysAgo(55), // compliant, oldest of the compliant set — should win
         '1.10.0': daysAgo(30), // compliant, but newer than 1.5.0
         '1.17.1': daysAgo(5), // latest, compliant, newest of all
@@ -345,7 +346,7 @@ describe('enrichWithReleaseAge — minCompliantVersion for all bump tiers (#21)'
       versions: {},
     });
     const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
-    expect(enriched[0].releaseAge?.worstLevel).toBe('mandatory_upgrade');
+    expect(enriched[0].releaseAge?.worstLevel).toBe('major_overdue');
     expect(enriched[0].releaseAge?.minCompliantVersion).toBe('1.5.0');
     expect(enriched[0].releaseAge?.minCompliantReleasedDaysAgo).toBe(55);
   });
@@ -356,13 +357,13 @@ describe('enrichWithReleaseAge — minCompliantVersion for all bump tiers (#21)'
       name: 'some-lib',
       time: {
         '2.1.0': daysAgo(300),
-        '2.5.0': daysAgo(50), // breaches the 45-day minor threshold, drives needs_upgrade
+        '2.5.0': daysAgo(50), // breaches the 45-day minor threshold, drives minor_overdue
         '2.3.0': daysAgo(40), // within the 45-day minor threshold — compliant
       },
       versions: {},
     });
     const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
-    expect(enriched[0].releaseAge?.worstLevel).toBe('needs_upgrade');
+    expect(enriched[0].releaseAge?.worstLevel).toBe('minor_overdue');
     expect(enriched[0].releaseAge?.minCompliantVersion).toBe('2.3.0');
     expect(enriched[0].releaseAge?.minCompliantReleasedDaysAgo).toBe(40);
   });
@@ -381,12 +382,12 @@ describe('enrichWithReleaseAge — minCompliantVersion for all bump tiers (#21)'
         '1.0.0': daysAgo(900),
         '1.5.0': daysAgo(40), // minor, compliant
         '2.0.0': daysAgo(55), // major, compliant, oldest compliant overall — should win
-        '3.0.0': daysAgo(400), // major, breaches the threshold, drives mandatory_upgrade
+        '3.0.0': daysAgo(400), // major, breaches the threshold, drives major_overdue
       },
       versions: {},
     });
     const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
-    expect(enriched[0].releaseAge?.worstLevel).toBe('mandatory_upgrade');
+    expect(enriched[0].releaseAge?.worstLevel).toBe('major_overdue');
     expect(enriched[0].releaseAge?.minCompliantVersion).toBe('2.0.0');
     expect(enriched[0].releaseAge?.minCompliantReleasedDaysAgo).toBe(55);
   });
@@ -410,7 +411,7 @@ describe('enrichWithReleaseAge — minCompliantVersion for all bump tiers (#21)'
 });
 
 describe('enrichWithReleaseAge — minCompliantVersion falls back to latest (#26)', () => {
-  it('falls back to latest and reports compliant when both a breached minor and a breached major tier exist and neither ever had an in-window candidate', async () => {
+  it('falls back minCompliantVersion to latest for display but still reports major_overdue when a breached major tier exists (#29)', async () => {
     const pkg = createMockPackage('@guestyci/stale-lib', { version: '1.0.0' });
     mockFetch.mockResolvedValueOnce({
       name: '@guestyci/stale-lib',
@@ -423,9 +424,28 @@ describe('enrichWithReleaseAge — minCompliantVersion falls back to latest (#26
       versions: {},
     });
     const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
-    expect(enriched[0].releaseAge?.worstLevel).toBeNull();
+    expect(enriched[0].releaseAge?.worstLevel).toBe('major_overdue');
     expect(enriched[0].releaseAge?.minCompliantVersion).toBe('2.0.0');
     expect(enriched[0].releaseAge?.minCompliantReleasedDaysAgo).toBe(90);
+    expect(enriched[0].releaseAge?.pendingUpgrade).toBeUndefined();
+  });
+
+  it('falls back minCompliantVersion to latest but still reports minor_overdue when only a breached minor tier exists (#29)', async () => {
+    const pkg = createMockPackage('some-lib', { version: '1.0.0' });
+    mockFetch.mockResolvedValueOnce({
+      name: 'some-lib',
+      time: {
+        '1.0.0': daysAgo(900),
+        '1.5.0': daysAgo(90), // minor, breaches the 45-day threshold, also latest — no in-window candidate
+      },
+      'dist-tags': { latest: '1.5.0' },
+      versions: {},
+    });
+    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    expect(enriched[0].releaseAge?.worstLevel).toBe('minor_overdue');
+    expect(enriched[0].releaseAge?.minCompliantVersion).toBe('1.5.0');
+    expect(enriched[0].releaseAge?.minCompliantReleasedDaysAgo).toBe(90);
+    expect(enriched[0].releaseAge?.pendingUpgrade).toBeUndefined();
   });
 
   it('still reports mandatory when a different tier has a genuine in-window candidate that was ignored, even though the major tier itself has no fresh target', async () => {
@@ -445,7 +465,7 @@ describe('enrichWithReleaseAge — minCompliantVersion falls back to latest (#26
       versions: {},
     });
     const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
-    expect(enriched[0].releaseAge?.worstLevel).toBe('mandatory_upgrade');
+    expect(enriched[0].releaseAge?.worstLevel).toBe('major_overdue');
     expect(enriched[0].releaseAge?.minCompliantVersion).toBe('1.5.0');
     expect(enriched[0].releaseAge?.minCompliantReleasedDaysAgo).toBe(40);
   });
@@ -544,7 +564,7 @@ describe('enrichWithReleaseAge — overdue basis uses oldest breach, not newest 
     });
     const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
     const entry = enriched[0].releaseAge!;
-    expect(entry.worstLevel).toBe('mandatory_upgrade');
+    expect(entry.worstLevel).toBe('major_overdue');
 
     const upgrade = entry.upgrades.find((u) => u.semverBump === 'major');
     // Unchanged #14 behavior: the target is still the newest stable release.

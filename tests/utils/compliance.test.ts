@@ -35,7 +35,7 @@ describe('computeCompliance', () => {
     expect(result.compliant).toBe(true);
     expect(result.errorRuleViolations).toHaveLength(0);
     expect(result.errorBannedPackageViolations).toHaveLength(0);
-    expect(result.mandatoryReleaseAgeViolations).toHaveLength(0);
+    expect(result.releaseAgeViolations).toHaveLength(0);
   });
 
   it('is non-compliant when an error-severity rule violation is present', () => {
@@ -95,10 +95,10 @@ describe('computeCompliance', () => {
     expect(result.compliant).toBe(true);
   });
 
-  it('is non-compliant when an enforced package has a mandatory_upgrade', () => {
+  it('is non-compliant when an enforced package has a major_overdue breach', () => {
     const pkg = createMockPackage('@my-org/internal', {
       releaseAge: createMockReleaseAge({
-        worstLevel: 'mandatory_upgrade',
+        worstLevel: 'major_overdue',
         severity: 'error',
       }),
     });
@@ -106,13 +106,13 @@ describe('computeCompliance', () => {
       makeAggregated({ packageDistribution: [pkg] }),
     );
     expect(result.compliant).toBe(false);
-    expect(result.mandatoryReleaseAgeViolations).toEqual([pkg]);
+    expect(result.releaseAgeViolations).toEqual([pkg]);
   });
 
-  it('a mandatory_upgrade on a warn-severity (not enforced) package does not affect compliance', () => {
+  it('a major_overdue on a warn-severity (not enforced) package does not affect compliance', () => {
     const pkg = createMockPackage('react', {
       releaseAge: createMockReleaseAge({
-        worstLevel: 'mandatory_upgrade',
+        worstLevel: 'major_overdue',
         severity: 'warn',
       }),
     });
@@ -122,11 +122,25 @@ describe('computeCompliance', () => {
     expect(result.compliant).toBe(true);
   });
 
-  it('a needs_upgrade on an enforced package does not affect compliance (only mandatory_upgrade does)', () => {
+  it('is non-compliant when an enforced package has a minor_overdue breach', () => {
     const pkg = createMockPackage('@my-org/internal', {
       releaseAge: createMockReleaseAge({
-        worstLevel: 'needs_upgrade',
+        worstLevel: 'minor_overdue',
         severity: 'error',
+      }),
+    });
+    const result = computeCompliance(
+      makeAggregated({ packageDistribution: [pkg] }),
+    );
+    expect(result.compliant).toBe(false);
+    expect(result.releaseAgeViolations).toEqual([pkg]);
+  });
+
+  it('a minor_overdue on a warn-severity (not enforced) package does not affect compliance', () => {
+    const pkg = createMockPackage('react', {
+      releaseAge: createMockReleaseAge({
+        worstLevel: 'minor_overdue',
+        severity: 'warn',
       }),
     });
     const result = computeCompliance(

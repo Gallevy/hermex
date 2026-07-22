@@ -71,14 +71,12 @@ export function printRules(aggregated: AggregatedReport): void {
   const hasBannedViolations = bannedPackageViolations.length > 0;
 
   if (!hasRuleViolations && !hasBannedViolations) {
-    console.log(
-      chalk.greenBright.bold(`\n${severityIcon('success')} Compliance\n`),
-    );
-    console.log(chalk.gray('  All compliance checks passed'));
+    console.log(chalk.greenBright.bold(`\n${severityIcon('success')} Rules\n`));
+    console.log(chalk.gray('  All rule checks passed'));
     return;
   }
 
-  console.log(chalk.blueBright.bold('\n🔍 Compliance\n'));
+  console.log(chalk.blueBright.bold('\n🔍 Rules\n'));
 
   if (hasRuleViolations) {
     for (const v of ruleViolations) {
