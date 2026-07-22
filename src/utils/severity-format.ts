@@ -55,13 +55,15 @@ export function resolveColorLevel(opts: {
 // oxlint-disable-next-line no-control-regex -- matching the ANSI escape byte is the point
 const ANSI_ESCAPE_PATTERN = /\x1b\[[0-9;]*m/g;
 
+/** Removes ANSI color escapes — for output destinations (files, PR comments) that can't render them. */
+export function stripAnsi(text: string): string {
+  return text.replace(ANSI_ESCAPE_PATTERN, '');
+}
+
 function stripAnsiWrites(stream: NodeJS.WriteStream): void {
   const originalWrite = stream.write.bind(stream);
   stream.write = ((chunk: unknown, ...rest: unknown[]) => {
-    const stripped =
-      typeof chunk === 'string'
-        ? chunk.replace(ANSI_ESCAPE_PATTERN, '')
-        : chunk;
+    const stripped = typeof chunk === 'string' ? stripAnsi(chunk) : chunk;
     return (originalWrite as (...args: unknown[]) => boolean)(
       stripped,
       ...rest,
