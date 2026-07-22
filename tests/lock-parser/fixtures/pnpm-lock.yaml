@@ -6,6 +6,9 @@ importers:
       chalk:
         specifier: ^5.0.0
         version: 5.3.0
+      react-redux:
+        specifier: ^8.0.5
+        version: 8.0.5(react@18.3.1)(react-dom@18.3.1)
     devDependencies:
       vitest:
         specifier: ^1.0.0

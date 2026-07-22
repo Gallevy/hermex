@@ -51,6 +51,7 @@
     "dev:scan": "pnpm run build && cd fixtures && node ../dist/cli.mjs scan"
   },
   "dependencies": {
+    "@pnpm/dependency-path": "^1001.1.10",
     "@swc/core": "^1.15.43",
     "@swc/types": "^0.1.27",
     "@yarnpkg/lockfile": "^1.1.0",

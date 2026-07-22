@@ -1,18 +1,26 @@
 import fs from 'fs';
 import path from 'path';
 import { load } from 'js-yaml';
+import {
+  parse as parseDependencyPath,
+  removeSuffix,
+} from '@pnpm/dependency-path';
 import type { LockfileAdapter, MultiVersionMap } from '../lock-file-adapter';
 
 function parsePackageKey(
   rawKey: string,
 ): { name: string; version: string } | null {
   const key = rawKey.startsWith('/') ? rawKey.slice(1) : rawKey;
-  const withoutPeerSuffix = key.replace(/\(.*\)$/, '');
 
-  const atMatch = withoutPeerSuffix.match(/^(.+)@(\d+\.\d+\.\d+[^/]*)$/);
-  if (atMatch) return { name: atMatch[1], version: atMatch[2] };
+  const parsed = parseDependencyPath(key);
+  if (parsed.name && parsed.version) {
+    return { name: parsed.name, version: parsed.version };
+  }
 
-  const slashMatch = withoutPeerSuffix.match(/^(.+?)\/(\d+\.\d+\.\d+.*)$/);
+  // Legacy pnpm v5/v6 slash-separated format (e.g. "/@babel/core/7.22.5"),
+  // which @pnpm/dependency-path's `parse` — built for the newer
+  // `name@version(...)` scheme — doesn't recognize.
+  const slashMatch = key.match(/^(.+?)\/(\d+\.\d+\.\d+.*)$/);
   if (slashMatch) return { name: slashMatch[1], version: slashMatch[2] };
 
   return null;
@@ -47,7 +55,7 @@ export class PnpmLockfileAdapter implements LockfileAdapter {
                 data !== null &&
                 'version' in data
               ) {
-                versions[name] = (data as any).version;
+                versions[name] = removeSuffix((data as any).version);
               }
             }
           }
@@ -61,7 +69,7 @@ export class PnpmLockfileAdapter implements LockfileAdapter {
                 data !== null &&
                 'version' in data
               ) {
-                versions[name] = (data as any).version;
+                versions[name] = removeSuffix((data as any).version);
               }
             }
           }
@@ -75,7 +83,7 @@ export class PnpmLockfileAdapter implements LockfileAdapter {
           const match = key.match(/\/(.+?)\/(\d+\.\d+\.\d+.*?)(?:_|$)/);
           if (match) {
             const [, pkgName, version] = match;
-            versions[pkgName] = version;
+            versions[pkgName] = removeSuffix(version);
           }
         });
       }
@@ -89,9 +97,9 @@ export class PnpmLockfileAdapter implements LockfileAdapter {
               typeof versionSpec === 'string' &&
               !versionSpec.startsWith('link:')
             ) {
-              versions[name] = versionSpec;
+              versions[name] = removeSuffix(versionSpec);
             } else if (typeof versionSpec === 'object' && versionSpec.version) {
-              versions[name] = versionSpec.version;
+              versions[name] = removeSuffix(versionSpec.version);
             }
           },
         );

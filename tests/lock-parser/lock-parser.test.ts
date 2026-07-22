@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { join } from 'node:path';
+import semver from 'semver';
 import { PnpmLockfileAdapter } from '../../src/lock-parser/patterns/pnpm';
 import { NpmLockfileAdapter } from '../../src/lock-parser/patterns/npm';
 import { YarnLockfileAdapter } from '../../src/lock-parser/patterns/yarn';
@@ -25,6 +26,15 @@ describe('PnpmLockfileAdapter', () => {
     const versions = adapter.parse(join(FIXTURES, 'pnpm-lock.yaml'));
     expect(versions['chalk']).toBe('5.3.0');
     expect(versions['vitest']).toBe('1.6.0');
+  });
+
+  it('strips the pnpm peer-dependency suffix from a dependency version (#25)', () => {
+    const versions = adapter.parse(join(FIXTURES, 'pnpm-lock.yaml'));
+    expect(versions['react-redux']).toBe('8.0.5');
+    // Must be usable by `semver` downstream (the enricher passes this
+    // straight into semver.lte/semver.diff) — never the raw peer-suffixed
+    // string that crashed release-age enrichment in #25.
+    expect(semver.valid(versions['react-redux'])).toBeTruthy();
   });
 
   it('returns empty object when file does not exist', () => {
