@@ -1,3 +1,17 @@
+# [2.1.0](https://github.com/Gallevy/hermex/compare/v2.0.3...v2.1.0) (2026-07-22)
+
+
+### Bug Fixes
+
+* clean up comply/scan progress and section formatting ([ab817e6](https://github.com/Gallevy/hermex/commit/ab817e6214e6174f0215249ed564dec291a16794))
+* don't show a success glyph next to a deprecated-only package in the summary ([6677b78](https://github.com/Gallevy/hermex/commit/6677b78abed214862377c1a95d47361b34d49303))
+* tighten --summary-file to error/warn severity, drop Rules/Packages duplication ([d8a1988](https://github.com/Gallevy/hermex/commit/d8a198804220f6f4bb33337b10819b2f24ed820a))
+
+
+### Features
+
+* add --summary-file for CI job summaries and PR comments ([#31](https://github.com/Gallevy/hermex/issues/31)) ([fde247c](https://github.com/Gallevy/hermex/commit/fde247cba0eff41eea6babc815a974bdaf54d114))
+
 ## [2.0.3](https://github.com/Gallevy/hermex/compare/v2.0.2...v2.0.3) (2026-07-22)
 
 
