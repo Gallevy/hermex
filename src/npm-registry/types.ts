@@ -29,11 +29,24 @@ export interface PendingUpgrade {
 export interface ReleaseAgeEntry {
   installedVersion: string;
   upgrades: AvailableUpgrade[];
+  /**
+   * `null` when compliant, including when no release newer than
+   * `installedVersion` has ever fallen inside its bump tier's threshold —
+   * in that case the only achievable target is `latestVersion` itself, so
+   * there's nothing avoidably stale to flag (#26).
+   */
   worstLevel: UpgradeLevel | null;
   pendingUpgrade?: PendingUpgrade;
   deprecated?: string;
   latestVersion?: string;
   latestReleasedDaysAgo?: number;
+  /**
+   * The oldest release (across any bump tier) that's still within its
+   * threshold, i.e. a safe upgrade target. Falls back to `latestVersion`
+   * when no release has ever qualified — upgrading to (or already being
+   * on) latest is always treated as compliant, since nothing fresher
+   * exists to require instead (#26).
+   */
   minCompliantVersion?: string;
   minCompliantReleasedDaysAgo?: number;
   severity: 'error' | 'warn';

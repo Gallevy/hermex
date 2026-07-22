@@ -127,8 +127,9 @@ function computeReleaseAge(
   // the only real landing spot is latest — treat it as the compliant target
   // even though it's itself past the window, since there's no fresher
   // release to upgrade to instead (#26).
+  const hadInWindowCandidate = minCompliantVersion !== undefined;
   if (
-    minCompliantVersion === undefined &&
+    !hadInWindowCandidate &&
     latestVersion &&
     latestReleasedDaysAgo !== undefined &&
     !semver.prerelease(latestVersion) &&
@@ -137,6 +138,12 @@ function computeReleaseAge(
     minCompliantVersion = latestVersion;
     minCompliantReleasedDaysAgo = latestReleasedDaysAgo;
   }
+  // True only when *every* touched tier never had an achievable compliant
+  // candidate (the fallback above is what set minCompliantVersion) — the
+  // threshold exists to catch avoidable staleness, not to penalize an
+  // install for the ecosystem not having shipped anything fresher (#26).
+  const compliantByLatestFallback =
+    !hadInWindowCandidate && minCompliantVersion !== undefined;
 
   for (const upgrade of finalUpgrades) {
     if (latestVersion && upgrade.version === latestVersion) {
@@ -144,13 +151,13 @@ function computeReleaseAge(
     }
   }
 
-  const worstLevel: UpgradeLevel | null = finalUpgrades.some(
-    (u) => u.level === 'mandatory_upgrade',
-  )
-    ? 'mandatory_upgrade'
-    : finalUpgrades.length > 0
-      ? 'needs_upgrade'
-      : null;
+  const worstLevel: UpgradeLevel | null = compliantByLatestFallback
+    ? null
+    : finalUpgrades.some((u) => u.level === 'mandatory_upgrade')
+      ? 'mandatory_upgrade'
+      : finalUpgrades.length > 0
+        ? 'needs_upgrade'
+        : null;
 
   // Only surface a "coming due" advisory when nothing has breached yet — a
   // package that's already in violation on one tier doesn't also need an
