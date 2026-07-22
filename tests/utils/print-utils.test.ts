@@ -2,7 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AggregatedReport } from '../../src/utils/aggregator';
 import type { RuleViolation } from '../../src/rules/evaluator';
 import { printSummary } from '../../src/utils/print-summary';
-import { printPackages } from '../../src/utils/print-packages';
+import {
+  printPackages,
+  describeUpgradeTarget,
+} from '../../src/utils/print-packages';
 import { printComponents } from '../../src/utils/print-components';
 import { printPatterns } from '../../src/utils/print-patterns';
 import { printDetails } from '../../src/utils/print-details';
@@ -242,6 +245,34 @@ describe('printPackages', () => {
       .map((call) => call.join(' '))
       .join('\n');
     expect(output).toContain('12 days remaining');
+  });
+});
+
+describe('describeUpgradeTarget', () => {
+  it('formats the semver bump, version, and days overdue', () => {
+    expect(
+      describeUpgradeTarget({
+        version: '4.2.0',
+        releasedDaysAgo: 10,
+        breachReleasedDaysAgo: 100,
+        semverBump: 'major',
+        level: 'major_overdue',
+        thresholdDays: 60,
+      }),
+    ).toBe('major 4.2.0 (40 days overdue)');
+  });
+
+  it('reports "no compliant release available" when even the recommended target is past its own threshold (#26)', () => {
+    expect(
+      describeUpgradeTarget({
+        version: '18.0.0',
+        releasedDaysAgo: 90,
+        breachReleasedDaysAgo: 90,
+        semverBump: 'major',
+        level: 'major_overdue',
+        thresholdDays: 60,
+      }),
+    ).toBe('major 18.0.0 (no compliant release available)');
   });
 });
 

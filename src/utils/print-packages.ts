@@ -5,7 +5,7 @@ import type {
   BannedPackageViolation,
   PackageDistribution,
 } from './aggregator';
-import type { ReleaseAgeEntry } from '../npm-registry/types';
+import type { AvailableUpgrade, ReleaseAgeEntry } from '../npm-registry/types';
 import {
   formatCount,
   formatDaysOverdue,
@@ -36,6 +36,17 @@ export function formatPackageName(
   return prefix + pkg.packageName;
 }
 
+// When even the recommended target is past its own threshold, there's no
+// fresher release to have grabbed instead — a day count would imply a
+// countdown that was never achievable, so omit it (#26).
+export function describeUpgradeTarget(top: AvailableUpgrade): string {
+  const overdue =
+    top.releasedDaysAgo > top.thresholdDays
+      ? 'no compliant release available'
+      : formatDaysOverdue(top.breachReleasedDaysAgo, top.thresholdDays);
+  return `${top.semverBump} ${top.version} (${overdue})`;
+}
+
 export function formatUpgradeCell(releaseAge?: ReleaseAgeEntry): string {
   if (!releaseAge) return '';
   const { worstLevel, upgrades, severity, pendingUpgrade } = releaseAge;
@@ -51,19 +62,13 @@ export function formatUpgradeCell(releaseAge?: ReleaseAgeEntry): string {
   if (!top) return severityIcon('success');
 
   const suffix = severity === 'warn' ? chalk.gray(' [not enforced]') : '';
-  // When even the recommended target is past its own threshold, there's no
-  // fresher release to have grabbed instead — a day count would imply a
-  // countdown that was never achievable, so omit it (#26).
-  const overdue =
-    top.releasedDaysAgo > top.thresholdDays
-      ? 'no compliant release available'
-      : formatDaysOverdue(top.breachReleasedDaysAgo, top.thresholdDays);
+  const description = describeUpgradeTarget(top);
 
   if (worstLevel === 'major_overdue') {
     const icon = severityIcon(severity === 'warn' ? 'warn' : 'error');
-    return `${icon} ${top.semverBump} ${top.version} (${overdue})${suffix}`;
+    return `${icon} ${description}${suffix}`;
   }
-  return `${severityIcon('warn')} ${top.semverBump} ${top.version} (${overdue})${suffix}`;
+  return `${severityIcon('warn')} ${description}${suffix}`;
 }
 
 export function getBannedViolation(

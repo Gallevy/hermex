@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import chalk from 'chalk';
 import type { AggregatedReport } from '../../src/utils/aggregator';
 import type { RuleViolation } from '../../src/rules/evaluator';
+import type { BannedPackageViolation } from '../../src/utils/package-rules';
 import { computeCompliance } from '../../src/utils/compliance';
 import { writeSummaryFile } from '../../src/utils/write-summary-file';
 import {
@@ -48,6 +49,11 @@ describe('writeSummaryFile', () => {
     chalk.level = originalChalkLevel;
   });
 
+  function write(aggregated: AggregatedReport): string {
+    writeSummaryFile(summaryPath, aggregated, computeCompliance(aggregated));
+    return readFileSync(summaryPath, 'utf8');
+  }
+
   it('writes a file with no ANSI escape sequences, even when chalk color is forced on', () => {
     chalk.level = 1;
     const violation: RuleViolation = {
@@ -56,86 +62,259 @@ describe('writeSummaryFile', () => {
       patterns: ['.nvmrc'],
       matchedFiles: [],
     };
-    const aggregated = makeAggregated({ ruleViolations: [violation] });
-    writeSummaryFile(summaryPath, aggregated, computeCompliance(aggregated));
-
-    const content = readFileSync(summaryPath, 'utf8');
+    const content = write(makeAggregated({ ruleViolations: [violation] }));
     // oxlint-disable-next-line no-control-regex -- asserting the ANSI escape byte is absent
     expect(content).not.toMatch(/\x1b\[/);
   });
 
-  it('only lists flagged packages (deprecated/banned/overdue), not healthy ones', () => {
-    const healthy = createMockPackage('react');
-    const deprecated = createMockPackage('left-pad', {
-      releaseAge: createMockReleaseAge({ deprecated: '2020-01-01' }),
+  describe('Rules section', () => {
+    it('excludes an info-severity rule violation from the lines and the error/warning count', () => {
+      const errorViolation: RuleViolation = {
+        type: 'require_files',
+        severity: 'error',
+        patterns: ['.nvmrc'],
+        matchedFiles: [],
+      };
+      const infoViolation: RuleViolation = {
+        type: 'detect_files',
+        severity: 'info',
+        patterns: ['.env'],
+        matchedFiles: ['.env'],
+      };
+      const content = write(
+        makeAggregated({ ruleViolations: [errorViolation, infoViolation] }),
+      );
+      expect(content).toContain('require_files');
+      expect(content).not.toContain('detect_files');
+      expect(content).toContain('1 error');
+      expect(content).not.toContain('warning');
     });
-    const overdueWarn = createMockPackage('lodash', {
-      releaseAge: createMockReleaseAge({
-        worstLevel: 'minor_overdue',
-        severity: 'warn',
-        upgrades: [
-          {
-            version: '4.17.21',
-            releasedDaysAgo: 10,
-            breachReleasedDaysAgo: 100,
-            semverBump: 'minor',
-            level: 'minor_overdue',
-            thresholdDays: 60,
-          },
-        ],
-      }),
-    });
-    const aggregated = makeAggregated({
-      packageDistribution: [healthy, deprecated, overdueWarn],
-    });
-    writeSummaryFile(summaryPath, aggregated, computeCompliance(aggregated));
 
-    const content = readFileSync(summaryPath, 'utf8');
-    expect(content).toContain('left-pad');
-    expect(content).toContain('lodash');
-    expect(content).not.toContain('react');
+    it('still shows error and warn severities', () => {
+      const errorViolation: RuleViolation = {
+        type: 'require_files',
+        severity: 'error',
+        patterns: ['.nvmrc'],
+        matchedFiles: [],
+      };
+      const warnViolation: RuleViolation = {
+        type: 'require_files',
+        severity: 'warn',
+        patterns: ['.editorconfig'],
+        matchedFiles: [],
+      };
+      const content = write(
+        makeAggregated({ ruleViolations: [errorViolation, warnViolation] }),
+      );
+      expect(content).toContain('1 error, 1 warning');
+    });
+
+    it('renders "All rule checks passed" when only info-severity violations exist', () => {
+      const infoViolation: RuleViolation = {
+        type: 'detect_files',
+        severity: 'info',
+        patterns: ['.env'],
+        matchedFiles: ['.env'],
+      };
+      const content = write(
+        makeAggregated({ ruleViolations: [infoViolation] }),
+      );
+      expect(content).toContain('All rule checks passed');
+      expect(content).not.toContain('detect_files');
+    });
+
+    it('still shows a banned package as a forbid_packages line', () => {
+      const violation: BannedPackageViolation = {
+        packageName: 'moment',
+        severity: 'error',
+        message: 'Use date-fns or dayjs',
+      };
+      const content = write(
+        makeAggregated({ bannedPackageViolations: [violation] }),
+      );
+      expect(content).toContain(
+        'forbid_packages — moment is forbidden — Use date-fns or dayjs',
+      );
+    });
+
+    it('excludes an info-severity banned package violation', () => {
+      const violation: BannedPackageViolation = {
+        packageName: 'some-pkg',
+        severity: 'info',
+        message: 'internal note',
+      };
+      const content = write(
+        makeAggregated({ bannedPackageViolations: [violation] }),
+      );
+      expect(content).toContain('All rule checks passed');
+      expect(content).not.toContain('some-pkg');
+    });
   });
 
-  it('does not show a "success" glyph next to a deprecated-only package with no upgrade info', () => {
-    const deprecated = createMockPackage('left-pad', {
-      releaseAge: createMockReleaseAge({ deprecated: '2020-01-01' }),
+  describe('Packages section', () => {
+    it('excludes a deprecated-only package (no breached tier)', () => {
+      const deprecated = createMockPackage('left-pad', {
+        releaseAge: createMockReleaseAge({ deprecated: '2020-01-01' }),
+      });
+      const content = write(
+        makeAggregated({ packageDistribution: [deprecated] }),
+      );
+      expect(content).not.toContain('### Packages');
+      expect(content).not.toContain('left-pad');
     });
-    const aggregated = makeAggregated({ packageDistribution: [deprecated] });
-    writeSummaryFile(summaryPath, aggregated, computeCompliance(aggregated));
 
-    const content = readFileSync(summaryPath, 'utf8');
-    const packageLine = content
-      .split('\n')
-      .find((line) => line.includes('left-pad'));
-    expect(packageLine).toBe('- [DEPRECATED] left-pad');
+    it('excludes a not-enforced (severity: warn) overdue package', () => {
+      const overdueWarn = createMockPackage('lodash', {
+        releaseAge: createMockReleaseAge({
+          worstLevel: 'minor_overdue',
+          severity: 'warn',
+          upgrades: [
+            {
+              version: '4.17.21',
+              releasedDaysAgo: 10,
+              breachReleasedDaysAgo: 100,
+              semverBump: 'minor',
+              level: 'minor_overdue',
+              thresholdDays: 60,
+            },
+          ],
+        }),
+      });
+      const content = write(
+        makeAggregated({ packageDistribution: [overdueWarn] }),
+      );
+      expect(content).not.toContain('### Packages');
+      expect(content).not.toContain('lodash');
+    });
+
+    it('shows an enforced (severity: error) overdue package with the upgrade description', () => {
+      const overdueError = createMockPackage('my-internal-pkg', {
+        releaseAge: createMockReleaseAge({
+          worstLevel: 'major_overdue',
+          severity: 'error',
+          upgrades: [
+            {
+              version: '4.2.0',
+              releasedDaysAgo: 10,
+              breachReleasedDaysAgo: 100,
+              semverBump: 'major',
+              level: 'major_overdue',
+              thresholdDays: 60,
+            },
+          ],
+        }),
+      });
+      const content = write(
+        makeAggregated({ packageDistribution: [overdueError] }),
+      );
+      expect(content).toContain('### Packages');
+      expect(content).toContain(
+        '🔴 my-internal-pkg — major 4.2.0 (40 days overdue)',
+      );
+    });
+
+    it('joins both reasons on one line for a package that is enforced-overdue and deprecated', () => {
+      const both = createMockPackage('my-internal-pkg', {
+        releaseAge: createMockReleaseAge({
+          worstLevel: 'major_overdue',
+          severity: 'error',
+          deprecated: '2020-01-01',
+          upgrades: [
+            {
+              version: '4.2.0',
+              releasedDaysAgo: 10,
+              breachReleasedDaysAgo: 100,
+              semverBump: 'major',
+              level: 'major_overdue',
+              thresholdDays: 60,
+            },
+          ],
+        }),
+      });
+      const content = write(makeAggregated({ packageDistribution: [both] }));
+      const line = content
+        .split('\n')
+        .find((l) => l.includes('my-internal-pkg'));
+      expect(line).toBe(
+        '- 🔴 my-internal-pkg — major 4.2.0 (40 days overdue), deprecated',
+      );
+    });
+
+    it('does not show a banned/restricted package (it is Rules-only, not duplicated here)', () => {
+      const banned = createMockPackage('moment');
+      const violation: BannedPackageViolation = {
+        packageName: 'moment',
+        severity: 'error',
+        message: 'Use date-fns or dayjs',
+      };
+      const content = write(
+        makeAggregated({
+          packageDistribution: [banned],
+          bannedPackageViolations: [violation],
+        }),
+      );
+      expect(content).not.toContain('### Packages');
+      expect(content).toContain('forbid_packages — moment is forbidden');
+    });
+
+    it('omits the Packages heading entirely when there are no mandatory release-age violations', () => {
+      const healthy = createMockPackage('react');
+      const content = write(makeAggregated({ packageDistribution: [healthy] }));
+      expect(content).not.toContain('### Packages');
+    });
+
+    it('never uses the "(issues only)" qualifier in the header', () => {
+      const overdueError = createMockPackage('my-internal-pkg', {
+        releaseAge: createMockReleaseAge({
+          worstLevel: 'major_overdue',
+          severity: 'error',
+          upgrades: [
+            {
+              version: '4.2.0',
+              releasedDaysAgo: 10,
+              breachReleasedDaysAgo: 100,
+              semverBump: 'major',
+              level: 'major_overdue',
+              thresholdDays: 60,
+            },
+          ],
+        }),
+      });
+      const content = write(
+        makeAggregated({ packageDistribution: [overdueError] }),
+      );
+      expect(content).toContain('### Packages\n');
+      expect(content).not.toContain('(issues only)');
+    });
   });
 
   it('omits Versus content, even when versusResults is populated', () => {
-    const aggregated = makeAggregated({
-      versusResults: [
-        {
-          name: 'ui-kits',
-          packages: ['react', 'vue'],
-          entries: [
-            { packageName: 'react', count: 3, percentage: 100, components: [] },
-            { packageName: 'vue', count: 0, percentage: 0, components: [] },
-          ],
-          totalCount: 3,
-        },
-      ],
-    });
-    writeSummaryFile(summaryPath, aggregated, computeCompliance(aggregated));
-
-    const content = readFileSync(summaryPath, 'utf8');
+    const content = write(
+      makeAggregated({
+        versusResults: [
+          {
+            name: 'ui-kits',
+            packages: ['react', 'vue'],
+            entries: [
+              {
+                packageName: 'react',
+                count: 3,
+                percentage: 100,
+                components: [],
+              },
+              { packageName: 'vue', count: 0, percentage: 0, components: [] },
+            ],
+            totalCount: 3,
+          },
+        ],
+      }),
+    );
     expect(content).not.toContain('Versus');
     expect(content).not.toContain('ui-kits');
   });
 
   it('writes a COMPLIANT verdict when there are no violations', () => {
-    const aggregated = makeAggregated();
-    writeSummaryFile(summaryPath, aggregated, computeCompliance(aggregated));
-
-    const content = readFileSync(summaryPath, 'utf8');
+    const content = write(makeAggregated());
     expect(content).toContain('COMPLIANT');
     expect(content).not.toContain('NOT COMPLIANT');
   });
@@ -147,10 +326,7 @@ describe('writeSummaryFile', () => {
       patterns: ['.nvmrc'],
       matchedFiles: [],
     };
-    const aggregated = makeAggregated({ ruleViolations: [violation] });
-    writeSummaryFile(summaryPath, aggregated, computeCompliance(aggregated));
-
-    const content = readFileSync(summaryPath, 'utf8');
+    const content = write(makeAggregated({ ruleViolations: [violation] }));
     expect(content).toContain('NOT COMPLIANT');
     expect(content).toContain('1 mandatory violation found');
   });

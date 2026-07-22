@@ -1,18 +1,20 @@
 import { writeFileSync } from 'node:fs';
 import type { AggregatedReport } from './aggregator';
 import type { ComplianceResult } from './compliance';
-import type { PackageDistribution } from './package-distribution';
 import { describeViolation, formatRuleType } from './print-rules';
-import {
-  formatPackageName,
-  formatUpgradeCell,
-  getBannedViolation,
-} from './print-packages';
+import { describeUpgradeTarget } from './print-packages';
 import { severityIcon, stripAnsi } from './severity-format';
-import type { BannedPackageViolation } from './package-rules';
 
 function buildRulesSection(aggregated: AggregatedReport): string {
-  const { ruleViolations, bannedPackageViolations } = aggregated;
+  // Info-severity rows are excluded here (unlike the terminal `printRules`,
+  // which shows everything) — a summary meant for a PR comment or job
+  // summary should only surface what's actually enforceable (#31).
+  const ruleViolations = aggregated.ruleViolations.filter(
+    (v) => v.severity !== 'info',
+  );
+  const bannedPackageViolations = aggregated.bannedPackageViolations.filter(
+    (v) => v.severity !== 'info',
+  );
 
   if (ruleViolations.length === 0 && bannedPackageViolations.length === 0) {
     return '### Rules\n\nAll rule checks passed\n';
@@ -46,42 +48,25 @@ function buildRulesSection(aggregated: AggregatedReport): string {
   return lines.join('\n') + '\n';
 }
 
-// Deliberately not scoped to severity 'error' only — the summary surfaces
-// advisory (warn-severity) overdue packages too, even though they wouldn't
-// fail computeCompliance (#31).
-function isFlaggedPackage(
-  pkg: PackageDistribution,
-  banned: BannedPackageViolation | undefined,
-): boolean {
-  return (
-    Boolean(pkg.releaseAge?.deprecated) ||
-    banned !== undefined ||
-    (pkg.releaseAge !== undefined && pkg.releaseAge.worstLevel !== null)
-  );
-}
+// Built directly from compliance.releaseAgeViolations rather than a
+// separately-derived filter — that's already exactly "release-age packages
+// that are mandatory failures" (src/utils/compliance.ts), so the row list
+// can never drift from the verdict's mandatory-violation count. Banned and
+// deprecated-only/not-enforced packages don't get a row here: banned ones
+// are already shown in Rules as a forbid_packages line, and deprecated-only
+// or not-enforced-overdue packages are info-level, not enforceable (#31).
+function buildPackagesSection(compliance: ComplianceResult): string {
+  if (compliance.releaseAgeViolations.length === 0) return '';
 
-function buildPackagesSection(aggregated: AggregatedReport): string {
-  const flagged = aggregated.packageDistribution.filter((pkg) =>
-    isFlaggedPackage(
-      pkg,
-      getBannedViolation(pkg, aggregated.bannedPackageViolations),
-    ),
-  );
-
-  if (flagged.length === 0) return '';
-
-  const lines: string[] = ['### Packages (issues only)', ''];
-  for (const pkg of flagged) {
-    const banned = getBannedViolation(pkg, aggregated.bannedPackageViolations);
-    const name = formatPackageName(pkg, banned);
-    // Only show the upgrade cell when there's an actual recommendation to
-    // report — otherwise a deprecated-only or banned-only row would render a
-    // bare "success" glyph next to it, which reads as a contradiction here.
-    const hasUpgradeInfo =
-      pkg.releaseAge?.worstLevel != null ||
-      pkg.releaseAge?.pendingUpgrade !== undefined;
-    const upgrade = hasUpgradeInfo ? formatUpgradeCell(pkg.releaseAge) : '';
-    lines.push(`- ${name}${upgrade ? ` ${upgrade}` : ''}`);
+  const lines: string[] = ['### Packages', ''];
+  for (const pkg of compliance.releaseAgeViolations) {
+    const top = pkg.releaseAge?.upgrades[0];
+    const reasons: string[] = [];
+    if (top) reasons.push(describeUpgradeTarget(top));
+    if (pkg.releaseAge?.deprecated) reasons.push('deprecated');
+    lines.push(
+      `- ${severityIcon('error')} ${pkg.packageName} — ${reasons.join(', ')}`,
+    );
   }
 
   return lines.join('\n') + '\n';
@@ -101,10 +86,10 @@ function buildVerdictSection(compliance: ComplianceResult): string {
 }
 
 /**
- * Writes a concise, ANSI-free markdown summary (rules, flagged packages,
- * verdict) for CI surfaces that can't render the full human report — a
- * sticky PR comment or job summary (#31). Omits Versus and progress chrome
- * by construction; never touches ora or the Versus renderer.
+ * Writes a concise, ANSI-free markdown summary (rules, mandatory package
+ * violations, verdict) for CI surfaces that can't render the full human
+ * report — a sticky PR comment or job summary (#31). Omits Versus and
+ * progress chrome by construction; never touches ora or the Versus renderer.
  */
 export function writeSummaryFile(
   path: string,
@@ -113,7 +98,7 @@ export function writeSummaryFile(
 ): void {
   const sections = [
     buildRulesSection(aggregated),
-    buildPackagesSection(aggregated),
+    buildPackagesSection(compliance),
     buildVerdictSection(compliance),
   ].filter((section) => section.length > 0);
 
