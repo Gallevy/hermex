@@ -197,6 +197,8 @@ export default defineConfig({
 
 If `enforceOn` is omitted, every package's release age counts toward compliance (current behavior).
 
+`enforceOn` matches are checked against the lockfile directly, not just packages hermex found imported as components — so a CSS-only or side-effect-only dependency (e.g. `import '@my-org/styles/button.css'`) still gets checked and can still fail `hermex comply`, even though it never shows up in component usage.
+
 ## Compliance Checking
 
 `hermex scan` is purely informational and always exits `0`. Use `hermex comply` to gate CI on your rules and release-age policy — it runs the same analysis pipeline, reports every violation (it does not stop at the first one), then exits based on the result:

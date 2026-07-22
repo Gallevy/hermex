@@ -206,3 +206,166 @@ describe('calculatePackageDistribution', () => {
     expect(distribution).toEqual([]);
   });
 });
+
+describe('calculatePackageDistribution — lockfile-only enforceOn deps (#27)', () => {
+  it('surfaces a lockfile package with zero usage when it matches releaseAge.enforceOn', () => {
+    const componentUsageMap = new Map<string, ComponentUsage>();
+    const config = createConfig({
+      releaseAge: { enabled: true, enforceOn: ['@guestyci/arc-styles'] },
+    });
+
+    const distribution = calculatePackageDistribution(
+      componentUsageMap,
+      { '@guestyci/arc-styles': '2.1.0' },
+      config,
+    );
+
+    expect(distribution).toHaveLength(1);
+    expect(distribution[0]).toMatchObject({
+      packageName: '@guestyci/arc-styles',
+      version: '2.1.0',
+      componentCount: 0,
+      usageCount: 0,
+      percentage: 0,
+      components: [],
+      internal: false,
+    });
+  });
+
+  it('does not surface lockfile-only packages when releaseAge is disabled', () => {
+    const componentUsageMap = new Map<string, ComponentUsage>();
+    const config = createConfig({
+      releaseAge: { enabled: false, enforceOn: ['@guestyci/arc-styles'] },
+    });
+
+    const distribution = calculatePackageDistribution(
+      componentUsageMap,
+      { '@guestyci/arc-styles': '2.1.0' },
+      config,
+    );
+
+    expect(distribution).toEqual([]);
+  });
+
+  it('does not surface lockfile-only packages when enforceOn is left empty (avoids pulling in the whole lockfile)', () => {
+    const componentUsageMap = new Map<string, ComponentUsage>();
+    const config = createConfig({ releaseAge: { enabled: true } });
+
+    const distribution = calculatePackageDistribution(
+      componentUsageMap,
+      { '@guestyci/arc-styles': '2.1.0', lodash: '4.17.21' },
+      config,
+    );
+
+    expect(distribution).toEqual([]);
+  });
+
+  it('does not duplicate or reset an entry that already has real component usage', () => {
+    const componentUsageMap = new Map<string, ComponentUsage>([
+      ['Button', makeComponent('Button', '@guestyci/arc-styles', 3)],
+    ]);
+    const config = createConfig({
+      releaseAge: { enabled: true, enforceOn: ['@guestyci/arc-styles'] },
+    });
+
+    const distribution = calculatePackageDistribution(
+      componentUsageMap,
+      { '@guestyci/arc-styles': '2.1.0' },
+      config,
+    );
+
+    expect(distribution).toHaveLength(1);
+    expect(distribution[0].componentCount).toBe(1);
+    expect(distribution[0].usageCount).toBe(3);
+  });
+
+  it('respects a configured ignore pattern for a lockfile-only enforceOn match', () => {
+    const componentUsageMap = new Map<string, ComponentUsage>();
+    const config = createConfig({
+      packages: { ignore: ['@guestyci/arc-styles'] },
+      releaseAge: { enabled: true, enforceOn: ['@guestyci/arc-styles'] },
+    });
+
+    const distribution = calculatePackageDistribution(
+      componentUsageMap,
+      { '@guestyci/arc-styles': '2.1.0' },
+      config,
+    );
+
+    expect(distribution).toEqual([]);
+  });
+
+  it('marks a lockfile-only enforceOn match as internal when it matches an internal pattern', () => {
+    const componentUsageMap = new Map<string, ComponentUsage>();
+    const config = createConfig({
+      packages: { internal: ['@guestyci/*'] },
+      releaseAge: { enabled: true, enforceOn: ['@guestyci/arc-styles'] },
+    });
+
+    const distribution = calculatePackageDistribution(
+      componentUsageMap,
+      { '@guestyci/arc-styles': '2.1.0' },
+      config,
+    );
+
+    expect(distribution[0].internal).toBe(true);
+  });
+
+  it('flags hasVersionConflict/allVersions for a lockfile-only enforceOn match', () => {
+    const componentUsageMap = new Map<string, ComponentUsage>();
+    const config = createConfig({
+      releaseAge: { enabled: true, enforceOn: ['@guestyci/arc-styles'] },
+    });
+
+    const distribution = calculatePackageDistribution(
+      componentUsageMap,
+      { '@guestyci/arc-styles': '2.1.0' },
+      config,
+      { '@guestyci/arc-styles': ['2.0.0', '2.1.0'] },
+    );
+
+    expect(distribution[0].hasVersionConflict).toBe(true);
+    expect(distribution[0].allVersions).toEqual(['2.0.0', '2.1.0']);
+  });
+
+  it('only surfaces lockfile packages matching enforceOn, leaving unmatched deps out', () => {
+    const componentUsageMap = new Map<string, ComponentUsage>();
+    const config = createConfig({
+      releaseAge: { enabled: true, enforceOn: ['@guestyci/arc-styles'] },
+    });
+
+    const distribution = calculatePackageDistribution(
+      componentUsageMap,
+      { '@guestyci/arc-styles': '2.1.0', lodash: '4.17.21' },
+      config,
+    );
+
+    expect(distribution).toHaveLength(1);
+    expect(distribution[0].packageName).toBe('@guestyci/arc-styles');
+  });
+
+  it('does not affect percentage totals for packages with real usage', () => {
+    const componentUsageMap = new Map<string, ComponentUsage>([
+      ['Button', makeComponent('Button', 'antd', 3)],
+      ['DatePicker', makeComponent('DatePicker', 'moment', 1)],
+    ]);
+    const config = createConfig({
+      releaseAge: { enabled: true, enforceOn: ['@guestyci/arc-styles'] },
+    });
+
+    const distribution = calculatePackageDistribution(
+      componentUsageMap,
+      { '@guestyci/arc-styles': '2.1.0' },
+      config,
+    );
+
+    const antd = distribution.find((p) => p.packageName === 'antd');
+    const moment = distribution.find((p) => p.packageName === 'moment');
+    const arcStyles = distribution.find(
+      (p) => p.packageName === '@guestyci/arc-styles',
+    );
+    expect(antd?.percentage).toBeCloseTo(75);
+    expect(moment?.percentage).toBeCloseTo(25);
+    expect(arcStyles?.percentage).toBe(0);
+  });
+});
