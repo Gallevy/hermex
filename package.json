@@ -53,40 +53,40 @@
   },
   "dependencies": {
     "@pnpm/dependency-path": "^1001.1.10",
-    "@swc/core": "^1.15.43",
+    "@swc/core": "^1.15.46",
     "@swc/types": "^0.1.27",
     "@yarnpkg/lockfile": "^1.1.0",
     "chalk": "^5.6.2",
     "cli-table3": "^0.6.5",
     "commander": "^15.0.0",
     "glob": "^13.0.6",
-    "js-yaml": "^5.2.0",
+    "js-yaml": "^5.2.1",
     "micromatch": "^4.0.8",
     "ora": "^9.4.1",
     "semver": "^7.8.5",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/changelog": "^7.0.0",
     "@semantic-release/commit-analyzer": "^13.0.1",
-    "@semantic-release/git": "^10.0.1",
-    "@semantic-release/github": "^12.0.8",
+    "@semantic-release/git": "^11.0.0",
+    "@semantic-release/github": "^12.0.9",
     "@semantic-release/npm": "^13.1.5",
     "@semantic-release/release-notes-generator": "^14.1.1",
     "@types/js-yaml": "^4.0.9",
     "@types/micromatch": "^4.0.10",
-    "@types/node": "^26.0.1",
+    "@types/node": "^26.1.1",
     "@types/semver": "^7.7.1",
-    "@vitest/coverage-v8": "4.1.9",
-    "oxfmt": "^0.56.0",
-    "oxlint": "^1.71.0",
-    "semantic-release": "^25.0.5",
-    "tsdown": "^0.22.3",
-    "typescript": "7.0.1-rc",
-    "vitest": "^4.1.9"
+    "@vitest/coverage-v8": "4.1.10",
+    "oxfmt": "^0.60.0",
+    "oxlint": "^1.75.0",
+    "semantic-release": "^25.0.8",
+    "tsdown": "^0.22.14",
+    "typescript": "7.0.2",
+    "vitest": "^4.1.10"
   },
   "engines": {
-    "node": ">=24.11.1"
+    "node": ">=26.4.0"
   },
   "pnpm": {
     "overrides": {
