@@ -1,3 +1,10 @@
+# [2.4.0](https://github.com/Gallevy/hermex/compare/v2.3.0...v2.4.0) (2026-07-24)
+
+
+### Features
+
+* emit a title in comply --summary-file output ([#38](https://github.com/Gallevy/hermex/issues/38)) ([6fffb22](https://github.com/Gallevy/hermex/commit/6fffb22dcf69bf626f2e61943883146ce53ab8d9))
+
 # [2.3.0](https://github.com/Gallevy/hermex/compare/v2.2.0...v2.3.0) (2026-07-24)
 
 
