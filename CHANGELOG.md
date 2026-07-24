@@ -1,3 +1,10 @@
+## [2.5.1](https://github.com/Gallevy/hermex/compare/v2.5.0...v2.5.1) (2026-07-24)
+
+
+### Performance Improvements
+
+* precompile CODEOWNERS matchers in findOwningEntry (plan 038, rebuilt after conflict) ([#49](https://github.com/Gallevy/hermex/issues/49)) ([6a82a86](https://github.com/Gallevy/hermex/commit/6a82a863d5fbccd4e46d64b727087366a7f86e03))
+
 # [2.5.0](https://github.com/Gallevy/hermex/compare/v2.4.2...v2.5.0) (2026-07-24)
 
 
