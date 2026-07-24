@@ -34,6 +34,8 @@ const EngineVersionRuleSchema = z.object({
 const CodeownersRuleSchema = z.object({
   severity: RuleSeveritySchema,
   message: z.string().optional(),
+  /** If set, matched files must be owned by at least one of these owner strings (exact match against CODEOWNERS entries, e.g. "@org/team"). */
+  requiredOwners: z.array(z.string()).optional(),
 });
 
 const ThresholdSchema = z.union([z.number(), z.literal(false)]);
