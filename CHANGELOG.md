@@ -1,3 +1,10 @@
+# [2.3.0](https://github.com/Gallevy/hermex/compare/v2.2.0...v2.3.0) (2026-07-24)
+
+
+### Features
+
+* render comply summary Packages section as a markdown table ([#37](https://github.com/Gallevy/hermex/issues/37)) ([b8429a7](https://github.com/Gallevy/hermex/commit/b8429a7f81feab112b7bd5bd9ea67293a27de03a))
+
 # [2.2.0](https://github.com/Gallevy/hermex/compare/v2.1.0...v2.2.0) (2026-07-22)
 
 
