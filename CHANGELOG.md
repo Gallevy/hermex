@@ -1,3 +1,10 @@
+# [2.5.0](https://github.com/Gallevy/hermex/compare/v2.4.2...v2.5.0) (2026-07-24)
+
+
+### Features
+
+* add requiredOwners option to the codeowners rule (plan 039) ([#48](https://github.com/Gallevy/hermex/issues/48)) ([6a8b398](https://github.com/Gallevy/hermex/commit/6a8b398c7ffeedea75697d94e8ea175ed16fcf31))
+
 ## [2.4.2](https://github.com/Gallevy/hermex/compare/v2.4.1...v2.4.2) (2026-07-24)
 
 
