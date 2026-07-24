@@ -161,6 +161,27 @@ nothing after it) explicitly un-assigns ownership for files it matches,
 even if an earlier pattern owned them. If no CODEOWNERS file is found at
 all, this rule reports a single violation rather than silently passing.
 
+Require a *specific* owner (not just "owned by someone"), useful for
+critical paths that must be reviewed by a particular team:
+
+```ts
+export default defineConfig({
+  rules: {
+    codeowners: {
+      severity: 'error',
+      requiredOwners: ['@org/platform-team'],
+      message: 'Critical paths must be owned by @org/platform-team',
+    },
+  },
+});
+```
+
+`requiredOwners` matches CODEOWNERS entries' owner strings exactly (as
+written in the file, e.g. `@org/team` or `@individual`) — it does not
+resolve GitHub team membership. Files with no CODEOWNERS coverage at all
+are still reported as "unowned," separately from files owned by someone
+who isn't in `requiredOwners`.
+
 ### Script and Field Requirements
 
 ```ts

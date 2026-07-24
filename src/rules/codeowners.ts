@@ -89,14 +89,23 @@ export function codeownersPatternToGlobs(pattern: string): string[] {
   return globs;
 }
 
-/** Last matching entry wins; owned iff that entry has >= 1 owner. */
-export function fileIsOwned(file: string, entries: CodeownersEntry[]): boolean {
+/** Last matching entry, or null if none match. */
+export function findOwningEntry(
+  file: string,
+  entries: CodeownersEntry[],
+): CodeownersEntry | null {
   for (let i = entries.length - 1; i >= 0; i--) {
     if (micromatch.isMatch(file, entries[i].globs, { dot: true })) {
-      return entries[i].owners.length > 0;
+      return entries[i];
     }
   }
-  return false;
+  return null;
+}
+
+/** Last matching entry wins; owned iff that entry has >= 1 owner. */
+export function fileIsOwned(file: string, entries: CodeownersEntry[]): boolean {
+  const entry = findOwningEntry(file, entries);
+  return entry !== null && entry.owners.length > 0;
 }
 
 export function evaluateCodeowners(
@@ -124,16 +133,46 @@ export function evaluateCodeowners(
   const relFiles = scannedFiles.map((f) =>
     (path.isAbsolute(f) ? path.relative(repoPath, f) : f).replace(/\\/g, '/'),
   );
-  const unowned = relFiles.filter((f) => !fileIsOwned(f, entries));
-  if (unowned.length === 0) return [];
 
-  return [
-    {
+  const unowned: string[] = [];
+  const wrongOwner: string[] = [];
+  const requiredOwners = rule.requiredOwners;
+
+  for (const f of relFiles) {
+    const entry = findOwningEntry(f, entries);
+    const owned = entry !== null && entry.owners.length > 0;
+    if (!owned) {
+      unowned.push(f);
+      continue;
+    }
+    if (requiredOwners && requiredOwners.length > 0) {
+      const hasRequiredOwner = entry!.owners.some((o) =>
+        requiredOwners.includes(o),
+      );
+      if (!hasRequiredOwner) wrongOwner.push(f);
+    }
+  }
+
+  const violations: RuleViolation[] = [];
+  if (unowned.length > 0) {
+    violations.push({
       type: 'codeowners',
       severity: rule.severity,
       patterns: [path.basename(filePath)],
       message: rule.message,
       matchedFiles: unowned,
-    },
-  ];
+    });
+  }
+  if (wrongOwner.length > 0) {
+    violations.push({
+      type: 'codeowners',
+      severity: rule.severity,
+      patterns: [path.basename(filePath)],
+      message:
+        rule.message ??
+        `Files must be owned by one of: ${requiredOwners!.join(', ')}`,
+      matchedFiles: wrongOwner,
+    });
+  }
+  return violations;
 }

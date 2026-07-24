@@ -166,3 +166,81 @@ describe('evaluateCodeowners', () => {
     expect(result).toHaveLength(0);
   });
 });
+
+describe('evaluateCodeowners — requiredOwners', () => {
+  let tempDir: string;
+
+  afterEach(() => {
+    if (tempDir) rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it('flags a file owned by someone other than the required owner', () => {
+    tempDir = mkdtempSync(join(tmpdir(), 'hermex-codeowners-test-'));
+    mkdirSync(join(tempDir, '.github'));
+    writeFileSync(join(tempDir, '.github', 'CODEOWNERS'), 'src/ @other-team\n');
+    const result = evaluateCodeowners(
+      tempDir,
+      {
+        ...emptyRules,
+        codeowners: { severity: 'error', requiredOwners: ['@platform-team'] },
+      },
+      ['src/App.tsx'],
+    );
+    expect(result).toHaveLength(1);
+    expect(result[0].matchedFiles).toEqual(['src/App.tsx']);
+  });
+
+  it('does not flag a file owned by a required owner', () => {
+    tempDir = mkdtempSync(join(tmpdir(), 'hermex-codeowners-test-'));
+    mkdirSync(join(tempDir, '.github'));
+    writeFileSync(
+      join(tempDir, '.github', 'CODEOWNERS'),
+      'src/ @platform-team @other-team\n',
+    );
+    const result = evaluateCodeowners(
+      tempDir,
+      {
+        ...emptyRules,
+        codeowners: { severity: 'error', requiredOwners: ['@platform-team'] },
+      },
+      ['src/App.tsx'],
+    );
+    expect(result).toHaveLength(0);
+  });
+
+  it('reports unowned and wrong-owner files as separate violations', () => {
+    tempDir = mkdtempSync(join(tmpdir(), 'hermex-codeowners-test-'));
+    mkdirSync(join(tempDir, '.github'));
+    writeFileSync(join(tempDir, '.github', 'CODEOWNERS'), 'src/ @other-team\n');
+    const result = evaluateCodeowners(
+      tempDir,
+      {
+        ...emptyRules,
+        codeowners: { severity: 'error', requiredOwners: ['@platform-team'] },
+      },
+      ['src/App.tsx', 'lib/x.ts'],
+    );
+    expect(result).toHaveLength(2);
+    const unownedViolation = result.find((v) =>
+      v.matchedFiles.includes('lib/x.ts'),
+    );
+    const wrongOwnerViolation = result.find((v) =>
+      v.matchedFiles.includes('src/App.tsx'),
+    );
+    expect(unownedViolation).toBeDefined();
+    expect(wrongOwnerViolation).toBeDefined();
+    expect(unownedViolation).not.toBe(wrongOwnerViolation);
+  });
+
+  it('is a no-op when requiredOwners is not set (existing behavior unchanged)', () => {
+    tempDir = mkdtempSync(join(tmpdir(), 'hermex-codeowners-test-'));
+    mkdirSync(join(tempDir, '.github'));
+    writeFileSync(join(tempDir, '.github', 'CODEOWNERS'), 'src/ @any-team\n');
+    const result = evaluateCodeowners(
+      tempDir,
+      { ...emptyRules, codeowners: { severity: 'error' } },
+      ['src/App.tsx'],
+    );
+    expect(result).toHaveLength(0);
+  });
+});
