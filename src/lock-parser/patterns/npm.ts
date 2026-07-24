@@ -1,6 +1,11 @@
 import fs from 'fs';
 import path from 'path';
-import type { LockfileAdapter, MultiVersionMap } from '../lock-file-adapter';
+import {
+  readAndParseLockfile,
+  toSortedMultiVersionMap,
+  type LockfileAdapter,
+  type MultiVersionMap,
+} from '../lock-file-adapter';
 
 function canonicalPackageName(pkgPath: string): string {
   // pkgPath examples:
@@ -24,80 +29,78 @@ export class NpmLockfileAdapter implements LockfileAdapter {
   }
 
   parse(lockFilePath: string): Record<string, string> {
-    try {
-      const content = fs.readFileSync(lockFilePath, 'utf8');
-      const lockData = JSON.parse(content);
-      const versions: Record<string, string> = {};
+    return readAndParseLockfile(
+      lockFilePath,
+      (content) => {
+        const lockData = JSON.parse(content);
+        const versions: Record<string, string> = {};
 
-      // npm v7+ uses "packages" field (lockfileVersion 2, 3)
-      if (lockData.packages) {
-        Object.entries(lockData.packages).forEach(
-          ([pkgPath, pkgData]: [string, any]) => {
-            if (!pkgPath || pkgPath === '') return;
+        // npm v7+ uses "packages" field (lockfileVersion 2, 3)
+        if (lockData.packages) {
+          Object.entries(lockData.packages).forEach(
+            ([pkgPath, pkgData]: [string, any]) => {
+              if (!pkgPath || pkgPath === '') return;
 
-            // Only root-level packages (no nested node_modules in path)
-            if (pkgPath.split('node_modules/').length > 2) return;
+              // Only root-level packages (no nested node_modules in path)
+              if (pkgPath.split('node_modules/').length > 2) return;
 
-            const pkgName = canonicalPackageName(pkgPath);
-            if (pkgData.version) {
-              versions[pkgName] = pkgData.version;
-            }
-          },
-        );
-      }
-
-      // npm v6 uses "dependencies" field (fallback)
-      if (lockData.dependencies && Object.keys(versions).length === 0) {
-        function extractVersions(deps: any, prefix = ''): void {
-          Object.entries(deps).forEach(([name, data]: [string, any]) => {
-            const fullName = prefix ? `${prefix}/${name}` : name;
-            if (data.version) {
-              versions[fullName] = data.version;
-            }
-            if (data.dependencies) {
-              extractVersions(data.dependencies, fullName);
-            }
-          });
+              const pkgName = canonicalPackageName(pkgPath);
+              if (pkgData.version) {
+                versions[pkgName] = pkgData.version;
+              }
+            },
+          );
         }
-        extractVersions(lockData.dependencies);
-      }
 
-      return versions;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.warn(`Warning: Could not parse package-lock.json: ${message}`);
-      return {};
-    }
+        // npm v6 uses "dependencies" field (fallback)
+        if (lockData.dependencies && Object.keys(versions).length === 0) {
+          function extractVersions(deps: any, prefix = ''): void {
+            Object.entries(deps).forEach(([name, data]: [string, any]) => {
+              const fullName = prefix ? `${prefix}/${name}` : name;
+              if (data.version) {
+                versions[fullName] = data.version;
+              }
+              if (data.dependencies) {
+                extractVersions(data.dependencies, fullName);
+              }
+            });
+          }
+          extractVersions(lockData.dependencies);
+        }
+
+        return versions;
+      },
+      {},
+      'package-lock.json',
+    );
   }
 
   parseMultiVersion(lockFilePath: string): MultiVersionMap {
-    try {
-      const content = fs.readFileSync(lockFilePath, 'utf8');
-      const lockData = JSON.parse(content);
-      const versionSets: Record<string, Set<string>> = {};
+    return readAndParseLockfile(
+      lockFilePath,
+      (content) => {
+        const lockData = JSON.parse(content);
+        const versionSets: Record<string, Set<string>> = {};
 
-      if (lockData.packages) {
-        Object.entries(lockData.packages).forEach(
-          ([pkgPath, pkgData]: [string, any]) => {
-            if (!pkgPath || pkgPath === '') return;
+        if (lockData.packages) {
+          Object.entries(lockData.packages).forEach(
+            ([pkgPath, pkgData]: [string, any]) => {
+              if (!pkgPath || pkgPath === '') return;
 
-            const pkgName = canonicalPackageName(pkgPath);
-            const version = (pkgData as any).version;
-            if (!version) return;
+              const pkgName = canonicalPackageName(pkgPath);
+              const version = (pkgData as any).version;
+              if (!version) return;
 
-            if (!versionSets[pkgName]) versionSets[pkgName] = new Set();
-            versionSets[pkgName].add(version);
-          },
-        );
-      }
+              if (!versionSets[pkgName]) versionSets[pkgName] = new Set();
+              versionSets[pkgName].add(version);
+            },
+          );
+        }
 
-      const result: MultiVersionMap = {};
-      for (const [pkg, versions] of Object.entries(versionSets)) {
-        result[pkg] = Array.from(versions).sort();
-      }
-      return result;
-    } catch {
-      return {};
-    }
+        return toSortedMultiVersionMap(versionSets);
+      },
+      {},
+      'package-lock.json (multi-version)',
+    );
   }
 }

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { join } from 'node:path';
+import { writeFileSync, rmSync } from 'node:fs';
 import semver from 'semver';
 import { PnpmLockfileAdapter } from '../../src/lock-parser/patterns/pnpm';
 import { NpmLockfileAdapter } from '../../src/lock-parser/patterns/npm';
@@ -68,6 +69,22 @@ describe('PnpmLockfileAdapter', () => {
     );
     expect(multiVersions).toEqual({});
   });
+
+  it('parseMultiVersion warns and returns empty object on a corrupt lockfile', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const corrupt = join(FIXTURES, 'corrupt-pnpm-lock.yaml');
+    writeFileSync(corrupt, ': not valid yaml: [', 'utf8');
+    try {
+      const multiVersions = adapter.parseMultiVersion(corrupt);
+      expect(multiVersions).toEqual({});
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('pnpm-lock.yaml (multi-version)'),
+      );
+    } finally {
+      warnSpy.mockRestore();
+      rmSync(corrupt);
+    }
+  });
 });
 
 describe('NpmLockfileAdapter', () => {
@@ -87,6 +104,22 @@ describe('NpmLockfileAdapter', () => {
   it('detect returns the lockfile path when package-lock.json is present', () => {
     const result = adapter.detect(FIXTURES);
     expect(result).toBe(join(FIXTURES, 'package-lock.json'));
+  });
+
+  it('parseMultiVersion warns and returns empty object on a corrupt lockfile', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const corrupt = join(FIXTURES, 'corrupt-package-lock.json');
+    writeFileSync(corrupt, '{ not valid json', 'utf8');
+    try {
+      const multiVersions = adapter.parseMultiVersion(corrupt);
+      expect(multiVersions).toEqual({});
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('package-lock.json (multi-version)'),
+      );
+    } finally {
+      warnSpy.mockRestore();
+      rmSync(corrupt);
+    }
   });
 });
 
@@ -118,5 +151,25 @@ describe('YarnLockfileAdapter', () => {
       join(FIXTURES, 'nonexistent.lock'),
     );
     expect(multiVersions).toEqual({});
+  });
+
+  it('parseMultiVersion warns and returns empty object on a corrupt lockfile', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const corrupt = join(FIXTURES, 'corrupt-yarn.lock');
+    // @yarnpkg/lockfile's parser is lenient about plain text (it doesn't
+    // reliably return `type: 'error'`), but an unexpected token throws
+    // synchronously and fast — unlike some other malformed inputs, which
+    // this parser can take several seconds to reject.
+    writeFileSync(corrupt, '{{{ not yaml-ish at all }}}', 'utf8');
+    try {
+      const multiVersions = adapter.parseMultiVersion(corrupt);
+      expect(multiVersions).toEqual({});
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('yarn.lock (multi-version)'),
+      );
+    } finally {
+      warnSpy.mockRestore();
+      rmSync(corrupt);
+    }
   });
 });

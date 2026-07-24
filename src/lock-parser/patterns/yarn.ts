@@ -1,7 +1,12 @@
 import fs from 'fs';
 import path from 'path';
 import lockfile from '@yarnpkg/lockfile';
-import type { LockfileAdapter, MultiVersionMap } from '../lock-file-adapter';
+import {
+  readAndParseLockfile,
+  toSortedMultiVersionMap,
+  type LockfileAdapter,
+  type MultiVersionMap,
+} from '../lock-file-adapter';
 
 function extractPackageName(key: string): string {
   if (key.startsWith('@')) {
@@ -22,58 +27,56 @@ export class YarnLockfileAdapter implements LockfileAdapter {
   }
 
   parse(lockFilePath: string): Record<string, string> {
-    try {
-      const content = fs.readFileSync(lockFilePath, 'utf8');
-      const parsed = lockfile.parse(content);
+    return readAndParseLockfile(
+      lockFilePath,
+      (content) => {
+        const parsed = lockfile.parse(content);
 
-      if (parsed.type !== 'success') {
-        console.warn('Warning: Failed to parse yarn.lock');
-        return {};
-      }
-
-      const versions: Record<string, string> = {};
-
-      Object.entries(parsed.object).forEach(([key, value]: [string, any]) => {
-        const pkgName = extractPackageName(key);
-
-        if (value.version && !versions[pkgName]) {
-          versions[pkgName] = value.version;
+        if (parsed.type !== 'success') {
+          console.warn('Warning: Failed to parse yarn.lock');
+          return {};
         }
-      });
 
-      return versions;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.warn(`Warning: Could not parse yarn.lock: ${message}`);
-      return {};
-    }
+        const versions: Record<string, string> = {};
+
+        Object.entries(parsed.object).forEach(([key, value]: [string, any]) => {
+          const pkgName = extractPackageName(key);
+
+          if (value.version && !versions[pkgName]) {
+            versions[pkgName] = value.version;
+          }
+        });
+
+        return versions;
+      },
+      {},
+      'yarn.lock',
+    );
   }
 
   parseMultiVersion(lockFilePath: string): MultiVersionMap {
-    try {
-      const content = fs.readFileSync(lockFilePath, 'utf8');
-      const parsed = lockfile.parse(content);
+    return readAndParseLockfile(
+      lockFilePath,
+      (content) => {
+        const parsed = lockfile.parse(content);
 
-      if (parsed.type !== 'success') {
-        return {};
-      }
+        if (parsed.type !== 'success') {
+          throw new Error('Failed to parse yarn.lock');
+        }
 
-      const versionSets: Record<string, Set<string>> = {};
+        const versionSets: Record<string, Set<string>> = {};
 
-      Object.entries(parsed.object).forEach(([key, value]: [string, any]) => {
-        if (!value.version) return;
-        const pkgName = extractPackageName(key);
-        if (!versionSets[pkgName]) versionSets[pkgName] = new Set();
-        versionSets[pkgName].add(value.version);
-      });
+        Object.entries(parsed.object).forEach(([key, value]: [string, any]) => {
+          if (!value.version) return;
+          const pkgName = extractPackageName(key);
+          if (!versionSets[pkgName]) versionSets[pkgName] = new Set();
+          versionSets[pkgName].add(value.version);
+        });
 
-      const result: MultiVersionMap = {};
-      for (const [pkg, vers] of Object.entries(versionSets)) {
-        result[pkg] = Array.from(vers).sort();
-      }
-      return result;
-    } catch {
-      return {};
-    }
+        return toSortedMultiVersionMap(versionSets);
+      },
+      {},
+      'yarn.lock (multi-version)',
+    );
   }
 }
