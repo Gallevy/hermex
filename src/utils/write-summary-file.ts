@@ -58,14 +58,19 @@ function buildRulesSection(aggregated: AggregatedReport): string {
 function buildPackagesSection(compliance: ComplianceResult): string {
   if (compliance.releaseAgeViolations.length === 0) return '';
 
-  const lines: string[] = ['### Packages', ''];
+  const lines: string[] = [
+    '### Packages',
+    '',
+    '| | Package | Issue |',
+    '|---|---|---|',
+  ];
   for (const pkg of compliance.releaseAgeViolations) {
     const top = pkg.releaseAge?.upgrades[0];
     const reasons: string[] = [];
     if (top) reasons.push(describeUpgradeTarget(top));
     if (pkg.releaseAge?.deprecated) reasons.push('deprecated');
     lines.push(
-      `- ${severityIcon('error')} ${pkg.packageName} — ${reasons.join(', ')}`,
+      `| ${severityIcon('error')} | \`${pkg.packageName}\` | ${reasons.join(', ')} |`,
     );
   }
 

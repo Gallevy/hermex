@@ -208,8 +208,9 @@ describe('writeSummaryFile', () => {
         makeAggregated({ packageDistribution: [overdueError] }),
       );
       expect(content).toContain('### Packages');
+      expect(content).toContain('| | Package | Issue |');
       expect(content).toContain(
-        '🔴 my-internal-pkg — major 4.2.0 (40 days overdue)',
+        '| 🔴 | `my-internal-pkg` | major 4.2.0 (40 days overdue) |',
       );
     });
 
@@ -236,7 +237,7 @@ describe('writeSummaryFile', () => {
         .split('\n')
         .find((l) => l.includes('my-internal-pkg'));
       expect(line).toBe(
-        '- 🔴 my-internal-pkg — major 4.2.0 (40 days overdue), deprecated',
+        '| 🔴 | `my-internal-pkg` | major 4.2.0 (40 days overdue), deprecated |',
       );
     });
 
