@@ -32,16 +32,18 @@ function resolvePackageFromImportPath(
     return 'local';
   }
 
-  const sortedPackages = [...availablePackages].sort(
-    (a, b) => b.length - a.length,
-  );
-
-  for (const pkg of sortedPackages) {
-    if (importPath === pkg) return pkg;
-    if (importPath.startsWith(`${pkg}/`)) return pkg;
+  let longestMatch: string | null = null;
+  for (const pkg of availablePackages) {
+    const isMatch = importPath === pkg || importPath.startsWith(`${pkg}/`);
+    if (
+      isMatch &&
+      (longestMatch === null || pkg.length > longestMatch.length)
+    ) {
+      longestMatch = pkg;
+    }
   }
 
-  return 'unknown';
+  return longestMatch ?? 'unknown';
 }
 
 export function findComponentSource(
