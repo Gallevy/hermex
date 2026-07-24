@@ -7,18 +7,16 @@ SWC-based AST parser for analyzing code and React component usage patterns acros
 ```bash
 # No installation required - use npx (scans current directory)
 npx hermex scan
-
-# Or install globally
-npm install -g hermex
-hermex scan
-
-# Scan specific directory
-npx hermex scan "src/**/*.tsx"
 ```
+
+hermex is fully config-driven — see [docs/examples.md](docs/examples.md) for
+`hermex.config.ts` options (file targeting, rules, output control). There
+are no CLI flags for scan behavior; `scan`/`comply` only take `--config`,
+`--format`, and `--no-color` (see [CLI Usage](#cli-usage) below).
 
 ## Requirements
 
-- Node.js 20+
+- Node.js 24.11.1+
 
 ## Key Features
 
@@ -63,51 +61,35 @@ Options:
   -h, --help                display help for command
 
 Commands:
-  scan [options] [pattern]  Scan and analyze local files
-  comply [options]          Check compliance with hermex.config.ts rules and
-                            release-age policy (exits non-zero if not
-                            compliant)
-  help [command]            display help for command
+  scan [options]             Scan and analyze local files
+  comply [options]           Check compliance with hermex.config.ts rules and
+                              release-age policy (exits non-zero if not
+                              compliant)
+  help [command]              display help for command
 ```
+
+Both `scan` and `comply` share the same options:
+
+| Option | Description |
+|---|---|
+| `--config <path>` | Path to a hermex config file, overriding CWD discovery |
+| `--format <human\|json>` | Overrides `output.format` from the config file |
+| `--no-color` | Disable colored output (see also the `NO_COLOR` env var) |
+
+All scan behavior — which files to include/exclude, which output sections
+to show, compliance rules, release-age thresholds — is controlled by
+`hermex.config.ts`, not CLI flags. See
+[docs/examples.md](docs/examples.md) for the full config reference.
 
 ### Comply Command
 
-`scan` is informational and always exits `0`. Use `comply` to gate CI — it runs the same pipeline, reports every violation, then exits `0` (compliant), `1` (not compliant), or `2` (couldn't run the check). See [docs/examples.md](docs/examples.md#compliance-checking) for details.
-
-### Scan Command
-
-The `scan` command analyzes local files for React component usage patterns.
-
-```bash
-Usage: hermex scan [options] [pattern]
-
-Scan and analyze local files
-
-Arguments:
-  pattern                      Glob pattern for files to analyze (defaults to
-                               current directory recursively) (default:
-                               "**/*.{tsx,jsx,ts,js}")
-
-Options:
-  --ignore <pattern>           Glob pattern for files to ignore (default:
-                               ["**/node_modules/**","**/dist/**","**/build/**"])
-  --allow-packages <pattern>   Pattern for what packages to scan (default:
-                               ["**"])
-  --ignore-packages <pattern>  Pattern for what packages to ignore (default: [])
-  --no-summary                 Hide summary
-  --components [mode]          Show components table/chart (table, chart)
-                               (default: "table")
-  --no-components              Do not show components
-  --packages [mode]            Show packages table/chart (table, chart)
-                               (default: "table")
-  --no-packages                Do not show packages
-  --patterns [mode]            Show patterns table/chart (table, chart)
-                               (default: "table")
-  --no-patterns                Do not show patterns
-  --ignore-errors              Continue scanning even if some files fail to
-                               parse
-  -h, --help                   display help for command
-```
+`scan` is informational and always exits `0`. Use `comply` to gate CI — it
+runs the same pipeline, reports every violation, then exits `0` (compliant),
+`1` (not compliant), or `2` (couldn't run the check). `comply` additionally
+supports `--summary-file <path>` (and `--summary-title <title>`) to write a
+CI-friendly markdown summary suitable for a GitHub Actions job summary or PR
+comment. See [docs/examples.md](docs/examples.md#compliance-checking) for
+details and a full CI usage example.
 
 ## Configuration
 
@@ -194,12 +176,12 @@ Total: 272 patterns detected
 
 ## Tech Stack
 
-- **Runtime**: Node.js 24
+- **Runtime**: Node.js 24.11.1+
 - **Parser**: [@swc/core](https://swc.rs/)
 - **CLI**: [Commander.js](https://github.com/tj/commander.js)
-- **Build**: [tsup](https://tsup.egoist.dev/)
+- **Build**: [tsdown](https://tsdown.dev/)
 - **Language**: [TypeScript](https://www.typescriptlang.org/)
-- **Formatter**: [Biome](https://biomejs.dev/)
+- **Formatter**: [oxfmt](https://oxc-project.github.io/)
 - **Linter**: [oxlint](https://oxc-project.github.io/)
 - **Tests**: [Vitest](https://vitest.dev/)
 
