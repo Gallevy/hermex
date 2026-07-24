@@ -213,6 +213,33 @@ hermex comply
 
 `warn` and `info`-severity violations are always reported but never fail the build — only `error`-severity violations are mandatory. `hermex comply` respects `output.format: 'json'` the same way `scan` does, so CI pipelines can parse the full report while still relying on the exit code as the pass/fail signal.
 
+### CI Job Summary / PR Comment
+
+`--summary-file <path>` writes a concise, ANSI-free markdown summary (title, rules, flagged packages, verdict) to `<path>`, suitable for posting as a GitHub Actions job summary or a PR comment — the same file can be reused verbatim for both surfaces, no need to generate it twice:
+
+```bash
+hermex comply --summary-file summary.md
+hermex comply --summary-file summary.md --summary-title "Custom Heading"  # default: "Hermex Compliance Report"
+```
+
+Because `hermex comply` exits non-zero on violations, and GitHub Actions `run:` steps default to `bash -eo pipefail` (errexit is already on), a step that's expected to sometimes fail will otherwise kill the job before later steps (like posting the comment) can run. Rather than wrapping the command in `set +e` / `set -e` and manually capturing `exit_code=$?`, use `continue-on-error` and read the step's `outcome` later:
+
+```yaml
+- name: Run comply
+  id: comply
+  run: hermex comply --summary-file summary.md
+  continue-on-error: true
+
+- name: Post/update PR comment
+  run: cat summary.md >> "$GITHUB_STEP_SUMMARY" # and/or post via your comment action of choice
+
+- name: Fail the job if not compliant
+  if: steps.comply.outcome == 'failure'
+  run: exit 1
+```
+
+`steps.comply.outcome` is readable in any step that follows, so the pass/fail signal from the exit code is preserved without any manual exit-code plumbing.
+
 ## Output Control
 
 All output sections are toggled in config, not via CLI flags:

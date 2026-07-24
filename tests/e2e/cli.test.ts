@@ -305,6 +305,34 @@ describe('comply command', () => {
     }
   });
 
+  it('--summary-title overrides the default heading in the --summary-file output', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'hermex-summary-e2e-'));
+    try {
+      const summaryPath = join(tempDir, 'summary.md');
+      const configPath = join(
+        ROOT,
+        'tests',
+        'e2e',
+        'hermex-comply-pass.config.ts',
+      );
+      const result = run([
+        'comply',
+        '--config',
+        configPath,
+        '--summary-file',
+        summaryPath,
+        '--summary-title',
+        'Custom CI Title',
+      ]);
+      expect(result.status).toBe(0);
+      const content = readFileSync(summaryPath, 'utf8');
+      expect(content).toContain('# Custom CI Title');
+      expect(content).not.toContain('# Hermex Compliance Report');
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it('--summary-file still writes the file when the primary format is json', () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'hermex-summary-e2e-'));
     try {
