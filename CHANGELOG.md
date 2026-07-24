@@ -1,3 +1,10 @@
+## [2.4.1](https://github.com/Gallevy/hermex/compare/v2.4.0...v2.4.1) (2026-07-24)
+
+
+### Bug Fixes
+
+* relax engines.node so consumers aren't forced onto Node 26 ([#39](https://github.com/Gallevy/hermex/issues/39)) ([09f46ac](https://github.com/Gallevy/hermex/commit/09f46acccafaac12b61391c95c9bc76c3fb48431))
+
 # [2.4.0](https://github.com/Gallevy/hermex/compare/v2.3.0...v2.4.0) (2026-07-24)
 
 
