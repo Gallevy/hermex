@@ -99,6 +99,39 @@ describe('fileIsOwned', () => {
     ];
     expect(fileIsOwned('docs/guide/x.md', entries)).toBe(true);
   });
+
+  it('precompiled-matcher cache produces identical results across repeated calls with the same entries array', () => {
+    // Covers a bare-name pattern, an anchored pattern, and an unowned
+    // override pattern — mirrors "last matching rule wins" above, but calls
+    // fileIsOwned multiple times against the same entries array reference
+    // to exercise the internal per-array matcher cache in findOwningEntry.
+    const entries: CodeownersEntry[] = [
+      {
+        pattern: 'docs',
+        globs: codeownersPatternToGlobs('docs'),
+        owners: ['@a'],
+      },
+      {
+        pattern: '/packages/core/',
+        globs: codeownersPatternToGlobs('/packages/core/'),
+        owners: ['@b'],
+      },
+      {
+        pattern: 'packages/core/generated.ts',
+        globs: codeownersPatternToGlobs('packages/core/generated.ts'),
+        owners: [],
+      },
+    ];
+
+    // Call twice for each file with the same entries array reference — the
+    // second call must hit the cache and still return the same result.
+    for (let i = 0; i < 2; i++) {
+      expect(fileIsOwned('docs/guide/x.md', entries)).toBe(true);
+      expect(fileIsOwned('packages/core/util.ts', entries)).toBe(true);
+      expect(fileIsOwned('packages/core/generated.ts', entries)).toBe(false);
+      expect(fileIsOwned('unrelated/file.txt', entries)).toBe(false);
+    }
+  });
 });
 
 describe('evaluateCodeowners', () => {
