@@ -22,7 +22,7 @@ run in CI on every pull request — run them locally before submitting.
 ### Code Quality Standards
 
 - **Incremental Changes**: Submit small, focused changes that maintain project stability. Avoid large, monolithic pull requests that combine multiple unrelated features or fixes.
-- **Type Safety**: All code must be written in TypeScript. `tsconfig.json` does not currently enable `strict` mode — avoid using `any` types where a real type is easy to express, but existing code and PRs are not held to strict-mode-level type checking today.
+- **Type Safety**: All code must be written in TypeScript with strict type checking enabled (`tsconfig.json`'s `strict: true`, plus `noUnusedLocals`, `noUnusedParameters`, `noImplicitReturns`, and `noFallthroughCasesInSwitch`). Avoid using `any` types unless absolutely necessary and well-documented.
 - **Functional Programming**: Use functional programming paradigms. Classes are not permitted; prefer pure functions, composition, and immutability.
 - **Code Clarity**: Write clear, self-documenting code. Variable and function names should be descriptive and follow established naming conventions.
 
