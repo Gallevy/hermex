@@ -137,6 +137,30 @@ export default defineConfig({
 
 Banned packages get a `[BANNED]` or `[RESTRICTED]` badge in the packages table and appear in the Compliance section.
 
+### CODEOWNERS Rule
+
+Requires every scanned file to have an owner in your `CODEOWNERS` file
+(checked at `.github/CODEOWNERS`, `CODEOWNERS`, or `docs/CODEOWNERS`, in
+that order):
+
+```ts
+export default defineConfig({
+  rules: {
+    codeowners: {
+      severity: 'error',
+      message: 'Every scanned file must have a CODEOWNERS entry',
+    },
+  },
+});
+```
+
+Ownership follows CODEOWNERS' own gitignore-style pattern matching, with
+the last matching pattern in the file winning — same semantics as GitHub's
+CODEOWNERS. A pattern with no owners listed (e.g. `src/generated/**` with
+nothing after it) explicitly un-assigns ownership for files it matches,
+even if an earlier pattern owned them. If no CODEOWNERS file is found at
+all, this rule reports a single violation rather than silently passing.
+
 ### Script and Field Requirements
 
 ```ts
@@ -152,6 +176,19 @@ export default defineConfig({
     require_package_fields: [
       { severity: 'warn', patterns: ['engines', 'license', 'repository'] },
     ],
+    forbid_package_fields: [
+      {
+        severity: 'error',
+        patterns: ['scripts.preinstall', 'scripts.postinstall'],
+        message: 'Lifecycle install scripts are not allowed',
+      },
+      {
+        severity: 'warn',
+        patterns: ['license'],
+        values: ['UNLICENSED', 'proprietary'],
+        message: 'Package must not be marked unlicensed/proprietary',
+      },
+    ],
     engine_version: {
       severity: 'error',
       range: '>=20',
@@ -160,6 +197,12 @@ export default defineConfig({
   },
 });
 ```
+
+`forbid_package_fields` is the mirror of `require_package_fields`: it fires
+when a field **is present** at the given dot-path (e.g. `scripts.preinstall`)
+— optionally scoped further with `values` (micromatch patterns the field's
+stringified value must match, same as `require_package_fields`'s `values`).
+Omitting `values` means "forbidden if present at all, regardless of value."
 
 ## Release Age (opt-in)
 
