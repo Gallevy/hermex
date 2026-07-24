@@ -1,3 +1,10 @@
+## [2.4.2](https://github.com/Gallevy/hermex/compare/v2.4.1...v2.4.2) (2026-07-24)
+
+
+### Bug Fixes
+
+* patch brace-expansion DoS (CVE-2026-13149) — no override needed, and dropped the picomatch override too ([#41](https://github.com/Gallevy/hermex/issues/41)) ([9bcf67e](https://github.com/Gallevy/hermex/commit/9bcf67e6cb25c69fe695dfd05244125543614753))
+
 ## [2.4.1](https://github.com/Gallevy/hermex/compare/v2.4.0...v2.4.1) (2026-07-24)
 
 
