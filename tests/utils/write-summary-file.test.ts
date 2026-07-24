@@ -7,7 +7,10 @@ import type { AggregatedReport } from '../../src/utils/aggregator';
 import type { RuleViolation } from '../../src/rules/evaluator';
 import type { BannedPackageViolation } from '../../src/utils/package-rules';
 import { computeCompliance } from '../../src/utils/compliance';
-import { writeSummaryFile } from '../../src/utils/write-summary-file';
+import {
+  writeSummaryFile,
+  DEFAULT_SUMMARY_TITLE,
+} from '../../src/utils/write-summary-file';
 import {
   createMockPackage,
   createMockReleaseAge,
@@ -49,10 +52,28 @@ describe('writeSummaryFile', () => {
     chalk.level = originalChalkLevel;
   });
 
-  function write(aggregated: AggregatedReport): string {
-    writeSummaryFile(summaryPath, aggregated, computeCompliance(aggregated));
+  function write(aggregated: AggregatedReport, title?: string): string {
+    writeSummaryFile(
+      summaryPath,
+      aggregated,
+      computeCompliance(aggregated),
+      title,
+    );
     return readFileSync(summaryPath, 'utf8');
   }
+
+  describe('title', () => {
+    it('defaults to DEFAULT_SUMMARY_TITLE when no title is passed', () => {
+      const content = write(makeAggregated());
+      expect(content).toContain(`# ${DEFAULT_SUMMARY_TITLE}`);
+    });
+
+    it('uses a custom title when one is passed', () => {
+      const content = write(makeAggregated(), 'Custom Compliance Report');
+      expect(content).toContain('# Custom Compliance Report');
+      expect(content).not.toContain(DEFAULT_SUMMARY_TITLE);
+    });
+  });
 
   it('writes a file with no ANSI escape sequences, even when chalk color is forced on', () => {
     chalk.level = 1;

@@ -90,18 +90,22 @@ function buildVerdictSection(compliance: ComplianceResult): string {
   return `### ${severityIcon('error')} NOT COMPLIANT\n\n${mandatoryCount} mandatory violation${mandatoryCount > 1 ? 's' : ''} found\n`;
 }
 
+export const DEFAULT_SUMMARY_TITLE = 'Hermex Compliance Report';
+
 /**
- * Writes a concise, ANSI-free markdown summary (rules, mandatory package
- * violations, verdict) for CI surfaces that can't render the full human
- * report — a sticky PR comment or job summary (#31). Omits Versus and
+ * Writes a concise, ANSI-free markdown summary (title, rules, mandatory
+ * package violations, verdict) for CI surfaces that can't render the full
+ * human report — a sticky PR comment or job summary (#31). Omits Versus and
  * progress chrome by construction; never touches ora or the Versus renderer.
  */
 export function writeSummaryFile(
   path: string,
   aggregated: AggregatedReport,
   compliance: ComplianceResult,
+  title: string = DEFAULT_SUMMARY_TITLE,
 ): void {
   const sections = [
+    `# ${title}\n`,
     buildRulesSection(aggregated),
     buildPackagesSection(compliance),
     buildVerdictSection(compliance),
