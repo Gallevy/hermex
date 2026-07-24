@@ -89,13 +89,36 @@ export function codeownersPatternToGlobs(pattern: string): string[] {
   return globs;
 }
 
+// Precompiled-matcher cache, keyed by the entries array identity. Avoids
+// re-parsing each entry's glob(s) into a regex on every findOwningEntry()
+// call — evaluateCodeowners calls this once per scanned file against the
+// same `entries` array (both directly, and via fileIsOwned), so this turns
+// an O(files x entries) sequence of fresh `micromatch.isMatch` glob
+// evaluations into a one-time compile plus cheap `RegExp.test` calls.
+// Entries are treated as static for the lifetime of one `entries` array; a
+// WeakMap means a fresh `entries` array (e.g. a new `parseCodeowners` call)
+// naturally gets a fresh compiled cache instead of reading stale matchers.
+const compiledMatchersCache = new WeakMap<CodeownersEntry[], RegExp[][]>();
+
+function getCompiledMatchers(entries: CodeownersEntry[]): RegExp[][] {
+  let compiled = compiledMatchersCache.get(entries);
+  if (!compiled) {
+    compiled = entries.map((entry) =>
+      entry.globs.map((glob) => micromatch.makeRe(glob, { dot: true })),
+    );
+    compiledMatchersCache.set(entries, compiled);
+  }
+  return compiled;
+}
+
 /** Last matching entry, or null if none match. */
 export function findOwningEntry(
   file: string,
   entries: CodeownersEntry[],
 ): CodeownersEntry | null {
+  const compiled = getCompiledMatchers(entries);
   for (let i = entries.length - 1; i >= 0; i--) {
-    if (micromatch.isMatch(file, entries[i].globs, { dot: true })) {
+    if (compiled[i].some((re) => re.test(file))) {
       return entries[i];
     }
   }
