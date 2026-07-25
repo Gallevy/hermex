@@ -50,6 +50,18 @@ export interface ReleaseAgeEntry {
    */
   minCompliantVersion?: string;
   minCompliantReleasedDaysAgo?: number;
+  /**
+   * `true` when `minCompliantVersion` is a genuine still-in-window upgrade
+   * target — something you could adopt right now and be compliant. `false`
+   * when it only fell back to `latestVersion` because every candidate is
+   * itself past its threshold (#26): in that case there is no compliant
+   * release to recommend, so the display says so rather than pointing at a
+   * target that wouldn't actually clear the breach.
+   */
+  minCompliantInWindow?: boolean;
+  /** Bump tier of `minCompliantVersion` relative to installed — for labeling
+   * the recommended target when it differs from the breached tier. */
+  minCompliantBump?: SemverBump;
   severity: 'error' | 'warn';
 }
 

@@ -9,6 +9,7 @@ import {
   formatPackageName,
   formatUpgradeCell,
 } from '../../src/utils/print-packages';
+import { enrichWithReleaseAge } from '../../src/npm-registry/enricher';
 import { printComponents } from '../../src/utils/print-components';
 import { printPatterns } from '../../src/utils/print-patterns';
 import { printDetails } from '../../src/utils/print-details';
@@ -22,6 +23,19 @@ import {
   createMockPackage,
   createMockReleaseAge,
 } from '../helpers/mock-reports';
+
+// Drive the "user report" test end-to-end through the real enricher, so it
+// uses the exact version strings from the report rather than a hand-built
+// ReleaseAgeEntry that could drift from what the enricher actually produces.
+vi.mock('../../src/npm-registry/cache', () => ({
+  getPackageInfo: vi.fn(),
+}));
+import { getPackageInfo } from '../../src/npm-registry/cache';
+const mockGetPackageInfo = getPackageInfo as ReturnType<typeof vi.fn>;
+
+function daysAgo(n: number): string {
+  return new Date(Date.now() - n * 24 * 60 * 60 * 1000).toISOString();
+}
 
 /**
  * Creates a minimal AggregatedReport with all required fields.
@@ -425,24 +439,40 @@ describe('formatUpgradeCell', () => {
     expect(cell).toContain('[not enforced]');
   });
 
-  it('uses the warn icon for a non-major_overdue worst level', () => {
+  // The status icon reflects severity, not which tier breached: an ENFORCED
+  // minor_overdue fails comply just like a major would (#28), so it renders red
+  // — only a non-enforced (advisory) breach is yellow.
+  const minorOverdueUpgrade = {
+    version: '1.1.0',
+    releasedDaysAgo: 10,
+    breachReleasedDaysAgo: 50,
+    semverBump: 'minor' as const,
+    level: 'minor_overdue' as const,
+    thresholdDays: 30,
+  };
+
+  it('uses the error icon for an enforced minor_overdue worst level (#28)', () => {
     const cell = formatUpgradeCell(
       createMockReleaseAge({
         worstLevel: 'minor_overdue',
         severity: 'error',
-        upgrades: [
-          {
-            version: '1.1.0',
-            releasedDaysAgo: 10,
-            breachReleasedDaysAgo: 50,
-            semverBump: 'minor',
-            level: 'minor_overdue',
-            thresholdDays: 30,
-          },
-        ],
+        upgrades: [minorOverdueUpgrade],
+      }),
+    );
+    expect(cell).toContain('🔴');
+    expect(cell).not.toContain('🟡');
+  });
+
+  it('uses the warn icon for a non-enforced minor_overdue worst level', () => {
+    const cell = formatUpgradeCell(
+      createMockReleaseAge({
+        worstLevel: 'minor_overdue',
+        severity: 'warn',
+        upgrades: [minorOverdueUpgrade],
       }),
     );
     expect(cell).toContain('🟡');
+    expect(cell).toContain('[not enforced]');
   });
 });
 
@@ -471,6 +501,49 @@ describe('describeUpgradeTarget', () => {
         thresholdDays: 60,
       }),
     ).toBe('major 18.0.0 (no compliant release available)');
+  });
+});
+
+describe('formatUpgradeCell — stale 0.x minor line beneath a compliant newer major (user report)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  // installed 0.3.30; 0.5.7 is a stale minor (200d, past the 45d threshold) and
+  // the ONLY breached tier; v1 (1.0.0) is a recent major (50d, well within the
+  // 60d threshold) — a genuinely compliant upgrade target. The cell must
+  // recommend 1.0.0, must NOT claim "no compliant release available", and must
+  // render as a hard failure (🔴) because the package is enforced.
+  it('recommends the compliant major (1.0.0) instead of reporting "no compliant release available"', async () => {
+    const pkg = createMockPackage('some-lib', { version: '0.3.30' });
+    mockGetPackageInfo.mockResolvedValueOnce({
+      name: 'some-lib',
+      time: {
+        '0.3.30': daysAgo(900),
+        '0.5.7': daysAgo(200),
+        '1.0.0': daysAgo(50),
+      },
+      'dist-tags': { latest: '1.0.0' },
+      versions: {},
+    });
+
+    const { enriched } = await enrichWithReleaseAge([pkg], {
+      enabled: true,
+      registry: 'https://registry.npmjs.org',
+      thresholds: { patch: 30, minor: 45, major: 60 },
+      enforceOn: [],
+    });
+
+    const cell = formatUpgradeCell(enriched[0].releaseAge);
+
+    // Correct target: the compliant major, not the stale minor.
+    expect(cell).toContain('1.0.0');
+    expect(cell).not.toContain('0.5.7');
+    // The text is a lie today — a compliant release (1.0.0) plainly exists.
+    expect(cell).not.toContain('no compliant release available');
+    // Enforced minor_overdue fails comply, so the status must be red, not yellow.
+    expect(cell).toContain('🔴');
+    expect(cell).not.toContain('🟡');
   });
 });
 
