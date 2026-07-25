@@ -78,6 +78,9 @@ importers:
       '@types/semver':
         specifier: ^7.7.1
         version: 7.7.1
+      '@types/yarnpkg__lockfile':
+        specifier: ^1.1.9
+        version: 1.1.9
       '@vitest/coverage-v8':
         specifier: 4.1.10
         version: 4.1.10(vitest@4.1.10)
@@ -1033,6 +1036,9 @@ packages:
 
   '@types/semver@7.7.1':
     resolution: {integrity: sha512-FmgJfu+MOcQ370SD0ev7EI8TlCAfKYU+B4m5T3yXc1CiRN94g/SZPtsCkk506aUDtlMnFZvasDwHHUcZUEaYuA==}
+
+  '@types/yarnpkg__lockfile@1.1.9':
+    resolution: {integrity: sha512-GD4Fk15UoP5NLCNor51YdfL9MSdldKCqOC9EssrRw3HVfar9wUZ5y8Lfnp+qVD6hIinLr8ygklDYnmlnlQo12Q==}
 
   '@typescript/typescript-aix-ppc64@7.0.2':
     resolution: {integrity: sha512-MTKKkWB7p/0E9xi1d1tHtZ5PiLkGEMIq88pK2CubZjOsLtYTLqhgIgi6zepFa+9GHZ6h05NMCkQxGKiPXMxXtQ==}
@@ -3502,6 +3508,8 @@ snapshots:
   '@types/normalize-package-data@2.4.4': {}
 
   '@types/semver@7.7.1': {}
+
+  '@types/yarnpkg__lockfile@1.1.9': {}
 
   '@typescript/typescript-aix-ppc64@7.0.2':
     optional: true
