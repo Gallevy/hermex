@@ -1,3 +1,10 @@
+## [2.5.2](https://github.com/Gallevy/hermex/compare/v2.5.1...v2.5.2) (2026-07-25)
+
+
+### Bug Fixes
+
+* recommend a compliant cross-tier release in the upgrades cell ([#54](https://github.com/Gallevy/hermex/issues/54)) ([201e114](https://github.com/Gallevy/hermex/commit/201e11488ef3b198cdd181eb10d3db9ad7024277))
+
 ## [2.5.1](https://github.com/Gallevy/hermex/compare/v2.5.0...v2.5.1) (2026-07-24)
 
 
