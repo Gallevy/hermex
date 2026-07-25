@@ -144,6 +144,50 @@ describe('calculatePackageDistribution', () => {
     expect(distribution[0].version).toBeNull();
   });
 
+  it('resolves a scoped subpath import (e.g. "@scope/pkg/sub") to the base package version', () => {
+    const componentUsageMap = new Map<string, ComponentUsage>([
+      ['Icon', makeComponent('Icon', '@my-org/ui/icons', 1)],
+    ]);
+
+    const distribution = calculatePackageDistribution(componentUsageMap, {
+      '@my-org/ui': '2.0.0',
+    });
+
+    expect(distribution[0].version).toBe('2.0.0');
+  });
+
+  it('resolves a non-scoped subpath import (e.g. "pkg/sub") to the base package version', () => {
+    const componentUsageMap = new Map<string, ComponentUsage>([
+      ['debounce', makeComponent('debounce', 'lodash/debounce', 1)],
+    ]);
+
+    const distribution = calculatePackageDistribution(componentUsageMap, {
+      lodash: '4.17.21',
+    });
+
+    expect(distribution[0].version).toBe('4.17.21');
+  });
+
+  it('leaves version null for a scoped subpath import when the base package is also absent from the versions map', () => {
+    const componentUsageMap = new Map<string, ComponentUsage>([
+      ['Icon', makeComponent('Icon', '@my-org/ui/icons', 1)],
+    ]);
+
+    const distribution = calculatePackageDistribution(componentUsageMap, {});
+
+    expect(distribution[0].version).toBeNull();
+  });
+
+  it('leaves version null for a non-scoped subpath import when the base package is also absent from the versions map', () => {
+    const componentUsageMap = new Map<string, ComponentUsage>([
+      ['debounce', makeComponent('debounce', 'lodash/debounce', 1)],
+    ]);
+
+    const distribution = calculatePackageDistribution(componentUsageMap, {});
+
+    expect(distribution[0].version).toBeNull();
+  });
+
   it('flags hasVersionConflict and populates allVersions when multiVersions has 2+ entries for a package', () => {
     const componentUsageMap = new Map<string, ComponentUsage>([
       ['Button', makeComponent('Button', 'antd', 1)],

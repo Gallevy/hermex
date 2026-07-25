@@ -1,0 +1,15 @@
+lockfileVersion: '9.0'
+
+importers:
+  .:
+    dependencies:
+      chalk:
+        specifier: ^5.0.0
+        version: 5.3.0
+      bare-string-dep: 1.0.0
+      no-version-dep:
+        specifier: ^1.0.0
+    devDependencies:
+      bare-string-dev-dep: 2.0.0
+      no-version-dev-dep:
+        specifier: ^2.0.0

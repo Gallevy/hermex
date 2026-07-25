@@ -1,0 +1,5 @@
+packages:
+  /@babel/core/7.22.5:
+    resolution: { integrity: sha512-example }
+  /invalidkey:
+    resolution: { integrity: sha512-example }

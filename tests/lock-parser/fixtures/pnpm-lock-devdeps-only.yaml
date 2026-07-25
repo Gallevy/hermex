@@ -1,0 +1,8 @@
+lockfileVersion: '9.0'
+
+importers:
+  .:
+    devDependencies:
+      vitest:
+        specifier: ^1.0.0
+        version: 1.6.0

@@ -51,6 +51,18 @@ describe('readCache / writeCache', () => {
     expect(result).toBeNull();
   });
 
+  it('falls back to the default cache directory when no cacheDir override is given', async () => {
+    // No cacheDir passed at all — exercises the `?? DEFAULT_CACHE_DIR`
+    // fallback. A cache miss on this path is read-only (readFile + catch),
+    // so this is safe to run against the real default location without any
+    // writes or directory creation.
+    const result = await readCache(
+      REGISTRY,
+      '@hermex-test/definitely-not-a-real-package-xyz',
+    );
+    expect(result).toBeNull();
+  });
+
   it('returns null and does not throw on a corrupt cache file', async () => {
     const info = makeInfo('lodash');
     await writeCache(REGISTRY, 'lodash', info, { cacheDir });
@@ -59,6 +71,29 @@ describe('readCache / writeCache', () => {
     await writeFile(path, 'not valid json {{{', 'utf8');
 
     const result = await readCache(REGISTRY, 'lodash', { cacheDir });
+    expect(result).toBeNull();
+  });
+
+  it('returns null when the cached entry belongs to a different registry/package (filename collision)', async () => {
+    const info = makeInfo('react');
+    await writeCache(REGISTRY, 'react', info, { cacheDir });
+    // Overwrite with a same-path entry recorded under a different registry.
+    await writeCache('https://registry.npmjs.org', 'react', info, {
+      cacheDir,
+    });
+    const path = join(cacheDir, 'registry.npmjs.org', 'react.json');
+    await writeFile(
+      path,
+      JSON.stringify({
+        cachedAt: Date.now(),
+        registryUrl: 'https://other-registry.example.com',
+        packageName: 'react',
+        data: info,
+      }),
+      'utf8',
+    );
+
+    const result = await readCache(REGISTRY, 'react', { cacheDir });
     expect(result).toBeNull();
   });
 

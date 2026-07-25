@@ -195,6 +195,30 @@ describe('evaluateScriptRules', () => {
     expect(result).toHaveLength(1);
     expect(result[0].type).toBe('require_scripts');
   });
+
+  it('returns nothing when no require_scripts rules are configured', () => {
+    const result = evaluateScriptRules(tempDir, emptyRules);
+    expect(result).toHaveLength(0);
+  });
+
+  it('falls back to an empty script list when package.json has no scripts field', () => {
+    const emptyDir = mkdtempSync(
+      join(tmpdir(), 'hermex-rules-test-noscripts-'),
+    );
+    try {
+      writeFileSync(
+        join(emptyDir, 'package.json'),
+        JSON.stringify({ name: 'no-scripts-project' }),
+      );
+      const result = evaluateScriptRules(emptyDir, {
+        ...emptyRules,
+        require_scripts: [{ severity: 'error', patterns: ['build'] }],
+      });
+      expect(result).toHaveLength(1);
+    } finally {
+      rmSync(emptyDir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('evaluatePackageFieldRules', () => {
@@ -297,6 +321,48 @@ describe('evaluatePackageFieldRules', () => {
     expect(result).toHaveLength(0);
   });
 
+  it('never matches a values pattern when the forbidden field value is an object', () => {
+    const objectFieldDir = mkdtempSync(
+      join(tmpdir(), 'hermex-rules-test-objectfield-'),
+    );
+    try {
+      writeFileSync(
+        join(objectFieldDir, 'package.json'),
+        JSON.stringify({ name: 'x', jest: { testEnvironment: 'node' } }),
+      );
+      const result = evaluatePackageFieldRules(objectFieldDir, {
+        ...emptyRules,
+        forbid_package_fields: [
+          { severity: 'error', patterns: ['jest'], values: ['*'] },
+        ],
+      });
+      expect(result).toHaveLength(0);
+    } finally {
+      rmSync(objectFieldDir, { recursive: true, force: true });
+    }
+  });
+
+  it('never matches a values pattern when the forbidden field value is null', () => {
+    const nullFieldDir = mkdtempSync(
+      join(tmpdir(), 'hermex-rules-test-nullfield-'),
+    );
+    try {
+      writeFileSync(
+        join(nullFieldDir, 'package.json'),
+        JSON.stringify({ name: 'x', license: null }),
+      );
+      const result = evaluatePackageFieldRules(nullFieldDir, {
+        ...emptyRules,
+        forbid_package_fields: [
+          { severity: 'error', patterns: ['license'], values: ['*'] },
+        ],
+      });
+      expect(result).toHaveLength(0);
+    } finally {
+      rmSync(nullFieldDir, { recursive: true, force: true });
+    }
+  });
+
   it('violation when forbidden field value matches the values pattern', () => {
     const result = evaluatePackageFieldRules(tempDir, {
       ...emptyRules,
@@ -347,6 +413,54 @@ describe('evaluateEngineVersion', () => {
     expect(result[0].type).toBe('engine_version');
     expect(result[0].installedRange).toBe('>=18.0.0');
     expect(result[0].requiredRange).toBe('>=24.0.0');
+  });
+
+  it('returns nothing when no engine_version rule is configured', () => {
+    const result = evaluateEngineVersion(tempDir, emptyRules);
+    expect(result).toHaveLength(0);
+  });
+
+  describe('when package.json has no engines field', () => {
+    let noEnginesDir: string;
+
+    beforeAll(() => {
+      noEnginesDir = mkdtempSync(
+        join(tmpdir(), 'hermex-rules-test-noengines-'),
+      );
+      writeFileSync(
+        join(noEnginesDir, 'package.json'),
+        JSON.stringify({ name: 'no-engines-project' }),
+      );
+    });
+
+    afterAll(() => {
+      rmSync(noEnginesDir, { recursive: true, force: true });
+    });
+
+    it('reports "not specified" with the default message when no message is configured', () => {
+      const result = evaluateEngineVersion(noEnginesDir, {
+        ...emptyRules,
+        engine_version: { severity: 'error', range: '>=18.0.0' },
+      });
+      expect(result).toHaveLength(1);
+      expect(result[0].installedRange).toBeUndefined();
+      expect(result[0].requiredRange).toBe('>=18.0.0');
+      expect(result[0].message).toBe(
+        'engines.node not specified in package.json',
+      );
+    });
+
+    it('uses a custom message when configured', () => {
+      const result = evaluateEngineVersion(noEnginesDir, {
+        ...emptyRules,
+        engine_version: {
+          severity: 'error',
+          range: '>=18.0.0',
+          message: 'add an engines.node field',
+        },
+      });
+      expect(result[0].message).toBe('add an engines.node field');
+    });
   });
 });
 

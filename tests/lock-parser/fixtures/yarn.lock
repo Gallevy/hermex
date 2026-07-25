@@ -15,3 +15,7 @@ lodash@^3.0.0:
 lodash@^4.0.0:
   version "4.17.21"
   resolved "https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz"
+
+"@scope/pkg@^1.0.0":
+  version "1.0.0"
+  resolved "https://registry.npmjs.org/@scope/pkg/-/pkg-1.0.0.tgz"

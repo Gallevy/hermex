@@ -1,0 +1,29 @@
+{
+  "name": "test-nested",
+  "version": "1.0.0",
+  "lockfileVersion": 3,
+  "requires": true,
+  "packages": {
+    "": {
+      "name": "test-nested"
+    },
+    "node_modules/foo": {
+      "version": "1.0.0"
+    },
+    "node_modules/foo/node_modules/bar": {
+      "version": "2.0.0"
+    },
+    "node_modules/no-version": {
+      "resolved": "https://registry.npmjs.org/no-version/-/no-version-1.0.0.tgz"
+    },
+    "packages/workspace-a": {
+      "version": "1.0.0"
+    },
+    "node_modules/dupe": {
+      "version": "1.0.0"
+    },
+    "node_modules/foo/node_modules/dupe": {
+      "version": "2.0.0"
+    }
+  }
+}
