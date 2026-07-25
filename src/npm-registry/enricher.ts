@@ -58,6 +58,7 @@ function computeReleaseAge(
   const byBump = new Map<SemverBump, { version: string; daysAgo: number }[]>();
   let minCompliantVersion: string | undefined;
   let minCompliantReleasedDaysAgo: number | undefined;
+  let minCompliantBump: SemverBump | undefined;
 
   for (const [version, dateStr] of Object.entries(timeMap)) {
     if (version === 'created' || version === 'modified') continue;
@@ -89,6 +90,7 @@ function computeReleaseAge(
     ) {
       minCompliantVersion = version;
       minCompliantReleasedDaysAgo = daysAgo;
+      minCompliantBump = bump;
     }
   }
 
@@ -192,6 +194,8 @@ function computeReleaseAge(
     latestReleasedDaysAgo,
     minCompliantVersion,
     minCompliantReleasedDaysAgo,
+    minCompliantInWindow: hadInWindowCandidate,
+    minCompliantBump,
     severity,
   };
 }
