@@ -22,3 +22,6 @@ build/
 
 # Test coverage
 coverage/
+
+# Claude Code local settings and agent worktrees
+.claude/
