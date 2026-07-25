@@ -7,7 +7,7 @@
 > in `plans/README.md`.
 >
 > **Drift check (run first)**:
-> `git diff --stat 19a4695..HEAD -- src/utils/aggregator-core.ts src/npm-registry/enricher.ts src/lock-parser/patterns/yarn.ts config-v2/ README.md`
+> `git diff --stat a3b8f02..HEAD -- src/utils/aggregator-core.ts src/npm-registry/enricher.ts src/lock-parser/patterns/yarn.ts config-v2/ README.md`
 > If these files changed since this plan was written, compare the "Current
 > state" excerpts against the live code before proceeding; on a mismatch,
 > treat it as a STOP condition.
@@ -17,9 +17,24 @@
 - **Priority**: P3
 - **Effort**: S
 - **Risk**: LOW
-- **Depends on**: none (touches `tests/utils/compliance.test.ts` trivially; fine to run before or after Plan 021)
+- **Depends on**: none
 - **Category**: tech-debt / docs
-- **Planned at**: commit `19a4695`, 2026-07-04
+- **Planned at**: commit `a3b8f02`, 2026-07-24 (reconfirmed from the
+  `19a4695`/2026-07-04 version — see Reconciliation note below)
+
+## Reconciliation note (2026-07-24)
+
+Independently re-audited against `a3b8f02` (3 weeks and ~10 commits later,
+by a fresh subagent that did not read this plan file first, plus my own
+direct read). All 4 sub-findings still hold exactly as described. One
+location drifted: the enricher's `findIndex` reconciliation loop moved from
+`enricher.ts:196-202` to **`enricher.ts:258`** — the surrounding function
+grew (added `HERMEX_REGISTRY_CACHE_TTL_MS`/`HERMEX_REGISTRY_CACHE_DISABLED`
+env-var handling, landed independently of this plan), but the loop body
+itself is unchanged. The "Current state" and Step 2 excerpts below are
+updated to the current line numbers and surrounding code. Everything else
+(aggregator-core.ts:33/127, config-v2/ contents, yarn.ts:17, README env
+section) matched byte-for-byte on re-read — no other excerpt changed.
 
 ## Why this matters
 
@@ -46,12 +61,15 @@ boilerplate:
 ## Current state
 
 **1 — `src/utils/aggregator-core.ts`**: interface field at line 33
-(`reports: UsageReport[];`), populated at line 126 (`reports,`), parameter of
+(`reports: UsageReport[];`), populated at line 127 (`reports,`), parameter of
 the same name at line 37 (the *parameter* stays — only the returned field
 goes). `tests/utils/compliance.test.ts:27` constructs `reports: []` in its
-local `makeAggregated` helper and must be updated.
+local `makeAggregated` helper and must be updated. Note: `src/index.ts` (the
+public library entry point) does not export `AggregatedReport` at all — this
+field is CLI-internal only, removing it cannot break an external consumer.
 
-**2 — `src/npm-registry/enricher.ts:196-202`**:
+**2 — `src/npm-registry/enricher.ts:256-262`** (inside the `for (let i = 0; i
+< targets.length; i += CONCURRENCY)` batch loop that starts at line 219):
 ```ts
 for (const { pkg, entry } of results) {
   if (!entry) continue;
@@ -61,7 +79,11 @@ for (const { pkg, entry } of results) {
   }
 }
 ```
-(`enriched` is built once at line 147: `const enriched = [...packages];`)
+(`enriched` is built once at line 207: `const enriched = [...packages];`.
+This loop runs once per batch of `CONCURRENCY` (8) packages, so the
+`findIndex` — a full scan of `enriched`, which holds *every* package in the
+distribution, not just the batch — repeats once per package across every
+batch.)
 
 **3 — `config-v2/.hermex.json`**: sole file in the directory; content uses a
 config dialect that predates the current `src/config/schema.ts`.
@@ -111,7 +133,7 @@ section around lines 116–122) but not the two cache vars.
 ### Step 1: Remove the dead reports field
 
 In `src/utils/aggregator-core.ts` delete line 33 (`reports: UsageReport[];`
-in the interface) and the `reports,` entry in the returned object (line 126).
+in the interface) and the `reports,` entry in the returned object (line 127).
 In `tests/utils/compliance.test.ts` delete the `reports: [],` line from
 `makeAggregated`.
 
@@ -135,8 +157,9 @@ for (const { pkg, entry } of results) {
 }
 ```
 
-Build `indexByName` right after `const enriched = [...packages];` (line 147)
-so it is constructed once, not per batch.
+Build `indexByName` right after `const enriched = [...packages];` (line 207)
+so it is constructed once, not per batch (not inside the
+`for (let i = 0; i < targets.length; i += CONCURRENCY)` loop at line 219).
 
 **Verify**: `pnpm run test:ci` → enricher tests pass unchanged.
 
