@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import chalk from 'chalk';
 import {
   severityIcon,
@@ -6,6 +6,7 @@ import {
   formatViolationLine,
   resolveColorLevel,
   stripAnsi,
+  applyColorLevel,
 } from '../../src/utils/severity-format';
 
 describe('severityIcon', () => {
@@ -59,6 +60,72 @@ describe('resolveColorLevel', () => {
 
   it('returns undefined (defer to chalk auto-detection) when nothing is set', () => {
     expect(resolveColorLevel({})).toBeUndefined();
+  });
+});
+
+describe('applyColorLevel', () => {
+  const originalLevel = chalk.level;
+  const originalStdoutWrite = process.stdout.write;
+  const originalStderrWrite = process.stderr.write;
+
+  afterEach(() => {
+    chalk.level = originalLevel;
+    process.stdout.write = originalStdoutWrite;
+    process.stderr.write = originalStderrWrite;
+  });
+
+  it('is a no-op when level is undefined', () => {
+    chalk.level = 2;
+    applyColorLevel(undefined);
+    expect(chalk.level).toBe(2);
+    expect(process.stdout.write).toBe(originalStdoutWrite);
+  });
+
+  it('sets chalk.level without touching stdout/stderr when level is 1', () => {
+    applyColorLevel(1);
+    expect(chalk.level).toBe(1);
+    expect(process.stdout.write).toBe(originalStdoutWrite);
+    expect(process.stderr.write).toBe(originalStderrWrite);
+  });
+
+  it('strips ANSI codes from stdout/stderr writes when level is 0', () => {
+    // applyColorLevel binds the *current* stream.write as the pass-through
+    // target when it installs its wrapper, so the sink must be in place
+    // before calling it.
+    const stdoutChunks: string[] = [];
+    const stderrChunks: string[] = [];
+    process.stdout.write = ((chunk: unknown) => {
+      stdoutChunks.push(String(chunk));
+      return true;
+    }) as typeof process.stdout.write;
+    process.stderr.write = ((chunk: unknown) => {
+      stderrChunks.push(String(chunk));
+      return true;
+    }) as typeof process.stderr.write;
+
+    applyColorLevel(0);
+    expect(chalk.level).toBe(0);
+
+    const esc = String.fromCharCode(27);
+    process.stdout.write(`${esc}[31mred${esc}[39m`);
+    process.stderr.write(`${esc}[31merr${esc}[39m`);
+
+    expect(stdoutChunks[0]).toBe('red');
+    expect(stderrChunks[0]).toBe('err');
+  });
+
+  it('passes a non-string chunk through unchanged when level is 0', () => {
+    const stdoutChunks: unknown[] = [];
+    process.stdout.write = ((chunk: unknown) => {
+      stdoutChunks.push(chunk);
+      return true;
+    }) as typeof process.stdout.write;
+
+    applyColorLevel(0);
+    const buf = Buffer.from('binary chunk');
+    process.stdout.write(buf);
+
+    expect(stdoutChunks[0]).toBe(buf);
   });
 });
 

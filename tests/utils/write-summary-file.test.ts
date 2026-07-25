@@ -158,6 +158,57 @@ describe('writeSummaryFile', () => {
       );
     });
 
+    it('shows a banned package with no message and no trailing dash', () => {
+      const violation: BannedPackageViolation = {
+        packageName: 'moment',
+        severity: 'error',
+      };
+      const content = write(
+        makeAggregated({ bannedPackageViolations: [violation] }),
+      );
+      expect(content).toContain('forbid_packages — moment is forbidden\n');
+    });
+
+    it('shows only a warning count when there are no errors', () => {
+      const violation: RuleViolation = {
+        type: 'require_files',
+        severity: 'warn',
+        patterns: ['.editorconfig'],
+        matchedFiles: [],
+      };
+      const content = write(makeAggregated({ ruleViolations: [violation] }));
+      expect(content).toContain('1 warning');
+      expect(content).not.toContain('error');
+    });
+
+    it('pluralizes the error/warning counts when there is more than one of each', () => {
+      const errors: RuleViolation[] = [
+        {
+          type: 'require_files',
+          severity: 'error',
+          patterns: ['a'],
+          matchedFiles: [],
+        },
+        {
+          type: 'require_files',
+          severity: 'error',
+          patterns: ['b'],
+          matchedFiles: [],
+        },
+      ];
+      const warnings: BannedPackageViolation[] = [
+        { packageName: 'moment', severity: 'warn' },
+        { packageName: 'left-pad', severity: 'warn' },
+      ];
+      const content = write(
+        makeAggregated({
+          ruleViolations: errors,
+          bannedPackageViolations: warnings,
+        }),
+      );
+      expect(content).toContain('2 errors, 2 warnings');
+    });
+
     it('excludes an info-severity banned package violation', () => {
       const violation: BannedPackageViolation = {
         packageName: 'some-pkg',
@@ -260,6 +311,26 @@ describe('writeSummaryFile', () => {
       expect(line).toBe(
         '| 🔴 | `my-internal-pkg` | major 4.2.0 (40 days overdue), deprecated |',
       );
+    });
+
+    it('shows only "deprecated" when a mandatory violation has no upgrade candidates', () => {
+      // worstLevel non-null but upgrades empty is a defensive/edge shape —
+      // exercises the `top` guard independently of the deprecated reason.
+      const deprecatedOnlyBreach = createMockPackage('my-internal-pkg', {
+        releaseAge: createMockReleaseAge({
+          worstLevel: 'major_overdue',
+          severity: 'error',
+          deprecated: '2020-01-01',
+          upgrades: [],
+        }),
+      });
+      const content = write(
+        makeAggregated({ packageDistribution: [deprecatedOnlyBreach] }),
+      );
+      const line = content
+        .split('\n')
+        .find((l) => l.includes('my-internal-pkg'));
+      expect(line).toBe('| 🔴 | `my-internal-pkg` | deprecated |');
     });
 
     it('does not show a banned/restricted package (it is Rules-only, not duplicated here)', () => {

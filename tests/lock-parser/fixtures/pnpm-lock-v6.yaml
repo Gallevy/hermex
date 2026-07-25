@@ -1,0 +1,9 @@
+lockfileVersion: '6.0'
+
+packages:
+  /chalk/5.3.0:
+    resolution: { integrity: sha512-example }
+  /lodash/4.17.21_react@18.0.0:
+    resolution: { integrity: sha512-example }
+  /badkey:
+    resolution: { integrity: sha512-example }
