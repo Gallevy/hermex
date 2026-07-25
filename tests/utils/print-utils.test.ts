@@ -2,15 +2,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AggregatedReport } from '../../src/utils/aggregator';
 import type { RuleViolation } from '../../src/rules/evaluator';
 import { printSummary } from '../../src/utils/print-summary';
+import { stripAnsi } from '../../src/utils/severity-format';
 import {
   printPackages,
   describeUpgradeTarget,
+  formatPackageName,
+  formatUpgradeCell,
 } from '../../src/utils/print-packages';
 import { printComponents } from '../../src/utils/print-components';
 import { printPatterns } from '../../src/utils/print-patterns';
 import { printDetails } from '../../src/utils/print-details';
 import { printVersus } from '../../src/utils/print-versus';
-import { printRules } from '../../src/utils/print-rules';
+import { printRules, describeViolation } from '../../src/utils/print-rules';
 import { printErrors } from '../../src/utils/print-errors';
 import { printJson } from '../../src/utils/print-json';
 import { printComplianceVerdict } from '../../src/utils/print-compliance';
@@ -61,6 +64,21 @@ describe('printSummary', () => {
   it('prints without throwing on minimal data', () => {
     expect(() => printSummary(makeAggregated())).not.toThrow();
     expect(consoleSpy).toHaveBeenCalled();
+  });
+
+  it('excludes unknown- and local-sourced components from the External Components count', () => {
+    const aggregated = makeAggregated({
+      topComponents: [
+        { name: 'Button', source: 'react', count: 4, files: new Set() },
+        { name: 'Local', source: 'local', count: 2, files: new Set() },
+        { name: 'Mystery', source: 'unknown', count: 1, files: new Set() },
+      ],
+    });
+    printSummary(aggregated);
+    const output = stripAnsi(
+      consoleSpy.mock.calls.map((call) => call.join(' ')).join('\n'),
+    );
+    expect(output).toMatch(/External Components\s*│\s*1/);
   });
 });
 
@@ -246,6 +264,186 @@ describe('printPackages', () => {
       .join('\n');
     expect(output).toContain('12 days remaining');
   });
+
+  it('renders chart mode with a populated package entry', () => {
+    const aggregated = makeAggregated({
+      packageDistribution: [
+        createMockPackage('react', { usageCount: 8, percentage: 100 }),
+      ],
+    });
+    printPackages(aggregated, 'chart');
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('react');
+    expect(output).toContain('100.0%');
+  });
+
+  it('shows "N/A" for a package with no version and no conflict', () => {
+    const aggregated = makeAggregated({
+      packageDistribution: [
+        createMockPackage('mystery-pkg', {
+          version: null,
+          hasVersionConflict: false,
+        }),
+      ],
+    });
+    printPackages(aggregated, 'table');
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('N/A');
+  });
+
+  it('does nothing for an unrecognized mode value', () => {
+    const aggregated = makeAggregated({
+      packageDistribution: [createMockPackage('react')],
+    });
+    printPackages(aggregated, 'bogus' as unknown as 'table');
+    expect(consoleSpy).not.toHaveBeenCalled();
+  });
+
+  it('chart mode pads an internal package label wider to make room for the [int] tag', () => {
+    const aggregated = makeAggregated({
+      packageDistribution: [
+        createMockPackage('@my-org/ui', { internal: true, percentage: 100 }),
+      ],
+    });
+    expect(() => printPackages(aggregated, 'chart')).not.toThrow();
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('[int]');
+  });
+
+  it('marks a package with multiple resolved versions as a version conflict', () => {
+    const aggregated = makeAggregated({
+      packageDistribution: [
+        createMockPackage('lodash', {
+          hasVersionConflict: true,
+          allVersions: ['3.10.1', '4.17.21'],
+        }),
+      ],
+    });
+    printPackages(aggregated, 'table');
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('3.10.1, 4.17.21');
+    expect(output).toContain('2 versions');
+  });
+});
+
+describe('formatPackageName', () => {
+  it('prefixes a deprecated package', () => {
+    const pkg = createMockPackage('left-pad', {
+      releaseAge: createMockReleaseAge({ deprecated: 'use String.padStart' }),
+    });
+    expect(formatPackageName(pkg)).toContain('[DEPRECATED]');
+  });
+
+  it('prefixes an error-severity banned package as [BANNED]', () => {
+    const pkg = createMockPackage('moment');
+    expect(
+      formatPackageName(pkg, { packageName: 'moment', severity: 'error' }),
+    ).toContain('[BANNED]');
+  });
+
+  it('prefixes a warn-severity banned package as [RESTRICTED]', () => {
+    const pkg = createMockPackage('moment');
+    expect(
+      formatPackageName(pkg, { packageName: 'moment', severity: 'warn' }),
+    ).toContain('[RESTRICTED]');
+  });
+
+  it('prefixes an internal package as [int] when not banned', () => {
+    const pkg = createMockPackage('@my-org/utils', { internal: true });
+    expect(formatPackageName(pkg)).toContain('[int]');
+  });
+
+  it('prefers [BANNED]/[RESTRICTED] over [int] when a package is both internal and banned', () => {
+    const pkg = createMockPackage('@my-org/utils', { internal: true });
+    const name = formatPackageName(pkg, {
+      packageName: '@my-org/utils',
+      severity: 'error',
+    });
+    expect(name).toContain('[BANNED]');
+    expect(name).not.toContain('[int]');
+  });
+
+  it('combines [DEPRECATED] with [BANNED] when both apply', () => {
+    const pkg = createMockPackage('moment', {
+      releaseAge: createMockReleaseAge({ deprecated: 'use dayjs' }),
+    });
+    const name = formatPackageName(pkg, {
+      packageName: 'moment',
+      severity: 'error',
+    });
+    expect(name).toContain('[DEPRECATED]');
+    expect(name).toContain('[BANNED]');
+  });
+});
+
+describe('formatUpgradeCell', () => {
+  it('returns an empty string when there is no release-age data', () => {
+    expect(formatUpgradeCell(undefined)).toBe('');
+  });
+
+  it('returns a success icon when there is no worst level and no pending upgrade', () => {
+    expect(formatUpgradeCell(createMockReleaseAge({ worstLevel: null }))).toBe(
+      '🟢',
+    );
+  });
+
+  it('returns a success icon when worstLevel is set but the upgrades list is empty', () => {
+    expect(
+      formatUpgradeCell(
+        createMockReleaseAge({ worstLevel: 'major_overdue', upgrades: [] }),
+      ),
+    ).toBe('🟢');
+  });
+
+  it('uses the warn icon (not error) for a major_overdue upgrade at warn severity', () => {
+    const cell = formatUpgradeCell(
+      createMockReleaseAge({
+        worstLevel: 'major_overdue',
+        severity: 'warn',
+        upgrades: [
+          {
+            version: '2.0.0',
+            releasedDaysAgo: 10,
+            breachReleasedDaysAgo: 100,
+            semverBump: 'major',
+            level: 'major_overdue',
+            thresholdDays: 60,
+          },
+        ],
+      }),
+    );
+    expect(cell).toContain('🟡');
+    expect(cell).not.toContain('🔴');
+    expect(cell).toContain('[not enforced]');
+  });
+
+  it('uses the warn icon for a non-major_overdue worst level', () => {
+    const cell = formatUpgradeCell(
+      createMockReleaseAge({
+        worstLevel: 'minor_overdue',
+        severity: 'error',
+        upgrades: [
+          {
+            version: '1.1.0',
+            releasedDaysAgo: 10,
+            breachReleasedDaysAgo: 50,
+            semverBump: 'minor',
+            level: 'minor_overdue',
+            thresholdDays: 30,
+          },
+        ],
+      }),
+    );
+    expect(cell).toContain('🟡');
+  });
 });
 
 describe('describeUpgradeTarget', () => {
@@ -286,6 +484,41 @@ describe('printComponents', () => {
     expect(() => printComponents(makeAggregated(), 'chart')).not.toThrow();
     expect(consoleSpy).toHaveBeenCalled();
   });
+
+  it('table mode filters out unknown- and local-sourced components and lists the rest', () => {
+    const aggregated = makeAggregated({
+      topComponents: [
+        { name: 'Button', source: 'react', count: 4, files: new Set() },
+        { name: 'Local', source: 'local', count: 2, files: new Set() },
+      ],
+    });
+    printComponents(aggregated, 'table');
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('Button');
+    expect(output).not.toContain('Local');
+  });
+
+  it('chart mode filters out unknown- and local-sourced components and renders a bar chart for the rest', () => {
+    const aggregated = makeAggregated({
+      topComponents: [
+        { name: 'Button', source: 'react', count: 4, files: new Set() },
+        { name: 'Local', source: 'local', count: 2, files: new Set() },
+      ],
+    });
+    printComponents(aggregated, 'chart');
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('Button');
+    expect(output).not.toContain('Local');
+  });
+
+  it('does nothing for an unrecognized mode value', () => {
+    printComponents(makeAggregated(), 'bogus' as unknown as 'table');
+    expect(consoleSpy).not.toHaveBeenCalled();
+  });
 });
 
 describe('printPatterns', () => {
@@ -298,12 +531,56 @@ describe('printPatterns', () => {
     expect(() => printPatterns(makeAggregated(), 'chart')).not.toThrow();
     expect(consoleSpy).toHaveBeenCalled();
   });
+
+  it('table mode prints "No patterns found" when every pattern count is zero', () => {
+    const aggregated = makeAggregated({
+      patternCounts: [
+        { patternType: 'usage.jsx', displayName: 'JSX Usage', count: 0 },
+      ],
+    });
+    printPatterns(aggregated, 'table');
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('No patterns found');
+  });
+
+  it('chart mode prints "No patterns found" when every pattern count is zero', () => {
+    const aggregated = makeAggregated({
+      patternCounts: [
+        { patternType: 'usage.jsx', displayName: 'JSX Usage', count: 0 },
+      ],
+    });
+    printPatterns(aggregated, 'chart');
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('No patterns found');
+  });
+
+  it('does nothing for an unrecognized mode value', () => {
+    printPatterns(makeAggregated(), 'bogus' as unknown as 'table');
+    expect(consoleSpy).not.toHaveBeenCalled();
+  });
 });
 
 describe('printDetails', () => {
   it('prints without throwing on minimal data', () => {
     expect(() => printDetails(makeAggregated())).not.toThrow();
     expect(consoleSpy).toHaveBeenCalled();
+  });
+
+  it('skips a pattern line when its count is zero', () => {
+    const aggregated = makeAggregated({
+      patternCounts: [
+        { patternType: 'usage.jsx', displayName: 'JSX Usage', count: 0 },
+      ],
+    });
+    printDetails(aggregated);
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).not.toContain('JSX Usage');
   });
 });
 
@@ -423,9 +700,217 @@ describe('printRules', () => {
     expect(output).toContain('moment is forbidden');
     expect(output).toContain('🟡');
   });
+
+  it('renders a require_files violation as "not found"', () => {
+    const violation: RuleViolation = {
+      type: 'require_files',
+      severity: 'error',
+      patterns: ['.nvmrc'],
+      matchedFiles: [],
+    };
+    const aggregated = makeAggregated({ ruleViolations: [violation] });
+    printRules(aggregated);
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('.nvmrc not found');
+  });
+
+  it('renders a require_scripts violation with the script name and package.json context', () => {
+    const violation: RuleViolation = {
+      type: 'require_scripts',
+      severity: 'error',
+      patterns: ['test'],
+      matchedFiles: [],
+    };
+    const aggregated = makeAggregated({ ruleViolations: [violation] });
+    printRules(aggregated);
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('script test missing in package.json');
+  });
+
+  it('renders a require_package_fields violation with fieldPath/actualValue as a mismatch message', () => {
+    const violation: RuleViolation = {
+      type: 'require_package_fields',
+      severity: 'error',
+      patterns: ['license'],
+      matchedFiles: [],
+      fieldPath: 'license',
+      actualValue: 'UNLICENSED',
+    };
+    const aggregated = makeAggregated({ ruleViolations: [violation] });
+    printRules(aggregated);
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain(
+      'field license is UNLICENSED, does not match required value',
+    );
+  });
+
+  it('renders a forbid_package_fields violation using fieldPath when present', () => {
+    const violation: RuleViolation = {
+      type: 'forbid_package_fields',
+      severity: 'error',
+      patterns: ['scripts.postinstall'],
+      matchedFiles: [],
+      fieldPath: 'scripts.postinstall',
+    };
+    const aggregated = makeAggregated({ ruleViolations: [violation] });
+    printRules(aggregated);
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('field scripts.postinstall is forbidden');
+  });
+
+  it('renders a forbid_package_fields violation falling back to patterns when fieldPath is absent', () => {
+    const violation: RuleViolation = {
+      type: 'forbid_package_fields',
+      severity: 'error',
+      patterns: ['scripts.postinstall'],
+      matchedFiles: [],
+    };
+    const aggregated = makeAggregated({ ruleViolations: [violation] });
+    printRules(aggregated);
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('field scripts.postinstall is forbidden');
+  });
+
+  it('renders an engine_version violation showing installedRange when present', () => {
+    const violation: RuleViolation = {
+      type: 'engine_version',
+      severity: 'error',
+      patterns: [],
+      matchedFiles: [],
+      installedRange: '>=14',
+      requiredRange: '>=18',
+    };
+    const aggregated = makeAggregated({ ruleViolations: [violation] });
+    printRules(aggregated);
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('engines.node is');
+    expect(output).toContain('>=14');
+    expect(output).toContain('required');
+    expect(output).toContain('>=18');
+  });
+
+  it('renders an engine_version violation as "not specified" when installedRange is absent', () => {
+    const violation: RuleViolation = {
+      type: 'engine_version',
+      severity: 'error',
+      patterns: [],
+      matchedFiles: [],
+      requiredRange: '>=18',
+    };
+    const aggregated = makeAggregated({ ruleViolations: [violation] });
+    printRules(aggregated);
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('engines.node not specified');
+    expect(output).toContain('>=18');
+  });
+
+  it('renders a codeowners violation as "not found" when there are no matched files', () => {
+    const violation: RuleViolation = {
+      type: 'codeowners',
+      severity: 'error',
+      patterns: ['CODEOWNERS'],
+      matchedFiles: [],
+    };
+    const aggregated = makeAggregated({ ruleViolations: [violation] });
+    printRules(aggregated);
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('CODEOWNERS not found');
+  });
+
+  it('renders a codeowners violation listing unowned files when matched files are present', () => {
+    const violation: RuleViolation = {
+      type: 'codeowners',
+      severity: 'error',
+      patterns: ['CODEOWNERS'],
+      matchedFiles: ['src/foo.ts', 'src/bar.ts'],
+    };
+    const aggregated = makeAggregated({ ruleViolations: [violation] });
+    printRules(aggregated);
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('2 scanned file(s) have no owner');
+  });
+
+  it('pluralizes the error/warning summary counts when there is more than one of each', () => {
+    const errorViolations: RuleViolation[] = [
+      {
+        type: 'require_files',
+        severity: 'error',
+        patterns: ['a'],
+        matchedFiles: [],
+      },
+      {
+        type: 'require_files',
+        severity: 'error',
+        patterns: ['b'],
+        matchedFiles: [],
+      },
+    ];
+    const aggregated = makeAggregated({
+      ruleViolations: errorViolations,
+      bannedPackageViolations: [
+        { packageName: 'moment', severity: 'warn' },
+        { packageName: 'left-pad', severity: 'warn' },
+      ],
+    });
+    printRules(aggregated);
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('2 errors');
+    expect(output).toContain('2 warnings');
+  });
+});
+
+describe('describeViolation', () => {
+  it('falls back to a generic "not present" description for an unrecognized violation type', () => {
+    // Defensive fallback for a violation type outside the known union —
+    // e.g. a newer config schema evaluated against an older build.
+    const violation = {
+      type: 'some_future_rule_type',
+      severity: 'error',
+      patterns: ['whatever'],
+      matchedFiles: [],
+    } as unknown as RuleViolation;
+    expect(describeViolation(violation)).toBe('whatever not present');
+  });
 });
 
 describe('printComplianceVerdict', () => {
+  it('uses the singular "violation" when exactly one mandatory violation is present', () => {
+    const violation: RuleViolation = {
+      type: 'require_files',
+      severity: 'error',
+      patterns: ['.nvmrc'],
+      matchedFiles: [],
+    };
+    const aggregated = makeAggregated({ ruleViolations: [violation] });
+    const compliance = computeCompliance(aggregated);
+    printComplianceVerdict(compliance);
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('1 mandatory violation found');
+    expect(output).not.toContain('violations found');
+  });
+
   it('prints COMPLIANT when there are no mandatory violations', () => {
     const compliance = computeCompliance(makeAggregated());
     expect(() => printComplianceVerdict(compliance)).not.toThrow();
@@ -538,6 +1023,28 @@ describe('printVersus', () => {
       .join('\n');
     expect(output).not.toContain('Button');
     expect(output).not.toContain('Input');
+  });
+
+  it('shows a "no usage detected" note when a versus group has zero total usage', () => {
+    printVersus(
+      makeAggregated({
+        versusResults: [
+          {
+            name: 'ui-kits',
+            packages: ['react', 'vue'],
+            entries: [
+              { packageName: 'react', count: 0, percentage: 0, components: [] },
+              { packageName: 'vue', count: 0, percentage: 0, components: [] },
+            ],
+            totalCount: 0,
+          },
+        ],
+      }),
+    );
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('No usage detected for any package in this group');
   });
 
   it('prints the header with a single space after the emoji, matching every other section header', () => {

@@ -184,6 +184,19 @@ describe('evaluateCodeowners', () => {
     expect(result).toHaveLength(0);
   });
 
+  it('converts an absolute scanned-file path to repo-relative before matching', () => {
+    tempDir = mkdtempSync(join(tmpdir(), 'hermex-codeowners-test-'));
+    mkdirSync(join(tempDir, '.github'));
+    mkdirSync(join(tempDir, 'src'));
+    writeFileSync(join(tempDir, '.github', 'CODEOWNERS'), 'src/ @a\n');
+    const result = evaluateCodeowners(
+      tempDir,
+      { ...emptyRules, codeowners: { severity: 'error' } },
+      [join(tempDir, 'src', 'App.tsx')],
+    );
+    expect(result).toHaveLength(0);
+  });
+
   it('prefers .github/CODEOWNERS over root CODEOWNERS when both exist', () => {
     tempDir = mkdtempSync(join(tmpdir(), 'hermex-codeowners-test-'));
     mkdirSync(join(tempDir, '.github'));
@@ -263,6 +276,26 @@ describe('evaluateCodeowners — requiredOwners', () => {
     expect(unownedViolation).toBeDefined();
     expect(wrongOwnerViolation).toBeDefined();
     expect(unownedViolation).not.toBe(wrongOwnerViolation);
+  });
+
+  it('uses a custom message for a wrong-owner violation when one is configured', () => {
+    tempDir = mkdtempSync(join(tmpdir(), 'hermex-codeowners-test-'));
+    mkdirSync(join(tempDir, '.github'));
+    writeFileSync(join(tempDir, '.github', 'CODEOWNERS'), 'src/ @other-team\n');
+    const result = evaluateCodeowners(
+      tempDir,
+      {
+        ...emptyRules,
+        codeowners: {
+          severity: 'error',
+          requiredOwners: ['@platform-team'],
+          message: 'wrong owner for this path',
+        },
+      },
+      ['src/App.tsx'],
+    );
+    expect(result).toHaveLength(1);
+    expect(result[0].message).toBe('wrong owner for this path');
   });
 
   it('is a no-op when requiredOwners is not set (existing behavior unchanged)', () => {
