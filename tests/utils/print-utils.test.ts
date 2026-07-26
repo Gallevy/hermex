@@ -1219,11 +1219,99 @@ describe('printJson', () => {
       'versus',
       'ruleViolations',
       'bannedPackageViolations',
+      'compliance',
     ]);
     expect(parsed.summary.filesAnalyzed).toBe(5);
     expect(parsed.summary.totalImports).toBe(10);
     expect(parsed.summary.totalComponents).toBe(3);
     expect(parsed.summary.totalUsagePatterns).toBe(7);
+  });
+
+  it('emits the official compliance verdict (status + counts) so consumers need not re-derive it (#55)', () => {
+    printJson(makeAggregated());
+
+    const written = stdoutSpy.mock.calls[0][0] as string;
+    const parsed = JSON.parse(written);
+
+    expect(parsed.compliance).toEqual({
+      status: 'compliant',
+      compliant: true,
+      counts: {
+        errorRuleViolations: 0,
+        errorBannedPackageViolations: 0,
+        releaseAgeViolations: 0,
+        warningRuleViolations: 0,
+        warningBannedPackageViolations: 0,
+      },
+    });
+  });
+
+  it("reports compliance status 'warning' for warn-severity rules but keeps compliant true (#55)", () => {
+    const aggregated = makeAggregated({
+      ruleViolations: [
+        {
+          type: 'require_files',
+          severity: 'warn',
+          patterns: ['.editorconfig'],
+          matchedFiles: [],
+        },
+      ],
+    });
+    printJson(aggregated);
+
+    const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+    expect(parsed.compliance.status).toBe('warning');
+    expect(parsed.compliance.compliant).toBe(true);
+    expect(parsed.compliance.counts.warningRuleViolations).toBe(1);
+  });
+
+  it("keeps compliance status 'compliant' for non-enforced overdue and pending-only packages (#55)", () => {
+    const aggregated = makeAggregated({
+      packageDistribution: [
+        createMockPackage('react-router-dom', {
+          releaseAge: createMockReleaseAge({
+            worstLevel: 'major_overdue',
+            severity: 'warn',
+          }),
+        }),
+        createMockPackage('@guestyci/arc', {
+          releaseAge: createMockReleaseAge({
+            worstLevel: null,
+            severity: 'error',
+          }),
+        }),
+      ],
+    });
+    printJson(aggregated);
+
+    const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+    expect(parsed.compliance.status).toBe('compliant');
+    expect(parsed.compliance.compliant).toBe(true);
+  });
+
+  it('passes an explicitly provided compliance result straight through (#55)', () => {
+    const aggregated = makeAggregated();
+    printJson(aggregated, {
+      compliant: false,
+      status: 'non-compliant',
+      errorRuleViolations: [
+        {
+          type: 'require_files',
+          severity: 'error',
+          patterns: ['.nvmrc'],
+          matchedFiles: [],
+        },
+      ],
+      errorBannedPackageViolations: [],
+      releaseAgeViolations: [],
+      warningRuleViolations: [],
+      warningBannedPackageViolations: [],
+    });
+
+    const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+    expect(parsed.compliance.status).toBe('non-compliant');
+    expect(parsed.compliance.compliant).toBe(false);
+    expect(parsed.compliance.counts.errorRuleViolations).toBe(1);
   });
 
   it('serializes component file sets as arrays', () => {

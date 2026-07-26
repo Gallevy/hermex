@@ -277,6 +277,30 @@ hermex comply
 
 `warn` and `info`-severity violations are always reported but never fail the build — only `error`-severity violations are mandatory. `hermex comply` respects `output.format: 'json'` the same way `scan` does, so CI pipelines can parse the full report while still relying on the exit code as the pass/fail signal.
 
+### Reading compliance from the JSON
+
+Both `hermex scan --format json` and `hermex comply --format json` emit a top-level `compliance` block — the **canonical, machine-readable verdict**. Read `compliance.status` rather than re-deriving a status from `packages` / `ruleViolations`, which is easy to get subtly wrong (e.g. treating a non-enforced overdue package or a not-yet-due pending upgrade as a failure).
+
+```jsonc
+"compliance": {
+  "status": "compliant",   // "compliant" | "warning" | "non-compliant"
+  "compliant": true,        // mirrors the `comply` exit code (0 ⇔ true)
+  "counts": {
+    "errorRuleViolations": 0,
+    "errorBannedPackageViolations": 0,
+    "releaseAgeViolations": 0,        // enforced (severity 'error') + overdue
+    "warningRuleViolations": 0,
+    "warningBannedPackageViolations": 0
+  }
+}
+```
+
+- **`non-compliant`** — at least one mandatory (`error`) violation. Exactly `compliant === false`; the condition `comply` exits `1` on.
+- **`warning`** — passes `comply` (exit `0`), but a `warn`-severity **rule** or **banned-package** violation is present. A non-enforced (`severity: 'warn'`) overdue release-age package or a not-yet-due `pendingUpgrade` is advisory data — it is **not** a warning and does **not** demote `compliant` → `warning`.
+- **`compliant`** — no mandatory violations and nothing flagged at `warn`.
+
+`status: 'warning'` never changes the exit code — it exists so dashboards and sheet syncs can surface a three-state signal that still agrees with `comply` on pass/fail.
+
 ### CI Job Summary / PR Comment
 
 `--summary-file <path>` writes a concise, ANSI-free markdown summary (title, rules, flagged packages, verdict) to `<path>`, suitable for posting as a GitHub Actions job summary or a PR comment — the same file can be reused verbatim for both surfaces, no need to generate it twice:
