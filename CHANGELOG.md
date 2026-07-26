@@ -1,3 +1,10 @@
+# [2.6.0](https://github.com/Gallevy/hermex/compare/v2.5.2...v2.6.0) (2026-07-26)
+
+
+### Features
+
+* expose official compliance status in scan/comply JSON ([#55](https://github.com/Gallevy/hermex/issues/55)) ([#56](https://github.com/Gallevy/hermex/issues/56)) ([883fc23](https://github.com/Gallevy/hermex/commit/883fc23f6d0a114e8959b9e829040d14ff8515a2))
+
 ## [2.5.2](https://github.com/Gallevy/hermex/compare/v2.5.1...v2.5.2) (2026-07-25)
 
 
