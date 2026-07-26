@@ -84,7 +84,7 @@ export async function executeComply(
     const compliance = computeCompliance(aggregated);
 
     if (isJson) {
-      printJson(aggregated);
+      printJson(aggregated, compliance);
     } else {
       printRules(aggregated);
       if (config.releaseAge.enabled) {

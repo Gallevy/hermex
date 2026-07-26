@@ -1,7 +1,24 @@
 import type { AggregatedReport } from './aggregator';
+import type { ComplianceResult } from './compliance';
+import { computeCompliance } from './compliance';
 import { getVersion } from './version';
 
-export function printJson(aggregated: AggregatedReport): void {
+/**
+ * Emits the scan/comply JSON. The `compliance` block is the official,
+ * machine-readable verdict — `status` (`compliant` | `warning` |
+ * `non-compliant`) plus the per-bucket counts that explain it — so consumers
+ * read one canonical field instead of re-deriving a status from `packages` /
+ * `ruleViolations` and drifting from `comply` (#55). `compliant` mirrors the
+ * CLI exit code (0 ⇔ true); `status: 'warning'` never changes that exit code.
+ *
+ * `compliance` defaults to `computeCompliance(aggregated)` so `scan --format
+ * json` carries the same verdict as `comply`; callers that already computed
+ * it (comply) pass it through to avoid recomputing.
+ */
+export function printJson(
+  aggregated: AggregatedReport,
+  compliance: ComplianceResult = computeCompliance(aggregated),
+): void {
   const result = {
     version: getVersion(),
     summary: {
@@ -19,6 +36,19 @@ export function printJson(aggregated: AggregatedReport): void {
     versus: aggregated.versusResults,
     ruleViolations: aggregated.ruleViolations,
     bannedPackageViolations: aggregated.bannedPackageViolations,
+    compliance: {
+      status: compliance.status,
+      compliant: compliance.compliant,
+      counts: {
+        errorRuleViolations: compliance.errorRuleViolations.length,
+        errorBannedPackageViolations:
+          compliance.errorBannedPackageViolations.length,
+        releaseAgeViolations: compliance.releaseAgeViolations.length,
+        warningRuleViolations: compliance.warningRuleViolations.length,
+        warningBannedPackageViolations:
+          compliance.warningBannedPackageViolations.length,
+      },
+    },
   };
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
 }

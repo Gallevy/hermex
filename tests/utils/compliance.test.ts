@@ -149,3 +149,133 @@ describe('computeCompliance', () => {
     expect(result.compliant).toBe(true);
   });
 });
+
+describe('computeCompliance — status (#55)', () => {
+  it("status is 'compliant' when there are no violations of any kind", () => {
+    const result = computeCompliance(makeAggregated());
+    expect(result.status).toBe('compliant');
+    expect(result.compliant).toBe(true);
+  });
+
+  it("status is 'non-compliant' when an error-severity rule violation is present", () => {
+    const violation: RuleViolation = {
+      type: 'require_files',
+      severity: 'error',
+      patterns: ['.nvmrc'],
+      matchedFiles: [],
+    };
+    const result = computeCompliance(
+      makeAggregated({ ruleViolations: [violation] }),
+    );
+    expect(result.status).toBe('non-compliant');
+    expect(result.compliant).toBe(false);
+  });
+
+  it("status is 'non-compliant' when an enforced package is overdue, regardless of any warn-severity rules present", () => {
+    const pkg = createMockPackage('@my-org/internal', {
+      releaseAge: createMockReleaseAge({
+        worstLevel: 'major_overdue',
+        severity: 'error',
+      }),
+    });
+    const warnRule: RuleViolation = {
+      type: 'require_files',
+      severity: 'warn',
+      patterns: ['.editorconfig'],
+      matchedFiles: [],
+    };
+    const result = computeCompliance(
+      makeAggregated({
+        packageDistribution: [pkg],
+        ruleViolations: [warnRule],
+      }),
+    );
+    // Error trumps warn — an error-level release-age breach is non-compliant,
+    // never merely a warning, even with warn-severity rules also present.
+    expect(result.status).toBe('non-compliant');
+  });
+
+  it("status is 'warning' when only a warn-severity rule violation is present", () => {
+    const violation: RuleViolation = {
+      type: 'require_files',
+      severity: 'warn',
+      patterns: ['.editorconfig'],
+      matchedFiles: [],
+    };
+    const result = computeCompliance(
+      makeAggregated({ ruleViolations: [violation] }),
+    );
+    expect(result.status).toBe('warning');
+    expect(result.compliant).toBe(true);
+    expect(result.warningRuleViolations).toEqual([violation]);
+  });
+
+  it("status is 'warning' when only a warn-severity banned package violation is present", () => {
+    const violation: BannedPackageViolation = {
+      packageName: 'lodash',
+      severity: 'warn',
+    };
+    const result = computeCompliance(
+      makeAggregated({ bannedPackageViolations: [violation] }),
+    );
+    expect(result.status).toBe('warning');
+    expect(result.compliant).toBe(true);
+    expect(result.warningBannedPackageViolations).toEqual([violation]);
+  });
+
+  it("status stays 'compliant' for the #55 search-page shape: info signal + non-enforced overdues + pending-only, no warn/error rules", () => {
+    // Reproduces the exact mix the issue reports as wrongly demoted to
+    // Warning by consumers: an `info` detect_files signal (Orbis), overdue
+    // react-* at severity 'warn' (not enforced), and pending-only @guestyci/*
+    // entries (worstLevel null). None of these are warn-severity *rules* or
+    // *banned* packages, so the official status must remain 'compliant'.
+    const infoSignal: RuleViolation = {
+      type: 'detect_files',
+      severity: 'info',
+      patterns: ['orbis.config.*'],
+      matchedFiles: ['orbis.config.ts'],
+    };
+    const nonEnforcedOverdue = createMockPackage('react-instantsearch', {
+      releaseAge: createMockReleaseAge({
+        worstLevel: 'major_overdue',
+        severity: 'warn',
+      }),
+    });
+    const anotherNonEnforcedOverdue = createMockPackage('react-router-dom', {
+      releaseAge: createMockReleaseAge({
+        worstLevel: 'minor_overdue',
+        severity: 'warn',
+      }),
+    });
+    const pendingOnly = createMockPackage('@guestyci/arc', {
+      releaseAge: createMockReleaseAge({
+        worstLevel: null,
+        severity: 'error',
+        pendingUpgrade: {
+          version: '2.0.0',
+          semverBump: 'major',
+          releasedDaysAgo: 3,
+          thresholdDays: 30,
+          daysRemaining: 27,
+        },
+      }),
+    });
+
+    const result = computeCompliance(
+      makeAggregated({
+        ruleViolations: [infoSignal],
+        packageDistribution: [
+          nonEnforcedOverdue,
+          anotherNonEnforcedOverdue,
+          pendingOnly,
+        ],
+      }),
+    );
+
+    expect(result.status).toBe('compliant');
+    expect(result.compliant).toBe(true);
+    expect(result.warningRuleViolations).toHaveLength(0);
+    expect(result.warningBannedPackageViolations).toHaveLength(0);
+    expect(result.releaseAgeViolations).toHaveLength(0);
+  });
+});

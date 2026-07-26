@@ -91,6 +91,13 @@ describe('CLI smoke tests', () => {
     expect(parsed).toHaveProperty('components');
     expect(parsed).toHaveProperty('patterns');
     expect(parsed.summary).toHaveProperty('filesAnalyzed');
+    // scan --format json carries the same official compliance verdict as
+    // comply, so consumers get a canonical status off either command (#55).
+    expect(parsed).toHaveProperty('compliance');
+    expect(parsed.compliance).toHaveProperty('status');
+    expect(['compliant', 'warning', 'non-compliant']).toContain(
+      parsed.compliance.status,
+    );
   });
 
   it('skips .d.ts files instead of reporting them as parse errors (#22)', () => {
@@ -227,6 +234,54 @@ describe('comply command', () => {
     expect(parsed).toHaveProperty('ruleViolations');
     expect(parsed.ruleViolations).toHaveLength(1);
     expect(parsed.ruleViolations[0].severity).toBe('error');
+  });
+
+  it("json output carries the official compliance verdict: 'non-compliant' on an error rule, matching the exit code (#55)", () => {
+    const configPath = join(
+      ROOT,
+      'tests',
+      'e2e',
+      'hermex-comply-json.config.ts',
+    );
+    const result = run(['comply', '--config', configPath]);
+    expect(result.status).toBe(1);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.compliance.status).toBe('non-compliant');
+    expect(parsed.compliance.compliant).toBe(false);
+    expect(parsed.compliance.counts.errorRuleViolations).toBe(1);
+  });
+
+  it("json output reports status 'warning' for a warn-severity rule while still exiting 0 — the key #55 case consumers mis-mapped", () => {
+    const configPath = join(
+      ROOT,
+      'tests',
+      'e2e',
+      'hermex-comply-warning.config.ts',
+    );
+    const result = run(['comply', '--config', configPath]);
+    // A warn-severity rule is advisory: comply still passes (exit 0)...
+    expect(result.status).toBe(0);
+    const parsed = JSON.parse(result.stdout);
+    // ...but the official status distinguishes it from a clean 'compliant'.
+    expect(parsed.compliance.status).toBe('warning');
+    expect(parsed.compliance.compliant).toBe(true);
+    expect(parsed.compliance.counts.warningRuleViolations).toBe(1);
+  });
+
+  it("json output reports status 'compliant' when the only signals are info/advisory, not 'warning' (#55)", () => {
+    // hermex-comply-pass has only an info detect_files rule (matches
+    // fixtures/hermex.config.ts), so nothing is at error or warn severity.
+    const configPath = join(
+      ROOT,
+      'tests',
+      'e2e',
+      'hermex-comply-pass.config.ts',
+    );
+    const result = run(['comply', '--config', configPath, '--format', 'json']);
+    expect(result.status).toBe(0);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.compliance.status).toBe('compliant');
+    expect(parsed.compliance.compliant).toBe(true);
   });
 
   it('runs the full pipeline and reports all violations, not just the first', () => {
