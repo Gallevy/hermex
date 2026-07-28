@@ -3,13 +3,18 @@ import type { AggregatedReport } from './aggregator';
 import type { ComplianceResult } from './compliance';
 import { describeViolation, formatRuleType } from './print-rules';
 import {
+  NOTE_ARROW,
   describePackageNotes,
   describeUpgradeTarget,
   resolveCompliantTarget,
   resolveInstalledVersion,
+  type PackageNote,
 } from './print-packages';
+import type { PackageDistribution } from './aggregator';
 import { severityIcon, stripAnsi } from './severity-format';
 
+// A table, mirroring the Packages section below it, rather than a bullet
+// list — same shape, same scanability, in both output surfaces.
 function buildRulesSection(aggregated: AggregatedReport): string {
   // Info-severity rows are excluded here (unlike the terminal `printRules`,
   // which shows everything) — a summary meant for a PR comment or job
@@ -25,18 +30,23 @@ function buildRulesSection(aggregated: AggregatedReport): string {
     return '### Rules\n\nAll rule checks passed\n';
   }
 
-  const lines: string[] = ['### Rules', ''];
+  const lines: string[] = [
+    '### Rules',
+    '',
+    '| | Rule | Description |',
+    '|---|---|---|',
+  ];
 
   for (const v of ruleViolations) {
     lines.push(
-      `- ${severityIcon(v.severity)} ${formatRuleType(v.type)} — ${describeViolation(v)}`,
+      `| ${severityIcon(v.severity)} | ${formatRuleType(v.type)} | ${describeViolation(v)} |`,
     );
   }
 
   for (const v of bannedPackageViolations) {
     const msg = v.message ? ` — ${v.message}` : '';
     lines.push(
-      `- ${severityIcon(v.severity)} forbid_packages — ${v.packageName} is forbidden${msg}`,
+      `| ${severityIcon(v.severity)} | forbid_packages | ${v.packageName} is forbidden${msg} |`,
     );
   }
 
@@ -72,9 +82,12 @@ function buildPackagesSection(
   compliance: ComplianceResult,
 ): string {
   const mandatory = compliance.releaseAgeViolations;
-  const withNotes = aggregated.packageDistribution.filter(
-    (p) => describePackageNotes(p) !== undefined,
-  );
+  const withNotes = aggregated.packageDistribution
+    .map((pkg) => ({ pkg, note: describePackageNotes(pkg) }))
+    .filter(
+      (entry): entry is { pkg: PackageDistribution; note: PackageNote } =>
+        entry.note !== undefined,
+    );
 
   if (mandatory.length === 0 && withNotes.length === 0) return '';
 
@@ -99,8 +112,9 @@ function buildPackagesSection(
 
   if (withNotes.length > 0) {
     lines.push('Notes:');
-    for (const pkg of withNotes) {
-      lines.push(`- \`${pkg.packageName}\` — ${describePackageNotes(pkg)}`);
+    for (const { pkg, note } of withNotes) {
+      const facts = note.facts.map((fact) => `${NOTE_ARROW} ${fact}`).join(' ');
+      lines.push(`- ${note.icon} \`${pkg.packageName}\` ${facts}`);
     }
   }
 

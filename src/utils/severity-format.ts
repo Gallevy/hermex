@@ -28,14 +28,6 @@ export function severityColor(
   return COLORS[severity];
 }
 
-export function formatViolationLine(opts: {
-  icon: string;
-  label: string;
-  description: string;
-}): string {
-  return `  ${opts.icon}  ${opts.label.padEnd(14)} ${opts.description}`;
-}
-
 /**
  * Resolves an explicit color-on/off override from CLI flags or the NO_COLOR
  * convention (https://no-color.org). Returns `undefined` when there's no

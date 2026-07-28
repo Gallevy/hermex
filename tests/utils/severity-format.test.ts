@@ -3,7 +3,6 @@ import chalk from 'chalk';
 import {
   severityIcon,
   severityColor,
-  formatViolationLine,
   resolveColorLevel,
   stripAnsi,
   applyColorLevel,
@@ -24,17 +23,6 @@ describe('severityColor', () => {
     expect(severityColor('warn')).toBe(chalk.yellow);
     expect(severityColor('info')).toBe(chalk.blue);
     expect(severityColor('success')).toBe(chalk.green);
-  });
-});
-
-describe('formatViolationLine', () => {
-  it('aligns icon, padded label, and description on one line', () => {
-    const line = formatViolationLine({
-      icon: '🔴',
-      label: 'detect_files',
-      description: '.env detected (.env)',
-    });
-    expect(line).toBe('  🔴  detect_files   .env detected (.env)');
   });
 });
 

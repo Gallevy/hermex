@@ -98,15 +98,15 @@ export function resolveCompliantTarget(
 //
 // Doesn't re-list which versions are overdue — `describeBundleImpact`
 // already names every resolved copy right before this in the same note, so
-// repeating a subset of that same list here would just be noise. Carries
-// its own warn icon since, unlike the plain bundle-impact fact, this is
-// itself an actionable finding worth flagging visually.
+// repeating a subset of that same list here would just be noise. Bare fact
+// text, no icon — the single leading icon for the whole note line is
+// decided once by `describePackageNotes`, not per-fact.
 export function describeAdvisoryBreaches(
   releaseAge?: ReleaseAgeEntry,
 ): string | undefined {
   if (!releaseAge?.advisoryBreaches?.length) return undefined;
   const n = releaseAge.advisoryBreaches.length;
-  return `${severityIcon('warn')} ${n} nested ${n > 1 ? 'copies' : 'copy'} overdue, not enforced but recommended to resolve`;
+  return `${n} nested ${n > 1 ? 'copies' : 'copy'} overdue, not enforced but recommended to resolve`;
 }
 
 // The single version a package's compliance verdict was actually measured
@@ -130,18 +130,34 @@ export function describeBundleImpact(
   return `${pkg.allVersions.length} versions installed (bundle impact): ${pkg.allVersions.join(', ')}`;
 }
 
-// Combines bundle-impact and advisory-breach info into the single note line
-// shown for a package below the table/Packages section — one shared
-// formatter so the human output and `--summary-file` can't drift on wording
-// (#57).
+/** Separator between facts on a Notes line — a real Unicode arrow, not an
+ * ASCII ligature ("->"/"-->") that only renders as an arrow in specific
+ * fonts and shows as literal dashes everywhere else (a rendered GitHub PR
+ * comment, a plain terminal). */
+export const NOTE_ARROW = '→';
+
+export interface PackageNote {
+  /** One leading icon for the whole line: warn (🟡) when there's an actual
+   * advisory finding to flag, info (🔵) when the note is purely factual
+   * (e.g. bundle impact with nothing overdue) — every package with a note
+   * gets a consistent leading icon, not just the ones with a warning. */
+  icon: string;
+  /** Each individual fact, to be joined with `NOTE_ARROW` by the caller. */
+  facts: string[];
+}
+
+// Combines bundle-impact and advisory-breach info into the note shown for a
+// package below the table/Packages section — one shared formatter so the
+// human output and `--summary-file` can't drift on wording (#57).
 export function describePackageNotes(
   pkg: PackageDistribution,
-): string | undefined {
-  const parts = [
-    describeBundleImpact(pkg),
-    describeAdvisoryBreaches(pkg.releaseAge),
-  ].filter((part): part is string => Boolean(part));
-  return parts.length > 0 ? parts.join('. ') : undefined;
+): PackageNote | undefined {
+  const advisory = describeAdvisoryBreaches(pkg.releaseAge);
+  const facts = [describeBundleImpact(pkg), advisory].filter(
+    (fact): fact is string => Boolean(fact),
+  );
+  if (facts.length === 0) return undefined;
+  return { icon: severityIcon(advisory ? 'warn' : 'info'), facts };
 }
 
 export function formatUpgradeCell(releaseAge?: ReleaseAgeEntry): string {
@@ -236,17 +252,18 @@ function printPackagesTable(
   // Bundle-impact (multiple resolved copies) and advisory nested breaches
   // are per-package context, not part of the pass/fail verdict — printed as
   // notes below the table rather than inside a cell, so the table itself
-  // stays a clean "installed -> target" comparison (#57).
+  // stays a clean "installed → target" comparison (#57).
   const notes = packages
     .map((pkg) => ({ pkg, note: describePackageNotes(pkg) }))
     .filter(
-      (entry): entry is { pkg: PackageDistribution; note: string } =>
+      (entry): entry is { pkg: PackageDistribution; note: PackageNote } =>
         entry.note !== undefined,
     );
   if (notes.length > 0) {
     console.log(chalk.gray('\nNotes:'));
     for (const { pkg, note } of notes) {
-      console.log(chalk.gray(`  ${pkg.packageName} — ${note}`));
+      const facts = note.facts.map((fact) => `${NOTE_ARROW} ${fact}`).join(' ');
+      console.log(chalk.gray(`  ${note.icon} ${pkg.packageName} ${facts}`));
     }
   }
 

@@ -1,8 +1,9 @@
 import chalk from 'chalk';
+import Table from 'cli-table3';
 import type { AggregatedReport } from './aggregator';
 import type { RuleViolation } from '../rules/evaluator';
 import { formatTruncatedList } from './format-utils';
-import { severityIcon, formatViolationLine } from './severity-format';
+import { severityIcon } from './severity-format';
 
 export function formatRuleType(type: RuleViolation['type']): string {
   switch (type) {
@@ -78,30 +79,29 @@ export function printRules(aggregated: AggregatedReport): void {
 
   console.log(chalk.blueBright.bold('\n🔍 Rules\n'));
 
-  if (hasRuleViolations) {
-    for (const v of ruleViolations) {
-      console.log(
-        formatViolationLine({
-          icon: severityIcon(v.severity),
-          label: formatRuleType(v.type),
-          description: describeViolation(v),
-        }),
-      );
-    }
+  // A table, matching the Packages table's shape/scanability, rather than a
+  // bullet list.
+  const table = new Table({
+    head: ['Rule', 'Description'],
+    style: { head: ['cyan'], border: ['gray'] },
+  });
+
+  for (const v of ruleViolations) {
+    table.push([
+      formatRuleType(v.type),
+      `${severityIcon(v.severity)} ${describeViolation(v)}`,
+    ]);
   }
 
-  if (hasBannedViolations) {
-    for (const v of bannedPackageViolations) {
-      const msg = v.message ? chalk.gray(` — ${v.message}`) : '';
-      console.log(
-        formatViolationLine({
-          icon: severityIcon(v.severity),
-          label: 'forbid_packages',
-          description: `${v.packageName} is forbidden${msg}`,
-        }),
-      );
-    }
+  for (const v of bannedPackageViolations) {
+    const msg = v.message ? chalk.gray(` — ${v.message}`) : '';
+    table.push([
+      'forbid_packages',
+      `${severityIcon(v.severity)} ${v.packageName} is forbidden${msg}`,
+    ]);
   }
+
+  console.log(table.toString());
 
   const errorCount = [
     ...ruleViolations.filter((v) => v.severity === 'error'),
@@ -117,5 +117,5 @@ export function printRules(aggregated: AggregatedReport): void {
     parts.push(chalk.red(`${errorCount} error${errorCount > 1 ? 's' : ''}`));
   if (warnCount > 0)
     parts.push(chalk.yellow(`${warnCount} warning${warnCount > 1 ? 's' : ''}`));
-  console.log(chalk.gray(`\n  ${parts.join(', ')}`));
+  console.log(chalk.gray(`\n${parts.join(', ')}`));
 }

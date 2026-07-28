@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AggregatedReport } from '../../src/utils/aggregator';
 import type { RuleViolation } from '../../src/rules/evaluator';
+import type { BannedPackageViolation } from '../../src/utils/package-rules';
 import { printSummary } from '../../src/utils/print-summary';
 import { stripAnsi } from '../../src/utils/severity-format';
 import {
@@ -382,16 +383,12 @@ describe('printPackages', () => {
     // The table row shows only the single installed baseline, not the list.
     const tableLines = output.split('\n').filter((l) => l.includes('│'));
     expect(tableLines.some((l) => l.includes('3.0.0'))).toBe(true);
-    // The full version list and the advisory note live in Notes, not the row.
+    // The full version list and the advisory note live in Notes, not the
+    // row — icon leads the whole line, real → arrow joins each fact.
     expect(output).toContain('Notes:');
-    expect(output).toContain('multi-version-lib —');
     expect(output).toContain(
-      '2 versions installed (bundle impact): 1.0.0, 3.0.0',
+      '🟡 multi-version-lib → 2 versions installed (bundle impact): 1.0.0, 3.0.0 → 1 nested copy overdue, not enforced but recommended to resolve',
     );
-    expect(output).toContain(
-      '1 nested copy overdue, not enforced but recommended to resolve',
-    );
-    expect(output).toContain('🟡');
   });
 });
 
@@ -615,13 +612,15 @@ describe('describeAdvisoryBreaches (#57)', () => {
     ).toBeUndefined();
   });
 
-  it('uses singular "copy" wording, with a warn icon, for exactly one advisory breach', () => {
+  it('uses singular "copy" wording for exactly one advisory breach, with no icon of its own', () => {
     const text = describeAdvisoryBreaches(
       createMockReleaseAge({
         advisoryBreaches: [{ version: '1.4.5', level: 'major_overdue' }],
       }),
     );
-    expect(text).toContain('🟡');
+    // Bare fact text — the single leading icon for the whole Notes line is
+    // decided once by describePackageNotes, not per-fact.
+    expect(text).not.toContain('🟡');
     expect(text).toContain('1 nested copy overdue');
     expect(text).toContain('not enforced but recommended to resolve');
     // Versions aren't repeated here — describeBundleImpact already lists
@@ -689,7 +688,7 @@ describe('describePackageNotes (#57)', () => {
     expect(describePackageNotes(pkg)).toBeUndefined();
   });
 
-  it('combines bundle-impact and advisory-breach text when both apply', () => {
+  it('combines bundle-impact and advisory-breach facts, with a warn icon, when both apply', () => {
     const pkg = createMockPackage('multi-version-lib', {
       hasVersionConflict: true,
       allVersions: ['1.0.0', '3.0.0'],
@@ -697,23 +696,24 @@ describe('describePackageNotes (#57)', () => {
         advisoryBreaches: [{ version: '1.0.0', level: 'major_overdue' }],
       }),
     });
-    const text = describePackageNotes(pkg)!;
-    expect(text).toContain(
+    const note = describePackageNotes(pkg)!;
+    expect(note.icon).toBe('🟡');
+    expect(note.facts).toEqual([
       '2 versions installed (bundle impact): 1.0.0, 3.0.0',
-    );
-    expect(text).toContain(
-      '🟡 1 nested copy overdue, not enforced but recommended to resolve',
-    );
+      '1 nested copy overdue, not enforced but recommended to resolve',
+    ]);
   });
 
-  it('shows only the bundle-impact note when there is no advisory breach', () => {
+  it('shows only the bundle-impact fact, with an info icon, when there is no advisory breach', () => {
     const pkg = createMockPackage('lodash', {
       hasVersionConflict: true,
       allVersions: ['3.10.1', '4.17.21'],
     });
-    expect(describePackageNotes(pkg)).toBe(
+    const note = describePackageNotes(pkg)!;
+    expect(note.icon).toBe('🔵');
+    expect(note.facts).toEqual([
       '2 versions installed (bundle impact): 3.10.1, 4.17.21',
-    );
+    ]);
   });
 });
 
@@ -873,6 +873,39 @@ describe('printDetails', () => {
 });
 
 describe('printRules', () => {
+  // Rules used to render as a bullet list; it's now a table matching
+  // the Packages table's shape — same "Rule | Description" columns, icon
+  // leading the Description cell (mirroring the Target cell convention).
+  it('renders violations as a Rule/Description table, not a bullet list', () => {
+    const errorViolation: RuleViolation = {
+      type: 'require_files',
+      severity: 'error',
+      patterns: ['.nvmrc'],
+      matchedFiles: [],
+    };
+    const banned: BannedPackageViolation = {
+      packageName: 'moment',
+      severity: 'warn',
+      message: 'Use dayjs',
+    };
+    const aggregated = makeAggregated({
+      ruleViolations: [errorViolation],
+      bannedPackageViolations: [banned],
+    });
+    printRules(aggregated);
+    const output = stripAnsi(
+      consoleSpy.mock.calls.map((call) => call.join(' ')).join('\n'),
+    );
+    expect(output).toContain('Rule');
+    expect(output).toContain('Description');
+    expect(output).toMatch(/│\s*require_files\s*│\s*🔴 \.nvmrc not found\s*│/);
+    expect(output).toMatch(
+      /│\s*forbid_packages\s*│\s*🟡 moment is forbidden — Use dayjs\s*│/,
+    );
+    // No leftover bullet-list markers from the old rendering.
+    expect(output).not.toMatch(/^\s*- 🔴/m);
+  });
+
   it('prints a passing message when there are no violations', () => {
     expect(() => printRules(makeAggregated())).not.toThrow();
     expect(consoleSpy).toHaveBeenCalled();
