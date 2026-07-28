@@ -1,3 +1,10 @@
+## [2.6.2](https://github.com/Gallevy/hermex/compare/v2.6.1...v2.6.2) (2026-07-28)
+
+
+### Bug Fixes
+
+* notes-line icon/arrow formatting, render Rules as a table ([#59](https://github.com/Gallevy/hermex/issues/59)) ([72cdf7a](https://github.com/Gallevy/hermex/commit/72cdf7a065319c5068418ee7772b0e8c9d87fe81))
+
 ## [2.6.1](https://github.com/Gallevy/hermex/compare/v2.6.0...v2.6.1) (2026-07-28)
 
 
