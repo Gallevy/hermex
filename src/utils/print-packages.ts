@@ -70,17 +70,83 @@ export function describeUpgradeTarget(
   return `${top.semverBump} ${top.version} (${overdue})`;
 }
 
+// Prefer a genuinely compliant, still-in-window release as the recommended
+// target — it may sit in a different tier than the one that breached (the
+// breached tier's own newest release can itself be stale). Only when no such
+// target exists does `describeUpgradeTarget` fall back to "no compliant
+// release available". Extracted so both the human table and `--summary-file`
+// derive the recommended target the same way — they diverged on this once
+// before (#57).
+export function resolveCompliantTarget(
+  releaseAge?: ReleaseAgeEntry,
+): { version: string; bump: SemverBump } | undefined {
+  if (!releaseAge?.minCompliantInWindow || !releaseAge.minCompliantVersion) {
+    return undefined;
+  }
+  return {
+    version: releaseAge.minCompliantVersion,
+    bump: releaseAge.minCompliantBump ?? releaseAge.upgrades[0]?.semverBump,
+  };
+}
+
+// Nested lockfile copies that are themselves overdue but aren't part of the
+// enforced verdict (e.g. non-root duplicates under `scope: 'root'`) must
+// stay visible — they don't block `comply`, but silently hiding them would
+// let real problems go unnoticed just because the policy doesn't enforce
+// them. One shared formatter, reused by the human table and
+// `--summary-file`, so the wording can't drift between the two (#57).
+//
+// Doesn't re-list which versions are overdue — `describeBundleImpact`
+// already names every resolved copy right before this in the same note, so
+// repeating a subset of that same list here would just be noise. Carries
+// its own warn icon since, unlike the plain bundle-impact fact, this is
+// itself an actionable finding worth flagging visually.
+export function describeAdvisoryBreaches(
+  releaseAge?: ReleaseAgeEntry,
+): string | undefined {
+  if (!releaseAge?.advisoryBreaches?.length) return undefined;
+  const n = releaseAge.advisoryBreaches.length;
+  return `${severityIcon('warn')} ${n} nested ${n > 1 ? 'copies' : 'copy'} overdue, not enforced but recommended to resolve`;
+}
+
+// The single version a package's compliance verdict was actually measured
+// against — `releaseAge.installedVersion` when release-age ran (which, under
+// `scope: 'tree'`, may be a nested copy rather than the root version), else
+// the plain root-resolved `pkg.version`. Always a single value, never the
+// full `allVersions` list — that ambiguity (which of several installed
+// copies a cell's overdue count refers to) is exactly what #57 flagged.
+export function resolveInstalledVersion(pkg: PackageDistribution): string {
+  return pkg.releaseAge?.installedVersion ?? pkg.version ?? 'N/A';
+}
+
+// Bundle-impact note for a package with more than one resolved lockfile
+// copy — kept separate from the Installed/Target columns (and from
+// describeAdvisoryBreaches) so each concern renders as its own sentence in
+// the notes list, not crammed into a table cell (#57).
+export function describeBundleImpact(
+  pkg: PackageDistribution,
+): string | undefined {
+  if (!pkg.hasVersionConflict) return undefined;
+  return `${pkg.allVersions.length} versions installed (bundle impact): ${pkg.allVersions.join(', ')}`;
+}
+
+// Combines bundle-impact and advisory-breach info into the single note line
+// shown for a package below the table/Packages section — one shared
+// formatter so the human output and `--summary-file` can't drift on wording
+// (#57).
+export function describePackageNotes(
+  pkg: PackageDistribution,
+): string | undefined {
+  const parts = [
+    describeBundleImpact(pkg),
+    describeAdvisoryBreaches(pkg.releaseAge),
+  ].filter((part): part is string => Boolean(part));
+  return parts.length > 0 ? parts.join('. ') : undefined;
+}
+
 export function formatUpgradeCell(releaseAge?: ReleaseAgeEntry): string {
   if (!releaseAge) return '';
-  const {
-    worstLevel,
-    upgrades,
-    severity,
-    pendingUpgrade,
-    minCompliantVersion,
-    minCompliantInWindow,
-    minCompliantBump,
-  } = releaseAge;
+  const { worstLevel, upgrades, severity, pendingUpgrade } = releaseAge;
 
   if (!worstLevel) {
     if (pendingUpgrade) {
@@ -93,21 +159,10 @@ export function formatUpgradeCell(releaseAge?: ReleaseAgeEntry): string {
   if (!top) return severityIcon('success');
 
   const suffix = severity === 'warn' ? chalk.gray(' [not enforced]') : '';
-
-  // Prefer a genuinely compliant, still-in-window release as the recommended
-  // target — it may sit in a different tier than the one that breached (the
-  // breached tier's own newest release can itself be stale). Only when no such
-  // target exists does `describeUpgradeTarget` fall back to "no compliant
-  // release available".
-  const compliantTarget =
-    minCompliantInWindow && minCompliantVersion
-      ? {
-          version: minCompliantVersion,
-          bump: minCompliantBump ?? top.semverBump,
-        }
-      : undefined;
-
-  const description = describeUpgradeTarget(top, compliantTarget);
+  const description = describeUpgradeTarget(
+    top,
+    resolveCompliantTarget(releaseAge),
+  );
 
   // The status reflects severity, not which tier breached: an enforced package
   // fails comply whether the worst breach is minor_overdue or major_overdue
@@ -150,8 +205,13 @@ function printPackagesTable(
   }
 
   const hasReleaseAge = packages.some((p) => p.releaseAge !== undefined);
-  const head = ['Package', 'Version'];
-  if (hasReleaseAge) head.push('Upgrades');
+  // With release age on, "Version" splits into "Installed" (the single
+  // version the verdict was actually measured against) and "Target" (the
+  // recommended upgrade) — cramming a multi-version list and an upgrade
+  // recommendation into one cell was exactly the ambiguity #57 reported.
+  const head = hasReleaseAge
+    ? ['Package', 'Installed', 'Target']
+    : ['Package', 'Version'];
 
   const table = new Table({
     head,
@@ -162,21 +222,33 @@ function printPackagesTable(
   });
 
   packages.forEach((pkg) => {
-    const versionCell = pkg.hasVersionConflict
-      ? chalk.yellow(
-          `⚠ ${pkg.allVersions.join(', ')} (${pkg.allVersions.length} versions — bundle impact)`,
-        )
-      : pkg.version || 'N/A';
-
-    const row = [
-      formatPackageName(pkg, getBannedViolation(pkg, violations)),
-      versionCell,
-    ];
-    if (hasReleaseAge) row.push(formatUpgradeCell(pkg.releaseAge));
+    const row = [formatPackageName(pkg, getBannedViolation(pkg, violations))];
+    if (hasReleaseAge) {
+      row.push(resolveInstalledVersion(pkg), formatUpgradeCell(pkg.releaseAge));
+    } else {
+      row.push(pkg.version || 'N/A');
+    }
     table.push(row);
   });
 
   console.log(table.toString());
+
+  // Bundle-impact (multiple resolved copies) and advisory nested breaches
+  // are per-package context, not part of the pass/fail verdict — printed as
+  // notes below the table rather than inside a cell, so the table itself
+  // stays a clean "installed -> target" comparison (#57).
+  const notes = packages
+    .map((pkg) => ({ pkg, note: describePackageNotes(pkg) }))
+    .filter(
+      (entry): entry is { pkg: PackageDistribution; note: string } =>
+        entry.note !== undefined,
+    );
+  if (notes.length > 0) {
+    console.log(chalk.gray('\nNotes:'));
+    for (const { pkg, note } of notes) {
+      console.log(chalk.gray(`  ${pkg.packageName} — ${note}`));
+    }
+  }
 
   console.log(chalk.gray(`\nTotal: ${formatCount(packages.length)} packages`));
 }

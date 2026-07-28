@@ -7,9 +7,9 @@ import {
 } from '@pnpm/dependency-path';
 import {
   readAndParseLockfile,
-  toSortedMultiVersionMap,
+  createResolutionAccumulator,
   type LockfileAdapter,
-  type MultiVersionMap,
+  type LockfileResolutionMap,
 } from '../lock-file-adapter';
 
 function parsePackageKey(
@@ -40,107 +40,95 @@ export class PnpmLockfileAdapter implements LockfileAdapter {
     return fs.existsSync(lockfilePath) ? lockfilePath : null;
   }
 
-  parse(lockFilePath: string): Record<string, string> {
+  resolve(lockFilePath: string): LockfileResolutionMap {
     return readAndParseLockfile(
       lockFilePath,
       (content) => {
         const lockData = load(content) as any;
-        const versions: Record<string, string> = {};
+        const acc = createResolutionAccumulator();
 
-        // pnpm v9+ uses "importers" field
-        if (lockData.importers) {
-          const rootImporter = lockData.importers['.'];
-          if (rootImporter) {
-            // Parse dependencies
-            if (rootImporter.dependencies) {
-              for (const [name, data] of Object.entries(
-                rootImporter.dependencies,
-              )) {
-                if (
-                  typeof data === 'object' &&
-                  data !== null &&
-                  'version' in data
-                ) {
-                  versions[name] = removeSuffix((data as any).version);
-                }
-              }
-            }
-            // Parse devDependencies
-            if (rootImporter.devDependencies) {
-              for (const [name, data] of Object.entries(
-                rootImporter.devDependencies,
-              )) {
-                if (
-                  typeof data === 'object' &&
-                  data !== null &&
-                  'version' in data
-                ) {
-                  versions[name] = removeSuffix((data as any).version);
-                }
+        // Every resolved copy anywhere in the lockfile (v6+ flat "packages"
+        // key namespace) — this is allVersions, regardless of scope.
+        if (lockData.packages) {
+          Object.keys(lockData.packages).forEach((key) => {
+            const parsed = parsePackageKey(key);
+            if (!parsed) return;
+            acc.addVersion(parsed.name, parsed.version);
+          });
+        }
+
+        // Root resolution: pnpm v9+ "importers" field is authoritative —
+        // the root workspace importer's own resolved version.
+        let hasImporterRoot = false;
+        const rootImporter = lockData.importers?.['.'];
+        if (rootImporter) {
+          for (const depsField of ['dependencies', 'devDependencies']) {
+            const deps = rootImporter[depsField];
+            if (!deps) continue;
+            for (const [name, data] of Object.entries(deps)) {
+              if (
+                typeof data === 'object' &&
+                data !== null &&
+                'version' in data
+              ) {
+                const version = removeSuffix((data as any).version);
+                acc.setRoot(name, version);
+                acc.addVersion(name, version);
+                hasImporterRoot = true;
               }
             }
           }
         }
 
-        // pnpm v6-8 uses "packages" field
-        if (lockData.packages && Object.keys(versions).length === 0) {
-          Object.keys(lockData.packages).forEach((key) => {
-            // Key format: "/@babel/core/7.22.5" or "/package/1.0.0"
-            const match = key.match(/\/(.+?)\/(\d+\.\d+\.\d+.*?)(?:_|$)/);
-            if (match) {
-              const [, pkgName, version] = match;
-              versions[pkgName] = removeSuffix(version);
-            }
-          });
-        }
-
-        // pnpm v5 uses "dependencies" and "specifiers"
-        if (lockData.dependencies && Object.keys(versions).length === 0) {
-          Object.entries(lockData.dependencies).forEach(
-            ([name, versionSpec]: [string, any]) => {
-              // versionSpec format: "1.0.0" or "link:../package"
-              if (
-                typeof versionSpec === 'string' &&
-                !versionSpec.startsWith('link:')
-              ) {
-                versions[name] = removeSuffix(versionSpec);
-              } else if (
-                typeof versionSpec === 'object' &&
-                versionSpec.version
-              ) {
-                versions[name] = removeSuffix(versionSpec.version);
+        // Legacy pnpm v5/v6-8 lockfiles have no "importers" field at all —
+        // these formats don't retain a root/nested distinction, so whatever
+        // single resolution they produce is treated as root too (accepted
+        // gap, documented).
+        if (!hasImporterRoot) {
+          // pnpm v6-8 uses "packages" field
+          if (lockData.packages) {
+            Object.keys(lockData.packages).forEach((key) => {
+              // Key format: "/@babel/core/7.22.5" or "/package/1.0.0"
+              const match = key.match(/\/(.+?)\/(\d+\.\d+\.\d+.*?)(?:_|$)/);
+              if (match) {
+                const [, pkgName, version] = match;
+                const resolved = removeSuffix(version);
+                acc.setRoot(pkgName, resolved);
+                acc.addVersion(pkgName, resolved);
               }
-            },
-          );
+            });
+          }
+
+          // pnpm v5 uses "dependencies" and "specifiers"
+          if (lockData.dependencies) {
+            Object.entries(lockData.dependencies).forEach(
+              ([name, versionSpec]: [string, any]) => {
+                // versionSpec format: "1.0.0" or "link:../package"
+                let version: string | undefined;
+                if (
+                  typeof versionSpec === 'string' &&
+                  !versionSpec.startsWith('link:')
+                ) {
+                  version = removeSuffix(versionSpec);
+                } else if (
+                  typeof versionSpec === 'object' &&
+                  versionSpec.version
+                ) {
+                  version = removeSuffix(versionSpec.version);
+                }
+                if (version) {
+                  acc.setRoot(name, version);
+                  acc.addVersion(name, version);
+                }
+              },
+            );
+          }
         }
 
-        return versions;
+        return acc.build();
       },
       {},
       'pnpm-lock.yaml',
-    );
-  }
-
-  parseMultiVersion(lockFilePath: string): MultiVersionMap {
-    return readAndParseLockfile(
-      lockFilePath,
-      (content) => {
-        const lockData = load(content) as any;
-        const versionSets: Record<string, Set<string>> = {};
-
-        if (lockData.packages) {
-          Object.keys(lockData.packages).forEach((key) => {
-            const parsed = parsePackageKey(key);
-            if (!parsed) return;
-            if (!versionSets[parsed.name]) versionSets[parsed.name] = new Set();
-            versionSets[parsed.name].add(parsed.version);
-          });
-        }
-
-        return toSortedMultiVersionMap(versionSets);
-      },
-      {},
-      'pnpm-lock.yaml (multi-version)',
     );
   }
 }

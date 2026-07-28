@@ -2,9 +2,9 @@ import fs from 'fs';
 import path from 'path';
 import {
   readAndParseLockfile,
-  toSortedMultiVersionMap,
+  createResolutionAccumulator,
   type LockfileAdapter,
-  type MultiVersionMap,
+  type LockfileResolutionMap,
 } from '../lock-file-adapter';
 
 function canonicalPackageName(pkgPath: string): string {
@@ -28,79 +28,57 @@ export class NpmLockfileAdapter implements LockfileAdapter {
     return fs.existsSync(lockfilePath) ? lockfilePath : null;
   }
 
-  parse(lockFilePath: string): Record<string, string> {
+  resolve(lockFilePath: string): LockfileResolutionMap {
     return readAndParseLockfile(
       lockFilePath,
       (content) => {
         const lockData = JSON.parse(content);
-        const versions: Record<string, string> = {};
+        const acc = createResolutionAccumulator();
+        let sawPackages = false;
 
-        // npm v7+ uses "packages" field (lockfileVersion 2, 3)
+        // npm v7+ uses "packages" field (lockfileVersion 2, 3). Every entry
+        // (any depth) contributes to allVersions; only depth-1 entries (no
+        // nested "node_modules/" in the path) are the root/direct
+        // dependency's resolution.
         if (lockData.packages) {
           Object.entries(lockData.packages).forEach(
             ([pkgPath, pkgData]: [string, any]) => {
               if (!pkgPath || pkgPath === '') return;
+              const version = pkgData?.version;
+              if (!version) return;
 
-              // Only root-level packages (no nested node_modules in path)
-              if (pkgPath.split('node_modules/').length > 2) return;
-
+              sawPackages = true;
               const pkgName = canonicalPackageName(pkgPath);
-              if (pkgData.version) {
-                versions[pkgName] = pkgData.version;
-              }
+              acc.addVersion(pkgName, version);
+
+              const isRoot = pkgPath.split('node_modules/').length <= 2;
+              if (isRoot) acc.setRoot(pkgName, version);
             },
           );
         }
 
-        // npm v6 uses "dependencies" field (fallback)
-        if (lockData.dependencies && Object.keys(versions).length === 0) {
-          function extractVersions(deps: any, prefix = ''): void {
+        // npm v6 uses "dependencies" field (fallback). Keyed strictly by
+        // real package name (not a depth-prefixed compound key) so nested
+        // copies of the same package share one allVersions entry.
+        if (lockData.dependencies && !sawPackages) {
+          function extractVersions(deps: any, depth = 0): void {
             Object.entries(deps).forEach(([name, data]: [string, any]) => {
-              const fullName = prefix ? `${prefix}/${name}` : name;
               if (data.version) {
-                versions[fullName] = data.version;
+                acc.addVersion(name, data.version);
+                if (depth === 0) acc.setRoot(name, data.version);
               }
               if (data.dependencies) {
-                extractVersions(data.dependencies, fullName);
+                extractVersions(data.dependencies, depth + 1);
               }
             });
           }
           extractVersions(lockData.dependencies);
         }
 
-        return versions;
+        return acc.build();
       },
       {},
       'package-lock.json',
-    );
-  }
-
-  parseMultiVersion(lockFilePath: string): MultiVersionMap {
-    return readAndParseLockfile(
-      lockFilePath,
-      (content) => {
-        const lockData = JSON.parse(content);
-        const versionSets: Record<string, Set<string>> = {};
-
-        if (lockData.packages) {
-          Object.entries(lockData.packages).forEach(
-            ([pkgPath, pkgData]: [string, any]) => {
-              if (!pkgPath || pkgPath === '') return;
-
-              const pkgName = canonicalPackageName(pkgPath);
-              const version = (pkgData as any).version;
-              if (!version) return;
-
-              if (!versionSets[pkgName]) versionSets[pkgName] = new Set();
-              versionSets[pkgName].add(version);
-            },
-          );
-        }
-
-        return toSortedMultiVersionMap(versionSets);
-      },
-      {},
-      'package-lock.json (multi-version)',
     );
   }
 }

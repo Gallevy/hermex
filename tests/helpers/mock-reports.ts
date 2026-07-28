@@ -45,16 +45,21 @@ export function createMockPackage(
   packageName: string,
   overrides: Partial<PackageDistribution> = {},
 ): PackageDistribution {
+  const version = overrides.version !== undefined ? overrides.version : '1.0.0';
   return {
     packageName,
-    version: '1.0.0',
+    version,
     componentCount: 1,
     usageCount: 1,
     percentage: 100,
     components: [],
     internal: false,
     hasVersionConflict: false,
-    allVersions: ['1.0.0'],
+    // Defaults to a single-entry array matching `version` (not a fixed
+    // '1.0.0') so overriding just `version` doesn't silently produce a
+    // package whose only "resolved copy" doesn't match its own installed
+    // version — override `allVersions` explicitly for multi-version tests.
+    allVersions: version ? [version] : [],
     ...overrides,
   };
 }
@@ -71,6 +76,7 @@ export function createMockReleaseAge(
     upgrades: [],
     worstLevel: null,
     severity: 'error',
+    scope: 'root',
     ...overrides,
   };
 }

@@ -126,6 +126,15 @@ export const HermexConfigSchema = z.object({
       enforceOn: z.array(z.string()).default([]),
       cacheTtlMs: z.number().int().positive().optional(),
       cacheDisabled: z.boolean().default(false),
+      // 'root' checks only each package's direct/root-installed version;
+      // 'tree' checks every resolved copy in the lockfile, failing if any
+      // is overdue. Nested duplicates are always visible as advisory data
+      // regardless of scope — this only decides what's mandatory (#57).
+      scope: z.enum(['root', 'tree']).default('root'),
+      // Glob-matched (like enforceOn): packages matching here use the
+      // OPPOSITE of `scope`, letting one global policy carve out
+      // exceptions for specific packages.
+      scopeExceptions: z.array(z.string()).default([]),
     })
     .default(() => ({
       enabled: false,
@@ -133,6 +142,8 @@ export const HermexConfigSchema = z.object({
       thresholds: { patch: 30, minor: 45, major: 60 },
       enforceOn: [],
       cacheDisabled: false,
+      scope: 'root' as const,
+      scopeExceptions: [],
     })),
 });
 

@@ -6,8 +6,13 @@ import { stripAnsi } from '../../src/utils/severity-format';
 import {
   printPackages,
   describeUpgradeTarget,
+  describeAdvisoryBreaches,
+  describeBundleImpact,
+  describePackageNotes,
   formatPackageName,
   formatUpgradeCell,
+  resolveCompliantTarget,
+  resolveInstalledVersion,
 } from '../../src/utils/print-packages';
 import { enrichWithReleaseAge } from '../../src/npm-registry/enricher';
 import { printComponents } from '../../src/utils/print-components';
@@ -346,6 +351,48 @@ describe('printPackages', () => {
     expect(output).toContain('3.10.1, 4.17.21');
     expect(output).toContain('2 versions');
   });
+
+  // (#57) When release age is enabled, the table splits into an unambiguous
+  // "Installed" column (the single version the verdict was measured
+  // against) and "Target" column, with the bundle-impact/advisory-breach
+  // context printed as a separate Notes line below the table — not crammed
+  // into a cell where it's unclear which installed copy a claim refers to.
+  it('shows Installed/Target columns and a Notes line for a package with an advisory breach', () => {
+    const aggregated = makeAggregated({
+      packageDistribution: [
+        createMockPackage('multi-version-lib', {
+          hasVersionConflict: true,
+          allVersions: ['1.0.0', '3.0.0'],
+          version: '3.0.0',
+          releaseAge: createMockReleaseAge({
+            scope: 'root',
+            installedVersion: '3.0.0',
+            worstLevel: null,
+            advisoryBreaches: [{ version: '1.0.0', level: 'major_overdue' }],
+          }),
+        }),
+      ],
+    });
+    printPackages(aggregated, 'table');
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('Installed');
+    expect(output).toContain('Target');
+    // The table row shows only the single installed baseline, not the list.
+    const tableLines = output.split('\n').filter((l) => l.includes('│'));
+    expect(tableLines.some((l) => l.includes('3.0.0'))).toBe(true);
+    // The full version list and the advisory note live in Notes, not the row.
+    expect(output).toContain('Notes:');
+    expect(output).toContain('multi-version-lib —');
+    expect(output).toContain(
+      '2 versions installed (bundle impact): 1.0.0, 3.0.0',
+    );
+    expect(output).toContain(
+      '1 nested copy overdue, not enforced but recommended to resolve',
+    );
+    expect(output).toContain('🟡');
+  });
 });
 
 describe('formatPackageName', () => {
@@ -504,6 +551,172 @@ describe('describeUpgradeTarget', () => {
   });
 });
 
+describe('resolveCompliantTarget (#57)', () => {
+  it('returns undefined when releaseAge is undefined', () => {
+    expect(resolveCompliantTarget(undefined)).toBeUndefined();
+  });
+
+  it('returns undefined when minCompliantInWindow is false', () => {
+    const releaseAge = createMockReleaseAge({
+      minCompliantInWindow: false,
+      minCompliantVersion: '2.0.0',
+    });
+    expect(resolveCompliantTarget(releaseAge)).toBeUndefined();
+  });
+
+  it('returns undefined when minCompliantVersion is missing even if minCompliantInWindow is true', () => {
+    const releaseAge = createMockReleaseAge({ minCompliantInWindow: true });
+    expect(resolveCompliantTarget(releaseAge)).toBeUndefined();
+  });
+
+  it('returns the compliant target with its own bump when set', () => {
+    const releaseAge = createMockReleaseAge({
+      minCompliantInWindow: true,
+      minCompliantVersion: '1.0.0',
+      minCompliantBump: 'major',
+    });
+    expect(resolveCompliantTarget(releaseAge)).toEqual({
+      version: '1.0.0',
+      bump: 'major',
+    });
+  });
+
+  it("falls back to the top upgrade's bump when minCompliantBump is not set", () => {
+    const releaseAge = createMockReleaseAge({
+      minCompliantInWindow: true,
+      minCompliantVersion: '1.0.0',
+      upgrades: [
+        {
+          version: '0.5.7',
+          releasedDaysAgo: 200,
+          breachReleasedDaysAgo: 200,
+          semverBump: 'minor',
+          level: 'minor_overdue',
+          thresholdDays: 45,
+        },
+      ],
+    });
+    expect(resolveCompliantTarget(releaseAge)).toEqual({
+      version: '1.0.0',
+      bump: 'minor',
+    });
+  });
+});
+
+describe('describeAdvisoryBreaches (#57)', () => {
+  it('returns undefined when releaseAge is undefined', () => {
+    expect(describeAdvisoryBreaches(undefined)).toBeUndefined();
+  });
+
+  it('returns undefined when advisoryBreaches is empty or missing', () => {
+    expect(describeAdvisoryBreaches(createMockReleaseAge())).toBeUndefined();
+    expect(
+      describeAdvisoryBreaches(createMockReleaseAge({ advisoryBreaches: [] })),
+    ).toBeUndefined();
+  });
+
+  it('uses singular "copy" wording, with a warn icon, for exactly one advisory breach', () => {
+    const text = describeAdvisoryBreaches(
+      createMockReleaseAge({
+        advisoryBreaches: [{ version: '1.4.5', level: 'major_overdue' }],
+      }),
+    );
+    expect(text).toContain('🟡');
+    expect(text).toContain('1 nested copy overdue');
+    expect(text).toContain('not enforced but recommended to resolve');
+    // Versions aren't repeated here — describeBundleImpact already lists
+    // every resolved copy right before this in describePackageNotes (#57).
+    expect(text).not.toContain('1.4.5');
+  });
+
+  it('uses plural "copies" wording for multiple advisory breaches, without re-listing versions', () => {
+    const text = describeAdvisoryBreaches(
+      createMockReleaseAge({
+        advisoryBreaches: [
+          { version: '1.4.5', level: 'major_overdue' },
+          { version: '2.1.9', level: 'major_overdue' },
+        ],
+      }),
+    );
+    expect(text).toContain('2 nested copies overdue');
+    expect(text).not.toContain('1.4.5');
+    expect(text).not.toContain('2.1.9');
+  });
+});
+
+describe('resolveInstalledVersion (#57)', () => {
+  it('uses releaseAge.installedVersion when release age ran', () => {
+    const pkg = createMockPackage('multi-version-lib', {
+      version: '3.0.0',
+      releaseAge: createMockReleaseAge({ installedVersion: '1.0.0' }),
+    });
+    // Under tree scope the enforced baseline can be a nested copy, not the
+    // root version — resolveInstalledVersion must reflect THAT, not pkg.version.
+    expect(resolveInstalledVersion(pkg)).toBe('1.0.0');
+  });
+
+  it('falls back to pkg.version when release age did not run', () => {
+    const pkg = createMockPackage('react', { version: '18.0.0' });
+    expect(resolveInstalledVersion(pkg)).toBe('18.0.0');
+  });
+
+  it('falls back to "N/A" when neither is available', () => {
+    const pkg = createMockPackage('react', { version: null });
+    expect(resolveInstalledVersion(pkg)).toBe('N/A');
+  });
+});
+
+describe('describeBundleImpact (#57)', () => {
+  it('returns undefined when there is no version conflict', () => {
+    const pkg = createMockPackage('react', { hasVersionConflict: false });
+    expect(describeBundleImpact(pkg)).toBeUndefined();
+  });
+
+  it('lists every resolved version when there is a conflict', () => {
+    const pkg = createMockPackage('lodash', {
+      hasVersionConflict: true,
+      allVersions: ['3.10.1', '4.17.21'],
+    });
+    const text = describeBundleImpact(pkg);
+    expect(text).toContain('2 versions installed (bundle impact)');
+    expect(text).toContain('3.10.1, 4.17.21');
+  });
+});
+
+describe('describePackageNotes (#57)', () => {
+  it('returns undefined when there is neither a conflict nor an advisory breach', () => {
+    const pkg = createMockPackage('react');
+    expect(describePackageNotes(pkg)).toBeUndefined();
+  });
+
+  it('combines bundle-impact and advisory-breach text when both apply', () => {
+    const pkg = createMockPackage('multi-version-lib', {
+      hasVersionConflict: true,
+      allVersions: ['1.0.0', '3.0.0'],
+      releaseAge: createMockReleaseAge({
+        advisoryBreaches: [{ version: '1.0.0', level: 'major_overdue' }],
+      }),
+    });
+    const text = describePackageNotes(pkg)!;
+    expect(text).toContain(
+      '2 versions installed (bundle impact): 1.0.0, 3.0.0',
+    );
+    expect(text).toContain(
+      '🟡 1 nested copy overdue, not enforced but recommended to resolve',
+    );
+  });
+
+  it('shows only the bundle-impact note when there is no advisory breach', () => {
+    const pkg = createMockPackage('lodash', {
+      hasVersionConflict: true,
+      allVersions: ['3.10.1', '4.17.21'],
+    });
+    expect(describePackageNotes(pkg)).toBe(
+      '2 versions installed (bundle impact): 3.10.1, 4.17.21',
+    );
+  });
+});
+
 describe('formatUpgradeCell — stale 0.x minor line beneath a compliant newer major (user report)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -532,6 +745,8 @@ describe('formatUpgradeCell — stale 0.x minor line beneath a compliant newer m
       registry: 'https://registry.npmjs.org',
       thresholds: { patch: 30, minor: 45, major: 60 },
       enforceOn: [],
+      scope: 'root',
+      scopeExceptions: [],
     });
 
     const cell = formatUpgradeCell(enriched[0].releaseAge);
