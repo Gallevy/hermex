@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import semver from 'semver';
-import { enrichWithReleaseAge } from '../../src/npm-registry/enricher';
+import {
+  enrichWithReleaseAge,
+  resolveReleaseAgeScope,
+} from '../../src/npm-registry/enricher';
 import { createMockPackage } from '../helpers/mock-reports';
 
 // Mock the cache module — no network or disk I/O in tests
@@ -18,6 +21,8 @@ const BASE_CONFIG = {
   registry: 'https://registry.npmjs.org',
   thresholds: DEFAULT_THRESHOLDS,
   enforceOn: [],
+  scope: 'root' as const,
+  scopeExceptions: [],
 };
 
 function daysAgo(n: number): string {
@@ -599,5 +604,252 @@ describe('enrichWithReleaseAge — overdue basis uses oldest breach, not newest 
     const major = entry.upgrades.find((u) => u.semverBump === 'major');
     expect(major?.releasedDaysAgo).toBe(5);
     expect(major?.breachReleasedDaysAgo).toBe(400);
+  });
+});
+
+describe('resolveReleaseAgeScope (#57)', () => {
+  it('returns the configured scope when there are no exceptions', () => {
+    expect(
+      resolveReleaseAgeScope('react', { ...BASE_CONFIG, scope: 'root' }),
+    ).toBe('root');
+    expect(
+      resolveReleaseAgeScope('react', { ...BASE_CONFIG, scope: 'tree' }),
+    ).toBe('tree');
+  });
+
+  it('flips root -> tree for a package matching scopeExceptions', () => {
+    const scope = resolveReleaseAgeScope('@vendor/pinned-lib', {
+      ...BASE_CONFIG,
+      scope: 'root',
+      scopeExceptions: ['@vendor/pinned-*'],
+    });
+    expect(scope).toBe('tree');
+  });
+
+  it('flips tree -> root for a package matching scopeExceptions', () => {
+    const scope = resolveReleaseAgeScope('@vendor/pinned-lib', {
+      ...BASE_CONFIG,
+      scope: 'tree',
+      scopeExceptions: ['@vendor/pinned-*'],
+    });
+    expect(scope).toBe('root');
+  });
+
+  it('does not flip a package that does not match scopeExceptions', () => {
+    const scope = resolveReleaseAgeScope('react', {
+      ...BASE_CONFIG,
+      scope: 'tree',
+      scopeExceptions: ['@vendor/pinned-*'],
+    });
+    expect(scope).toBe('tree');
+  });
+});
+
+describe('enrichWithReleaseAge — scope (#57)', () => {
+  // Shared fixture: relative to '1.0.0', both '2.0.0' (400d old) and '3.0.0'
+  // (200d old) are major bumps past the 60-day threshold — so '1.0.0' alone
+  // is major_overdue. Relative to '3.0.0', there's nothing newer at all, so
+  // it's fully compliant. Relative to '2.0.0', only '3.0.0' is newer (also a
+  // major bump, 200d old) — also major_overdue, but less overdue than '1.0.0'.
+  const MULTI_VERSION_TIME = {
+    '1.0.0': daysAgo(900),
+    '2.0.0': daysAgo(400),
+    '3.0.0': daysAgo(200),
+  };
+
+  it('scope: root — a compliant root version does not fail even when a nested copy is overdue, but the nested breach is surfaced as advisory', async () => {
+    const pkg = createMockPackage('multi-version-lib', {
+      version: '3.0.0',
+      allVersions: ['1.0.0', '3.0.0'],
+      hasVersionConflict: true,
+    });
+    mockFetch.mockResolvedValueOnce({
+      name: 'multi-version-lib',
+      time: MULTI_VERSION_TIME,
+      versions: {},
+    });
+    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const entry = enriched[0].releaseAge!;
+    expect(entry.scope).toBe('root');
+    expect(entry.worstLevel).toBeNull();
+    expect(entry.evaluatedVersions).toEqual(['1.0.0', '3.0.0']);
+    expect(entry.advisoryBreaches).toEqual([
+      { version: '1.0.0', level: 'major_overdue' },
+    ]);
+  });
+
+  it('scope: root — an overdue root version fails as usual, and a compliant nested copy is not reported as advisory', async () => {
+    const pkg = createMockPackage('multi-version-lib', {
+      version: '1.0.0',
+      allVersions: ['1.0.0', '3.0.0'],
+      hasVersionConflict: true,
+    });
+    mockFetch.mockResolvedValueOnce({
+      name: 'multi-version-lib',
+      time: MULTI_VERSION_TIME,
+      versions: {},
+    });
+    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const entry = enriched[0].releaseAge!;
+    expect(entry.scope).toBe('root');
+    expect(entry.worstLevel).toBe('major_overdue');
+    expect(entry.advisoryBreaches).toBeUndefined();
+  });
+
+  it('scope: tree — every resolved copy is enforced; the worst breach drives the verdict and nothing is advisory', async () => {
+    const pkg = createMockPackage('multi-version-lib', {
+      version: '3.0.0',
+      allVersions: ['1.0.0', '2.0.0', '3.0.0'],
+      hasVersionConflict: true,
+    });
+    mockFetch.mockResolvedValueOnce({
+      name: 'multi-version-lib',
+      time: MULTI_VERSION_TIME,
+      versions: {},
+    });
+    const { enriched } = await enrichWithReleaseAge([pkg], {
+      ...BASE_CONFIG,
+      scope: 'tree',
+    });
+    const entry = enriched[0].releaseAge!;
+    expect(entry.scope).toBe('tree');
+    // '1.0.0' is the most-overdue enforced copy (400d breach) — it becomes
+    // the baseline/installedVersion, not the root '3.0.0' that was passed in.
+    expect(entry.worstLevel).toBe('major_overdue');
+    expect(entry.installedVersion).toBe('1.0.0');
+    expect(entry.advisoryBreaches).toBeUndefined();
+  });
+
+  it('scope: tree — the baseline is reassigned mid-loop to a later candidate with a strictly worse level', async () => {
+    // '3.0.0' (listed first) is fully compliant on its own (nothing newer);
+    // '1.0.0' (listed second) is major_overdue relative to itself — the
+    // baseline must be reassigned away from the first candidate once a
+    // strictly worse one is found later in the array.
+    const pkg = createMockPackage('multi-version-lib', {
+      version: '3.0.0',
+      allVersions: ['3.0.0', '1.0.0'],
+      hasVersionConflict: true,
+    });
+    mockFetch.mockResolvedValueOnce({
+      name: 'multi-version-lib',
+      time: MULTI_VERSION_TIME,
+      versions: {},
+    });
+    const { enriched } = await enrichWithReleaseAge([pkg], {
+      ...BASE_CONFIG,
+      scope: 'tree',
+    });
+    const entry = enriched[0].releaseAge!;
+    expect(entry.worstLevel).toBe('major_overdue');
+    expect(entry.installedVersion).toBe('1.0.0');
+  });
+
+  it('scope: tree — a same-rank later candidate with a larger breach age replaces the baseline (tie-break)', async () => {
+    // '2.0.0' (listed first) and '1.0.0' (listed second) are both
+    // major_overdue relative to themselves, but '1.0.0' has been in
+    // violation longer (400d breach vs. 200d) — the tie-break must still
+    // pick the more-overdue one even though it appears later in the array.
+    const pkg = createMockPackage('multi-version-lib', {
+      version: '2.0.0',
+      allVersions: ['2.0.0', '1.0.0'],
+      hasVersionConflict: true,
+    });
+    mockFetch.mockResolvedValueOnce({
+      name: 'multi-version-lib',
+      time: MULTI_VERSION_TIME,
+      versions: {},
+    });
+    const { enriched } = await enrichWithReleaseAge([pkg], {
+      ...BASE_CONFIG,
+      scope: 'tree',
+    });
+    const entry = enriched[0].releaseAge!;
+    expect(entry.worstLevel).toBe('major_overdue');
+    expect(entry.installedVersion).toBe('1.0.0');
+    expect(entry.upgrades[0]?.breachReleasedDaysAgo).toBe(400);
+  });
+
+  it('scope: tree — a same-rank later candidate with a SMALLER breach age does not replace the baseline', async () => {
+    // Inverse ordering of the tie-break test above: '1.0.0' (400d breach,
+    // worse) listed first, '2.0.0' (200d breach) listed second — the
+    // baseline must stay on '1.0.0' since the later candidate isn't worse.
+    const pkg = createMockPackage('multi-version-lib', {
+      version: '1.0.0',
+      allVersions: ['1.0.0', '2.0.0'],
+      hasVersionConflict: true,
+    });
+    mockFetch.mockResolvedValueOnce({
+      name: 'multi-version-lib',
+      time: MULTI_VERSION_TIME,
+      versions: {},
+    });
+    const { enriched } = await enrichWithReleaseAge([pkg], {
+      ...BASE_CONFIG,
+      scope: 'tree',
+    });
+    const entry = enriched[0].releaseAge!;
+    expect(entry.installedVersion).toBe('1.0.0');
+    expect(entry.upgrades[0]?.breachReleasedDaysAgo).toBe(400);
+  });
+
+  it('scope: root — a mandatory root breach alongside an independently-overdue nested copy reports both', async () => {
+    // '1.0.0' as root is itself major_overdue (mandatory failure), AND
+    // '2.0.0' is ALSO independently overdue relative to itself — both must
+    // surface: the root breach drives worstLevel, the nested breach is
+    // still reported as advisory even though the package already fails.
+    const pkg = createMockPackage('multi-version-lib', {
+      version: '1.0.0',
+      allVersions: ['1.0.0', '2.0.0'],
+      hasVersionConflict: true,
+    });
+    mockFetch.mockResolvedValueOnce({
+      name: 'multi-version-lib',
+      time: MULTI_VERSION_TIME,
+      versions: {},
+    });
+    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const entry = enriched[0].releaseAge!;
+    expect(entry.scope).toBe('root');
+    expect(entry.worstLevel).toBe('major_overdue');
+    expect(entry.advisoryBreaches).toEqual([
+      { version: '2.0.0', level: 'major_overdue' },
+    ]);
+  });
+
+  it('scope: tree — all-compliant copies produce a clean verdict with no advisory breaches', async () => {
+    const pkg = createMockPackage('multi-version-lib', {
+      version: '2.0.0',
+      allVersions: ['1.0.0', '2.0.0'],
+      hasVersionConflict: true,
+    });
+    mockFetch.mockResolvedValueOnce({
+      name: 'multi-version-lib',
+      // '2.0.0' is only 10d old — well within the 60-day major threshold,
+      // so it's compliant both as its own baseline and as the only newer
+      // candidate relative to '1.0.0'.
+      time: { '1.0.0': daysAgo(500), '2.0.0': daysAgo(10) },
+      versions: {},
+    });
+    const { enriched } = await enrichWithReleaseAge([pkg], {
+      ...BASE_CONFIG,
+      scope: 'tree',
+    });
+    const entry = enriched[0].releaseAge!;
+    expect(entry.worstLevel).toBeNull();
+    expect(entry.advisoryBreaches).toBeUndefined();
+  });
+
+  it('regression: a single-version package under the default root scope gets no evaluatedVersions/advisoryBreaches at all', async () => {
+    const pkg = createMockPackage('react', { version: '18.0.0' });
+    mockFetch.mockResolvedValueOnce({
+      name: 'react',
+      time: { '18.0.0': daysAgo(100), '18.0.1': daysAgo(10) },
+      versions: {},
+    });
+    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const entry = enriched[0].releaseAge!;
+    expect(entry.scope).toBe('root');
+    expect(entry.evaluatedVersions).toBeUndefined();
+    expect(entry.advisoryBreaches).toBeUndefined();
   });
 });

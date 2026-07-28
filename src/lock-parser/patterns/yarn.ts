@@ -3,10 +3,18 @@ import path from 'path';
 import lockfile from '@yarnpkg/lockfile';
 import {
   readAndParseLockfile,
-  toSortedMultiVersionMap,
+  createResolutionAccumulator,
   type LockfileAdapter,
-  type MultiVersionMap,
+  type LockfileResolutionMap,
 } from '../lock-file-adapter';
+import { readPackageJson } from '../../rules/shared';
+
+const ROOT_DEPENDENCY_FIELDS = [
+  'dependencies',
+  'devDependencies',
+  'optionalDependencies',
+  'peerDependencies',
+] as const;
 
 function extractPackageName(key: string): string {
   if (key.startsWith('@')) {
@@ -15,6 +23,32 @@ function extractPackageName(key: string): string {
   }
   const match = key.match(/^([^@]+)@/);
   return match ? match[1] : key;
+}
+
+/**
+ * Merges every declared dependency range from the root package.json into a
+ * single `name -> range` map, so a yarn.lock entry's exact key (`name@range`)
+ * can be matched against it to find the root-resolved version — yarn.lock
+ * itself retains no root/nested distinction, unlike npm's and pnpm's
+ * lockfile formats (#57).
+ */
+function collectRootRanges(
+  pkgJson: Record<string, unknown> | null,
+): Record<string, string> {
+  const ranges: Record<string, string> = {};
+  if (!pkgJson) return ranges;
+
+  for (const field of ROOT_DEPENDENCY_FIELDS) {
+    const deps = pkgJson[field];
+    if (!deps || typeof deps !== 'object') continue;
+    for (const [name, range] of Object.entries(
+      deps as Record<string, unknown>,
+    )) {
+      if (typeof range === 'string') ranges[name] = range;
+    }
+  }
+
+  return ranges;
 }
 
 export class YarnLockfileAdapter implements LockfileAdapter {
@@ -26,7 +60,9 @@ export class YarnLockfileAdapter implements LockfileAdapter {
     return fs.existsSync(lockfilePath) ? lockfilePath : null;
   }
 
-  parse(lockFilePath: string): Record<string, string> {
+  resolve(lockFilePath: string, projectPath: string): LockfileResolutionMap {
+    const rootRanges = collectRootRanges(readPackageJson(projectPath));
+
     return readAndParseLockfile(
       lockFilePath,
       (content) => {
@@ -37,46 +73,26 @@ export class YarnLockfileAdapter implements LockfileAdapter {
           return {};
         }
 
-        const versions: Record<string, string> = {};
+        const acc = createResolutionAccumulator();
 
-        Object.entries(parsed.object).forEach(([key, value]: [string, any]) => {
-          const pkgName = extractPackageName(key);
-
-          if (value.version && !versions[pkgName]) {
-            versions[pkgName] = value.version;
-          }
-        });
-
-        return versions;
-      },
-      {},
-      'yarn.lock',
-    );
-  }
-
-  parseMultiVersion(lockFilePath: string): MultiVersionMap {
-    return readAndParseLockfile(
-      lockFilePath,
-      (content) => {
-        const parsed = lockfile.parse(content);
-
-        if (parsed.type !== 'success') {
-          throw new Error('Failed to parse yarn.lock');
-        }
-
-        const versionSets: Record<string, Set<string>> = {};
-
+        // `@yarnpkg/lockfile`'s parse() has already decoded the lockfile —
+        // we only correlate its already-parsed keys against package.json
+        // ranges here, not re-implementing any lockfile parsing ourselves.
         Object.entries(parsed.object).forEach(([key, value]: [string, any]) => {
           if (!value.version) return;
           const pkgName = extractPackageName(key);
-          if (!versionSets[pkgName]) versionSets[pkgName] = new Set();
-          versionSets[pkgName].add(value.version);
+          acc.addVersion(pkgName, value.version);
+
+          const range = rootRanges[pkgName];
+          if (range && key === `${pkgName}@${range}`) {
+            acc.setRoot(pkgName, value.version);
+          }
         });
 
-        return toSortedMultiVersionMap(versionSets);
+        return acc.build();
       },
       {},
-      'yarn.lock (multi-version)',
+      'yarn.lock',
     );
   }
 }

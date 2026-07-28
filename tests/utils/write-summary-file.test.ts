@@ -11,6 +11,7 @@ import {
   writeSummaryFile,
   DEFAULT_SUMMARY_TITLE,
 } from '../../src/utils/write-summary-file';
+import { formatUpgradeCell } from '../../src/utils/print-packages';
 import {
   createMockPackage,
   createMockReleaseAge,
@@ -280,9 +281,9 @@ describe('writeSummaryFile', () => {
         makeAggregated({ packageDistribution: [overdueError] }),
       );
       expect(content).toContain('### Packages');
-      expect(content).toContain('| | Package | Issue |');
+      expect(content).toContain('| | Package | Installed | Target |');
       expect(content).toContain(
-        '| 🔴 | `my-internal-pkg` | major 4.2.0 (40 days overdue) |',
+        '| 🔴 | `my-internal-pkg` | 1.0.0 | major 4.2.0 (40 days overdue) |',
       );
     });
 
@@ -309,7 +310,7 @@ describe('writeSummaryFile', () => {
         .split('\n')
         .find((l) => l.includes('my-internal-pkg'));
       expect(line).toBe(
-        '| 🔴 | `my-internal-pkg` | major 4.2.0 (40 days overdue), deprecated |',
+        '| 🔴 | `my-internal-pkg` | 1.0.0 | major 4.2.0 (40 days overdue), deprecated |',
       );
     });
 
@@ -330,7 +331,7 @@ describe('writeSummaryFile', () => {
       const line = content
         .split('\n')
         .find((l) => l.includes('my-internal-pkg'));
-      expect(line).toBe('| 🔴 | `my-internal-pkg` | deprecated |');
+      expect(line).toBe('| 🔴 | `my-internal-pkg` | 1.0.0 | deprecated |');
     });
 
     it('does not show a banned/restricted package (it is Rules-only, not duplicated here)', () => {
@@ -378,6 +379,152 @@ describe('writeSummaryFile', () => {
       );
       expect(content).toContain('### Packages\n');
       expect(content).not.toContain('(issues only)');
+    });
+
+    // Regression test for #57 P3: the summary path used to call
+    // describeUpgradeTarget(top) with no second argument, so it never saw
+    // the cross-tier compliant target the human table (formatUpgradeCell)
+    // already recommended — reporting "no compliant release available" even
+    // when a genuinely compliant release plainly existed in a different tier.
+    it('recommends the cross-tier compliant target, not "no compliant release available" (#57 regression)', () => {
+      const pkg = createMockPackage('some-lib', {
+        releaseAge: createMockReleaseAge({
+          worstLevel: 'minor_overdue',
+          severity: 'error',
+          minCompliantInWindow: true,
+          minCompliantVersion: '1.0.0',
+          minCompliantBump: 'major',
+          upgrades: [
+            {
+              version: '0.5.7',
+              releasedDaysAgo: 200,
+              breachReleasedDaysAgo: 200,
+              semverBump: 'minor',
+              level: 'minor_overdue',
+              thresholdDays: 45,
+            },
+          ],
+        }),
+      });
+      const content = write(makeAggregated({ packageDistribution: [pkg] }));
+      expect(content).toContain('major 1.0.0 (155 days overdue)');
+      expect(content).not.toContain('no compliant release available');
+    });
+
+    // Golden equivalence test: the human table (formatUpgradeCell) and the
+    // summary file (buildPackagesSection) must derive the same recommended
+    // upgrade description from the same ReleaseAgeEntry — they diverged on
+    // this once before (#57) because only one call site passed the
+    // compliantTarget argument.
+    it('agrees with formatUpgradeCell on the recommended upgrade description', () => {
+      const releaseAge = createMockReleaseAge({
+        worstLevel: 'minor_overdue',
+        severity: 'error',
+        minCompliantInWindow: true,
+        minCompliantVersion: '1.0.0',
+        minCompliantBump: 'major',
+        upgrades: [
+          {
+            version: '0.5.7',
+            releasedDaysAgo: 200,
+            breachReleasedDaysAgo: 200,
+            semverBump: 'minor',
+            level: 'minor_overdue',
+            thresholdDays: 45,
+          },
+        ],
+      });
+      const pkg = createMockPackage('some-lib', { releaseAge });
+      const content = write(makeAggregated({ packageDistribution: [pkg] }));
+
+      const tableCell = formatUpgradeCell(releaseAge);
+      // formatUpgradeCell is "<icon> <description>[suffix]" — extract just
+      // the description text and confirm the summary row contains the exact
+      // same substring, not a re-derived (and potentially divergent) one.
+      const description = tableCell.replace(/^\S+\s/, '');
+      expect(content).toContain(description);
+    });
+
+    // Notes (#57): a package that's compliant at the enforced scope but has
+    // an overdue nested copy the scope doesn't enforce must still surface in
+    // the summary — as a Notes line, using the exact same wording the human
+    // table shows — not be silently omitted just because it never reaches
+    // compliance.releaseAgeViolations, and not given its own violation-shaped
+    // table row (it isn't one).
+    it('shows a compliant-but-advisory package as a Notes line, with no Packages table', () => {
+      const advisoryOnly = createMockPackage('multi-version-lib', {
+        hasVersionConflict: true,
+        allVersions: ['1.0.0', '3.0.0'],
+        releaseAge: createMockReleaseAge({
+          worstLevel: null,
+          severity: 'error',
+          scope: 'root',
+          advisoryBreaches: [{ version: '1.0.0', level: 'major_overdue' }],
+        }),
+      });
+      const content = write(
+        makeAggregated({ packageDistribution: [advisoryOnly] }),
+      );
+      expect(content).toContain('### Packages');
+      // Compliant packages never get a violation-shaped table row.
+      expect(content).not.toContain('| | Package | Installed | Target |');
+      expect(content).toContain('Notes:');
+      const line = content
+        .split('\n')
+        .find((l) => l.includes('multi-version-lib'));
+      expect(line).toContain('- `multi-version-lib` —');
+      expect(line).toContain(
+        '2 versions installed (bundle impact): 1.0.0, 3.0.0',
+      );
+      expect(line).toContain(
+        '🟡 1 nested copy overdue, not enforced but recommended to resolve',
+      );
+      // Notes-only packages must never count toward the mandatory verdict.
+      expect(content).toContain('### 🟢 COMPLIANT');
+      expect(content).not.toContain('NOT COMPLIANT');
+    });
+
+    // (#57) A package can be a MANDATORY failure (root itself is overdue)
+    // while ALSO carrying an independently-overdue nested copy — the
+    // mandatory row shows the Installed/Target facts only; the nested-copy
+    // context appears in the separate Notes list, not crammed onto the row.
+    it('shows a package that is a mandatory violation AND has an advisory breach on both the table row and in Notes', () => {
+      const both = createMockPackage('multi-version-lib', {
+        hasVersionConflict: true,
+        allVersions: ['1.0.0', '2.0.0'],
+        releaseAge: createMockReleaseAge({
+          worstLevel: 'major_overdue',
+          severity: 'error',
+          scope: 'root',
+          installedVersion: '1.0.0',
+          upgrades: [
+            {
+              version: '2.0.0',
+              releasedDaysAgo: 10,
+              breachReleasedDaysAgo: 400,
+              semverBump: 'major',
+              level: 'major_overdue',
+              thresholdDays: 60,
+            },
+          ],
+          advisoryBreaches: [{ version: '2.0.0', level: 'major_overdue' }],
+        }),
+      });
+      const content = write(makeAggregated({ packageDistribution: [both] }));
+      const tableLine = content.split('\n').find((l) => l.startsWith('| 🔴 |'));
+      expect(tableLine).toBe(
+        '| 🔴 | `multi-version-lib` | 1.0.0 | major 2.0.0 (340 days overdue) |',
+      );
+      const noteLine = content
+        .split('\n')
+        .find((l) => l.startsWith('- `multi-version-lib`'));
+      expect(noteLine).toContain(
+        '2 versions installed (bundle impact): 1.0.0, 2.0.0',
+      );
+      expect(noteLine).toContain(
+        '🟡 1 nested copy overdue, not enforced but recommended to resolve',
+      );
+      expect(content).toContain('NOT COMPLIANT');
     });
   });
 

@@ -47,14 +47,30 @@ function upgradeLevel(
   return null;
 }
 
-function computeReleaseAge(
+interface ReleaseAgeForVersion {
+  upgrades: AvailableUpgrade[];
+  worstLevel: UpgradeLevel | null;
+  pendingUpgrade?: PendingUpgrade;
+  latestVersion?: string;
+  latestReleasedDaysAgo?: number;
+  minCompliantVersion?: string;
+  minCompliantReleasedDaysAgo?: number;
+  minCompliantInWindow: boolean;
+  minCompliantBump?: SemverBump;
+}
+
+/**
+ * Computes everything version-dependent for a single installed version
+ * against the registry's release timeline — no notion of scope, severity,
+ * or deprecation, which are policy/registry facts independent of which
+ * installed copy is being checked (#57).
+ */
+function computeReleaseAgeForVersion(
   installedVersion: string,
   timeMap: Record<string, string>,
-  deprecated: string | undefined,
   thresholds: ReleaseAgeConfig['thresholds'],
   distTags: Record<string, string> | undefined,
-  severity: 'error' | 'warn',
-): ReleaseAgeEntry {
+): ReleaseAgeForVersion {
   const byBump = new Map<SemverBump, { version: string; daysAgo: number }[]>();
   let minCompliantVersion: string | undefined;
   let minCompliantReleasedDaysAgo: number | undefined;
@@ -185,19 +201,126 @@ function computeReleaseAge(
   }
 
   return {
-    installedVersion,
     upgrades: finalUpgrades,
     worstLevel,
     pendingUpgrade,
-    deprecated,
     latestVersion,
     latestReleasedDaysAgo,
     minCompliantVersion,
     minCompliantReleasedDaysAgo,
     minCompliantInWindow: hadInWindowCandidate,
     minCompliantBump,
-    severity,
   };
+}
+
+const LEVEL_RANK: Record<'null' | UpgradeLevel, number> = {
+  null: 0,
+  minor_overdue: 1,
+  major_overdue: 2,
+};
+
+function levelRank(level: UpgradeLevel | null): number {
+  return LEVEL_RANK[level ?? 'null'];
+}
+
+/**
+ * Resolves which of `allVersions` count toward compliance ('root': just
+ * `installedVersion`; 'tree': every resolved copy), evaluates each
+ * candidate independently via `computeReleaseAgeForVersion`, and combines
+ * them into a single verdict — the worst result among the enforced
+ * versions — while still surfacing overdue-but-not-enforced copies via
+ * `advisoryBreaches` regardless of scope (#57).
+ */
+function computeReleaseAge(
+  installedVersion: string,
+  allVersions: string[],
+  timeMap: Record<string, string>,
+  deprecated: string | undefined,
+  thresholds: ReleaseAgeConfig['thresholds'],
+  distTags: Record<string, string> | undefined,
+  severity: 'error' | 'warn',
+  scope: 'root' | 'tree',
+): ReleaseAgeEntry {
+  const candidates =
+    allVersions.length > 0
+      ? Array.from(new Set(allVersions))
+      : [installedVersion];
+  if (!candidates.includes(installedVersion)) candidates.push(installedVersion);
+
+  const enforcedVersions = scope === 'tree' ? candidates : [installedVersion];
+
+  const perVersion = new Map<string, ReleaseAgeForVersion>();
+  for (const version of candidates) {
+    perVersion.set(
+      version,
+      computeReleaseAgeForVersion(version, timeMap, thresholds, distTags),
+    );
+  }
+
+  let baselineVersion = enforcedVersions[0];
+  let baseline = perVersion.get(baselineVersion)!;
+  for (const version of enforcedVersions.slice(1)) {
+    const candidate = perVersion.get(version)!;
+    const candidateRank = levelRank(candidate.worstLevel);
+    const baselineRank = levelRank(baseline.worstLevel);
+    const candidateBreachAge =
+      candidate.upgrades[0]?.breachReleasedDaysAgo ?? 0;
+    const baselineBreachAge = baseline.upgrades[0]?.breachReleasedDaysAgo ?? 0;
+    if (
+      candidateRank > baselineRank ||
+      (candidateRank === baselineRank && candidateBreachAge > baselineBreachAge)
+    ) {
+      baseline = candidate;
+      baselineVersion = version;
+    }
+  }
+
+  const advisoryBreaches: { version: string; level: UpgradeLevel }[] = [];
+  for (const version of candidates) {
+    if (enforcedVersions.includes(version)) continue;
+    const result = perVersion.get(version)!;
+    if (result.worstLevel) {
+      advisoryBreaches.push({ version, level: result.worstLevel });
+    }
+  }
+
+  return {
+    installedVersion: baselineVersion,
+    upgrades: baseline.upgrades,
+    worstLevel: baseline.worstLevel,
+    pendingUpgrade: baseline.pendingUpgrade,
+    deprecated,
+    latestVersion: baseline.latestVersion,
+    latestReleasedDaysAgo: baseline.latestReleasedDaysAgo,
+    minCompliantVersion: baseline.minCompliantVersion,
+    minCompliantReleasedDaysAgo: baseline.minCompliantReleasedDaysAgo,
+    minCompliantInWindow: baseline.minCompliantInWindow,
+    minCompliantBump: baseline.minCompliantBump,
+    severity,
+    scope,
+    evaluatedVersions: candidates.length > 1 ? candidates : undefined,
+    advisoryBreaches:
+      advisoryBreaches.length > 0 ? advisoryBreaches : undefined,
+  };
+}
+
+/**
+ * Resolves the effective scope for a package: `scopeExceptions` (glob,
+ * matched like `enforceOn`) flips the global `scope` default for packages
+ * that need the opposite policy — e.g. tree-wide everywhere except a
+ * package whose transitive pins can't be controlled down to root (#57).
+ */
+export function resolveReleaseAgeScope(
+  packageName: string,
+  config: ReleaseAgeConfig,
+): 'root' | 'tree' {
+  if (
+    config.scopeExceptions.length > 0 &&
+    micromatch.isMatch(packageName, config.scopeExceptions)
+  ) {
+    return config.scope === 'root' ? 'tree' : 'root';
+  }
+  return config.scope;
 }
 
 export async function enrichWithReleaseAge(
@@ -244,13 +367,17 @@ export async function enrichWithReleaseAge(
             ? 'error'
             : 'warn';
 
+        const scope = resolveReleaseAgeScope(pkg.packageName, config);
+
         const entry = computeReleaseAge(
           pkg.version!,
+          pkg.allVersions,
           info.time,
           typeof deprecated === 'string' ? deprecated : undefined,
           config.thresholds,
           info['dist-tags'],
           severity,
+          scope,
         );
 
         return { pkg, entry };

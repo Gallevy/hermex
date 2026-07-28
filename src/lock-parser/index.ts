@@ -1,19 +1,30 @@
 import { NpmLockfileAdapter } from './patterns/npm';
 import { PnpmLockfileAdapter } from './patterns/pnpm';
 import { YarnLockfileAdapter } from './patterns/yarn';
-import type { LockfileAdapter, MultiVersionMap } from './lock-file-adapter';
+import {
+  maxSemver,
+  type LockfileAdapter,
+  type LockfileResolutionMap,
+  type MultiVersionMap,
+} from './lock-file-adapter';
 
-export type { MultiVersionMap };
-
-export interface VersionConflict {
-  packageName: string;
-  versions: string[];
-}
+export type {
+  MultiVersionMap,
+  LockfileResolutionMap,
+  PackageResolution,
+} from './lock-file-adapter';
 
 export interface LockfileResult {
+  /** Complete per-package resolution data — root version (if determinable) and every resolved copy. */
+  resolutions: LockfileResolutionMap;
+  /**
+   * The single "installed version" per package: `rootVersion` when known,
+   * otherwise the highest semver among `allVersions` (undeterminable root,
+   * e.g. a yarn package with no readable package.json, or a purely
+   * transitive dependency).
+   */
   versions: Record<string, string>;
   multiVersions: MultiVersionMap;
-  versionConflicts: VersionConflict[];
   lockfileType: 'npm' | 'yarn' | 'pnpm' | null;
   lockfilePath: string | null;
   supportedVersions: string[];
@@ -34,19 +45,21 @@ export function findAndParseLockfile(projectPath: string): LockfileResult {
   for (const adapter of LOCKFILE_ADAPTERS) {
     const lockfilePath = adapter.detect(projectPath);
     if (lockfilePath) {
-      const versions = adapter.parse(lockfilePath);
-      const multiVersions = adapter.parseMultiVersion
-        ? adapter.parseMultiVersion(lockfilePath)
-        : {};
+      const resolutions = adapter.resolve(lockfilePath, projectPath);
 
-      const versionConflicts: VersionConflict[] = Object.entries(multiVersions)
-        .filter(([, vers]) => vers.length > 1)
-        .map(([packageName, vers]) => ({ packageName, versions: vers }));
+      const versions: Record<string, string> = {};
+      const multiVersions: MultiVersionMap = {};
+      for (const [packageName, resolution] of Object.entries(resolutions)) {
+        multiVersions[packageName] = resolution.allVersions;
+        const effective =
+          resolution.rootVersion ?? maxSemver(resolution.allVersions);
+        if (effective) versions[packageName] = effective;
+      }
 
       return {
+        resolutions,
         versions,
         multiVersions,
-        versionConflicts,
         lockfileType: adapter.name as 'npm' | 'yarn' | 'pnpm',
         lockfilePath,
         supportedVersions: adapter.supportedVersions,

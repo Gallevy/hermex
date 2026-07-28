@@ -1,9 +1,10 @@
 # Dependencies
 node_modules/
 
-# Lock files
-package-lock.json
-yarn.lock
+# Lock files (repo root only — nested copies under tests/fixtures/ are
+# intentional test data, not accidental installs, and must stay trackable)
+/package-lock.json
+/yarn.lock
 
 # Keep pnpm-lock.yaml (we're using pnpm)
 

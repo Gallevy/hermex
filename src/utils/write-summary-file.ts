@@ -2,7 +2,12 @@ import { writeFileSync } from 'node:fs';
 import type { AggregatedReport } from './aggregator';
 import type { ComplianceResult } from './compliance';
 import { describeViolation, formatRuleType } from './print-rules';
-import { describeUpgradeTarget } from './print-packages';
+import {
+  describePackageNotes,
+  describeUpgradeTarget,
+  resolveCompliantTarget,
+  resolveInstalledVersion,
+} from './print-packages';
 import { severityIcon, stripAnsi } from './severity-format';
 
 function buildRulesSection(aggregated: AggregatedReport): string {
@@ -48,30 +53,55 @@ function buildRulesSection(aggregated: AggregatedReport): string {
   return lines.join('\n') + '\n';
 }
 
-// Built directly from compliance.releaseAgeViolations rather than a
-// separately-derived filter — that's already exactly "release-age packages
-// that are mandatory failures" (src/utils/compliance.ts), so the row list
-// can never drift from the verdict's mandatory-violation count. Banned and
-// deprecated-only/not-enforced packages don't get a row here: banned ones
-// are already shown in Rules as a forbid_packages line, and deprecated-only
-// or not-enforced-overdue packages are info-level, not enforceable (#31).
-function buildPackagesSection(compliance: ComplianceResult): string {
-  if (compliance.releaseAgeViolations.length === 0) return '';
+// The table is built directly from compliance.releaseAgeViolations rather
+// than a separately-derived filter — that's already exactly "release-age
+// packages that are mandatory failures" (src/utils/compliance.ts), so the
+// row list can never drift from the verdict's mandatory-violation count.
+// Banned and deprecated-only/not-enforced packages don't get a row here:
+// banned ones are already shown in Rules as a forbid_packages line, and
+// deprecated-only or not-enforced-overdue packages are info-level, not
+// enforceable (#31).
+//
+// Bundle-impact (multiple resolved copies) and advisory nested breaches are
+// per-package context, not part of the pass/fail verdict — listed as Notes
+// below the table (mirroring the human `--format human` output), not
+// crammed into the Target cell or given their own violation-shaped row,
+// regardless of whether the package is itself a mandatory violation (#57).
+function buildPackagesSection(
+  aggregated: AggregatedReport,
+  compliance: ComplianceResult,
+): string {
+  const mandatory = compliance.releaseAgeViolations;
+  const withNotes = aggregated.packageDistribution.filter(
+    (p) => describePackageNotes(p) !== undefined,
+  );
 
-  const lines: string[] = [
-    '### Packages',
-    '',
-    '| | Package | Issue |',
-    '|---|---|---|',
-  ];
-  for (const pkg of compliance.releaseAgeViolations) {
-    const top = pkg.releaseAge?.upgrades[0];
-    const reasons: string[] = [];
-    if (top) reasons.push(describeUpgradeTarget(top));
-    if (pkg.releaseAge?.deprecated) reasons.push('deprecated');
-    lines.push(
-      `| ${severityIcon('error')} | \`${pkg.packageName}\` | ${reasons.join(', ')} |`,
-    );
+  if (mandatory.length === 0 && withNotes.length === 0) return '';
+
+  const lines: string[] = ['### Packages', ''];
+
+  if (mandatory.length > 0) {
+    lines.push('| | Package | Installed | Target |', '|---|---|---|---|');
+    for (const pkg of mandatory) {
+      const top = pkg.releaseAge?.upgrades[0];
+      const reasons: string[] = [];
+      if (top)
+        reasons.push(
+          describeUpgradeTarget(top, resolveCompliantTarget(pkg.releaseAge)),
+        );
+      if (pkg.releaseAge?.deprecated) reasons.push('deprecated');
+      lines.push(
+        `| ${severityIcon('error')} | \`${pkg.packageName}\` | ${resolveInstalledVersion(pkg)} | ${reasons.join(', ')} |`,
+      );
+    }
+    lines.push('');
+  }
+
+  if (withNotes.length > 0) {
+    lines.push('Notes:');
+    for (const pkg of withNotes) {
+      lines.push(`- \`${pkg.packageName}\` — ${describePackageNotes(pkg)}`);
+    }
   }
 
   return lines.join('\n') + '\n';
@@ -107,7 +137,7 @@ export function writeSummaryFile(
   const sections = [
     `# ${title}\n`,
     buildRulesSection(aggregated),
-    buildPackagesSection(compliance),
+    buildPackagesSection(aggregated, compliance),
     buildVerdictSection(compliance),
   ].filter((section) => section.length > 0);
 

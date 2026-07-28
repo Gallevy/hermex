@@ -63,6 +63,22 @@ export interface ReleaseAgeEntry {
    * the recommended target when it differs from the breached tier. */
   minCompliantBump?: SemverBump;
   severity: 'error' | 'warn';
+  /**
+   * Which lockfile copies count toward this verdict: 'root' checks only
+   * `installedVersion`; 'tree' checks every resolved copy. Resolved from
+   * `releaseAge.scope`/`scopeExceptions` config (#57).
+   */
+  scope: 'root' | 'tree';
+  /** Every distinct installed version considered — only set when more than one exists. */
+  evaluatedVersions?: string[];
+  /**
+   * Versions from `evaluatedVersions` that breached their own threshold but
+   * are NOT part of this verdict (i.e. not in scope) — e.g. nested
+   * duplicates under `scope: 'root'`. Always computed when there's a
+   * conflict, regardless of scope, so overdue nested copies are never
+   * silently invisible just because they don't block `comply` (#57).
+   */
+  advisoryBreaches?: { version: string; level: UpgradeLevel }[];
 }
 
 export interface RegistryPackageInfo {

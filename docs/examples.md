@@ -263,6 +263,29 @@ If `enforceOn` is omitted, every package's release age counts toward compliance 
 
 `enforceOn` matches are checked against the lockfile directly, not just packages hermex found imported as components — so a CSS-only or side-effect-only dependency (e.g. `import '@my-org/styles/button.css'`) still gets checked and can still fail `hermex comply`, even though it never shows up in component usage.
 
+### Root vs. tree scope
+
+hermex's lockfile parsing always resolves **complete** data for every package, for all three package managers (npm, yarn, pnpm): both the version your root `package.json` resolves to, and every distinct version found anywhere in the lockfile. `scope` then decides which of that data counts toward `comply` — it's a policy choice layered on top of already-complete data, not a limit on what hermex extracts:
+
+```ts
+export default defineConfig({
+  releaseAge: {
+    enabled: true,
+    scope: 'root', // default — only the root-installed version can fail comply
+    // scope: 'tree', // check every resolved copy; fail if any is overdue
+    scopeExceptions: ['@vendor/pinned-*'], // these packages use the OPPOSITE scope
+  },
+});
+```
+
+- **`scope: 'root'`** (default) — only each package's direct/root-installed version is enforced. This matches how npm and pnpm (v9+) lockfiles already resolve dependencies. Nested duplicate copies pulled in by transitive dependencies never independently fail `comply`.
+- **`scope: 'tree'`** — every resolved copy in the lockfile is enforced; `comply` fails if *any* installed copy is overdue.
+- **`scopeExceptions`** — glob patterns (matched like `enforceOn`) naming packages that use the *opposite* of the configured `scope`. Useful when most of your tree should be checked exhaustively but a handful of packages have transitive pins you don't control down to the root, or vice versa.
+
+**Root scope never hides nested duplicates.** When a package has multiple resolved versions and the root copy is compliant, an overdue nested copy still shows up — in both the human `--format human` table and `--summary-file` — as a Notes line beneath the Packages table, not folded into the pass/fail cell. The table itself always shows a single **Installed** version (the exact copy the verdict was measured against — the enforced baseline, which under `scope: 'tree'` may be a nested copy rather than the root version) alongside the **Target** (recommended upgrade); the full list of resolved versions and any non-enforced overdue copies live in Notes, keyed by package name, so it's never ambiguous which installed copy a given overdue count refers to.
+
+For **yarn**, root-version resolution works by reading the root `package.json`'s declared dependency range and matching it exactly against the corresponding entry in the already-parsed `yarn.lock` — yarn.lock itself retains no root/nested distinction, unlike npm's and pnpm's lockfile formats. If `package.json` can't be read, or a package isn't a direct dependency at all (purely transitive), hermex falls back to the highest resolved version found in the lockfile. Pre-v9 pnpm lockfiles (no `importers` field) are always treated as root-only regardless of `scope` — those legacy formats don't retain a root/nested distinction either.
+
 ## Compliance Checking
 
 `hermex scan` is purely informational and always exits `0`. Use `hermex comply` to gate CI on your rules and release-age policy — it runs the same analysis pipeline, reports every violation (it does not stop at the first one), then exits based on the result:
