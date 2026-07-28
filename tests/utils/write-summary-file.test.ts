@@ -90,6 +90,22 @@ describe('writeSummaryFile', () => {
   });
 
   describe('Rules section', () => {
+    // Rules used to render as a "- icon type — description" bullet
+    // list; it's now a markdown table matching the Packages section's shape.
+    it('renders violations as a Rule/Description markdown table, not a bullet list', () => {
+      const violation: RuleViolation = {
+        type: 'require_files',
+        severity: 'error',
+        patterns: ['.nvmrc'],
+        matchedFiles: [],
+      };
+      const content = write(makeAggregated({ ruleViolations: [violation] }));
+      expect(content).toContain('| | Rule | Description |');
+      expect(content).toContain('|---|---|---|');
+      expect(content).toContain('| 🔴 | require_files | .nvmrc not found |');
+      expect(content).not.toContain('- 🔴 require_files —');
+    });
+
     it('excludes an info-severity rule violation from the lines and the error/warning count', () => {
       const errorViolation: RuleViolation = {
         type: 'require_files',
@@ -155,7 +171,7 @@ describe('writeSummaryFile', () => {
         makeAggregated({ bannedPackageViolations: [violation] }),
       );
       expect(content).toContain(
-        'forbid_packages — moment is forbidden — Use date-fns or dayjs',
+        '| 🔴 | forbid_packages | moment is forbidden — Use date-fns or dayjs |',
       );
     });
 
@@ -167,7 +183,9 @@ describe('writeSummaryFile', () => {
       const content = write(
         makeAggregated({ bannedPackageViolations: [violation] }),
       );
-      expect(content).toContain('forbid_packages — moment is forbidden\n');
+      expect(content).toContain(
+        '| 🔴 | forbid_packages | moment is forbidden |',
+      );
     });
 
     it('shows only a warning count when there are no errors', () => {
@@ -348,7 +366,7 @@ describe('writeSummaryFile', () => {
         }),
       );
       expect(content).not.toContain('### Packages');
-      expect(content).toContain('forbid_packages — moment is forbidden');
+      expect(content).toContain('| forbid_packages | moment is forbidden');
     });
 
     it('omits the Packages heading entirely when there are no mandatory release-age violations', () => {
@@ -472,12 +490,10 @@ describe('writeSummaryFile', () => {
       const line = content
         .split('\n')
         .find((l) => l.includes('multi-version-lib'));
-      expect(line).toContain('- `multi-version-lib` —');
-      expect(line).toContain(
-        '2 versions installed (bundle impact): 1.0.0, 3.0.0',
-      );
-      expect(line).toContain(
-        '🟡 1 nested copy overdue, not enforced but recommended to resolve',
+      // Icon leads the whole note line (before the package name), and every
+      // fact is joined with the real → arrow, not "-" or "—".
+      expect(line).toBe(
+        '- 🟡 `multi-version-lib` → 2 versions installed (bundle impact): 1.0.0, 3.0.0 → 1 nested copy overdue, not enforced but recommended to resolve',
       );
       // Notes-only packages must never count toward the mandatory verdict.
       expect(content).toContain('### 🟢 COMPLIANT');
@@ -517,12 +533,9 @@ describe('writeSummaryFile', () => {
       );
       const noteLine = content
         .split('\n')
-        .find((l) => l.startsWith('- `multi-version-lib`'));
-      expect(noteLine).toContain(
-        '2 versions installed (bundle impact): 1.0.0, 2.0.0',
-      );
-      expect(noteLine).toContain(
-        '🟡 1 nested copy overdue, not enforced but recommended to resolve',
+        .find((l) => l.startsWith('- ') && l.includes('multi-version-lib'));
+      expect(noteLine).toBe(
+        '- 🟡 `multi-version-lib` → 2 versions installed (bundle impact): 1.0.0, 2.0.0 → 1 nested copy overdue, not enforced but recommended to resolve',
       );
       expect(content).toContain('NOT COMPLIANT');
     });
