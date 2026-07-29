@@ -1,7 +1,7 @@
 import micromatch from 'micromatch';
 import type { UsageReport } from '../swc-parser';
 import type { HermexConfig } from '../config/types';
-import type { MultiVersionMap } from '../lock-parser';
+import type { LockfileResolutionMap, MultiVersionMap } from '../lock-parser';
 import type { ReleaseAgeEntry } from '../npm-registry/types';
 
 export interface ComponentUsage {
@@ -21,6 +21,19 @@ export interface PackageDistribution {
   internal: boolean;
   hasVersionConflict: boolean;
   allVersions: string[];
+  /**
+   * The version resolved for this package's root/direct dependency
+   * declaration (from the lockfile layer's `PackageResolution.rootVersion`),
+   * or `null` when the package is confirmed NOT a direct dependency (purely
+   * transitive). `undefined` (the value if never set — e.g. a hand-built
+   * `PackageDistribution` in a test) is treated as "unknown, assume root"
+   * for backward compatibility — only an explicit `null` marks a package as
+   * definitively non-root, which is what makes `scope: 'root'` correctly
+   * decline to enforce it (releaseAge would otherwise silently fall back to
+   * the highest resolved version and enforce THAT, wrongly treating a
+   * transitive-only package as if it were a root dependency).
+   */
+  rootVersion?: string | null;
   releaseAge?: ReleaseAgeEntry;
 }
 
@@ -96,11 +109,39 @@ function getPackageVersion(
   return null;
 }
 
+// Same base-package fallback as getPackageVersion (a subpath import like
+// `@scope/pkg/sub` resolves to `@scope/pkg`'s data), but reading the true
+// root/direct-dependency version from the lockfile layer's resolutions
+// rather than the `rootVersion ?? maxSemver(allVersions)` fallback baked
+// into `versions`. `null` here (as opposed to `versions` being silently
+// absent) is the signal `scope: 'root'` needs to correctly decline to
+// enforce a package that was never a direct dependency in the first place.
+function getRootVersion(
+  packageName: string,
+  resolutions: LockfileResolutionMap,
+): string | null {
+  if (resolutions[packageName]) return resolutions[packageName].rootVersion;
+
+  if (packageName.includes('/')) {
+    const parts = packageName.split('/');
+    if (packageName.startsWith('@') && parts.length > 2) {
+      const basePackage = `${parts[0]}/${parts[1]}`;
+      if (resolutions[basePackage]) return resolutions[basePackage].rootVersion;
+    }
+    if (!packageName.startsWith('@') && parts.length > 1) {
+      if (resolutions[parts[0]]) return resolutions[parts[0]].rootVersion;
+    }
+  }
+
+  return null;
+}
+
 export function calculatePackageDistribution(
   componentUsageMap: Map<string, ComponentUsage>,
   versions: Record<string, string>,
   config?: HermexConfig,
   multiVersions: MultiVersionMap = {},
+  resolutions: LockfileResolutionMap = {},
 ): PackageDistribution[] {
   const ignorePatterns = config?.packages.ignore ?? [];
   const internalPatterns = config?.packages.internal ?? [];
@@ -135,6 +176,7 @@ export function calculatePackageDistribution(
       packageMap.set(component.source, {
         packageName: component.source,
         version: getPackageVersion(component.source, versions),
+        rootVersion: getRootVersion(component.source, resolutions),
         componentCount: 1,
         usageCount: component.count,
         percentage: 0,
@@ -178,6 +220,7 @@ export function calculatePackageDistribution(
       packageMap.set(packageName, {
         packageName,
         version: getPackageVersion(packageName, versions),
+        rootVersion: getRootVersion(packageName, resolutions),
         componentCount: 0,
         usageCount: 0,
         percentage: 0,

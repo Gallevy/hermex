@@ -49,6 +49,11 @@ export function createMockPackage(
   return {
     packageName,
     version,
+    // Defaults to matching `version` — i.e. "yes, this is a root
+    // dependency" — since that's what most tests intend by just setting
+    // `version`. Override explicitly with `rootVersion: null` to test the
+    // "confirmed transitive-only, not a root dependency" case (#62).
+    rootVersion: version,
     componentCount: 1,
     usageCount: 1,
     percentage: 100,

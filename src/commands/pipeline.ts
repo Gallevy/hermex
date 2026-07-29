@@ -84,6 +84,7 @@ export async function runPipeline(
     lockfileResult.versions,
     config,
     lockfileResult.multiVersions,
+    lockfileResult.resolutions,
   );
 
   const evaluatorViolations = evaluateRules(

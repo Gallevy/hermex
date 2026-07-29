@@ -223,13 +223,25 @@ function levelRank(level: UpgradeLevel | null): number {
   return LEVEL_RANK[level ?? 'null'];
 }
 
+/** A vacuous "nothing enforced" result — worstLevel stays null regardless
+ * of what the registry timeline actually says, since there's no enforced
+ * baseline to measure against. */
+const NOTHING_ENFORCED: ReleaseAgeForVersion = {
+  upgrades: [],
+  worstLevel: null,
+  minCompliantInWindow: false,
+};
+
 /**
  * Resolves which of `allVersions` count toward compliance ('root': just
- * `installedVersion`; 'tree': every resolved copy), evaluates each
- * candidate independently via `computeReleaseAgeForVersion`, and combines
- * them into a single verdict — the worst result among the enforced
- * versions — while still surfacing overdue-but-not-enforced copies via
- * `advisoryBreaches` regardless of scope (#57).
+ * `installedVersion`, and only when `hasRootVersion` confirms it's a real
+ * direct dependency — not the "fell back to the highest resolved version"
+ * placeholder for a purely transitive package (#62); 'tree': every
+ * resolved copy). Evaluates each candidate independently via
+ * `computeReleaseAgeForVersion`, and combines them into a single verdict —
+ * the worst result among the enforced versions — while still surfacing
+ * overdue-but-not-enforced copies via `advisoryBreaches` regardless of
+ * scope (#57).
  */
 function computeReleaseAge(
   installedVersion: string,
@@ -240,6 +252,7 @@ function computeReleaseAge(
   distTags: Record<string, string> | undefined,
   severity: 'error' | 'warn',
   scope: 'root' | 'tree',
+  hasRootVersion: boolean,
 ): ReleaseAgeEntry {
   const candidates =
     allVersions.length > 0
@@ -247,7 +260,8 @@ function computeReleaseAge(
       : [installedVersion];
   if (!candidates.includes(installedVersion)) candidates.push(installedVersion);
 
-  const enforcedVersions = scope === 'tree' ? candidates : [installedVersion];
+  const enforcedVersions =
+    scope === 'tree' ? candidates : hasRootVersion ? [installedVersion] : [];
 
   const perVersion = new Map<string, ReleaseAgeForVersion>();
   for (const version of candidates) {
@@ -257,21 +271,31 @@ function computeReleaseAge(
     );
   }
 
-  let baselineVersion = enforcedVersions[0];
-  let baseline = perVersion.get(baselineVersion)!;
-  for (const version of enforcedVersions.slice(1)) {
-    const candidate = perVersion.get(version)!;
-    const candidateRank = levelRank(candidate.worstLevel);
-    const baselineRank = levelRank(baseline.worstLevel);
-    const candidateBreachAge =
-      candidate.upgrades[0]?.breachReleasedDaysAgo ?? 0;
-    const baselineBreachAge = baseline.upgrades[0]?.breachReleasedDaysAgo ?? 0;
-    if (
-      candidateRank > baselineRank ||
-      (candidateRank === baselineRank && candidateBreachAge > baselineBreachAge)
-    ) {
-      baseline = candidate;
-      baselineVersion = version;
+  // No enforced baseline at all — e.g. `scope: 'root'` on a package that
+  // was never a direct dependency (only reachable transitively). Nothing
+  // can fail comply for it; every candidate below still gets a chance to
+  // surface as an advisory breach instead of vanishing silently.
+  let baselineVersion = installedVersion;
+  let baseline: ReleaseAgeForVersion = NOTHING_ENFORCED;
+  if (enforcedVersions.length > 0) {
+    baselineVersion = enforcedVersions[0];
+    baseline = perVersion.get(baselineVersion)!;
+    for (const version of enforcedVersions.slice(1)) {
+      const candidate = perVersion.get(version)!;
+      const candidateRank = levelRank(candidate.worstLevel);
+      const baselineRank = levelRank(baseline.worstLevel);
+      const candidateBreachAge =
+        candidate.upgrades[0]?.breachReleasedDaysAgo ?? 0;
+      const baselineBreachAge =
+        baseline.upgrades[0]?.breachReleasedDaysAgo ?? 0;
+      if (
+        candidateRank > baselineRank ||
+        (candidateRank === baselineRank &&
+          candidateBreachAge > baselineBreachAge)
+      ) {
+        baseline = candidate;
+        baselineVersion = version;
+      }
     }
   }
 
@@ -368,6 +392,12 @@ export async function enrichWithReleaseAge(
             : 'warn';
 
         const scope = resolveReleaseAgeScope(pkg.packageName, config);
+        // `undefined` (never populated — e.g. a hand-built PackageDistribution
+        // in a test) is treated as "unknown, assume root" for backward
+        // compatibility; only an explicit `null` — set by the real pipeline
+        // when the lockfile layer confirms this isn't a direct dependency —
+        // means "don't enforce this under root scope" (#62).
+        const hasRootVersion = pkg.rootVersion !== null;
 
         const entry = computeReleaseAge(
           pkg.version!,
@@ -378,6 +408,7 @@ export async function enrichWithReleaseAge(
           info['dist-tags'],
           severity,
           scope,
+          hasRootVersion,
         );
 
         return { pkg, entry };
