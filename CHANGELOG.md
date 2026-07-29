@@ -1,3 +1,10 @@
+## [2.6.5](https://github.com/Gallevy/hermex/compare/v2.6.4...v2.6.5) (2026-07-29)
+
+
+### Bug Fixes
+
+* scope: root no longer enforces transitive-only packages matched by enforceOn ([#62](https://github.com/Gallevy/hermex/issues/62)) ([d4fd458](https://github.com/Gallevy/hermex/commit/d4fd4583339db0610a0d217bfc04c26b17148d02))
+
 ## [2.6.4](https://github.com/Gallevy/hermex/compare/v2.6.3...v2.6.4) (2026-07-29)
 
 
