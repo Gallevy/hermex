@@ -22,8 +22,12 @@ function buildRulesSection(aggregated: AggregatedReport): string {
     (v) => v.severity !== 'info',
   );
 
+  // Nothing to report — omit the section entirely, matching
+  // buildPackagesSection below. The verdict section always states pass/fail
+  // clearly; a "### Rules / All rule checks passed" block with zero rows
+  // is boilerplate indistinguishable from "no rules were ever configured."
   if (ruleViolations.length === 0 && bannedPackageViolations.length === 0) {
-    return '### Rules\n\nAll rule checks passed\n';
+    return '';
   }
 
   const lines: string[] = [

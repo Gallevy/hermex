@@ -108,10 +108,6 @@ details and a full CI usage example.
 Running a basic scan (uses default pattern `**/*.{tsx,jsx,ts,js}`):
 
 ```bash
-📦 Packages
-
-  No packages found
-
 ⚛️ Components
 
   No external components found

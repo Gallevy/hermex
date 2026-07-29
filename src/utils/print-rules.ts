@@ -71,11 +71,12 @@ export function printRules(aggregated: AggregatedReport): void {
   const hasRuleViolations = ruleViolations.length > 0;
   const hasBannedViolations = bannedPackageViolations.length > 0;
 
-  if (!hasRuleViolations && !hasBannedViolations) {
-    console.log(chalk.greenBright.bold(`\n${severityIcon('success')} Rules\n`));
-    console.log(chalk.gray('  All rule checks passed'));
-    return;
-  }
+  // Nothing to report — print nothing at all, rather than a "Rules" header
+  // plus an "All rule checks passed" line with zero rows underneath it.
+  // The overall compliance verdict (printComplianceVerdict) already gives
+  // the definitive pass/fail signal; an empty section here is pure
+  // boilerplate, indistinguishable from "no rules were ever configured."
+  if (!hasRuleViolations && !hasBannedViolations) return;
 
   console.log(chalk.blueBright.bold('\n🔍 Rules\n'));
 
