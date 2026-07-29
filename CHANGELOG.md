@@ -1,3 +1,10 @@
+## [2.6.3](https://github.com/Gallevy/hermex/compare/v2.6.2...v2.6.3) (2026-07-29)
+
+
+### Bug Fixes
+
+* keep package Notes stdout-only, always info severity ([#60](https://github.com/Gallevy/hermex/issues/60)) ([d17f7b1](https://github.com/Gallevy/hermex/commit/d17f7b12c6dbe413da4d48e3cdda31233d271f84))
+
 ## [2.6.2](https://github.com/Gallevy/hermex/compare/v2.6.1...v2.6.2) (2026-07-28)
 
 
