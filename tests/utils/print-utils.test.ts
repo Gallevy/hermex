@@ -103,14 +103,16 @@ describe('printSummary', () => {
 });
 
 describe('printPackages', () => {
-  it('prints table mode without throwing on empty distribution', () => {
+  // Nothing to report — prints nothing at all rather than a "Packages"
+  // header plus "No packages found" boilerplate.
+  it('prints nothing on an empty distribution in table mode', () => {
     expect(() => printPackages(makeAggregated(), 'table')).not.toThrow();
-    expect(consoleSpy).toHaveBeenCalled();
+    expect(consoleSpy).not.toHaveBeenCalled();
   });
 
-  it('prints chart mode without throwing on empty distribution', () => {
+  it('prints nothing on an empty distribution in chart mode', () => {
     expect(() => printPackages(makeAggregated(), 'chart')).not.toThrow();
-    expect(consoleSpy).toHaveBeenCalled();
+    expect(consoleSpy).not.toHaveBeenCalled();
   });
 
   it('prints table mode with a populated package entry', () => {
@@ -909,13 +911,12 @@ describe('printRules', () => {
     expect(output).not.toMatch(/^\s*- 🔴/m);
   });
 
-  it('prints a passing message when there are no violations', () => {
+  // Nothing to report — prints nothing at all rather than a "Rules" header
+  // plus an "All rule checks passed" line, indistinguishable from "no rules
+  // were ever configured."
+  it('prints nothing when there are no violations', () => {
     expect(() => printRules(makeAggregated())).not.toThrow();
-    expect(consoleSpy).toHaveBeenCalled();
-    const output = consoleSpy.mock.calls
-      .map((call) => call.join(' '))
-      .join('\n');
-    expect(output).toContain('All rule checks passed');
+    expect(consoleSpy).not.toHaveBeenCalled();
   });
 
   it('prints violations when present', () => {

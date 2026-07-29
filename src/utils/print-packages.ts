@@ -203,6 +203,12 @@ export function printPackages(
   const packages = aggregated.packageDistribution;
   const violations = aggregated.bannedPackageViolations;
 
+  // Nothing to report — print nothing at all, rather than a "Packages"
+  // header plus "No packages found" underneath it. Pure boilerplate when
+  // there's genuinely zero data (as opposed to zero *violations* among
+  // real packages, which still renders the full table/chart below).
+  if (packages.length === 0) return;
+
   if (mode === 'table') {
     printPackagesTable(packages, violations);
   } else if (mode === 'chart') {
@@ -210,16 +216,13 @@ export function printPackages(
   }
 }
 
+// Only ever called via printPackages, which already guarantees a non-empty
+// `packages` array — see the "nothing to report" guard there.
 function printPackagesTable(
   packages: PackageDistribution[],
   violations: BannedPackageViolation[],
 ) {
   printHeader();
-
-  if (packages.length === 0) {
-    console.log(chalk.gray('  No packages found'));
-    return;
-  }
 
   const hasReleaseAge = packages.some((p) => p.releaseAge !== undefined);
   // With release age on, "Version" splits into "Installed" (the single
@@ -271,16 +274,13 @@ function printPackagesTable(
   console.log(chalk.gray(`\nTotal: ${formatCount(packages.length)} packages`));
 }
 
+// Only ever called via printPackages, which already guarantees a non-empty
+// `packages` array — see the "nothing to report" guard there.
 function printPackagesChart(
   packages: PackageDistribution[],
   violations: BannedPackageViolation[],
 ) {
   printHeader();
-
-  if (packages.length === 0) {
-    console.log(chalk.gray('  No packages found'));
-    return;
-  }
 
   const maxBarWidth = 40;
   const maxPercentage = Math.max(...packages.map((p) => p.percentage));

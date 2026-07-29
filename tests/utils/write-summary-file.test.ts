@@ -147,7 +147,10 @@ describe('writeSummaryFile', () => {
       expect(content).toContain('1 error, 1 warning');
     });
 
-    it('renders "All rule checks passed" when only info-severity violations exist', () => {
+    // An info-only violation doesn't count as "mandatory" here, so the
+    // section has nothing left to show and is omitted entirely — matching
+    // buildPackagesSection's behavior for a fully-compliant report.
+    it('omits the Rules section entirely when only info-severity violations exist', () => {
       const infoViolation: RuleViolation = {
         type: 'detect_files',
         severity: 'info',
@@ -157,8 +160,9 @@ describe('writeSummaryFile', () => {
       const content = write(
         makeAggregated({ ruleViolations: [infoViolation] }),
       );
-      expect(content).toContain('All rule checks passed');
+      expect(content).not.toContain('### Rules');
       expect(content).not.toContain('detect_files');
+      expect(content).toContain('### 🟢 COMPLIANT');
     });
 
     it('still shows a banned package as a forbid_packages line', () => {
@@ -228,7 +232,7 @@ describe('writeSummaryFile', () => {
       expect(content).toContain('2 errors, 2 warnings');
     });
 
-    it('excludes an info-severity banned package violation', () => {
+    it('omits the Rules section for an info-severity-only banned package violation', () => {
       const violation: BannedPackageViolation = {
         packageName: 'some-pkg',
         severity: 'info',
@@ -237,8 +241,9 @@ describe('writeSummaryFile', () => {
       const content = write(
         makeAggregated({ bannedPackageViolations: [violation] }),
       );
-      expect(content).toContain('All rule checks passed');
+      expect(content).not.toContain('### Rules');
       expect(content).not.toContain('some-pkg');
+      expect(content).toContain('### 🟢 COMPLIANT');
     });
   });
 
@@ -561,6 +566,15 @@ describe('writeSummaryFile', () => {
     const content = write(makeAggregated());
     expect(content).toContain('COMPLIANT');
     expect(content).not.toContain('NOT COMPLIANT');
+  });
+
+  // A fully clean report shouldn't carry "Rules"/"Packages" boilerplate for
+  // sections with nothing to say — just the title and the verdict.
+  it('omits both the Rules and Packages sections entirely on a fully clean report', () => {
+    const content = write(makeAggregated());
+    expect(content).not.toContain('### Rules');
+    expect(content).not.toContain('### Packages');
+    expect(content).toBe(`# ${DEFAULT_SUMMARY_TITLE}\n\n### 🟢 COMPLIANT\n`);
   });
 
   it('writes a NOT COMPLIANT verdict with the mandatory violation count when violations exist', () => {
