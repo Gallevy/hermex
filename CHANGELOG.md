@@ -1,3 +1,10 @@
+## [2.6.4](https://github.com/Gallevy/hermex/compare/v2.6.3...v2.6.4) (2026-07-29)
+
+
+### Bug Fixes
+
+* suppress empty Rules/Packages sections instead of printing boilerplate ([#61](https://github.com/Gallevy/hermex/issues/61)) ([e370f23](https://github.com/Gallevy/hermex/commit/e370f23cd6ec0130d4c5c6befab5db6a3c705e6c))
+
 ## [2.6.3](https://github.com/Gallevy/hermex/compare/v2.6.2...v2.6.3) (2026-07-29)
 
 
