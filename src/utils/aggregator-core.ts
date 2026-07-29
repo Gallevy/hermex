@@ -1,6 +1,6 @@
 import type { UsageReport } from '../swc-parser';
 import type { HermexConfig } from '../config/types';
-import type { MultiVersionMap } from '../lock-parser';
+import type { LockfileResolutionMap, MultiVersionMap } from '../lock-parser';
 import type { RuleViolation } from '../rules/evaluator';
 import type {
   ComponentUsage,
@@ -38,6 +38,7 @@ export function aggregateReports(
   versions: Record<string, string> = {},
   config?: HermexConfig,
   multiVersions: MultiVersionMap = {},
+  resolutions: LockfileResolutionMap = {},
 ): AggregatedReport {
   const componentUsageMap = new Map<string, ComponentUsage>();
   let totalImports = 0;
@@ -94,6 +95,7 @@ export function aggregateReports(
     versions,
     config,
     multiVersions,
+    resolutions,
   );
 
   const versusResults = calculateVersusResults(

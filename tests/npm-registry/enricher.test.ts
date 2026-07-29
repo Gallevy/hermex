@@ -678,6 +678,100 @@ describe('enrichWithReleaseAge — scope (#57)', () => {
     ]);
   });
 
+  // Regression test for a reported false-positive comply failure: a
+  // consumer left `scope` unset (defaults to 'root'), but `comply` still
+  // failed on a package that was never in their package.json — only
+  // reachable transitively through another dependency, via pnpm's
+  // lockfile. Root cause: the lockfile layer's "no true root version"
+  // fallback (max resolved version, so `scan`/display still show
+  // something) was being silently treated as an enforced root baseline
+  // whenever the package matched `enforceOn` (#62).
+  it('scope: root — a package that is not a direct dependency (rootVersion: null) is never mandatory, even when enforceOn matches it', async () => {
+    const pkg = createMockPackage('@guestyci/dio', {
+      // The highest resolved copy found anywhere in the lockfile (what
+      // `versions`/`pkg.version` falls back to for display) — but this
+      // package was only ever pulled in transitively (e.g. via
+      // @guestyci/empire), never declared in the consumer's package.json.
+      version: '1.0.0',
+      rootVersion: null,
+      allVersions: ['1.0.0'],
+      hasVersionConflict: false,
+    });
+    mockFetch.mockResolvedValueOnce({
+      name: '@guestyci/dio',
+      time: { '1.0.0': daysAgo(900), '2.0.0': daysAgo(400) },
+      'dist-tags': { latest: '2.0.0' },
+      versions: {},
+    });
+    const { enriched } = await enrichWithReleaseAge([pkg], {
+      ...BASE_CONFIG,
+      enforceOn: ['@guestyci/*'],
+    });
+    const entry = enriched[0].releaseAge!;
+    expect(entry.scope).toBe('root');
+    // Matched enforceOn, so severity is still 'error' — but that alone must
+    // not make it mandatory; worstLevel is what compliance actually checks.
+    expect(entry.severity).toBe('error');
+    expect(entry.worstLevel).toBeNull();
+    // Still visible, not silently dropped — just not blocking.
+    expect(entry.advisoryBreaches).toEqual([
+      { version: '1.0.0', level: 'major_overdue' },
+    ]);
+  });
+
+  // Same package/data as above, but this time it genuinely IS a root
+  // dependency — confirms the fix is precise (only skips enforcement for
+  // confirmed-transitive packages) rather than broadly disabling root-scope
+  // enforcement for anything enforceOn matches.
+  it('scope: root — the same overdue data IS mandatory when rootVersion confirms a real direct dependency', async () => {
+    const pkg = createMockPackage('@guestyci/dio', {
+      version: '1.0.0',
+      rootVersion: '1.0.0',
+      allVersions: ['1.0.0'],
+      hasVersionConflict: false,
+    });
+    mockFetch.mockResolvedValueOnce({
+      name: '@guestyci/dio',
+      time: { '1.0.0': daysAgo(900), '2.0.0': daysAgo(400) },
+      'dist-tags': { latest: '2.0.0' },
+      versions: {},
+    });
+    const { enriched } = await enrichWithReleaseAge([pkg], {
+      ...BASE_CONFIG,
+      enforceOn: ['@guestyci/*'],
+    });
+    const entry = enriched[0].releaseAge!;
+    expect(entry.worstLevel).toBe('major_overdue');
+    expect(entry.advisoryBreaches).toBeUndefined();
+  });
+
+  // Tree scope must not be neutered by this fix — `rootVersion` is only
+  // consulted when scope resolves to 'root'; under 'tree' every resolved
+  // copy is enforced regardless of whether it's a direct dependency.
+  it('scope: tree — enforces a transitive-only package (rootVersion: null) exactly as it would a root one', async () => {
+    const pkg = createMockPackage('@guestyci/dio', {
+      version: '1.0.0',
+      rootVersion: null,
+      allVersions: ['1.0.0'],
+      hasVersionConflict: false,
+    });
+    mockFetch.mockResolvedValueOnce({
+      name: '@guestyci/dio',
+      time: { '1.0.0': daysAgo(900), '2.0.0': daysAgo(400) },
+      'dist-tags': { latest: '2.0.0' },
+      versions: {},
+    });
+    const { enriched } = await enrichWithReleaseAge([pkg], {
+      ...BASE_CONFIG,
+      scope: 'tree',
+      enforceOn: ['@guestyci/*'],
+    });
+    const entry = enriched[0].releaseAge!;
+    expect(entry.scope).toBe('tree');
+    expect(entry.worstLevel).toBe('major_overdue');
+    expect(entry.advisoryBreaches).toBeUndefined();
+  });
+
   it('scope: root — an overdue root version fails as usual, and a compliant nested copy is not reported as advisory', async () => {
     const pkg = createMockPackage('multi-version-lib', {
       version: '1.0.0',
