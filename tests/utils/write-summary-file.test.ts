@@ -469,7 +469,10 @@ describe('writeSummaryFile', () => {
     // table shows — not be silently omitted just because it never reaches
     // compliance.releaseAgeViolations, and not given its own violation-shaped
     // table row (it isn't one).
-    it('shows a compliant-but-advisory package as a Notes line, with no Packages table', () => {
+    // (#59) Notes (bundle-impact/advisory-breach context) are stdout-only —
+    // a compliant-but-advisory package must not surface in the summary at
+    // all, since it's not a mandatory violation and Notes never appear here.
+    it('omits a compliant-but-advisory package entirely — no Packages section, no Notes', () => {
       const advisoryOnly = createMockPackage('multi-version-lib', {
         hasVersionConflict: true,
         allVersions: ['1.0.0', '3.0.0'],
@@ -483,28 +486,19 @@ describe('writeSummaryFile', () => {
       const content = write(
         makeAggregated({ packageDistribution: [advisoryOnly] }),
       );
-      expect(content).toContain('### Packages');
-      // Compliant packages never get a violation-shaped table row.
-      expect(content).not.toContain('| | Package | Installed | Target |');
-      expect(content).toContain('Notes:');
-      const line = content
-        .split('\n')
-        .find((l) => l.includes('multi-version-lib'));
-      // Icon leads the whole note line (before the package name), and every
-      // fact is joined with the real → arrow, not "-" or "—".
-      expect(line).toBe(
-        '- 🟡 `multi-version-lib` → 2 versions installed (bundle impact): 1.0.0, 3.0.0 → 1 nested copy overdue, not enforced but recommended to resolve',
-      );
-      // Notes-only packages must never count toward the mandatory verdict.
+      expect(content).not.toContain('### Packages');
+      expect(content).not.toContain('Notes:');
+      expect(content).not.toContain('multi-version-lib');
       expect(content).toContain('### 🟢 COMPLIANT');
       expect(content).not.toContain('NOT COMPLIANT');
     });
 
-    // (#57) A package can be a MANDATORY failure (root itself is overdue)
+    // (#59) A package can be a MANDATORY failure (root itself is overdue)
     // while ALSO carrying an independently-overdue nested copy — the
-    // mandatory row shows the Installed/Target facts only; the nested-copy
-    // context appears in the separate Notes list, not crammed onto the row.
-    it('shows a package that is a mandatory violation AND has an advisory breach on both the table row and in Notes', () => {
+    // mandatory row shows the Installed/Target facts only; the advisory
+    // bundle-impact/nested-copy context is stdout-only and never appears
+    // in the summary, even for a package that's already a violation here.
+    it('shows only the Installed/Target row for a mandatory violation that also has an advisory breach — no Notes', () => {
       const both = createMockPackage('multi-version-lib', {
         hasVersionConflict: true,
         allVersions: ['1.0.0', '2.0.0'],
@@ -531,12 +525,9 @@ describe('writeSummaryFile', () => {
       expect(tableLine).toBe(
         '| 🔴 | `multi-version-lib` | 1.0.0 | major 2.0.0 (340 days overdue) |',
       );
-      const noteLine = content
-        .split('\n')
-        .find((l) => l.startsWith('- ') && l.includes('multi-version-lib'));
-      expect(noteLine).toBe(
-        '- 🟡 `multi-version-lib` → 2 versions installed (bundle impact): 1.0.0, 2.0.0 → 1 nested copy overdue, not enforced but recommended to resolve',
-      );
+      expect(content).not.toContain('Notes:');
+      expect(content).not.toContain('bundle impact');
+      expect(content).not.toContain('nested copy');
       expect(content).toContain('NOT COMPLIANT');
     });
   });

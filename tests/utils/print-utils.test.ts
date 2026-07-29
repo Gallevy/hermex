@@ -384,10 +384,11 @@ describe('printPackages', () => {
     const tableLines = output.split('\n').filter((l) => l.includes('│'));
     expect(tableLines.some((l) => l.includes('3.0.0'))).toBe(true);
     // The full version list and the advisory note live in Notes, not the
-    // row — icon leads the whole line, real → arrow joins each fact.
+    // row — icon leads the whole line (always info — Notes are stdout-only
+    // advisory context, never a warning), real → arrow joins each fact.
     expect(output).toContain('Notes:');
     expect(output).toContain(
-      '🟡 multi-version-lib → 2 versions installed (bundle impact): 1.0.0, 3.0.0 → 1 nested copy overdue, not enforced but recommended to resolve',
+      '🔵 multi-version-lib → 2 versions installed (bundle impact): 1.0.0, 3.0.0 → 1 nested copy overdue, not enforced but recommended to resolve',
     );
   });
 });
@@ -688,7 +689,7 @@ describe('describePackageNotes (#57)', () => {
     expect(describePackageNotes(pkg)).toBeUndefined();
   });
 
-  it('combines bundle-impact and advisory-breach facts, with a warn icon, when both apply', () => {
+  it('combines bundle-impact and advisory-breach facts, always with an info icon, when both apply', () => {
     const pkg = createMockPackage('multi-version-lib', {
       hasVersionConflict: true,
       allVersions: ['1.0.0', '3.0.0'],
@@ -697,7 +698,9 @@ describe('describePackageNotes (#57)', () => {
       }),
     });
     const note = describePackageNotes(pkg)!;
-    expect(note.icon).toBe('🟡');
+    // Notes are stdout-only advisory context (never shown in
+    // --summary-file), so nothing here should read as a warning.
+    expect(note.icon).toBe('🔵');
     expect(note.facts).toEqual([
       '2 versions installed (bundle impact): 1.0.0, 3.0.0',
       '1 nested copy overdue, not enforced but recommended to resolve',

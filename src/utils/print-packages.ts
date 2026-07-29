@@ -137,27 +137,28 @@ export function describeBundleImpact(
 export const NOTE_ARROW = '→';
 
 export interface PackageNote {
-  /** One leading icon for the whole line: warn (🟡) when there's an actual
-   * advisory finding to flag, info (🔵) when the note is purely factual
-   * (e.g. bundle impact with nothing overdue) — every package with a note
-   * gets a consistent leading icon, not just the ones with a warning. */
+  /** Always the info icon (🔵) — Notes are stdout-only advisory context,
+   * never part of the mandatory verdict (they don't appear in
+   * `--summary-file` at all), so nothing here should read as a warning. */
   icon: string;
   /** Each individual fact, to be joined with `NOTE_ARROW` by the caller. */
   facts: string[];
 }
 
 // Combines bundle-impact and advisory-breach info into the note shown for a
-// package below the table/Packages section — one shared formatter so the
-// human output and `--summary-file` can't drift on wording (#57).
+// package below the human table — stdout only. `--summary-file` feeds CI
+// checks and PR comments, where non-blocking context read as a colored
+// row/line looks like blame for something that isn't actually failing;
+// stdout is the right place for "here's some extra context" (#59).
 export function describePackageNotes(
   pkg: PackageDistribution,
 ): PackageNote | undefined {
-  const advisory = describeAdvisoryBreaches(pkg.releaseAge);
-  const facts = [describeBundleImpact(pkg), advisory].filter(
-    (fact): fact is string => Boolean(fact),
-  );
+  const facts = [
+    describeBundleImpact(pkg),
+    describeAdvisoryBreaches(pkg.releaseAge),
+  ].filter((fact): fact is string => Boolean(fact));
   if (facts.length === 0) return undefined;
-  return { icon: severityIcon(advisory ? 'warn' : 'info'), facts };
+  return { icon: severityIcon('info'), facts };
 }
 
 export function formatUpgradeCell(releaseAge?: ReleaseAgeEntry): string {

@@ -3,14 +3,10 @@ import type { AggregatedReport } from './aggregator';
 import type { ComplianceResult } from './compliance';
 import { describeViolation, formatRuleType } from './print-rules';
 import {
-  NOTE_ARROW,
-  describePackageNotes,
   describeUpgradeTarget,
   resolveCompliantTarget,
   resolveInstalledVersion,
-  type PackageNote,
 } from './print-packages';
-import type { PackageDistribution } from './aggregator';
 import { severityIcon, stripAnsi } from './severity-format';
 
 // A table, mirroring the Packages section below it, rather than a bullet
@@ -63,59 +59,41 @@ function buildRulesSection(aggregated: AggregatedReport): string {
   return lines.join('\n') + '\n';
 }
 
-// The table is built directly from compliance.releaseAgeViolations rather
-// than a separately-derived filter — that's already exactly "release-age
-// packages that are mandatory failures" (src/utils/compliance.ts), so the
-// row list can never drift from the verdict's mandatory-violation count.
-// Banned and deprecated-only/not-enforced packages don't get a row here:
-// banned ones are already shown in Rules as a forbid_packages line, and
+// Built directly from compliance.releaseAgeViolations rather than a
+// separately-derived filter — that's already exactly "release-age packages
+// that are mandatory failures" (src/utils/compliance.ts), so the row list
+// can never drift from the verdict's mandatory-violation count. Banned and
+// deprecated-only/not-enforced packages don't get a row here: banned ones
+// are already shown in Rules as a forbid_packages line, and
 // deprecated-only or not-enforced-overdue packages are info-level, not
 // enforceable (#31).
 //
 // Bundle-impact (multiple resolved copies) and advisory nested breaches are
-// per-package context, not part of the pass/fail verdict — listed as Notes
-// below the table (mirroring the human `--format human` output), not
-// crammed into the Target cell or given their own violation-shaped row,
-// regardless of whether the package is itself a mandatory violation (#57).
-function buildPackagesSection(
-  aggregated: AggregatedReport,
-  compliance: ComplianceResult,
-): string {
+// deliberately NOT included here — they're non-blocking context, and a
+// summary meant for a PR comment or CI check reads any colored row/line as
+// something that needs attention. That context belongs in the human
+// `--format human` table (stdout), not in a surface used for gating (#59).
+function buildPackagesSection(compliance: ComplianceResult): string {
   const mandatory = compliance.releaseAgeViolations;
-  const withNotes = aggregated.packageDistribution
-    .map((pkg) => ({ pkg, note: describePackageNotes(pkg) }))
-    .filter(
-      (entry): entry is { pkg: PackageDistribution; note: PackageNote } =>
-        entry.note !== undefined,
-    );
+  if (mandatory.length === 0) return '';
 
-  if (mandatory.length === 0 && withNotes.length === 0) return '';
-
-  const lines: string[] = ['### Packages', ''];
-
-  if (mandatory.length > 0) {
-    lines.push('| | Package | Installed | Target |', '|---|---|---|---|');
-    for (const pkg of mandatory) {
-      const top = pkg.releaseAge?.upgrades[0];
-      const reasons: string[] = [];
-      if (top)
-        reasons.push(
-          describeUpgradeTarget(top, resolveCompliantTarget(pkg.releaseAge)),
-        );
-      if (pkg.releaseAge?.deprecated) reasons.push('deprecated');
-      lines.push(
-        `| ${severityIcon('error')} | \`${pkg.packageName}\` | ${resolveInstalledVersion(pkg)} | ${reasons.join(', ')} |`,
+  const lines: string[] = [
+    '### Packages',
+    '',
+    '| | Package | Installed | Target |',
+    '|---|---|---|---|',
+  ];
+  for (const pkg of mandatory) {
+    const top = pkg.releaseAge?.upgrades[0];
+    const reasons: string[] = [];
+    if (top)
+      reasons.push(
+        describeUpgradeTarget(top, resolveCompliantTarget(pkg.releaseAge)),
       );
-    }
-    lines.push('');
-  }
-
-  if (withNotes.length > 0) {
-    lines.push('Notes:');
-    for (const { pkg, note } of withNotes) {
-      const facts = note.facts.map((fact) => `${NOTE_ARROW} ${fact}`).join(' ');
-      lines.push(`- ${note.icon} \`${pkg.packageName}\` ${facts}`);
-    }
+    if (pkg.releaseAge?.deprecated) reasons.push('deprecated');
+    lines.push(
+      `| ${severityIcon('error')} | \`${pkg.packageName}\` | ${resolveInstalledVersion(pkg)} | ${reasons.join(', ')} |`,
+    );
   }
 
   return lines.join('\n') + '\n';
@@ -151,7 +129,7 @@ export function writeSummaryFile(
   const sections = [
     `# ${title}\n`,
     buildRulesSection(aggregated),
-    buildPackagesSection(aggregated, compliance),
+    buildPackagesSection(compliance),
     buildVerdictSection(compliance),
   ].filter((section) => section.length > 0);
 
