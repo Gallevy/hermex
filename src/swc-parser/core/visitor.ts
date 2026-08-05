@@ -69,6 +69,7 @@ export function visitNode(
 
     case 'JSXOpeningElement':
       analyzeJSXOpeningElement(node, state, context.parent);
+      visitChildren(node, state, { ...context, parent: node });
       break;
 
     case 'ArrayExpression':

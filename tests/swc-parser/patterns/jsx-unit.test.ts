@@ -135,3 +135,81 @@ describe('Parser - JSX usage', () => {
     );
   });
 });
+
+// Regression tests for https://github.com/Gallevy/hermex/issues/64
+// JSX nested inside a prop value was never visited, so components used
+// exclusively in attribute positions were dropped from usage tracking.
+describe('Parser - JSX nested inside attribute values (issue #64)', () => {
+  const CHILD_PREAMBLE = `import { Child } from '@ui/components';\n`;
+
+  test('a component in a prop value is tracked', () => {
+    const code = `${CHILD_PREAMBLE}import { Attr } from '@ui/components';\nfunction App() { return <Child subtitle={<Attr>x</Attr>} />; }`;
+
+    const report = parseCode(code, 'file.tsx');
+
+    const components = report.patterns.usage.jsx.map((u) => u.component);
+    expect(components).toContain('Child');
+    expect(components).toContain('Attr');
+  });
+
+  test('a self-closing component in a prop value is tracked', () => {
+    const code = `${CHILD_PREAMBLE}import { Attr } from '@ui/components';\nfunction App() { return <Child subtitle={<Attr />} />; }`;
+
+    const report = parseCode(code, 'file.tsx');
+
+    expect(report.patterns.usage.jsx.map((u) => u.component)).toContain(
+      'Attr',
+    );
+  });
+
+  test('a conditionally-rendered component in a prop value is tracked', () => {
+    const code = `${CHILD_PREAMBLE}import { Attr } from '@ui/components';\nfunction App() { return <Child subtitle={cond && <Attr />} />; }`;
+
+    const report = parseCode(code, 'file.tsx');
+
+    expect(report.patterns.usage.jsx.map((u) => u.component)).toContain(
+      'Attr',
+    );
+  });
+
+  test('a component in a prop value on an unknown host element is tracked', () => {
+    const code = `import { Attr } from '@ui/components';\nfunction App() { return <div title={<Attr />}>x</div>; }`;
+
+    const report = parseCode(code, 'file.tsx');
+
+    expect(report.patterns.usage.jsx.map((u) => u.component)).toContain(
+      'Attr',
+    );
+  });
+
+  test('a fragment-wrapped component in a prop value is tracked', () => {
+    const code = `${CHILD_PREAMBLE}import { Attr } from '@ui/components';\nfunction App() { return <Child subtitle={<><Attr /></>} />; }`;
+
+    const report = parseCode(code, 'file.tsx');
+
+    expect(report.patterns.usage.jsx.map((u) => u.component)).toContain(
+      'Attr',
+    );
+  });
+
+  test('a component used only in a prop position is not double-counted when also used as a child elsewhere', () => {
+    const code = `${CHILD_PREAMBLE}import { Both } from '@ui/components';\nfunction App() { return <div><Both /><Child subtitle={<Both />} /></div>; }`;
+
+    const report = parseCode(code, 'file.tsx');
+
+    const bothEntries = report.patterns.usage.jsx.filter(
+      (u) => u.component === 'Both',
+    );
+    expect(bothEntries).toHaveLength(1);
+  });
+
+  test('a component imported but never rendered (including in props) stays untracked', () => {
+    const code = `${CHILD_PREAMBLE}import { Unused } from '@ui/components';\nfunction App() { return <Child />; }`;
+
+    const report = parseCode(code, 'file.tsx');
+
+    expect(report.patterns.usage.jsx.map((u) => u.component)).not.toContain(
+      'Unused',
+    );
+  });
+});
