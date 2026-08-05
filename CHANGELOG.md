@@ -1,3 +1,10 @@
+## [2.6.8](https://github.com/Gallevy/hermex/compare/v2.6.7...v2.6.8) (2026-08-05)
+
+
+### Bug Fixes
+
+* canonicalize aliased named imports to their export name ([#70](https://github.com/Gallevy/hermex/issues/70)) ([244dbc0](https://github.com/Gallevy/hermex/commit/244dbc077316a22756172c4d021ebd5bc847915e))
+
 ## [2.6.7](https://github.com/Gallevy/hermex/compare/v2.6.6...v2.6.7) (2026-08-05)
 
 
