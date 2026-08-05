@@ -332,22 +332,22 @@ describe('calculatePackageDistribution', () => {
   });
 });
 
-describe('calculatePackageDistribution — lockfile-only enforceOn deps (#27)', () => {
+describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => {
   it('surfaces a lockfile package with zero usage when it matches releaseAge.enforceOn', () => {
     const componentUsageMap = new Map<string, ComponentUsage>();
     const config = createConfig({
-      releaseAge: { enabled: true, enforceOn: ['@guestyci/arc-styles'] },
+      releaseAge: { enabled: true, enforceOn: ['@acme-ui/pulse-styles'] },
     });
 
     const distribution = calculatePackageDistribution(
       componentUsageMap,
-      { '@guestyci/arc-styles': '2.1.0' },
+      { '@acme-ui/pulse-styles': '2.1.0' },
       config,
     );
 
     expect(distribution).toHaveLength(1);
     expect(distribution[0]).toMatchObject({
-      packageName: '@guestyci/arc-styles',
+      packageName: '@acme-ui/pulse-styles',
       version: '2.1.0',
       componentCount: 0,
       usageCount: 0,
@@ -360,12 +360,12 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps (#27)', 
   it('does not surface lockfile-only packages when releaseAge is disabled', () => {
     const componentUsageMap = new Map<string, ComponentUsage>();
     const config = createConfig({
-      releaseAge: { enabled: false, enforceOn: ['@guestyci/arc-styles'] },
+      releaseAge: { enabled: false, enforceOn: ['@acme-ui/pulse-styles'] },
     });
 
     const distribution = calculatePackageDistribution(
       componentUsageMap,
-      { '@guestyci/arc-styles': '2.1.0' },
+      { '@acme-ui/pulse-styles': '2.1.0' },
       config,
     );
 
@@ -378,7 +378,7 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps (#27)', 
 
     const distribution = calculatePackageDistribution(
       componentUsageMap,
-      { '@guestyci/arc-styles': '2.1.0', lodash: '4.17.21' },
+      { '@acme-ui/pulse-styles': '2.1.0', lodash: '4.17.21' },
       config,
     );
 
@@ -387,15 +387,15 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps (#27)', 
 
   it('does not duplicate or reset an entry that already has real component usage', () => {
     const componentUsageMap = new Map<string, ComponentUsage>([
-      ['Button', makeComponent('Button', '@guestyci/arc-styles', 3)],
+      ['Button', makeComponent('Button', '@acme-ui/pulse-styles', 3)],
     ]);
     const config = createConfig({
-      releaseAge: { enabled: true, enforceOn: ['@guestyci/arc-styles'] },
+      releaseAge: { enabled: true, enforceOn: ['@acme-ui/pulse-styles'] },
     });
 
     const distribution = calculatePackageDistribution(
       componentUsageMap,
-      { '@guestyci/arc-styles': '2.1.0' },
+      { '@acme-ui/pulse-styles': '2.1.0' },
       config,
     );
 
@@ -407,13 +407,13 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps (#27)', 
   it('respects a configured ignore pattern for a lockfile-only enforceOn match', () => {
     const componentUsageMap = new Map<string, ComponentUsage>();
     const config = createConfig({
-      packages: { ignore: ['@guestyci/arc-styles'] },
-      releaseAge: { enabled: true, enforceOn: ['@guestyci/arc-styles'] },
+      packages: { ignore: ['@acme-ui/pulse-styles'] },
+      releaseAge: { enabled: true, enforceOn: ['@acme-ui/pulse-styles'] },
     });
 
     const distribution = calculatePackageDistribution(
       componentUsageMap,
-      { '@guestyci/arc-styles': '2.1.0' },
+      { '@acme-ui/pulse-styles': '2.1.0' },
       config,
     );
 
@@ -423,13 +423,13 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps (#27)', 
   it('marks a lockfile-only enforceOn match as internal when it matches an internal pattern', () => {
     const componentUsageMap = new Map<string, ComponentUsage>();
     const config = createConfig({
-      packages: { internal: ['@guestyci/*'] },
-      releaseAge: { enabled: true, enforceOn: ['@guestyci/arc-styles'] },
+      packages: { internal: ['@acme-ui/*'] },
+      releaseAge: { enabled: true, enforceOn: ['@acme-ui/pulse-styles'] },
     });
 
     const distribution = calculatePackageDistribution(
       componentUsageMap,
-      { '@guestyci/arc-styles': '2.1.0' },
+      { '@acme-ui/pulse-styles': '2.1.0' },
       config,
     );
 
@@ -439,23 +439,23 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps (#27)', 
   it('flags hasVersionConflict/allVersions for a lockfile-only enforceOn match', () => {
     const componentUsageMap = new Map<string, ComponentUsage>();
     const config = createConfig({
-      releaseAge: { enabled: true, enforceOn: ['@guestyci/arc-styles'] },
+      releaseAge: { enabled: true, enforceOn: ['@acme-ui/pulse-styles'] },
     });
 
     const distribution = calculatePackageDistribution(
       componentUsageMap,
-      { '@guestyci/arc-styles': '2.1.0' },
+      { '@acme-ui/pulse-styles': '2.1.0' },
       config,
-      { '@guestyci/arc-styles': ['2.0.0', '2.1.0'] },
+      { '@acme-ui/pulse-styles': ['2.0.0', '2.1.0'] },
     );
 
     expect(distribution[0].hasVersionConflict).toBe(true);
     expect(distribution[0].allVersions).toEqual(['2.0.0', '2.1.0']);
   });
 
-  // (#62) The exact shape of a reported false-positive comply failure:
-  // `@guestyci/dio` is enforceOn-matched but only ever reachable
-  // transitively (via `@guestyci/empire`), never declared in the
+  // The exact shape of a reported false-positive comply failure:
+  // `@acme-ui/dio` is enforceOn-matched but only ever reachable
+  // transitively (via `@acme-ui/empire`), never declared in the
   // consumer's package.json. `versions` still carries a display fallback
   // (the highest resolved copy, so `scan` has something to show), but
   // `rootVersion` must come through as `null` — that's the signal
@@ -463,15 +463,15 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps (#27)', 
   it('sets rootVersion to null for a lockfile-only enforceOn match with no true root resolution', () => {
     const componentUsageMap = new Map<string, ComponentUsage>();
     const config = createConfig({
-      releaseAge: { enabled: true, enforceOn: ['@guestyci/dio'] },
+      releaseAge: { enabled: true, enforceOn: ['@acme-ui/dio'] },
     });
 
     const distribution = calculatePackageDistribution(
       componentUsageMap,
-      { '@guestyci/dio': '1.0.0' }, // display fallback: highest resolved copy
+      { '@acme-ui/dio': '1.0.0' }, // display fallback: highest resolved copy
       config,
-      { '@guestyci/dio': ['1.0.0'] },
-      { '@guestyci/dio': { rootVersion: null, allVersions: ['1.0.0'] } },
+      { '@acme-ui/dio': ['1.0.0'] },
+      { '@acme-ui/dio': { rootVersion: null, allVersions: ['1.0.0'] } },
     );
 
     expect(distribution[0].version).toBe('1.0.0');
@@ -481,15 +481,15 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps (#27)', 
   it('sets rootVersion to the real root value for a lockfile-only enforceOn match that IS a direct dependency', () => {
     const componentUsageMap = new Map<string, ComponentUsage>();
     const config = createConfig({
-      releaseAge: { enabled: true, enforceOn: ['@guestyci/dio'] },
+      releaseAge: { enabled: true, enforceOn: ['@acme-ui/dio'] },
     });
 
     const distribution = calculatePackageDistribution(
       componentUsageMap,
-      { '@guestyci/dio': '1.0.0' },
+      { '@acme-ui/dio': '1.0.0' },
       config,
-      { '@guestyci/dio': ['1.0.0'] },
-      { '@guestyci/dio': { rootVersion: '1.0.0', allVersions: ['1.0.0'] } },
+      { '@acme-ui/dio': ['1.0.0'] },
+      { '@acme-ui/dio': { rootVersion: '1.0.0', allVersions: ['1.0.0'] } },
     );
 
     expect(distribution[0].rootVersion).toBe('1.0.0');
@@ -498,17 +498,17 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps (#27)', 
   it('only surfaces lockfile packages matching enforceOn, leaving unmatched deps out', () => {
     const componentUsageMap = new Map<string, ComponentUsage>();
     const config = createConfig({
-      releaseAge: { enabled: true, enforceOn: ['@guestyci/arc-styles'] },
+      releaseAge: { enabled: true, enforceOn: ['@acme-ui/pulse-styles'] },
     });
 
     const distribution = calculatePackageDistribution(
       componentUsageMap,
-      { '@guestyci/arc-styles': '2.1.0', lodash: '4.17.21' },
+      { '@acme-ui/pulse-styles': '2.1.0', lodash: '4.17.21' },
       config,
     );
 
     expect(distribution).toHaveLength(1);
-    expect(distribution[0].packageName).toBe('@guestyci/arc-styles');
+    expect(distribution[0].packageName).toBe('@acme-ui/pulse-styles');
   });
 
   it('does not affect percentage totals for packages with real usage', () => {
@@ -517,22 +517,22 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps (#27)', 
       ['DatePicker', makeComponent('DatePicker', 'moment', 1)],
     ]);
     const config = createConfig({
-      releaseAge: { enabled: true, enforceOn: ['@guestyci/arc-styles'] },
+      releaseAge: { enabled: true, enforceOn: ['@acme-ui/pulse-styles'] },
     });
 
     const distribution = calculatePackageDistribution(
       componentUsageMap,
-      { '@guestyci/arc-styles': '2.1.0' },
+      { '@acme-ui/pulse-styles': '2.1.0' },
       config,
     );
 
     const antd = distribution.find((p) => p.packageName === 'antd');
     const moment = distribution.find((p) => p.packageName === 'moment');
-    const arcStyles = distribution.find(
-      (p) => p.packageName === '@guestyci/arc-styles',
+    const pulseStyles = distribution.find(
+      (p) => p.packageName === '@acme-ui/pulse-styles',
     );
     expect(antd?.percentage).toBeCloseTo(75);
     expect(moment?.percentage).toBeCloseTo(25);
-    expect(arcStyles?.percentage).toBe(0);
+    expect(pulseStyles?.percentage).toBe(0);
   });
 });

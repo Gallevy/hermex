@@ -207,7 +207,7 @@ describe('printPackages', () => {
     // not on how new the recommended target happens to be.
     const aggregated = makeAggregated({
       packageDistribution: [
-        createMockPackage('@guestyci/feature-toggle-fe', {
+        createMockPackage('@acme-ui/feature-toggle-fe', {
           releaseAge: createMockReleaseAge({
             worstLevel: 'major_overdue',
             severity: 'error',
@@ -1526,7 +1526,7 @@ describe('printJson', () => {
             severity: 'warn',
           }),
         }),
-        createMockPackage('@guestyci/arc', {
+        createMockPackage('@acme-ui/pulse', {
           releaseAge: createMockReleaseAge({
             worstLevel: null,
             severity: 'error',

@@ -166,28 +166,28 @@ describe('aggregateReports — package distribution', () => {
     expect(dist.internal).toBe(true);
   });
 
-  it('surfaces a lockfile-only, side-effect-imported package that matches releaseAge.enforceOn (#27)', () => {
-    // No component ever imports '@guestyci/arc-styles' — it's a CSS
-    // package pulled in only via `import '@guestyci/arc-styles/button.css'`,
+  it('surfaces a lockfile-only, side-effect-imported package that matches releaseAge.enforceOn', () => {
+    // No component ever imports '@acme-ui/pulse-styles' — it's a CSS
+    // package pulled in only via `import '@acme-ui/pulse-styles/button.css'`,
     // which has no specifiers and never shows up in JSX/import usage.
     const report = reportWithNamedImport('Button', 'react');
     const config = createConfig({
-      releaseAge: { enabled: true, enforceOn: ['@guestyci/arc-styles'] },
+      releaseAge: { enabled: true, enforceOn: ['@acme-ui/pulse-styles'] },
     });
 
     const result = aggregateReports(
       [report],
-      { react: '18.0.0', '@guestyci/arc-styles': '3.4.0' },
+      { react: '18.0.0', '@acme-ui/pulse-styles': '3.4.0' },
       config,
     );
 
-    const arcStyles = result.packageDistribution.find(
-      (p) => p.packageName === '@guestyci/arc-styles',
+    const pulseStyles = result.packageDistribution.find(
+      (p) => p.packageName === '@acme-ui/pulse-styles',
     );
-    expect(arcStyles).toBeDefined();
-    expect(arcStyles?.version).toBe('3.4.0');
-    expect(arcStyles?.usageCount).toBe(0);
-    expect(arcStyles?.componentCount).toBe(0);
+    expect(pulseStyles).toBeDefined();
+    expect(pulseStyles?.version).toBe('3.4.0');
+    expect(pulseStyles?.usageCount).toBe(0);
+    expect(pulseStyles?.componentCount).toBe(0);
   });
 });
 
