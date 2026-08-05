@@ -190,11 +190,11 @@ export function calculatePackageDistribution(
 
   // A dependency can be installed and listed in the lockfile yet never
   // imported as a component — e.g. a CSS/side-effect-only import like
-  // `import '@guestyci/arc-styles/button.css'` has no specifiers, so the
+  // `import '@acme-ui/pulse-styles/button.css'` has no specifiers, so the
   // usage scan above never sees it. That makes it invisible to releaseAge
   // even when it's explicitly enforced. Surface any lockfile package that
   // matches `releaseAge.enforceOn` so compliance can still see it, with
-  // zero usage/component counts (#27). Scoped to enforceOn matches (not
+  // zero usage/component counts. Scoped to enforceOn matches (not
   // the whole lockfile) to avoid firing a registry lookup for every
   // transitive dependency when enforceOn is left at its default `[]`.
   const enforceOnPatterns = config?.releaseAge.enforceOn ?? [];

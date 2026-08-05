@@ -223,12 +223,12 @@ describe('computeCompliance — status (#55)', () => {
     expect(result.warningBannedPackageViolations).toEqual([violation]);
   });
 
-  it("status stays 'compliant' for the #55 search-page shape: info signal + non-enforced overdues + pending-only, no warn/error rules", () => {
-    // Reproduces the exact mix the issue reports as wrongly demoted to
-    // Warning by consumers: an `info` detect_files signal (Orbis), overdue
-    // react-* at severity 'warn' (not enforced), and pending-only @guestyci/*
-    // entries (worstLevel null). None of these are warn-severity *rules* or
-    // *banned* packages, so the official status must remain 'compliant'.
+  it("status stays 'compliant' for a mixed shape: info signal + non-enforced overdues + pending-only, no warn/error rules", () => {
+    // Reproduces a mix that was wrongly demoted to Warning by consumers: an
+    // `info` detect_files signal (Orbis), overdue react-* at severity 'warn'
+    // (not enforced), and pending-only @acme-ui/* entries (worstLevel null).
+    // None of these are warn-severity *rules* or *banned* packages, so the
+    // official status must remain 'compliant'.
     const infoSignal: RuleViolation = {
       type: 'detect_files',
       severity: 'info',
@@ -247,7 +247,7 @@ describe('computeCompliance — status (#55)', () => {
         severity: 'warn',
       }),
     });
-    const pendingOnly = createMockPackage('@guestyci/arc', {
+    const pendingOnly = createMockPackage('@acme-ui/pulse', {
       releaseAge: createMockReleaseAge({
         worstLevel: null,
         severity: 'error',
