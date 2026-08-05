@@ -62,7 +62,20 @@ export function aggregateReports(
         report,
         availablePackages,
       );
-      const key = `${source}::${jsx.component}`;
+      // For a named/aliased import, `jsx.component` is the local JSX
+      // identifier (e.g. `ArcCard`), not the package's actual export name
+      // (e.g. `Card`) — resolve back to the canonical export so the same
+      // export used under different local aliases aggregates as one
+      // component instead of fragmenting into several. Default imports have
+      // no canonical export name (the module path is the real identity), so
+      // they never have an `aliased` entry and pass through unchanged.
+      const aliasedImport = report.patterns.imports.aliased.find(
+        (imp) => imp.local === jsx.component,
+      );
+      const canonicalName = aliasedImport
+        ? aliasedImport.imported
+        : jsx.component;
+      const key = `${source}::${canonicalName}`;
       const existing = componentUsageMap.get(key);
 
       if (existing) {
@@ -70,7 +83,7 @@ export function aggregateReports(
         existing.files.add(report.filePath);
       } else {
         componentUsageMap.set(key, {
-          name: jsx.component,
+          name: canonicalName,
           source,
           count: 1,
           files: new Set([report.filePath]),

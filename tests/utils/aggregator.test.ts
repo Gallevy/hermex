@@ -35,6 +35,24 @@ function reportWithNamedImport(name: string, source: string) {
   return report;
 }
 
+/**
+ * Create a report with an aliased named import (`import { X as Y }`) and a
+ * JSX usage under the local alias, matching what the real parser records.
+ */
+function reportWithAliasedImport(
+  imported: string,
+  local: string,
+  source: string,
+) {
+  const report = createMockReport();
+  report.summary.totalImports = 1;
+  report.summary.totalUsagePatterns = 1;
+  report.patterns.imports.named.push({ name: imported, source });
+  report.patterns.imports.aliased.push({ imported, local, source });
+  report.patterns.usage.jsx.push(jsxUsage(local));
+  return report;
+}
+
 describe('aggregateReports — empty input', () => {
   it('returns zeroed counts for empty reports array', () => {
     const result = aggregateReports([]);
@@ -106,6 +124,95 @@ describe('aggregateReports — component files', () => {
     const button = result.componentUsage.get('react::Button');
     expect(button?.files).toEqual(new Set(['a.tsx']));
     expect(button?.count).toBe(2);
+  });
+});
+
+// Regression tests: an aliased named import (`import { X as Y }`) must
+// aggregate under the package's real export name, not the local JSX
+// identifier — otherwise one export fragments into several "components".
+describe('aggregateReports — aliased import canonicalization', () => {
+  it('merges a plain import and an aliased import of the same export into one component', () => {
+    const plain = reportWithNamedImport('Card', '@acme-ui/pulse');
+    plain.filePath = 'a.tsx';
+    const aliased = reportWithAliasedImport(
+      'Card',
+      'ArcCard',
+      '@acme-ui/pulse',
+    );
+    aliased.filePath = 'b.tsx';
+
+    const result = aggregateReports([plain, aliased], {
+      '@acme-ui/pulse': '1.0.0',
+    });
+
+    expect(result.totalComponents).toBe(1);
+    expect(result.topComponents).toHaveLength(1);
+    expect(result.topComponents[0].name).toBe('Card');
+    expect(result.topComponents[0].source).toBe('@acme-ui/pulse');
+    expect(result.topComponents[0].count).toBe(2);
+    expect(result.topComponents[0].files).toEqual(new Set(['a.tsx', 'b.tsx']));
+  });
+
+  it('merges two different aliases of the same export into one component', () => {
+    const aliasA = reportWithAliasedImport('Card', 'ArcCard', '@acme-ui/pulse');
+    aliasA.filePath = 'a.tsx';
+    const aliasB = reportWithAliasedImport('Card', 'UiCard', '@acme-ui/pulse');
+    aliasB.filePath = 'b.tsx';
+
+    const result = aggregateReports([aliasA, aliasB], {
+      '@acme-ui/pulse': '1.0.0',
+    });
+
+    expect(result.topComponents).toHaveLength(1);
+    expect(result.topComponents[0].name).toBe('Card');
+    expect(result.topComponents[0].count).toBe(2);
+    expect(result.allComponents).toEqual(['Card']);
+  });
+
+  it('reflects the canonical name, not the alias, in package distribution', () => {
+    const aliased = reportWithAliasedImport(
+      'Card',
+      'ArcCard',
+      '@acme-ui/pulse',
+    );
+
+    const result = aggregateReports([aliased], { '@acme-ui/pulse': '1.0.0' });
+
+    const dist = result.packageDistribution.find(
+      (p) => p.packageName === '@acme-ui/pulse',
+    );
+    expect(dist?.components).toEqual(['Card']);
+    expect(dist?.componentCount).toBe(1);
+  });
+
+  it('does not canonicalize a default import (no canonical export name exists)', () => {
+    const report = createMockReport();
+    report.summary.totalImports = 1;
+    report.summary.totalUsagePatterns = 1;
+    report.patterns.imports.default.push({
+      name: 'Foo',
+      source: '@acme-ui/pulse/Button',
+    });
+    report.patterns.usage.jsx.push(jsxUsage('Foo'));
+
+    const result = aggregateReports([report], { '@acme-ui/pulse': '1.0.0' });
+
+    expect(result.topComponents[0].name).toBe('Foo');
+  });
+
+  it('leaves namespace member usage (e.g. `Ui.Card`) as its existing dotted identity, unaffected by alias canonicalization', () => {
+    const report = createMockReport();
+    report.summary.totalImports = 1;
+    report.summary.totalUsagePatterns = 1;
+    report.patterns.imports.namespace.push({
+      name: 'Ui',
+      source: '@acme-ui/pulse',
+    });
+    report.patterns.usage.jsx.push(jsxUsage('Ui.Card'));
+
+    const result = aggregateReports([report], { '@acme-ui/pulse': '1.0.0' });
+
+    expect(result.topComponents[0].name).toBe('Ui.Card');
   });
 });
 
