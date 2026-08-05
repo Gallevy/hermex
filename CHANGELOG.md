@@ -1,3 +1,10 @@
+## [2.6.7](https://github.com/Gallevy/hermex/compare/v2.6.6...v2.6.7) (2026-08-05)
+
+
+### Bug Fixes
+
+* component usage aggregation is first-writer-wins by name, mis-attributing shared names ([#68](https://github.com/Gallevy/hermex/issues/68)) ([13c4afb](https://github.com/Gallevy/hermex/commit/13c4afb065d0a3c18b75f9d9b523cb33e679dd1d))
+
 ## [2.6.6](https://github.com/Gallevy/hermex/compare/v2.6.5...v2.6.6) (2026-08-05)
 
 
