@@ -91,7 +91,7 @@ describe('aggregateReports — component files', () => {
 
     const result = aggregateReports([reportA, reportB], { react: '18.0.0' });
 
-    expect(result.componentUsage.get('Button')?.files).toEqual(
+    expect(result.componentUsage.get('react::Button')?.files).toEqual(
       new Set(['a.tsx', 'b.tsx']),
     );
   });
@@ -103,7 +103,7 @@ describe('aggregateReports — component files', () => {
 
     const result = aggregateReports([report], { react: '18.0.0' });
 
-    const button = result.componentUsage.get('Button');
+    const button = result.componentUsage.get('react::Button');
     expect(button?.files).toEqual(new Set(['a.tsx']));
     expect(button?.count).toBe(2);
   });
