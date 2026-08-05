@@ -52,18 +52,23 @@ export function aggregateReports(
     totalUsagePatterns += report.summary.totalUsagePatterns;
 
     for (const jsx of report.patterns.usage.jsx) {
-      const key = jsx.component;
+      // Keyed by (source, name), not name alone — the same component name
+      // (e.g. `Button`) can be imported from two different packages across
+      // a repo, and a name-only key would collapse them into one entry,
+      // silently attributing every usage to whichever source was seen
+      // first.
+      const source = findComponentSource(
+        jsx.component,
+        report,
+        availablePackages,
+      );
+      const key = `${source}::${jsx.component}`;
       const existing = componentUsageMap.get(key);
 
       if (existing) {
         existing.count++;
         existing.files.add(report.filePath);
       } else {
-        const source = findComponentSource(
-          jsx.component,
-          report,
-          availablePackages,
-        );
         componentUsageMap.set(key, {
           name: jsx.component,
           source,
@@ -80,7 +85,9 @@ export function aggregateReports(
     (a, b) => b.count - a.count,
   );
 
-  const allComponents = Array.from(componentUsageMap.keys()).sort();
+  const allComponents = Array.from(
+    new Set(Array.from(componentUsageMap.values()).map((c) => c.name)),
+  ).sort();
 
   const patternCounts = Array.from(patternCountMap.entries())
     .map(([type, count]) => ({
