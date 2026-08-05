@@ -1,3 +1,10 @@
+## [2.6.6](https://github.com/Gallevy/hermex/compare/v2.6.5...v2.6.6) (2026-08-05)
+
+
+### Bug Fixes
+
+* JSX in attribute values is never visited ([#64](https://github.com/Gallevy/hermex/issues/64)) ([#65](https://github.com/Gallevy/hermex/issues/65)) ([0b12235](https://github.com/Gallevy/hermex/commit/0b122359661bcbb50ab212ba9a78ecb95c3a410a))
+
 ## [2.6.5](https://github.com/Gallevy/hermex/compare/v2.6.4...v2.6.5) (2026-07-29)
 
 
