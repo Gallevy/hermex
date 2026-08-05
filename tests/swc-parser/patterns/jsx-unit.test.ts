@@ -157,9 +157,7 @@ describe('Parser - JSX nested inside attribute values (issue #64)', () => {
 
     const report = parseCode(code, 'file.tsx');
 
-    expect(report.patterns.usage.jsx.map((u) => u.component)).toContain(
-      'Attr',
-    );
+    expect(report.patterns.usage.jsx.map((u) => u.component)).toContain('Attr');
   });
 
   test('a conditionally-rendered component in a prop value is tracked', () => {
@@ -167,9 +165,7 @@ describe('Parser - JSX nested inside attribute values (issue #64)', () => {
 
     const report = parseCode(code, 'file.tsx');
 
-    expect(report.patterns.usage.jsx.map((u) => u.component)).toContain(
-      'Attr',
-    );
+    expect(report.patterns.usage.jsx.map((u) => u.component)).toContain('Attr');
   });
 
   test('a component in a prop value on an unknown host element is tracked', () => {
@@ -177,9 +173,7 @@ describe('Parser - JSX nested inside attribute values (issue #64)', () => {
 
     const report = parseCode(code, 'file.tsx');
 
-    expect(report.patterns.usage.jsx.map((u) => u.component)).toContain(
-      'Attr',
-    );
+    expect(report.patterns.usage.jsx.map((u) => u.component)).toContain('Attr');
   });
 
   test('a fragment-wrapped component in a prop value is tracked', () => {
@@ -187,9 +181,7 @@ describe('Parser - JSX nested inside attribute values (issue #64)', () => {
 
     const report = parseCode(code, 'file.tsx');
 
-    expect(report.patterns.usage.jsx.map((u) => u.component)).toContain(
-      'Attr',
-    );
+    expect(report.patterns.usage.jsx.map((u) => u.component)).toContain('Attr');
   });
 
   test('a component used only in a prop position is not double-counted when also used as a child elsewhere', () => {
