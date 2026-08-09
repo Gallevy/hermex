@@ -3,11 +3,16 @@ import { parseCode } from '../../src/swc-parser';
 import { aggregateReports } from '../../src/utils/aggregator';
 import { HermexConfigSchema } from '../../src/config/schema';
 import type { HermexConfigInput } from '../../src/config/schema';
+import { applyOverrides } from '../../src/config/overrides';
 import { readFixture } from '../helpers/read-fixture';
 
-/** Parse a partial config through the real schema so all defaults apply. */
+/**
+ * Parse a partial config through the real schema, then resolve it exactly
+ * like the real pipeline does before aggregateReports ever sees it. None of
+ * these tests configure `overrides`, so the repo path is never read.
+ */
 function createConfig(input: HermexConfigInput = {}) {
-  return HermexConfigSchema.parse(input);
+  return applyOverrides(HermexConfigSchema.parse(input), process.cwd());
 }
 
 const VERSIONS = {
