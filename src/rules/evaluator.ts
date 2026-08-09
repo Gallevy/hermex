@@ -6,7 +6,7 @@ import { evaluateEngineVersion } from './engine-version';
 import { evaluateCodeowners } from './codeowners';
 
 export type { RuleViolation } from './shared';
-export { toArray } from './shared';
+export { toArray, isEnabled } from './shared';
 
 export function evaluateRules(
   repoPath: string,

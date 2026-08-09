@@ -132,7 +132,7 @@ describe('applyOverrides', () => {
     ]);
   });
 
-  it('is a no-op when there are no overrides configured', () => {
+  it('leaves rule contents unchanged when there are no overrides configured and nothing to resolve', () => {
     const config = createConfig({
       rules: {
         require_packages: [{ severity: 'error', patterns: ['typescript'] }],
@@ -141,13 +141,23 @@ describe('applyOverrides', () => {
 
     const result = applyOverrides(config, repo('@acme/checkout'));
 
-    expect(result).toBe(config);
+    // Not compared via toEqual(config): `rules` is always rebuilt
+    // (self-upserted) so a base rule authored with severity 'off' resolves
+    // even with zero overrides (see the describe block below) — this also
+    // normalizes empty/singleton containers to arrays, which is why we
+    // assert the rule contents rather than the raw pre-resolution shape.
+    expect(result.rules.require_packages).toEqual([
+      { severity: 'error', patterns: ['typescript'] },
+    ]);
   });
 
-  it('is a no-op when the repo has no package.json', () => {
+  it('leaves rule contents unchanged when the repo has no package.json', () => {
     const dir = mkdtempSync(join(tmpdir(), 'hermex-overrides-test-'));
     dirs.push(dir);
     const config = createConfig({
+      rules: {
+        require_packages: [{ severity: 'error', patterns: ['typescript'] }],
+      },
       overrides: [
         {
           match: ['*'],
@@ -162,10 +172,12 @@ describe('applyOverrides', () => {
 
     const result = applyOverrides(config, dir);
 
-    expect(result).toBe(config);
+    expect(result.rules.require_packages).toEqual([
+      { severity: 'error', patterns: ['typescript'] },
+    ]);
   });
 
-  it('is a no-op when package.json has no "name" field', () => {
+  it('leaves rule contents unchanged when package.json has no "name" field', () => {
     const dir = mkdtempSync(join(tmpdir(), 'hermex-overrides-test-'));
     writeFileSync(
       join(dir, 'package.json'),
@@ -173,6 +185,9 @@ describe('applyOverrides', () => {
     );
     dirs.push(dir);
     const config = createConfig({
+      rules: {
+        require_packages: [{ severity: 'error', patterns: ['typescript'] }],
+      },
       overrides: [
         {
           match: ['*'],
@@ -187,7 +202,9 @@ describe('applyOverrides', () => {
 
     const result = applyOverrides(config, dir);
 
-    expect(result).toBe(config);
+    expect(result.rules.require_packages).toEqual([
+      { severity: 'error', patterns: ['typescript'] },
+    ]);
   });
 
   it('merges onto a base rule authored as a single object, not an array', () => {
@@ -623,6 +640,126 @@ describe('applyOverrides — severity "off" and upsert-by-identity (ESLint-like)
   });
 });
 
+describe('applyOverrides — resolves severity "off" in the base config, with zero overrides', () => {
+  let dirs: string[];
+
+  beforeAll(() => {
+    dirs = [];
+  });
+
+  afterAll(() => {
+    for (const dir of dirs) rmSync(dir, { recursive: true, force: true });
+  });
+
+  function repo(name: string, pkg: Record<string, unknown> = {}): string {
+    const dir = makeRepo(name, pkg);
+    dirs.push(dir);
+    return dir;
+  }
+
+  it('drops a base require_packages rule authored with severity "off" — no overrides involved', () => {
+    const config = createConfig({
+      rules: {
+        require_packages: [
+          { severity: 'error', patterns: ['typescript'] },
+          { severity: 'off', patterns: ['@acme/shell'] },
+        ],
+      },
+    });
+
+    const result = applyOverrides(config, repo('@acme/anything'));
+
+    expect(result.rules.require_packages).toEqual([
+      { severity: 'error', patterns: ['typescript'] },
+    ]);
+  });
+
+  it('applies even when the repo has no package.json at all (base resolution needs no repo identity)', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'hermex-overrides-test-'));
+    dirs.push(dir);
+    const config = createConfig({
+      rules: {
+        require_packages: [{ severity: 'off', patterns: ['@acme/shell'] }],
+      },
+    });
+
+    const result = applyOverrides(config, dir);
+
+    expect(result.rules.require_packages).toEqual([]);
+  });
+
+  it('collapses duplicate base rules sharing identical patterns to the last one (last write wins)', () => {
+    const config = createConfig({
+      rules: {
+        require_packages: [
+          { severity: 'error', patterns: ['@acme/shell'] },
+          {
+            severity: 'warn',
+            patterns: ['@acme/shell'],
+            message: 'authored later in the same config',
+          },
+        ],
+      },
+    });
+
+    const result = applyOverrides(config, repo('@acme/anything'));
+
+    expect(result.rules.require_packages).toEqual([
+      {
+        severity: 'warn',
+        patterns: ['@acme/shell'],
+        message: 'authored later in the same config',
+      },
+    ]);
+  });
+
+  it('drops a base engine_version rule authored with severity "off"', () => {
+    const config = createConfig({
+      rules: { engine_version: { severity: 'off', range: '>=20' } },
+    });
+
+    const result = applyOverrides(config, repo('@acme/anything'));
+
+    expect(result.rules.engine_version).toEqual([]);
+  });
+
+  it('drops a base codeowners rule authored with severity "off"', () => {
+    const config = createConfig({
+      rules: { codeowners: { severity: 'off' } },
+    });
+
+    const result = applyOverrides(config, repo('@acme/anything'));
+
+    expect(result.rules.codeowners).toBeUndefined();
+  });
+
+  it('a base rule with an active severity keeps its contents — resolution only normalizes the container, never drops or alters an active rule', () => {
+    const config = createConfig({
+      rules: {
+        require_packages: [{ severity: 'error', patterns: ['typescript'] }],
+        forbid_packages: [{ severity: 'warn', patterns: ['moment'] }],
+        engine_version: { severity: 'error', range: '>=20' },
+        codeowners: { severity: 'error' },
+      },
+    });
+
+    const result = applyOverrides(config, repo('@acme/anything'));
+
+    expect(result.rules.require_packages).toEqual([
+      { severity: 'error', patterns: ['typescript'] },
+    ]);
+    expect(result.rules.forbid_packages).toEqual([
+      { severity: 'warn', patterns: ['moment'] },
+    ]);
+    // engine_version normalizes from a bare object to a singleton array —
+    // same rule, same fields, just always list-shaped after resolution.
+    expect(result.rules.engine_version).toEqual([
+      { severity: 'error', range: '>=20' },
+    ]);
+    expect(result.rules.codeowners).toEqual({ severity: 'error' });
+  });
+});
+
 describe('overrides schema validation', () => {
   it('rejects an override with an empty match list', () => {
     expect(() =>
@@ -659,13 +796,13 @@ describe('overrides schema validation', () => {
     ).not.toThrow();
   });
 
-  it('rejects severity "off" in the base (non-override) rules — "off" is override-only', () => {
+  it('accepts severity "off" directly in the base (non-override) rules too — not override-only', () => {
     expect(() =>
       HermexConfigSchema.parse({
         rules: {
           require_packages: [{ severity: 'off', patterns: ['@acme/shell'] }],
         },
       }),
-    ).toThrow();
+    ).not.toThrow();
   });
 });

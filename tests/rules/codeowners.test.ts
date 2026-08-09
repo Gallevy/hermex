@@ -184,6 +184,16 @@ describe('evaluateCodeowners', () => {
     expect(result).toHaveLength(0);
   });
 
+  it('no violation when severity is "off", even without a CODEOWNERS file (defensive — production resolves "off" away before this runs)', () => {
+    tempDir = mkdtempSync(join(tmpdir(), 'hermex-codeowners-test-'));
+    const result = evaluateCodeowners(
+      tempDir,
+      { ...emptyRules, codeowners: { severity: 'off' } },
+      ['src/App.tsx'],
+    );
+    expect(result).toHaveLength(0);
+  });
+
   it('converts an absolute scanned-file path to repo-relative before matching', () => {
     tempDir = mkdtempSync(join(tmpdir(), 'hermex-codeowners-test-'));
     mkdirSync(join(tempDir, '.github'));

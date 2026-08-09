@@ -1,13 +1,13 @@
 import micromatch from 'micromatch';
 import type { RulesConfig } from '../config/types';
-import { toArray, readPackageJson } from './shared';
+import { toArray, readPackageJson, isEnabled } from './shared';
 import type { RuleViolation } from './shared';
 
 export function evaluateScriptRules(
   repoPath: string,
   rulesConfig: RulesConfig,
 ): RuleViolation[] {
-  const rules = toArray(rulesConfig.require_scripts);
+  const rules = toArray(rulesConfig.require_scripts).filter(isEnabled);
   if (rules.length === 0) {
     return [];
   }

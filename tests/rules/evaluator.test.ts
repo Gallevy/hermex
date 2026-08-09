@@ -485,3 +485,67 @@ describe('evaluateRules — integration', () => {
     expect(result).toHaveLength(0);
   });
 });
+
+describe('evaluators defensively ignore severity "off"', () => {
+  // Production always resolves 'off' away before evaluators run (see
+  // src/config/overrides.ts's resolveRules/applyOverrides). These tests
+  // call the evaluators directly with an 'off' rule anyway, to prove each
+  // evaluator is independently safe if that invariant is ever bypassed —
+  // no violation is emitted, and nothing throws.
+
+  it('evaluateFileRules ignores an "off" detect_files rule even though the file is present', () => {
+    const result = evaluateFileRules(
+      tempDir,
+      {
+        ...emptyRules,
+        detect_files: [{ severity: 'off', patterns: ['src/legacy.js'] }],
+      },
+      [],
+    );
+    expect(result).toHaveLength(0);
+  });
+
+  it('evaluateFileRules ignores an "off" require_files rule even though the file is absent', () => {
+    const result = evaluateFileRules(
+      tempDir,
+      {
+        ...emptyRules,
+        require_files: [{ severity: 'off', patterns: ['src/missing.ts'] }],
+      },
+      [],
+    );
+    expect(result).toHaveLength(0);
+  });
+
+  it('evaluateScriptRules ignores an "off" require_scripts rule even though the script is missing', () => {
+    const result = evaluateScriptRules(tempDir, {
+      ...emptyRules,
+      require_scripts: [{ severity: 'off', patterns: ['typecheck'] }],
+    });
+    expect(result).toHaveLength(0);
+  });
+
+  it('evaluatePackageFieldRules ignores an "off" require_package_fields rule even though the field is missing', () => {
+    const result = evaluatePackageFieldRules(tempDir, {
+      ...emptyRules,
+      require_package_fields: [{ severity: 'off', patterns: ['funding'] }],
+    });
+    expect(result).toHaveLength(0);
+  });
+
+  it('evaluatePackageFieldRules ignores an "off" forbid_package_fields rule even though the field is present', () => {
+    const result = evaluatePackageFieldRules(tempDir, {
+      ...emptyRules,
+      forbid_package_fields: [{ severity: 'off', patterns: ['jest'] }],
+    });
+    expect(result).toHaveLength(0);
+  });
+
+  it('evaluateEngineVersion ignores an "off" rule even though the installed range does not satisfy it', () => {
+    const result = evaluateEngineVersion(tempDir, {
+      ...emptyRules,
+      engine_version: { severity: 'off', range: '>=24.0.0' },
+    });
+    expect(result).toHaveLength(0);
+  });
+});

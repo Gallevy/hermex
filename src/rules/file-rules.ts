@@ -10,6 +10,7 @@ export function evaluateFileRules(
   const violations: RuleViolation[] = [];
 
   for (const rule of toArray(rulesConfig.detect_files)) {
+    if (rule.severity === 'off') continue;
     const matches = findMatches(rule.patterns, repoPath, excludes);
     if (matches.length > 0) {
       violations.push({
@@ -23,6 +24,7 @@ export function evaluateFileRules(
   }
 
   for (const rule of toArray(rulesConfig.require_files)) {
+    if (rule.severity === 'off') continue;
     const matches = findMatches(rule.patterns, repoPath, excludes);
     if (matches.length === 0) {
       violations.push({

@@ -11,11 +11,11 @@ function patternsMatch(a: string[], b: string[]): boolean {
 }
 
 /**
- * Upserts each override rule into `base`, keyed by an exact (order-
- * independent) match on `patterns` — mirrors ESLint's per-rule override: a
- * rule whose patterns match an existing one replaces it (severity 'off'
- * replaces it with nothing, i.e. cancels it); patterns with no existing
- * match are appended as a new rule.
+ * Upserts each rule into `base`, keyed by an exact (order-independent)
+ * match on `patterns` — mirrors ESLint's per-rule override: a rule whose
+ * patterns match an existing one replaces it (severity 'off' replaces it
+ * with nothing, i.e. cancels it); patterns with no existing match are
+ * appended as a new rule.
  */
 function upsertPatternRules<T extends { severity: string; patterns: string[] }>(
   base: T[],
@@ -45,87 +45,141 @@ function upsertEngineVersionRules<
   return result;
 }
 
+/** `codeowners` only ever holds one rule, so 'off' simply clears it. */
+function resolveCodeowners<T extends { severity: string }>(
+  rule: T | undefined,
+): T | undefined {
+  if (rule === undefined || rule.severity === 'off') return undefined;
+  return rule;
+}
+
 /**
- * Merges each `overrides` entry whose `match` patterns hit the current
- * repo's package.json "name" into `rules`. Rules are upserted by identity
- * (`patterns`, or `range` for `engine_version`) — a matching identity
- * replaces the base rule instead of adding a duplicate, and severity 'off'
- * replaces it with nothing (removes it), same as ESLint's per-rule 'off'.
- * `codeowners` only ever holds one rule, so a matching override replaces
- * the base entirely (severity 'off' clears it).
+ * Resolves `rules` to its final, evaluator-ready form by upserting each
+ * list against itself: a rule authored with severity 'off' — directly in
+ * the base config, not only via `overrides` — is dropped, and rules
+ * sharing an identity (patterns, or range for engine_version) collapse to
+ * the last one. This is the same upsert primitive `applyOverrides` uses
+ * for `overrides`, just seeded from an empty base — so a rule authored
+ * once in `rules` and a rule layered in via `overrides` behave
+ * identically. It's what a future shared/extends-style base config would
+ * need too: 'off' isn't an overrides-only concept, it's how any layer
+ * disables a rule, same as ESLint/oxlint.
+ */
+function resolveRules(rules: RulesConfig): RulesConfig {
+  return {
+    detect_files: upsertPatternRules(
+      [],
+      toArray(rules.detect_files),
+    ) as RulesConfig['detect_files'],
+    require_files: upsertPatternRules(
+      [],
+      toArray(rules.require_files),
+    ) as RulesConfig['require_files'],
+    forbid_packages: upsertPatternRules(
+      [],
+      toArray(rules.forbid_packages),
+    ) as RulesConfig['forbid_packages'],
+    require_packages: upsertPatternRules(
+      [],
+      toArray(rules.require_packages),
+    ) as RulesConfig['require_packages'],
+    require_scripts: upsertPatternRules(
+      [],
+      toArray(rules.require_scripts),
+    ) as RulesConfig['require_scripts'],
+    require_package_fields: upsertPatternRules(
+      [],
+      toArray(rules.require_package_fields),
+    ) as RulesConfig['require_package_fields'],
+    forbid_package_fields: upsertPatternRules(
+      [],
+      toArray(rules.forbid_package_fields),
+    ) as RulesConfig['forbid_package_fields'],
+    engine_version: upsertEngineVersionRules(
+      [],
+      toArray(rules.engine_version),
+    ) as RulesConfig['engine_version'],
+    codeowners: resolveCodeowners(rules.codeowners),
+  };
+}
+
+/**
+ * Resolves the final `rules` for the repo at `repoPath`: first `rules`
+ * itself is resolved against itself (severity 'off' and duplicate
+ * identities collapse — see `resolveRules`), then every `overrides` entry
+ * whose `match` patterns hit the repo's package.json "name" is upserted on
+ * top, in array order. `codeowners` only ever holds one rule, so a
+ * matching override replaces the base entirely (severity 'off' clears it).
  */
 export function applyOverrides(
   config: HermexConfig,
   repoPath: string,
 ): HermexConfig {
-  if (config.overrides.length === 0) return config;
+  const rules = resolveRules(config.rules);
 
-  const pkg = readPackageJson(repoPath);
-  const repoName = typeof pkg?.name === 'string' ? pkg.name : undefined;
-  if (!repoName) return config;
+  if (config.overrides.length > 0) {
+    const pkg = readPackageJson(repoPath);
+    const repoName = typeof pkg?.name === 'string' ? pkg.name : undefined;
 
-  const matching = config.overrides.filter((override) =>
-    micromatch.isMatch(repoName, override.match),
-  );
-  if (matching.length === 0) return config;
+    if (repoName) {
+      const matching = config.overrides.filter((override) =>
+        micromatch.isMatch(repoName, override.match),
+      );
 
-  const rules: RulesConfig = { ...config.rules };
-
-  for (const override of matching) {
-    const o = override.rules;
-    if (o.detect_files !== undefined) {
-      rules.detect_files = upsertPatternRules(
-        toArray(rules.detect_files),
-        toArray(o.detect_files),
-      ) as RulesConfig['detect_files'];
-    }
-    if (o.require_files !== undefined) {
-      rules.require_files = upsertPatternRules(
-        toArray(rules.require_files),
-        toArray(o.require_files),
-      ) as RulesConfig['require_files'];
-    }
-    if (o.forbid_packages !== undefined) {
-      rules.forbid_packages = upsertPatternRules(
-        toArray(rules.forbid_packages),
-        toArray(o.forbid_packages),
-      ) as RulesConfig['forbid_packages'];
-    }
-    if (o.require_packages !== undefined) {
-      rules.require_packages = upsertPatternRules(
-        toArray(rules.require_packages),
-        toArray(o.require_packages),
-      ) as RulesConfig['require_packages'];
-    }
-    if (o.require_scripts !== undefined) {
-      rules.require_scripts = upsertPatternRules(
-        toArray(rules.require_scripts),
-        toArray(o.require_scripts),
-      ) as RulesConfig['require_scripts'];
-    }
-    if (o.require_package_fields !== undefined) {
-      rules.require_package_fields = upsertPatternRules(
-        toArray(rules.require_package_fields),
-        toArray(o.require_package_fields),
-      ) as RulesConfig['require_package_fields'];
-    }
-    if (o.forbid_package_fields !== undefined) {
-      rules.forbid_package_fields = upsertPatternRules(
-        toArray(rules.forbid_package_fields),
-        toArray(o.forbid_package_fields),
-      ) as RulesConfig['forbid_package_fields'];
-    }
-    if (o.engine_version !== undefined) {
-      rules.engine_version = upsertEngineVersionRules(
-        toArray(rules.engine_version),
-        toArray(o.engine_version),
-      ) as RulesConfig['engine_version'];
-    }
-    if (o.codeowners !== undefined) {
-      rules.codeowners =
-        o.codeowners.severity === 'off'
-          ? undefined
-          : (o.codeowners as RulesConfig['codeowners']);
+      for (const override of matching) {
+        const o = override.rules;
+        if (o.detect_files !== undefined) {
+          rules.detect_files = upsertPatternRules(
+            toArray(rules.detect_files),
+            toArray(o.detect_files),
+          ) as RulesConfig['detect_files'];
+        }
+        if (o.require_files !== undefined) {
+          rules.require_files = upsertPatternRules(
+            toArray(rules.require_files),
+            toArray(o.require_files),
+          ) as RulesConfig['require_files'];
+        }
+        if (o.forbid_packages !== undefined) {
+          rules.forbid_packages = upsertPatternRules(
+            toArray(rules.forbid_packages),
+            toArray(o.forbid_packages),
+          ) as RulesConfig['forbid_packages'];
+        }
+        if (o.require_packages !== undefined) {
+          rules.require_packages = upsertPatternRules(
+            toArray(rules.require_packages),
+            toArray(o.require_packages),
+          ) as RulesConfig['require_packages'];
+        }
+        if (o.require_scripts !== undefined) {
+          rules.require_scripts = upsertPatternRules(
+            toArray(rules.require_scripts),
+            toArray(o.require_scripts),
+          ) as RulesConfig['require_scripts'];
+        }
+        if (o.require_package_fields !== undefined) {
+          rules.require_package_fields = upsertPatternRules(
+            toArray(rules.require_package_fields),
+            toArray(o.require_package_fields),
+          ) as RulesConfig['require_package_fields'];
+        }
+        if (o.forbid_package_fields !== undefined) {
+          rules.forbid_package_fields = upsertPatternRules(
+            toArray(rules.forbid_package_fields),
+            toArray(o.forbid_package_fields),
+          ) as RulesConfig['forbid_package_fields'];
+        }
+        if (o.engine_version !== undefined) {
+          rules.engine_version = upsertEngineVersionRules(
+            toArray(rules.engine_version),
+            toArray(o.engine_version),
+          ) as RulesConfig['engine_version'];
+        }
+        if (o.codeowners !== undefined) {
+          rules.codeowners = resolveCodeowners(o.codeowners);
+        }
+      }
     }
   }
 

@@ -74,6 +74,17 @@ describe('detectBannedPackages', () => {
 
     expect(detectBannedPackages([moment], config)).toEqual([]);
   });
+
+  it('ignores an "off" forbid_packages rule even though the package matches (defensive — production resolves "off" away before this runs)', () => {
+    const moment = createMockPackage('moment');
+    const config = createConfig({
+      rules: {
+        forbid_packages: [{ severity: 'off', patterns: ['moment'] }],
+      },
+    });
+
+    expect(detectBannedPackages([moment], config)).toEqual([]);
+  });
 });
 
 describe('detectRequiredPackages', () => {
@@ -126,6 +137,16 @@ describe('detectRequiredPackages', () => {
 
   it('returns an empty array when there are no require_packages rules', () => {
     const config = createConfig();
+
+    expect(detectRequiredPackages([], {}, config)).toEqual([]);
+  });
+
+  it('ignores an "off" require_packages rule even though it is unsatisfied (defensive — production resolves "off" away before this runs)', () => {
+    const config = createConfig({
+      rules: {
+        require_packages: [{ severity: 'off', patterns: ['react'] }],
+      },
+    });
 
     expect(detectRequiredPackages([], {}, config)).toEqual([]);
   });

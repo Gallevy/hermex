@@ -137,7 +137,7 @@ export function evaluateCodeowners(
   scannedFiles: string[],
 ): RuleViolation[] {
   const rule = rulesConfig.codeowners;
-  if (!rule) return [];
+  if (!rule || rule.severity === 'off') return [];
 
   const filePath = findCodeownersFile(repoPath);
   if (!filePath) {

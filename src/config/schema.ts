@@ -2,7 +2,13 @@ import { z } from 'zod';
 
 // ── Sub-schemas ────────────────────────────────────────────────────────────────
 
-const RuleSeveritySchema = z.enum(['error', 'warn', 'info']);
+// 'off' disables a rule — same as ESLint/oxlint. It's meaningful anywhere a
+// rule is authored (not just inside `overrides`): a rule reaching a repo's
+// final config with severity 'off' is dropped before evaluators ever see
+// it (see `resolveRules` in ./overrides), so a future shared/extends-style
+// base config could ship a rule that individual repos turn off, the same
+// way an override cancels an org-wide rule for specific repos today.
+const RuleSeveritySchema = z.enum(['error', 'warn', 'info', 'off']);
 
 const RuleConfigSchema = z.object({
   severity: RuleSeveritySchema,
@@ -40,51 +46,22 @@ const CodeownersRuleSchema = z.object({
 
 const ThresholdSchema = z.union([z.number(), z.literal(false)]);
 
-// Overrides accept 'off' in addition to the base severities — like ESLint,
-// an override rule with severity 'off' cancels a base rule with the same
-// identity (patterns, or range for engine_version) instead of adding one.
-const OverrideRuleSeveritySchema = z.enum(['error', 'warn', 'info', 'off']);
-
-const OverrideRuleConfigSchema = RuleConfigSchema.extend({
-  severity: OverrideRuleSeveritySchema,
-});
-const OverrideRuleConfigOrArraySchema = z.union([
-  OverrideRuleConfigSchema,
-  z.array(OverrideRuleConfigSchema),
-]);
-
-const OverridePackageFieldRuleSchema = PackageFieldRuleSchema.extend({
-  severity: OverrideRuleSeveritySchema,
-});
-const OverridePackageFieldRuleOrArraySchema = z.union([
-  OverridePackageFieldRuleSchema,
-  z.array(OverridePackageFieldRuleSchema),
-]);
-
-const OverrideEngineVersionRuleSchema = EngineVersionRuleSchema.extend({
-  severity: OverrideRuleSeveritySchema,
-});
-
-const OverrideCodeownersRuleSchema = CodeownersRuleSchema.extend({
-  severity: OverrideRuleSeveritySchema,
-});
-
+// Overrides use the same rule schemas as the base `rules` below (severity
+// 'off' included) — an override rule is resolved into the base the same
+// way `resolveRules` resolves the base config against itself.
 const OverrideRulesSchema = z
   .object({
-    detect_files: OverrideRuleConfigOrArraySchema.optional(),
-    require_files: OverrideRuleConfigOrArraySchema.optional(),
-    forbid_packages: OverrideRuleConfigOrArraySchema.optional(),
-    require_packages: OverrideRuleConfigOrArraySchema.optional(),
-    require_scripts: OverrideRuleConfigOrArraySchema.optional(),
-    require_package_fields: OverridePackageFieldRuleOrArraySchema.optional(),
-    forbid_package_fields: OverridePackageFieldRuleOrArraySchema.optional(),
+    detect_files: RuleConfigOrArraySchema.optional(),
+    require_files: RuleConfigOrArraySchema.optional(),
+    forbid_packages: RuleConfigOrArraySchema.optional(),
+    require_packages: RuleConfigOrArraySchema.optional(),
+    require_scripts: RuleConfigOrArraySchema.optional(),
+    require_package_fields: PackageFieldRuleOrArraySchema.optional(),
+    forbid_package_fields: PackageFieldRuleOrArraySchema.optional(),
     engine_version: z
-      .union([
-        OverrideEngineVersionRuleSchema,
-        z.array(OverrideEngineVersionRuleSchema),
-      ])
+      .union([EngineVersionRuleSchema, z.array(EngineVersionRuleSchema)])
       .optional(),
-    codeowners: OverrideCodeownersRuleSchema.optional(),
+    codeowners: CodeownersRuleSchema.optional(),
   })
   .default(() => ({}));
 
@@ -231,17 +208,6 @@ export type PackagesConfig = HermexConfig['packages'];
 export type VersusConfig = HermexConfig['versus'][number];
 export type RulesConfig = HermexConfig['rules'];
 export type OverrideConfig = HermexConfig['overrides'][number];
-export type OverrideRuleSeverity = z.infer<typeof OverrideRuleSeveritySchema>;
-export type OverrideRuleConfig = z.infer<typeof OverrideRuleConfigSchema>;
-export type OverridePackageFieldRule = z.infer<
-  typeof OverridePackageFieldRuleSchema
->;
-export type OverrideEngineVersionRule = z.infer<
-  typeof OverrideEngineVersionRuleSchema
->;
-export type OverrideCodeownersRule = z.infer<
-  typeof OverrideCodeownersRuleSchema
->;
 export type OutputConfig = HermexConfig['output'];
 export type ReleaseAgeConfig = HermexConfig['releaseAge'];
 export type ReleaseAgeThresholds = HermexConfig['releaseAge']['thresholds'];

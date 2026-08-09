@@ -513,3 +513,18 @@ describe('rule overrides — severity "off" and downgrade', () => {
     });
   });
 });
+
+describe('rule severity "off" authored directly in the base config (no overrides at all)', () => {
+  it('a base rule with severity "off" never produces a violation, with zero overrides configured', () => {
+    const configPath = join(ROOT, 'tests', 'e2e', 'hermex-base-off.config.ts');
+    const cwd = join(ROOT, 'tests', 'e2e', 'overrides-fixture-other'); // any repo works — no overrides involved
+    const result = run(
+      ['comply', '--config', configPath, '--format', 'json'],
+      cwd,
+    );
+    expect(result.status).toBe(0);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.ruleViolations).toEqual([]);
+    expect(parsed.compliance.status).toBe('compliant');
+  });
+});

@@ -1,6 +1,6 @@
 import micromatch from 'micromatch';
 import type { RulesConfig } from '../config/types';
-import { toArray, readPackageJson } from './shared';
+import { toArray, readPackageJson, isEnabled } from './shared';
 import type { RuleViolation } from './shared';
 
 interface FieldLookup {
@@ -37,8 +37,12 @@ export function evaluatePackageFieldRules(
   repoPath: string,
   rulesConfig: RulesConfig,
 ): RuleViolation[] {
-  const requireRules = toArray(rulesConfig.require_package_fields);
-  const forbidRules = toArray(rulesConfig.forbid_package_fields);
+  const requireRules = toArray(rulesConfig.require_package_fields).filter(
+    isEnabled,
+  );
+  const forbidRules = toArray(rulesConfig.forbid_package_fields).filter(
+    isEnabled,
+  );
   if (requireRules.length === 0 && forbidRules.length === 0) return [];
 
   const pkg = readPackageJson(repoPath);

@@ -158,6 +158,31 @@ severity `'off'` clears it.
 When more than one override entry matches the same repo, all of them apply,
 in array order.
 
+### `'off'` isn't override-only
+
+Severity `'off'` works the same way directly inside the base `rules` block,
+with no `overrides` involved at all — same as ESLint/oxlint, `'off'` just
+disables a rule wherever it's written:
+
+```ts
+export default defineConfig({
+  rules: {
+    require_packages: [
+      { severity: 'error', patterns: ['typescript'] },
+      { severity: 'off', patterns: ['@acme/shell'] }, // written, but disabled
+    ],
+  },
+});
+```
+
+This repo only ever gets the `typescript` rule — the `@acme/shell` entry is
+resolved away before it reaches anything that evaluates rules. It's the
+same upsert-by-identity machinery `overrides` uses, just applied to the
+base config against itself, so two rules sharing the same `patterns`
+(or `range`, for `engine_version`) also collapse to the last one written,
+last write wins — useful if you ever generate `rules` programmatically in
+`hermex.config.ts` (it's plain TypeScript) rather than hand-authoring it.
+
 ## Compliance Rules
 
 ### File Rules
