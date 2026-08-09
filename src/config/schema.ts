@@ -40,6 +40,28 @@ const CodeownersRuleSchema = z.object({
 
 const ThresholdSchema = z.union([z.number(), z.literal(false)]);
 
+const OverrideRulesSchema = z
+  .object({
+    detect_files: RuleConfigOrArraySchema.optional(),
+    require_files: RuleConfigOrArraySchema.optional(),
+    forbid_packages: RuleConfigOrArraySchema.optional(),
+    require_packages: RuleConfigOrArraySchema.optional(),
+    require_scripts: RuleConfigOrArraySchema.optional(),
+    require_package_fields: PackageFieldRuleOrArraySchema.optional(),
+    forbid_package_fields: PackageFieldRuleOrArraySchema.optional(),
+    engine_version: z
+      .union([EngineVersionRuleSchema, z.array(EngineVersionRuleSchema)])
+      .optional(),
+    codeowners: CodeownersRuleSchema.optional(),
+  })
+  .default(() => ({}));
+
+const OverrideSchema = z.object({
+  /** Micromatch patterns checked against the current repo's package.json "name" */
+  match: z.array(z.string()).min(1),
+  rules: OverrideRulesSchema,
+});
+
 // ── Main schema with defaults ──────────────────────────────────────────────────
 
 export const HermexConfigSchema = z.object({
@@ -58,6 +80,14 @@ export const HermexConfigSchema = z.object({
   versus: z
     .array(z.object({ name: z.string(), packages: z.array(z.string()).min(2) }))
     .default([]),
+
+  /**
+   * Repo-scoped rule additions: when the current repo's package.json "name"
+   * matches an entry's `match` patterns, its `rules` are merged (additively)
+   * into the base `rules` below — lets one shared config apply extra rules
+   * to only a subset of repos, e.g. a mandatory dependency for 30 of 150 apps.
+   */
+  overrides: z.array(OverrideSchema).default([]),
 
   rules: z
     .object({
@@ -164,6 +194,7 @@ export type CodeownersRule = z.infer<typeof CodeownersRuleSchema>;
 export type PackagesConfig = HermexConfig['packages'];
 export type VersusConfig = HermexConfig['versus'][number];
 export type RulesConfig = HermexConfig['rules'];
+export type OverrideConfig = HermexConfig['overrides'][number];
 export type OutputConfig = HermexConfig['output'];
 export type ReleaseAgeConfig = HermexConfig['releaseAge'];
 export type ReleaseAgeThresholds = HermexConfig['releaseAge']['thresholds'];

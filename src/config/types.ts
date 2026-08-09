@@ -10,6 +10,7 @@ export type {
   PackagesConfig,
   VersusConfig,
   RulesConfig,
+  OverrideConfig,
   OutputConfig,
   ReleaseAgeConfig,
   ReleaseAgeThresholds,
