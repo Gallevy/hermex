@@ -1,13 +1,13 @@
 import semver from 'semver';
-import type { RulesConfig } from '../config/types';
-import { toArray, readPackageJson, isEnabled } from './shared';
+import type { ResolvedRulesConfig } from '../config/types';
+import { readPackageJson } from './shared';
 import type { RuleViolation } from './shared';
 
 export function evaluateEngineVersion(
   repoPath: string,
-  rulesConfig: RulesConfig,
+  rulesConfig: ResolvedRulesConfig,
 ): RuleViolation[] {
-  const rules = toArray(rulesConfig.engine_version).filter(isEnabled);
+  const rules = rulesConfig.engine_version;
   if (rules.length === 0) {
     return [];
   }

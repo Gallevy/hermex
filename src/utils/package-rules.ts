@@ -1,7 +1,6 @@
 import micromatch from 'micromatch';
-import type { HermexConfig } from '../config/types';
+import type { ResolvedHermexConfig } from '../config/types';
 import type { RuleViolation } from '../rules/evaluator';
-import { toArray, isEnabled } from '../rules/evaluator';
 import type { PackageDistribution } from './package-distribution';
 
 export interface BannedPackageViolation {
@@ -12,9 +11,9 @@ export interface BannedPackageViolation {
 
 export function detectBannedPackages(
   distribution: PackageDistribution[],
-  config?: HermexConfig,
+  config?: ResolvedHermexConfig,
 ): BannedPackageViolation[] {
-  const forbidRules = toArray(config?.rules.forbid_packages).filter(isEnabled);
+  const forbidRules = config?.rules.forbid_packages ?? [];
   if (forbidRules.length === 0) {
     return [];
   }
@@ -38,11 +37,9 @@ export function detectBannedPackages(
 export function detectRequiredPackages(
   distribution: PackageDistribution[],
   versions: Record<string, string>,
-  config?: HermexConfig,
+  config?: ResolvedHermexConfig,
 ): RuleViolation[] {
-  const requireRules = toArray(config?.rules.require_packages).filter(
-    isEnabled,
-  );
+  const requireRules = config?.rules.require_packages ?? [];
   if (requireRules.length === 0) return [];
 
   // All package names available: from lockfile versions + from import distribution

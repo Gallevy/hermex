@@ -1,16 +1,15 @@
-import type { RulesConfig } from '../config/types';
-import { toArray, findMatches } from './shared';
+import type { ResolvedRulesConfig } from '../config/types';
+import { findMatches } from './shared';
 import type { RuleViolation } from './shared';
 
 export function evaluateFileRules(
   repoPath: string,
-  rulesConfig: RulesConfig,
+  rulesConfig: ResolvedRulesConfig,
   excludes: string[],
 ): RuleViolation[] {
   const violations: RuleViolation[] = [];
 
-  for (const rule of toArray(rulesConfig.detect_files)) {
-    if (rule.severity === 'off') continue;
+  for (const rule of rulesConfig.detect_files) {
     const matches = findMatches(rule.patterns, repoPath, excludes);
     if (matches.length > 0) {
       violations.push({
@@ -23,8 +22,7 @@ export function evaluateFileRules(
     }
   }
 
-  for (const rule of toArray(rulesConfig.require_files)) {
-    if (rule.severity === 'off') continue;
+  for (const rule of rulesConfig.require_files) {
     const matches = findMatches(rule.patterns, repoPath, excludes);
     if (matches.length === 0) {
       violations.push({

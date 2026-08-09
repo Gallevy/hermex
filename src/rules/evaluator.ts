@@ -1,4 +1,4 @@
-import type { RulesConfig } from '../config/types';
+import type { ResolvedRulesConfig } from '../config/types';
 import { evaluateFileRules } from './file-rules';
 import { evaluateScriptRules } from './script-rules';
 import { evaluatePackageFieldRules } from './package-field-rules';
@@ -6,11 +6,10 @@ import { evaluateEngineVersion } from './engine-version';
 import { evaluateCodeowners } from './codeowners';
 
 export type { RuleViolation } from './shared';
-export { toArray, isEnabled } from './shared';
 
 export function evaluateRules(
   repoPath: string,
-  rulesConfig: RulesConfig,
+  rulesConfig: ResolvedRulesConfig,
   excludes: string[],
   scannedFiles: string[] = [],
 ): import('./shared').RuleViolation[] {

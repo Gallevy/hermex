@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { mkdirSync, writeFileSync, rmSync, mkdtempSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import type { RulesConfig } from '../../src/config/types';
+import type { ResolvedRulesConfig } from '../../src/config/types';
 import {
   codeownersPatternToGlobs,
   fileIsOwned,
@@ -11,7 +11,7 @@ import {
 } from '../../src/rules/codeowners';
 import type { CodeownersEntry } from '../../src/rules/codeowners';
 
-const emptyRules: RulesConfig = {
+const emptyRules: ResolvedRulesConfig = {
   detect_files: [],
   require_files: [],
   forbid_packages: [],
@@ -19,7 +19,7 @@ const emptyRules: RulesConfig = {
   require_scripts: [],
   require_package_fields: [],
   forbid_package_fields: [],
-  engine_version: undefined,
+  engine_version: [],
   codeowners: undefined,
 };
 
@@ -181,16 +181,6 @@ describe('evaluateCodeowners', () => {
   it('no violation when the rule is not configured, even without a CODEOWNERS file', () => {
     tempDir = mkdtempSync(join(tmpdir(), 'hermex-codeowners-test-'));
     const result = evaluateCodeowners(tempDir, emptyRules, ['src/App.tsx']);
-    expect(result).toHaveLength(0);
-  });
-
-  it('no violation when severity is "off", even without a CODEOWNERS file (defensive — production resolves "off" away before this runs)', () => {
-    tempDir = mkdtempSync(join(tmpdir(), 'hermex-codeowners-test-'));
-    const result = evaluateCodeowners(
-      tempDir,
-      { ...emptyRules, codeowners: { severity: 'off' } },
-      ['src/App.tsx'],
-    );
     expect(result).toHaveLength(0);
   });
 
