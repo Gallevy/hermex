@@ -76,27 +76,55 @@ Output shows a neutral bar split per group — no directional assumption, just u
 ## Overrides — Repo-Scoped Rules
 
 When one shared `hermex.config.ts` is reused across many repos, `overrides`
-lets a subset of them get extra rules without forking the config. Each entry
-checks the *current repo's* `package.json` `name` field against `match`
-(micromatch patterns, same matching engine as `forbid_packages`); when it
-matches, the entry's `rules` are merged into the base `rules` above.
+lets a subset of them get adjusted rules without forking the config. Each
+entry checks the *current repo's* `package.json` `name` field against
+`match` (micromatch patterns, same matching engine as `forbid_packages`);
+when it matches, the entry's `rules` are upserted into the base `rules`
+above, keyed by identity — a rule's `patterns` (or `range` for
+`engine_version`).
+
+- A rule whose `patterns` don't match any existing base rule is **added**.
+- A rule whose `patterns` match an existing base rule **replaces** it
+  (e.g. change its severity, message, or add a specific `patterns` set).
+- A rule with severity **`'off'`** matched by `patterns` **removes** the
+  base rule instead of replacing it with anything — like ESLint's
+  per-rule `'off'`.
 
 ```ts
 export default defineConfig({
   rules: {
-    require_packages: [{ severity: 'error', patterns: ['typescript'] }],
+    require_packages: [
+      { severity: 'error', patterns: ['typescript'] },
+      { severity: 'error', patterns: ['@acme/shell'] },
+    ],
   },
   overrides: [
     {
-      // whitelist of repos that must depend on @acme/shell — edit this
-      // array to add/remove repos, no other config changes needed
-      match: ['@acme/checkout', '@acme/billing', '@acme/shell-consumer-*'],
+      // 30 repos that must additionally depend on @acme/telemetry — edit
+      // this array to add/remove repos, no other config changes needed
+      match: ['@acme/checkout', '@acme/billing'],
+      rules: {
+        require_packages: [
+          { severity: 'error', patterns: ['@acme/telemetry'] },
+        ],
+      },
+    },
+    {
+      // legacy repo can't adopt @acme/shell yet — exempt it entirely
+      match: ['@acme/legacy-app'],
+      rules: {
+        require_packages: [{ severity: 'off', patterns: ['@acme/shell'] }],
+      },
+    },
+    {
+      // this repo isn't ready to fail CI over it yet — nudge instead
+      match: ['@acme/in-progress-app'],
       rules: {
         require_packages: [
           {
-            severity: 'error',
+            severity: 'warn',
             patterns: ['@acme/shell'],
-            message: '@acme/shell is mandatory for shell-integrated apps',
+            message: '@acme/shell will become mandatory here soon',
           },
         ],
       },
@@ -105,18 +133,27 @@ export default defineConfig({
 });
 ```
 
-A repo whose `package.json` name is `@acme/checkout` gets both
-`require_packages` rules (`typescript` from the base config, `@acme/shell`
-from the override) — rule lists are merged additively, not replaced, so the
-base config's rules always still apply. A repo that doesn't match any
-`match` pattern is completely unaffected; only the base `rules` apply. If
-`package.json` is missing or has no `name`, no overrides can match.
+`@acme/checkout` ends up with all three `require_packages` rules
+(`typescript` and `@acme/shell` from the base, `@acme/telemetry` from its
+override — none of the `patterns` collide, so all are added).
+`@acme/legacy-app` keeps the base `typescript` rule but loses `@acme/shell`
+entirely (`'off'` matched it by `patterns` and removed it).
+`@acme/in-progress-app` keeps `typescript` and gets `@acme/shell` at `warn`
+instead of `error` (the override's `patterns: ['@acme/shell']` matched the
+base rule with the same `patterns` and replaced it). A repo matching no
+`match` pattern is completely unaffected. If `package.json` is missing or
+has no `name`, no overrides can match.
 
-Every rule type is mergeable this way (`detect_files`, `require_files`,
+`patterns` matching for upsert purposes is exact and order-independent (the
+same set of strings), not a glob comparison — write the override's
+`patterns` identically to the base rule you want to replace or cancel.
+
+Every rule type supports this (`detect_files`, `require_files`,
 `forbid_packages`, `require_packages`, `require_scripts`,
 `require_package_fields`, `forbid_package_fields`, `engine_version`). The
-exception is `codeowners`, which only ever holds a single rule — a matching
-override's `codeowners` replaces the base one instead of merging with it.
+exception is `codeowners`, which only ever holds a single rule — any
+matching override's `codeowners` replaces the base one outright, and
+severity `'off'` clears it.
 
 When more than one override entry matches the same repo, all of them apply,
 in array order.

@@ -461,3 +461,55 @@ describe('rule overrides (repo-scoped rules)', () => {
     expect(messages).toContain('override rule');
   });
 });
+
+describe('rule overrides — severity "off" and downgrade', () => {
+  const configPath = join(
+    ROOT,
+    'tests',
+    'e2e',
+    'hermex-overrides-severity.config.ts',
+  );
+
+  it('an override with severity "off" fully exempts a repo from an org-wide error rule', () => {
+    const cwd = join(ROOT, 'tests', 'e2e', 'overrides-fixture-off'); // package.json name: @acme/legacy-off, no @acme/shell installed
+    const result = run(
+      ['comply', '--config', configPath, '--format', 'json'],
+      cwd,
+    );
+    expect(result.status).toBe(0);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.ruleViolations).toEqual([]);
+    expect(parsed.compliance.status).toBe('compliant');
+  });
+
+  it('an override with a different severity downgrades an org-wide error rule to warn', () => {
+    const cwd = join(ROOT, 'tests', 'e2e', 'overrides-fixture-warn'); // package.json name: @acme/legacy-warn, no @acme/shell installed
+    const result = run(
+      ['comply', '--config', configPath, '--format', 'json'],
+      cwd,
+    );
+    expect(result.status).toBe(0); // warn-severity violations never fail comply
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.ruleViolations).toHaveLength(1);
+    expect(parsed.ruleViolations[0]).toMatchObject({
+      severity: 'warn',
+      message: 'shell required (downgraded for this repo)',
+    });
+    expect(parsed.compliance.status).toBe('warning');
+  });
+
+  it('a repo matching neither override still gets the full-severity org-wide rule', () => {
+    const cwd = join(ROOT, 'tests', 'e2e', 'overrides-fixture-other'); // package.json name: @acme/other-app
+    const result = run(
+      ['comply', '--config', configPath, '--format', 'json'],
+      cwd,
+    );
+    expect(result.status).toBe(1);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.ruleViolations).toHaveLength(1);
+    expect(parsed.ruleViolations[0]).toMatchObject({
+      severity: 'error',
+      message: 'shell required',
+    });
+  });
+});
