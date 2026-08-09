@@ -1,5 +1,5 @@
 import type { UsageReport } from '../swc-parser';
-import type { HermexConfig } from '../config/types';
+import type { ResolvedHermexConfig } from '../config/types';
 import type { LockfileResolutionMap, MultiVersionMap } from '../lock-parser';
 import type { RuleViolation } from '../rules/evaluator';
 import type {
@@ -36,7 +36,7 @@ export interface AggregatedReport {
 export function aggregateReports(
   reports: UsageReport[],
   versions: Record<string, string> = {},
-  config?: HermexConfig,
+  config?: ResolvedHermexConfig,
   multiVersions: MultiVersionMap = {},
   resolutions: LockfileResolutionMap = {},
 ): AggregatedReport {

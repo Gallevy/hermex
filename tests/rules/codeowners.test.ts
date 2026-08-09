@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { mkdirSync, writeFileSync, rmSync, mkdtempSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import type { RulesConfig } from '../../src/config/types';
+import type { ResolvedRulesConfig } from '../../src/config/types';
 import {
   codeownersPatternToGlobs,
   fileIsOwned,
@@ -11,7 +11,7 @@ import {
 } from '../../src/rules/codeowners';
 import type { CodeownersEntry } from '../../src/rules/codeowners';
 
-const emptyRules: RulesConfig = {
+const emptyRules: ResolvedRulesConfig = {
   detect_files: [],
   require_files: [],
   forbid_packages: [],
@@ -19,7 +19,7 @@ const emptyRules: RulesConfig = {
   require_scripts: [],
   require_package_fields: [],
   forbid_package_fields: [],
-  engine_version: undefined,
+  engine_version: [],
   codeowners: undefined,
 };
 

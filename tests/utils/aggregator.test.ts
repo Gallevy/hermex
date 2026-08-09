@@ -2,12 +2,18 @@ import { describe, expect, it } from 'vitest';
 import { aggregateReports } from '../../src/utils/aggregator';
 import { HermexConfigSchema } from '../../src/config/schema';
 import type { HermexConfigInput } from '../../src/config/schema';
+import { applyOverrides } from '../../src/config/overrides';
 import type { JSXUsage } from '../../src/swc-parser/types';
 import { createMockReport } from '../helpers/mock-reports';
 
-/** Parse a partial config through the real schema so all defaults apply. */
+/**
+ * Parse a partial config through the real schema, then resolve it exactly
+ * like the real pipeline does before aggregateReports ever sees it — same
+ * reasoning as tests/utils/package-rules.test.ts's createConfig. None of
+ * these tests configure `overrides`, so the repo path is never read.
+ */
 function createConfig(input: HermexConfigInput = {}) {
-  return HermexConfigSchema.parse(input);
+  return applyOverrides(HermexConfigSchema.parse(input), process.cwd());
 }
 
 /** Create a minimal JSXUsage entry for a component. */

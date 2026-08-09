@@ -2,7 +2,13 @@ import { z } from 'zod';
 
 // ── Sub-schemas ────────────────────────────────────────────────────────────────
 
-const RuleSeveritySchema = z.enum(['error', 'warn', 'info']);
+// 'off' disables a rule — same as ESLint/oxlint. It's meaningful anywhere a
+// rule is authored (not just inside `overrides`): a rule reaching a repo's
+// final config with severity 'off' is dropped before evaluators ever see
+// it (see `resolveRules` in ./overrides), so a future shared/extends-style
+// base config could ship a rule that individual repos turn off, the same
+// way an override cancels an org-wide rule for specific repos today.
+const RuleSeveritySchema = z.enum(['error', 'warn', 'info', 'off']);
 
 const RuleConfigSchema = z.object({
   severity: RuleSeveritySchema,
@@ -40,6 +46,9 @@ const CodeownersRuleSchema = z.object({
 
 const ThresholdSchema = z.union([z.number(), z.literal(false)]);
 
+// Overrides use the same rule schemas as the base `rules` below (severity
+// 'off' included) — an override rule is resolved into the base the same
+// way `resolveRules` resolves the base config against itself.
 const OverrideRulesSchema = z
   .object({
     detect_files: RuleConfigOrArraySchema.optional(),
@@ -82,10 +91,14 @@ export const HermexConfigSchema = z.object({
     .default([]),
 
   /**
-   * Repo-scoped rule additions: when the current repo's package.json "name"
-   * matches an entry's `match` patterns, its `rules` are merged (additively)
-   * into the base `rules` below — lets one shared config apply extra rules
-   * to only a subset of repos, e.g. a mandatory dependency for 30 of 150 apps.
+   * Repo-scoped rule adjustments: when the current repo's package.json "name"
+   * matches an entry's `match` patterns, its `rules` are upserted into the
+   * base `rules` below, keyed by identity (a rule's `patterns`, or `range`
+   * for engine_version) — a rule with new patterns is added, one whose
+   * patterns match an existing base rule replaces it, and severity 'off'
+   * replaces it with nothing (like ESLint's per-rule 'off'). Lets one shared
+   * config both add rules to a subset of repos (a mandatory dependency for
+   * 30 of 150 apps) and loosen/cancel an org-wide rule for specific repos.
    */
   overrides: z.array(OverrideSchema).default([]),
 

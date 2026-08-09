@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { mkdirSync, writeFileSync, rmSync, mkdtempSync } from 'node:fs';
 import { join, isAbsolute } from 'node:path';
 import { tmpdir } from 'node:os';
-import type { RulesConfig } from '../../src/config/types';
+import type { ResolvedRulesConfig } from '../../src/config/types';
 import { evaluateRules } from '../../src/rules/evaluator';
 import { evaluateFileRules } from '../../src/rules/file-rules';
 import { evaluateScriptRules } from '../../src/rules/script-rules';
@@ -11,7 +11,11 @@ import { evaluateEngineVersion } from '../../src/rules/engine-version';
 
 let tempDir: string;
 
-const emptyRules: RulesConfig = {
+// Evaluators only ever receive already-resolved rules (severity 'off' and
+// duplicate identities collapsed by applyOverrides/resolveRules before the
+// pipeline runs — see src/config/overrides.ts) — this is enforced by
+// ResolvedRulesConfig's type, not re-checked here.
+const emptyRules: ResolvedRulesConfig = {
   detect_files: [],
   require_files: [],
   forbid_packages: [],
@@ -19,7 +23,7 @@ const emptyRules: RulesConfig = {
   require_scripts: [],
   require_package_fields: [],
   forbid_package_fields: [],
-  engine_version: undefined,
+  engine_version: [],
   codeowners: undefined,
 };
 
@@ -399,7 +403,7 @@ describe('evaluateEngineVersion', () => {
   it('no violation when installed node range satisfies requirement', () => {
     const result = evaluateEngineVersion(tempDir, {
       ...emptyRules,
-      engine_version: { severity: 'error', range: '>=16.0.0' },
+      engine_version: [{ severity: 'error', range: '>=16.0.0' }],
     });
     expect(result).toHaveLength(0);
   });
@@ -407,7 +411,7 @@ describe('evaluateEngineVersion', () => {
   it('violation when installed node range does not satisfy requirement', () => {
     const result = evaluateEngineVersion(tempDir, {
       ...emptyRules,
-      engine_version: { severity: 'error', range: '>=24.0.0' },
+      engine_version: [{ severity: 'error', range: '>=24.0.0' }],
     });
     expect(result).toHaveLength(1);
     expect(result[0].type).toBe('engine_version');
@@ -440,7 +444,7 @@ describe('evaluateEngineVersion', () => {
     it('reports "not specified" with the default message when no message is configured', () => {
       const result = evaluateEngineVersion(noEnginesDir, {
         ...emptyRules,
-        engine_version: { severity: 'error', range: '>=18.0.0' },
+        engine_version: [{ severity: 'error', range: '>=18.0.0' }],
       });
       expect(result).toHaveLength(1);
       expect(result[0].installedRange).toBeUndefined();
@@ -453,11 +457,13 @@ describe('evaluateEngineVersion', () => {
     it('uses a custom message when configured', () => {
       const result = evaluateEngineVersion(noEnginesDir, {
         ...emptyRules,
-        engine_version: {
-          severity: 'error',
-          range: '>=18.0.0',
-          message: 'add an engines.node field',
-        },
+        engine_version: [
+          {
+            severity: 'error',
+            range: '>=18.0.0',
+            message: 'add an engines.node field',
+          },
+        ],
       });
       expect(result[0].message).toBe('add an engines.node field');
     });
@@ -485,3 +491,10 @@ describe('evaluateRules — integration', () => {
     expect(result).toHaveLength(0);
   });
 });
+
+// Evaluators no longer defensively filter severity 'off' themselves — that
+// responsibility lives solely in resolveRules/applyOverrides
+// (src/config/overrides.ts, tested in tests/config/overrides.test.ts).
+// ResolvedRulesConfig's type now makes it a compile error to pass an 'off'
+// rule to any evaluator here, which is a strictly stronger guarantee than a
+// runtime check could give — see the "isEnabled" discussion in the PR.

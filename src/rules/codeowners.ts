@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import micromatch from 'micromatch';
-import type { RulesConfig } from '../config/types';
+import type { ResolvedRulesConfig } from '../config/types';
 import type { RuleViolation } from './shared';
 
 const CODEOWNERS_LOCATIONS = [
@@ -133,7 +133,7 @@ export function fileIsOwned(file: string, entries: CodeownersEntry[]): boolean {
 
 export function evaluateCodeowners(
   repoPath: string,
-  rulesConfig: RulesConfig,
+  rulesConfig: ResolvedRulesConfig,
   scannedFiles: string[],
 ): RuleViolation[] {
   const rule = rulesConfig.codeowners;

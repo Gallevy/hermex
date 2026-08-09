@@ -29,6 +29,19 @@ export function toArray<T>(val: T | T[] | undefined): T[] {
   return Array.isArray(val) ? val : [val];
 }
 
+/**
+ * Type-guard filter for rules whose severity may be 'off' (config-authored
+ * rules, resolved via `applyOverrides`/`resolveRules` before evaluators run
+ * — see src/config/overrides.ts). Narrows `severity` down to the
+ * evaluator-facing 'error' | 'warn' | 'info', so a `RuleViolation` built
+ * from a filtered rule type-checks without a cast.
+ */
+export function isEnabled<T extends { severity: string }>(
+  rule: T,
+): rule is T & { severity: Exclude<T['severity'], 'off'> } {
+  return rule.severity !== 'off';
+}
+
 export function findMatches(
   patterns: string[],
   repoPath: string,

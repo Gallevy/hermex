@@ -5,11 +5,18 @@ import {
 } from '../../src/utils/package-rules';
 import { HermexConfigSchema } from '../../src/config/schema';
 import type { HermexConfigInput } from '../../src/config/schema';
+import { applyOverrides } from '../../src/config/overrides';
 import { createMockPackage } from '../helpers/mock-reports';
 
-/** Parse a partial config through the real schema so all defaults apply. */
+/**
+ * Parse a partial config through the real schema, then resolve it exactly
+ * like the real pipeline does — detectBannedPackages/detectRequiredPackages
+ * only ever receive already-resolved rules (severity 'off' collapsed away),
+ * same as every other consumer downstream of applyOverrides. None of these
+ * tests configure `overrides`, so the repo path is never actually read.
+ */
 function createConfig(input: HermexConfigInput = {}) {
-  return HermexConfigSchema.parse(input);
+  return applyOverrides(HermexConfigSchema.parse(input), process.cwd());
 }
 
 describe('detectBannedPackages', () => {
@@ -44,13 +51,18 @@ describe('detectBannedPackages', () => {
     expect(violations[0].packageName).toBe('@legacy/widget');
   });
 
-  it('uses the first matching rule when a package matches two forbid rules', () => {
+  it('uses the first matching rule when a package matches two distinct forbid rules', () => {
+    // Distinct `patterns` (not just distinct severity/message) is
+    // deliberate: identical `patterns` would collapse to one rule during
+    // resolveRules's upsert-by-identity (last write wins — see
+    // tests/config/overrides.test.ts), never reaching detectBannedPackages
+    // as two separate rules in production.
     const moment = createMockPackage('moment');
     const config = createConfig({
       rules: {
         forbid_packages: [
           { severity: 'error', patterns: ['moment'], message: 'first rule' },
-          { severity: 'warn', patterns: ['moment'], message: 'second rule' },
+          { severity: 'warn', patterns: ['mom*'], message: 'second rule' },
         ],
       },
     });
@@ -71,6 +83,17 @@ describe('detectBannedPackages', () => {
   it('returns an empty array when there are no forbid_packages rules', () => {
     const moment = createMockPackage('moment');
     const config = createConfig();
+
+    expect(detectBannedPackages([moment], config)).toEqual([]);
+  });
+
+  it('a forbid_packages rule authored with severity "off" resolves away before it ever reaches detectBannedPackages', () => {
+    const moment = createMockPackage('moment');
+    const config = createConfig({
+      rules: {
+        forbid_packages: [{ severity: 'off', patterns: ['moment'] }],
+      },
+    });
 
     expect(detectBannedPackages([moment], config)).toEqual([]);
   });
@@ -126,6 +149,16 @@ describe('detectRequiredPackages', () => {
 
   it('returns an empty array when there are no require_packages rules', () => {
     const config = createConfig();
+
+    expect(detectRequiredPackages([], {}, config)).toEqual([]);
+  });
+
+  it('a require_packages rule authored with severity "off" resolves away before it ever reaches detectRequiredPackages, even unsatisfied', () => {
+    const config = createConfig({
+      rules: {
+        require_packages: [{ severity: 'off', patterns: ['react'] }],
+      },
+    });
 
     expect(detectRequiredPackages([], {}, config)).toEqual([]);
   });
