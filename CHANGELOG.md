@@ -1,3 +1,10 @@
+# [2.8.0](https://github.com/Gallevy/hermex/compare/v2.7.0...v2.8.0) (2026-08-09)
+
+
+### Features
+
+* support severity 'off' and downgrades in overrides (ESLint-like) ([#74](https://github.com/Gallevy/hermex/issues/74)) ([60e7953](https://github.com/Gallevy/hermex/commit/60e7953e086c0f035396e8c9cbd90ecc43b6a0f7))
+
 # [2.7.0](https://github.com/Gallevy/hermex/compare/v2.6.8...v2.7.0) (2026-08-09)
 
 
