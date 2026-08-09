@@ -1,3 +1,10 @@
+# [2.7.0](https://github.com/Gallevy/hermex/compare/v2.6.8...v2.7.0) (2026-08-09)
+
+
+### Features
+
+* repo-scoped rule overrides ([#73](https://github.com/Gallevy/hermex/issues/73)) ([d4c64c0](https://github.com/Gallevy/hermex/commit/d4c64c075136ac173e1efc6e9c986cad85a1eefc))
+
 ## [2.6.8](https://github.com/Gallevy/hermex/compare/v2.6.7...v2.6.8) (2026-08-05)
 
 
