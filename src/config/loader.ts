@@ -3,6 +3,7 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { HermexConfigSchema } from './schema';
 import type { HermexConfig } from './schema';
+import { applyOverrides } from './overrides';
 
 export async function loadConfig(
   cwd: string,
@@ -18,8 +19,9 @@ export async function loadConfig(
 
   if (existsSync(configPath)) {
     const mod = await import(pathToFileURL(configPath).href);
-    return HermexConfigSchema.parse(mod.default ?? mod);
+    const config = HermexConfigSchema.parse(mod.default ?? mod);
+    return applyOverrides(config, cwd);
   }
 
-  return HermexConfigSchema.parse({});
+  return applyOverrides(HermexConfigSchema.parse({}), cwd);
 }

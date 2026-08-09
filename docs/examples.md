@@ -73,6 +73,54 @@ export default defineConfig({
 
 Output shows a neutral bar split per group — no directional assumption, just usage percentages.
 
+## Overrides — Repo-Scoped Rules
+
+When one shared `hermex.config.ts` is reused across many repos, `overrides`
+lets a subset of them get extra rules without forking the config. Each entry
+checks the *current repo's* `package.json` `name` field against `match`
+(micromatch patterns, same matching engine as `forbid_packages`); when it
+matches, the entry's `rules` are merged into the base `rules` above.
+
+```ts
+export default defineConfig({
+  rules: {
+    require_packages: [{ severity: 'error', patterns: ['typescript'] }],
+  },
+  overrides: [
+    {
+      // whitelist of repos that must depend on @acme/shell — edit this
+      // array to add/remove repos, no other config changes needed
+      match: ['@acme/checkout', '@acme/billing', '@acme/shell-consumer-*'],
+      rules: {
+        require_packages: [
+          {
+            severity: 'error',
+            patterns: ['@acme/shell'],
+            message: '@acme/shell is mandatory for shell-integrated apps',
+          },
+        ],
+      },
+    },
+  ],
+});
+```
+
+A repo whose `package.json` name is `@acme/checkout` gets both
+`require_packages` rules (`typescript` from the base config, `@acme/shell`
+from the override) — rule lists are merged additively, not replaced, so the
+base config's rules always still apply. A repo that doesn't match any
+`match` pattern is completely unaffected; only the base `rules` apply. If
+`package.json` is missing or has no `name`, no overrides can match.
+
+Every rule type is mergeable this way (`detect_files`, `require_files`,
+`forbid_packages`, `require_packages`, `require_scripts`,
+`require_package_fields`, `forbid_package_fields`, `engine_version`). The
+exception is `codeowners`, which only ever holds a single rule — a matching
+override's `codeowners` replaces the base one instead of merging with it.
+
+When more than one override entry matches the same repo, all of them apply,
+in array order.
+
 ## Compliance Rules
 
 ### File Rules
