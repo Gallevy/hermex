@@ -448,4 +448,16 @@ describe('rule overrides (repo-scoped rules)', () => {
     expect(messages).toContain('base rule');
     expect(messages).not.toContain('override rule');
   });
+
+  it('applies overrides when the config is discovered from cwd, not passed via --config', () => {
+    const cwd = join(ROOT, 'tests', 'e2e', 'overrides-fixture'); // has its own hermex.config.ts
+    const result = run(['comply', '--format', 'json'], cwd);
+    expect(result.status).toBe(1);
+    const parsed = JSON.parse(result.stdout);
+    const messages = parsed.ruleViolations.map(
+      (v: { message?: string }) => v.message,
+    );
+    expect(messages).toContain('base rule');
+    expect(messages).toContain('override rule');
+  });
 });

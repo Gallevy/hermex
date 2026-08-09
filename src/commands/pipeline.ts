@@ -10,6 +10,7 @@ import { findFiles } from '../utils/file-utils';
 import { findAndParseLockfile } from '../lock-parser';
 import { evaluateRules } from '../rules/evaluator';
 import { enrichWithReleaseAge } from '../npm-registry/enricher';
+import { applyOverrides } from '../config/overrides';
 import type { HermexConfig } from '../config/types';
 
 const DECLARATION_FILE_RE = /\.d\.(ts|mts|cts)$/;
@@ -28,6 +29,12 @@ export async function runPipeline(
   spinner: Ora,
   isJson: boolean,
 ): Promise<AggregatedReport | null> {
+  // Repo-scoped rule overrides are resolved here, against the repo actually
+  // being analyzed (process.cwd()) — not in the loader, which only knows
+  // where the config file itself came from and may be pointed elsewhere via
+  // `--config`.
+  const resolvedConfig = applyOverrides(config, process.cwd());
+
   const lockfileResult = findAndParseLockfile(process.cwd());
 
   spinner.succeed(
@@ -37,13 +44,16 @@ export async function runPipeline(
   );
 
   if (spinner.isEnabled) spinner.start('Finding files...');
-  const discovered = await findFiles(config.includes, config.excludes);
+  const discovered = await findFiles(
+    resolvedConfig.includes,
+    resolvedConfig.excludes,
+  );
   const files = discovered.filter((f) => !isDeclarationFile(f));
 
   if (files.length === 0) {
     spinner.fail(
       chalk.red(
-        `No files found matching includes: ${config.includes.join(', ')}`,
+        `No files found matching includes: ${resolvedConfig.includes.join(', ')}`,
       ),
     );
     return null;
@@ -82,15 +92,15 @@ export async function runPipeline(
   const aggregated = aggregateReports(
     reports,
     lockfileResult.versions,
-    config,
+    resolvedConfig,
     lockfileResult.multiVersions,
     lockfileResult.resolutions,
   );
 
   const evaluatorViolations = evaluateRules(
     process.cwd(),
-    config.rules,
-    config.excludes,
+    resolvedConfig.rules,
+    resolvedConfig.excludes,
     files,
   );
   aggregated.ruleViolations = [
@@ -98,12 +108,12 @@ export async function runPipeline(
     ...evaluatorViolations,
   ];
 
-  if (config.releaseAge.enabled) {
+  if (resolvedConfig.releaseAge.enabled) {
     if (spinner.isEnabled)
       spinner.start('Fetching release age from registry...');
     const { enriched, skipped } = await enrichWithReleaseAge(
       aggregated.packageDistribution,
-      config.releaseAge,
+      resolvedConfig.releaseAge,
     );
     aggregated.packageDistribution = enriched;
     spinner.succeed(
