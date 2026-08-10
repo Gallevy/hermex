@@ -7,7 +7,7 @@
 > in `plans/README.md`.
 >
 > **Drift check (run first)**:
-> `git diff --stat 19a4695..HEAD -- src/swc-parser/`
+> `git diff --stat a3b8f02..HEAD -- src/swc-parser/`
 > If the swc-parser directory changed since this plan was written, compare
 > the "Current state" excerpts against the live code before proceeding; on a
 > mismatch, treat it as a STOP condition.
@@ -19,7 +19,23 @@
 - **Risk**: LOW
 - **Depends on**: none
 - **Category**: bug / correctness
-- **Planned at**: commit `19a4695`, 2026-07-04 (rewrites the 2026-06-27 version of this plan, which had drifted)
+- **Planned at**: commit `a3b8f02`, 2026-07-24 (reconfirmed unchanged from the
+  `19a4695`/2026-07-04 version — see Reconciliation note below)
+
+## Reconciliation note (2026-07-24)
+
+Re-audited independently against `a3b8f02` (3 weeks and ~10 commits after
+this plan was first written): all 16 `span?.start` sites are at the **exact
+same line numbers** cited below — `git diff --stat 19a4695..a3b8f02 --
+src/swc-parser/` shows files in this directory changed, but none of the
+edits touched the affected lines. The bug and its fix are unchanged. Several
+pattern test files gained new tests in the interim
+(`advanced.test.ts`, `collections.test.ts`, `imports.test.ts`,
+`jsx-unit.test.ts`, `variables.test.ts`, `matchers.test.ts`). Only one
+asserts on `line` at all — `tests/swc-parser/patterns/jsx-unit.test.ts:40`,
+`expect(report.patterns.usage.jsx[0].line).toBeGreaterThan(0)` — which
+still passes after this fix (a real line number is also `> 0`), so it does
+not need updating and Step 6 below does not collide with anything new.
 
 ## Why this matters
 
@@ -47,13 +63,16 @@ skip these — they shape the fix):
 
 ## Current state
 
-**`src/swc-parser/index.ts:42-47`** — entry point:
+**`src/swc-parser/index.ts:42-47`** — entry point (drifted since this plan was
+first written: `generateReport` now takes `filePath` as a second argument,
+used only to populate `report.filePath` — unrelated to line numbers, but the
+excerpt below is the current, correct signature):
 ```ts
 export function parseCode(code: string, filePath = 'file.tsx'): UsageReport {
   const state = createState();
   const ast = parseSync(code, swcOptionsForFile(filePath));
   visitNode(ast, state);
-  return generateReport(state);
+  return generateReport(state, filePath);
 }
 ```
 
@@ -187,7 +206,7 @@ export function parseCode(code: string, filePath = 'file.tsx'): UsageReport {
   state.lineOffsets = buildLineOffsets(code);
   const ast = parseSync(code, swcOptionsForFile(filePath));
   visitNode(ast, state);
-  return generateReport(state);
+  return generateReport(state, filePath);
 }
 ```
 

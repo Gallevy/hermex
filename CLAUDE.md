@@ -110,3 +110,17 @@ If any command fails, FIX the issues before considering the task complete.
 - Never use eval() and similar dynamic code execution
 - Keep dependencies up to date for security
 - Consider security implications of dependencies
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Five canonical triage labels. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` + `docs/adr/` at repo root. See `docs/agents/domain.md`.
