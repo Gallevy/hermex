@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import type { AggregatedReport } from '../../src/utils/aggregator';
 import type { RuleViolation } from '../../src/rules/evaluator';
-import type { BannedPackageViolation } from '../../src/utils/package-rules';
-import { computeCompliance } from '../../src/utils/compliance';
+import {
+  computeCompliance,
+  countMandatoryViolations,
+} from '../../src/utils/compliance';
 import {
   createMockPackage,
   createMockReleaseAge,
@@ -23,7 +25,6 @@ function makeAggregated(
     packageDistribution: [],
     versusResults: [],
     ruleViolations: [],
-    bannedPackageViolations: [],
     reports: [],
     ...overrides,
   };
@@ -34,7 +35,6 @@ describe('computeCompliance', () => {
     const result = computeCompliance(makeAggregated());
     expect(result.compliant).toBe(true);
     expect(result.errorRuleViolations).toHaveLength(0);
-    expect(result.errorBannedPackageViolations).toHaveLength(0);
     expect(result.releaseAgeViolations).toHaveLength(0);
   });
 
@@ -71,28 +71,63 @@ describe('computeCompliance', () => {
     expect(result.compliant).toBe(true);
   });
 
-  it('is non-compliant when an error-severity banned package violation is present', () => {
-    const violation: BannedPackageViolation = {
-      packageName: 'moment',
+  it('is non-compliant when an error-severity forbid_packages violation is present', () => {
+    const violation: RuleViolation = {
+      type: 'forbid_packages',
       severity: 'error',
+      patterns: ['moment'],
       message: 'Use date-fns',
+      matchedFiles: [],
+      packageName: 'moment',
     };
     const result = computeCompliance(
-      makeAggregated({ bannedPackageViolations: [violation] }),
+      makeAggregated({ ruleViolations: [violation] }),
     );
     expect(result.compliant).toBe(false);
-    expect(result.errorBannedPackageViolations).toEqual([violation]);
+    expect(result.errorRuleViolations).toEqual([violation]);
   });
 
-  it('warn-severity banned package violations do not affect compliance', () => {
-    const violation: BannedPackageViolation = {
-      packageName: 'lodash',
+  it('warn-severity forbid_packages violations do not affect compliance', () => {
+    const violation: RuleViolation = {
+      type: 'forbid_packages',
       severity: 'warn',
+      patterns: ['lodash'],
+      matchedFiles: [],
+      packageName: 'lodash',
     };
     const result = computeCompliance(
-      makeAggregated({ bannedPackageViolations: [violation] }),
+      makeAggregated({ ruleViolations: [violation] }),
     );
     expect(result.compliant).toBe(true);
+  });
+
+  // #77 regression guard: forbid_packages hits used to live in their own
+  // bucket, so the two error buckets were disjoint and callers summed them.
+  // Now that they're ordinary rule violations, anything still summing
+  // `errorRuleViolations` with a separate banned count double-counts —
+  // `countMandatoryViolations` is the single answer both the CLI verdict and
+  // the JSON `counts.mandatoryViolations` read.
+  it('counts a forbid_packages hit and a rule violation as two mandatory violations, not four', () => {
+    const forbidden: RuleViolation = {
+      type: 'forbid_packages',
+      severity: 'error',
+      patterns: ['moment'],
+      matchedFiles: [],
+      packageName: 'moment',
+    };
+    const missingFile: RuleViolation = {
+      type: 'require_files',
+      severity: 'error',
+      patterns: ['.nvmrc'],
+      matchedFiles: [],
+    };
+    const result = computeCompliance(
+      makeAggregated({ ruleViolations: [forbidden, missingFile] }),
+    );
+
+    expect(result.compliant).toBe(false);
+    expect(result.errorRuleViolations).toHaveLength(2);
+    expect(countMandatoryViolations(result)).toBe(2);
   });
 
   it('is non-compliant when an enforced package has a major_overdue breach', () => {
@@ -210,24 +245,27 @@ describe('computeCompliance — status (#55)', () => {
     expect(result.warningRuleViolations).toEqual([violation]);
   });
 
-  it("status is 'warning' when only a warn-severity banned package violation is present", () => {
-    const violation: BannedPackageViolation = {
-      packageName: 'lodash',
+  it("status is 'warning' when only a warn-severity forbid_packages violation is present", () => {
+    const violation: RuleViolation = {
+      type: 'forbid_packages',
       severity: 'warn',
+      patterns: ['lodash'],
+      matchedFiles: [],
+      packageName: 'lodash',
     };
     const result = computeCompliance(
-      makeAggregated({ bannedPackageViolations: [violation] }),
+      makeAggregated({ ruleViolations: [violation] }),
     );
     expect(result.status).toBe('warning');
     expect(result.compliant).toBe(true);
-    expect(result.warningBannedPackageViolations).toEqual([violation]);
+    expect(result.warningRuleViolations).toEqual([violation]);
   });
 
   it("status stays 'compliant' for a mixed shape: info signal + non-enforced overdues + pending-only, no warn/error rules", () => {
     // Reproduces a mix that was wrongly demoted to Warning by consumers: an
     // `info` detect_files signal (Orbis), overdue react-* at severity 'warn'
     // (not enforced), and pending-only @acme-ui/* entries (worstLevel null).
-    // None of these are warn-severity *rules* or *banned* packages, so the
+    // None of these are warn-severity *rules*, so the
     // official status must remain 'compliant'.
     const infoSignal: RuleViolation = {
       type: 'detect_files',
@@ -275,7 +313,6 @@ describe('computeCompliance — status (#55)', () => {
     expect(result.status).toBe('compliant');
     expect(result.compliant).toBe(true);
     expect(result.warningRuleViolations).toHaveLength(0);
-    expect(result.warningBannedPackageViolations).toHaveLength(0);
     expect(result.releaseAgeViolations).toHaveLength(0);
   });
 });

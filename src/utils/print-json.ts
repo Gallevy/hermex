@@ -1,6 +1,6 @@
 import type { AggregatedReport } from './aggregator';
 import type { ComplianceResult } from './compliance';
-import { computeCompliance } from './compliance';
+import { computeCompliance, countMandatoryViolations } from './compliance';
 import { getVersion } from './version';
 
 /**
@@ -10,6 +10,11 @@ import { getVersion } from './version';
  * read one canonical field instead of re-deriving a status from `packages` /
  * `ruleViolations` and drifting from `comply` (#55). `compliant` mirrors the
  * CLI exit code (0 ⇔ true); `status: 'warning'` never changes that exit code.
+ *
+ * `ruleViolations` is the single list of every rule hit, `forbid_packages`
+ * included (#77) — there is no second violations field to remember to read.
+ * `counts.mandatoryViolations` is the canonical total for the same reason:
+ * the remaining buckets are not disjoint enough to be summed safely.
  *
  * `compliance` defaults to `computeCompliance(aggregated)` so `scan --format
  * json` carries the same verdict as `comply`; callers that already computed
@@ -35,18 +40,14 @@ export function printJson(
     patterns: aggregated.patternCounts,
     versus: aggregated.versusResults,
     ruleViolations: aggregated.ruleViolations,
-    bannedPackageViolations: aggregated.bannedPackageViolations,
     compliance: {
       status: compliance.status,
       compliant: compliance.compliant,
       counts: {
+        mandatoryViolations: countMandatoryViolations(compliance),
         errorRuleViolations: compliance.errorRuleViolations.length,
-        errorBannedPackageViolations:
-          compliance.errorBannedPackageViolations.length,
         releaseAgeViolations: compliance.releaseAgeViolations.length,
         warningRuleViolations: compliance.warningRuleViolations.length,
-        warningBannedPackageViolations:
-          compliance.warningBannedPackageViolations.length,
       },
     },
   };

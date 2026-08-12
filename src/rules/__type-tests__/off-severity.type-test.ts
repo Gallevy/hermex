@@ -23,7 +23,7 @@ import { evaluateEngineVersion } from '../engine-version';
 import { evaluateCodeowners } from '../codeowners';
 import { evaluateRules } from '../evaluator';
 import {
-  detectBannedPackages,
+  detectForbiddenPackages,
   detectRequiredPackages,
 } from '../../utils/package-rules';
 import type { RulesConfig } from '../../config/types';
@@ -41,7 +41,7 @@ evaluatePackageFieldRules('.', resolvedRules);
 evaluateEngineVersion('.', resolvedRules);
 evaluateCodeowners('.', resolvedRules, []);
 evaluateRules('.', resolvedRules, []);
-detectBannedPackages([], resolvedConfig);
+detectForbiddenPackages([], resolvedConfig);
 detectRequiredPackages([], resolvedConfig);
 
 // Per-boundary checks: an unresolved RulesConfig/HermexConfig (which may
@@ -61,7 +61,7 @@ evaluateEngineVersion('.', wideRules);
 evaluateCodeowners('.', wideRules, []);
 // @ts-expect-error — evaluateRules must require ResolvedRulesConfig
 evaluateRules('.', wideRules, []);
-// @ts-expect-error — detectBannedPackages must require ResolvedHermexConfig
-detectBannedPackages([], wideConfig);
+// @ts-expect-error — detectForbiddenPackages must require ResolvedHermexConfig
+detectForbiddenPackages([], wideConfig);
 // @ts-expect-error — detectRequiredPackages must require ResolvedHermexConfig
 detectRequiredPackages([], wideConfig);

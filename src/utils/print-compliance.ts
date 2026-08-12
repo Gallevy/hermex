@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import type { ComplianceResult } from './compliance';
+import { countMandatoryViolations } from './compliance';
 import { severityIcon } from './severity-format';
 
 /**
@@ -8,10 +9,7 @@ import { severityIcon } from './severity-format';
  * alike), so repeating them here would just restate the same 🔴 rows.
  */
 export function printComplianceVerdict(result: ComplianceResult): void {
-  const mandatoryCount =
-    result.errorRuleViolations.length +
-    result.errorBannedPackageViolations.length +
-    result.releaseAgeViolations.length;
+  const mandatoryCount = countMandatoryViolations(result);
 
   if (result.compliant) {
     console.log(

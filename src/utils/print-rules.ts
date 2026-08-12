@@ -13,6 +13,8 @@ export function formatRuleType(type: RuleViolation['type']): string {
       return 'require_files';
     case 'require_packages':
       return 'require_packages';
+    case 'forbid_packages':
+      return 'forbid_packages';
     case 'require_scripts':
       return 'require_scripts';
     case 'require_package_fields':
@@ -41,6 +43,8 @@ export function describeViolation(v: RuleViolation): string {
   if (v.type === 'require_files') return `${patterns} not found${suffix}`;
   if (v.type === 'require_packages')
     return `${patterns} not installed${suffix}`;
+  if (v.type === 'forbid_packages')
+    return `${v.packageName ?? patterns} is forbidden${suffix}`;
   if (v.type === 'require_scripts')
     return `script ${patterns} missing in package.json${suffix}`;
   if (v.type === 'require_package_fields') {
@@ -67,16 +71,14 @@ export function describeViolation(v: RuleViolation): string {
 }
 
 export function printRules(aggregated: AggregatedReport): void {
-  const { ruleViolations, bannedPackageViolations } = aggregated;
-  const hasRuleViolations = ruleViolations.length > 0;
-  const hasBannedViolations = bannedPackageViolations.length > 0;
+  const { ruleViolations } = aggregated;
 
   // Nothing to report — print nothing at all, rather than a "Rules" header
   // plus an "All rule checks passed" line with zero rows underneath it.
   // The overall compliance verdict (printComplianceVerdict) already gives
   // the definitive pass/fail signal; an empty section here is pure
   // boilerplate, indistinguishable from "no rules were ever configured."
-  if (!hasRuleViolations && !hasBannedViolations) return;
+  if (ruleViolations.length === 0) return;
 
   console.log(chalk.blueBright.bold('\n🔍 Rules\n'));
 
@@ -94,24 +96,12 @@ export function printRules(aggregated: AggregatedReport): void {
     ]);
   }
 
-  for (const v of bannedPackageViolations) {
-    const msg = v.message ? chalk.gray(` — ${v.message}`) : '';
-    table.push([
-      'forbid_packages',
-      `${severityIcon(v.severity)} ${v.packageName} is forbidden${msg}`,
-    ]);
-  }
-
   console.log(table.toString());
 
-  const errorCount = [
-    ...ruleViolations.filter((v) => v.severity === 'error'),
-    ...bannedPackageViolations.filter((v) => v.severity === 'error'),
-  ].length;
-  const warnCount = [
-    ...ruleViolations.filter((v) => v.severity === 'warn'),
-    ...bannedPackageViolations.filter((v) => v.severity === 'warn'),
-  ].length;
+  const errorCount = ruleViolations.filter(
+    (v) => v.severity === 'error',
+  ).length;
+  const warnCount = ruleViolations.filter((v) => v.severity === 'warn').length;
 
   const parts: string[] = [];
   if (errorCount > 0)
