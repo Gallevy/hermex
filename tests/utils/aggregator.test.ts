@@ -335,6 +335,35 @@ describe('aggregateReports — banned packages', () => {
 
     expect(result.bannedPackageViolations).toEqual([]);
   });
+
+  it('reports a banned package that is only declared in package.json', () => {
+    const report = reportWithNamedImport('Button', 'react');
+    const config = createConfig({
+      rules: {
+        forbid_packages: [
+          { severity: 'error', patterns: ['jest'], message: 'Use vitest' },
+        ],
+      },
+    });
+
+    const result = aggregateReports(
+      [report],
+      { react: '18.0.0', jest: '29.0.0' },
+      config,
+      {},
+      {},
+      ['jest'],
+    );
+
+    expect(result.bannedPackageViolations).toEqual([
+      { packageName: 'jest', severity: 'error', message: 'Use vitest' },
+    ]);
+    // Declared-only packages stay out of the packages table — they have no
+    // measured usage to report.
+    expect(
+      result.packageDistribution.map((pkg) => pkg.packageName),
+    ).not.toContain('jest');
+  });
 });
 
 describe('aggregateReports — pattern counts', () => {

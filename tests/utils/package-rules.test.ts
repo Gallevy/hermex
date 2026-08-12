@@ -97,6 +97,86 @@ describe('detectBannedPackages', () => {
 
     expect(detectBannedPackages([moment], config)).toEqual([]);
   });
+
+  it('flags a package declared in package.json but absent from the distribution', () => {
+    const config = createConfig({
+      rules: {
+        forbid_packages: [
+          {
+            severity: 'error',
+            patterns: ['@acme/coverager'],
+            message: 'Remove deprecated internal package',
+          },
+        ],
+      },
+    });
+
+    const violations = detectBannedPackages([], config, ['@acme/coverager']);
+
+    expect(violations).toEqual([
+      {
+        packageName: '@acme/coverager',
+        severity: 'error',
+        message: 'Remove deprecated internal package',
+      },
+    ]);
+  });
+
+  it('reports a package that is both imported and declared exactly once', () => {
+    const moment = createMockPackage('moment');
+    const config = createConfig({
+      rules: {
+        forbid_packages: [{ severity: 'error', patterns: ['moment'] }],
+      },
+    });
+
+    const violations = detectBannedPackages([moment], config, ['moment']);
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0].packageName).toBe('moment');
+  });
+
+  it('matches a declared package against a glob forbid pattern', () => {
+    const config = createConfig({
+      rules: {
+        forbid_packages: [{ severity: 'warn', patterns: ['@legacy/*'] }],
+      },
+    });
+
+    const violations = detectBannedPackages([], config, ['@legacy/widget']);
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0].packageName).toBe('@legacy/widget');
+  });
+
+  it('does not flag a declared package excluded by packages.ignore', () => {
+    const config = createConfig({
+      packages: { ignore: ['@legacy/*'] },
+      rules: {
+        forbid_packages: [{ severity: 'error', patterns: ['@legacy/*'] }],
+      },
+    });
+
+    const violations = detectBannedPackages([], config, ['@legacy/widget']);
+
+    expect(violations).toEqual([]);
+  });
+
+  it('reports distribution packages before declared-only ones', () => {
+    const moment = createMockPackage('moment');
+    const config = createConfig({
+      rules: {
+        forbid_packages: [{ severity: 'error', patterns: ['moment', 'jest'] }],
+      },
+    });
+
+    const violations = detectBannedPackages([moment], config, [
+      'jest',
+      'moment',
+    ]);
+
+    expect(violations.map((v) => v.packageName)).toEqual(['moment', 'jest']);
+  });
 });
 
 describe('detectRequiredPackages', () => {

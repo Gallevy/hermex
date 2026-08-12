@@ -9,21 +9,45 @@ export interface BannedPackageViolation {
   message?: string;
 }
 
+/**
+ * @param distribution - Packages discovered through import/usage analysis.
+ * @param declaredPackages - Package names declared in `package.json` (see
+ *   `collectDeclaredPackages`). Checked in addition to `distribution` because
+ *   the distribution is built from component usage alone, so build-only
+ *   tooling — invoked via `npx`, scripts or git hooks and never imported —
+ *   would otherwise pass a forbid rule that names it outright (#75).
+ */
 export function detectBannedPackages(
   distribution: PackageDistribution[],
   config?: ResolvedHermexConfig,
+  declaredPackages: string[] = [],
 ): BannedPackageViolation[] {
   const forbidRules = config?.rules.forbid_packages ?? [];
   if (forbidRules.length === 0) {
     return [];
   }
 
+  const ignorePatterns = config?.packages.ignore ?? [];
+
+  // Distribution names first, in their existing (usage-ranked) order, so
+  // adding declared packages never reorders the violations already reported.
+  const candidates = new Set(distribution.map((pkg) => pkg.packageName));
+  for (const name of declaredPackages) {
+    if (candidates.has(name)) continue;
+    // `calculatePackageDistribution` already applies `packages.ignore` to
+    // everything it emits; apply it here too so an ignored package does not
+    // become newly visible just by being declared.
+    if (ignorePatterns.length > 0 && micromatch.isMatch(name, ignorePatterns))
+      continue;
+    candidates.add(name);
+  }
+
   const violations: BannedPackageViolation[] = [];
-  for (const pkg of distribution) {
+  for (const packageName of candidates) {
     for (const rule of forbidRules) {
-      if (micromatch.isMatch(pkg.packageName, rule.patterns)) {
+      if (micromatch.isMatch(packageName, rule.patterns)) {
         violations.push({
-          packageName: pkg.packageName,
+          packageName,
           severity: rule.severity,
           message: rule.message,
         });

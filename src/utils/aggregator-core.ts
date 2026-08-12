@@ -39,6 +39,7 @@ export function aggregateReports(
   config?: ResolvedHermexConfig,
   multiVersions: MultiVersionMap = {},
   resolutions: LockfileResolutionMap = {},
+  declaredPackages: string[] = [],
 ): AggregatedReport {
   const componentUsageMap = new Map<string, ComponentUsage>();
   let totalImports = 0;
@@ -125,6 +126,7 @@ export function aggregateReports(
   const bannedPackageViolations = detectBannedPackages(
     packageDistribution,
     config,
+    declaredPackages,
   );
 
   const requiredPackageViolations = detectRequiredPackages(
