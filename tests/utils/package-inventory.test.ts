@@ -190,6 +190,38 @@ describe('buildPackageInventory — config flags', () => {
 });
 
 describe('inventory predicates', () => {
+  it('isOwnedByRepo accepts a root dependency the lockfile knows about but the manifest omits', () => {
+    const inventory = buildPackageInventory({
+      versions: { 'react-dom': '18.3.1' },
+      resolutions: {
+        'react-dom': { rootVersion: '18.3.1', allVersions: ['18.3.1'] },
+      },
+    });
+
+    const entry = find(inventory, 'react-dom')!;
+    expect(isDeclared(entry)).toBe(false);
+    expect(isUsed(entry)).toBe(false);
+    // The lockfile's own record of direct dependencies stands in for the
+    // manifest, so an unreadable/out-of-sync package.json does not silently
+    // exempt a repo's direct dependencies from forbid rules.
+    expect(isOwnedByRepo(entry)).toBe(true);
+  });
+
+  it('isOwnedByRepo rejects an ignored package even when it is declared, installed and used', () => {
+    const config = createConfig({ packages: { ignore: ['react'] } });
+    const inventory = buildPackageInventory({
+      versions: { react: '18.0.0' },
+      resolutions: {
+        react: { rootVersion: '18.0.0', allVersions: ['18.0.0'] },
+      },
+      declared: { react: ['dependencies'] },
+      componentUsage: usageMap({ name: 'Button', source: 'react' }),
+      config,
+    });
+
+    expect(isOwnedByRepo(find(inventory, 'react')!)).toBe(false);
+  });
+
   it('isOwnedByRepo accepts declared-but-unused and used-but-undeclared packages', () => {
     const inventory = buildPackageInventory({
       versions: { oxlint: '1.0.0', 'lru-cache': '10.0.0' },

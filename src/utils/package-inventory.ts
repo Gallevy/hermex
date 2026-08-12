@@ -72,6 +72,18 @@ export interface BuildInventoryInput {
  */
 const NON_PACKAGE_SOURCES = new Set(['local', 'unknown']);
 
+/**
+ * Compiles a glob list once and reuses it. `micromatch.isMatch` re-parses its
+ * patterns on every call, which is fine for a handful of packages but not
+ * when the inventory spans an entire lockfile (thousands of entries × every
+ * configured pattern).
+ */
+function createGlobMatcher(patterns: string[]): (name: string) => boolean {
+  if (patterns.length === 0) return () => false;
+  const matchers = patterns.map((pattern) => micromatch.matcher(pattern));
+  return (name) => matchers.some((match) => match(name));
+}
+
 function getPackageVersion(
   packageName: string,
   versions: Record<string, string>,
@@ -142,8 +154,8 @@ export function buildPackageInventory(
     config,
   } = input;
 
-  const ignorePatterns = config?.packages.ignore ?? [];
-  const internalPatterns = config?.packages.internal ?? [];
+  const isIgnored = createGlobMatcher(config?.packages.ignore ?? []);
+  const isInternal = createGlobMatcher(config?.packages.internal ?? []);
 
   // Fold component usage up to one record per package first — several
   // components can come from the same source.
@@ -189,14 +201,8 @@ export function buildPackageInventory(
       rootVersion: getRootVersion(packageName, resolutions),
       allVersions,
       hasVersionConflict: allVersions.length > 1,
-      internal:
-        internalPatterns.length > 0
-          ? micromatch.isMatch(packageName, internalPatterns)
-          : false,
-      ignored:
-        ignorePatterns.length > 0
-          ? micromatch.isMatch(packageName, ignorePatterns)
-          : false,
+      internal: isInternal(packageName),
+      ignored: isIgnored(packageName),
       usageCount: packageUsage?.usageCount ?? 0,
       componentCount: packageUsage?.componentCount ?? 0,
       components: packageUsage?.components ?? [],
@@ -235,7 +241,21 @@ export function isInstalled(
  * Packages this repo owns — the ones it can actually add or remove. Excludes
  * purely transitive dependencies (nothing the repo can do about those short
  * of dropping the parent) and anything under `packages.ignore`.
+ *
+ * "Declared" is taken from two independent sources: `package.json`, and the
+ * lockfile's own record of the root project's direct dependencies (pnpm's
+ * `importers`, npm's root `packages` entry, yarn's ranges read back from the
+ * manifest). They normally agree, and either one alone is enough — so a repo
+ * whose manifest cannot be read still gets its direct dependencies checked,
+ * and a manifest entry missing from the lockfile is still checked too.
+ *
+ * The used axis is included because a package can be imported without being
+ * declared anywhere (a phantom dependency), and that is still the repo's to
+ * remove.
  */
 export function isOwnedByRepo(entry: PackageInventoryEntry): boolean {
-  return !entry.ignored && (isDeclared(entry) || isUsed(entry));
+  return (
+    !entry.ignored &&
+    (isDeclared(entry) || isInstalled(entry, 'root') || isUsed(entry))
+  );
 }

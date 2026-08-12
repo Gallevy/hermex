@@ -385,6 +385,28 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
     });
   });
 
+  // The inventory also knows about packages that are declared in
+  // package.json but missing from the lockfile. Those have no resolved
+  // version to date-check, and release-age enrichment skips versionless
+  // entries — so they must not reach the packages table either.
+  it('does not surface a declared-but-uninstalled package matching enforceOn', () => {
+    const componentUsageMap = new Map<string, ComponentUsage>();
+    const config = createConfig({
+      releaseAge: { enabled: true, enforceOn: ['eslint'] },
+    });
+
+    const distribution = buildDistribution(
+      componentUsageMap,
+      {},
+      config,
+      {},
+      {},
+      { eslint: ['devDependencies'] },
+    );
+
+    expect(distribution).toEqual([]);
+  });
+
   it('does not surface lockfile-only packages when releaseAge is disabled', () => {
     const componentUsageMap = new Map<string, ComponentUsage>();
     const config = createConfig({

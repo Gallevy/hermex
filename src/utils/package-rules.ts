@@ -11,8 +11,9 @@ export interface BannedPackageViolation {
 }
 
 /**
- * Selects the packages this repo owns — declared in `package.json` and/or
- * imported by scanned source (`isOwnedByRepo`).
+ * Selects the packages this repo owns (`isOwnedByRepo`): declared in
+ * `package.json`, recorded as a direct dependency by the lockfile, and/or
+ * imported by scanned source.
  *
  * Matching usage alone was the bug behind #75: the usage axis is built from
  * component imports, so build-only tooling — invoked via `npx`, an npm

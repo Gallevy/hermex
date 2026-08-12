@@ -139,11 +139,14 @@ export default defineConfig({
 });
 ```
 
-`forbid_packages` matches a package that is either imported in your scanned source **or** declared in
-`package.json` under `dependencies`, `devDependencies`, `peerDependencies` or `optionalDependencies`.
-Build-only tooling that is never imported — something run via `npx`, an npm script or a git hook — is
-covered, so there is no need to spell it out as `forbid_package_fields: ['dependencies.x', 'devDependencies.x']`.
-Packages excluded by `packages.ignore` are never flagged.
+`forbid_packages` matches any package your repo owns — one that is imported in your scanned source,
+declared in `package.json` (`dependencies`, `devDependencies`, `peerDependencies` or
+`optionalDependencies`), **or** recorded as a direct dependency by your lockfile. Build-only tooling
+that is never imported — something run via `npx`, an npm script or a git hook — is covered, so there is
+no need to spell it out as `forbid_package_fields: ['dependencies.x', 'devDependencies.x']`.
+
+Purely transitive dependencies are never flagged: they arrive through another package, so removing one
+isn't something your repo can do. Packages excluded by `packages.ignore` are never flagged either.
 
 Every banned package appears in the Rules and Compliance sections. Those with measured usage also get a
 `[BANNED]` or `[RESTRICTED]` badge in the packages table; a declared-but-unused package has no row there.

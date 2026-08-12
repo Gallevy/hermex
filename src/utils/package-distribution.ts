@@ -3,7 +3,7 @@ import type { UsageReport } from '../swc-parser';
 import type { ResolvedHermexConfig } from '../config/types';
 import type { ReleaseAgeEntry } from '../npm-registry/types';
 import type { PackageInventoryEntry } from './package-inventory';
-import { isUsed } from './package-inventory';
+import { isInstalled, isUsed } from './package-inventory';
 
 export type { ComponentUsage } from './package-inventory';
 
@@ -112,8 +112,13 @@ export function calculatePackageDistribution(
     .filter((entry) => {
       if (entry.ignored) return false;
       if (isUsed(entry)) return true;
+      // Installed-only: a package that is merely *declared* (in package.json
+      // but absent from the lockfile) has no resolved version to compare a
+      // release date against, so surfacing it here would add a versionless
+      // row to the packages table that release-age enrichment then skips.
       return (
         enforcesUnusedPackages &&
+        isInstalled(entry) &&
         micromatch.isMatch(entry.packageName, enforceOnPatterns)
       );
     })

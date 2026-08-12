@@ -71,6 +71,19 @@ describe('collectDeclaredPackages', () => {
     expect(collectDeclaredPackages(dir)).toEqual({});
   });
 
+  // A manifest is untrusted input: on a plain object literal, a `__proto__`
+  // key would hit the prototype setter rather than creating an own property.
+  it('handles a dependency named __proto__ without dropping it or mutating a prototype', () => {
+    const dir = withManifest(
+      '{"dependencies":{"__proto__":"1.0.0","react":"^18.0.0"}}',
+    );
+
+    const declared = collectDeclaredPackages(dir);
+
+    expect(Object.keys(declared).sort()).toEqual(['__proto__', 'react']);
+    expect(({} as Record<string, unknown>)['polluted']).toBeUndefined();
+  });
+
   it('skips a malformed bucket without dropping the well-formed ones', () => {
     const dir = withManifest(
       JSON.stringify({

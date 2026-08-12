@@ -528,3 +528,78 @@ describe('rule severity "off" authored directly in the base config (no overrides
     expect(parsed.compliance.status).toBe('compliant');
   });
 });
+
+// End-to-end coverage of the package inventory's axes. These run the real
+// CLI against fixtures/package.json + fixtures/pnpm-lock.yaml, which are
+// built so each axis has a package of its own — the wiring in
+// src/commands/pipeline.ts (reading the manifest, threading it into the
+// aggregator) exists only in the spawned process, so unit tests cannot
+// reach it.
+describe('package inventory axes (end to end)', () => {
+  const inventoryConfig = (name: string) =>
+    join(ROOT, 'tests', 'e2e', `hermex-inventory-${name}.config.ts`);
+
+  it('forbids a package declared in package.json but never imported (#75)', () => {
+    const result = run(['comply', '--config', inventoryConfig('declared')]);
+    expect(result.status).toBe(1);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.bannedPackageViolations).toEqual([
+      { packageName: 'moment', severity: 'error', message: 'Use date-fns' },
+    ]);
+    expect(parsed.compliance.status).toBe('non-compliant');
+  });
+
+  it('reports that declared-but-unimported package without inventing a packages[] row for it', () => {
+    const result = run(['comply', '--config', inventoryConfig('declared')]);
+    const parsed = JSON.parse(result.stdout);
+    // Proves the match came from the declared axis: it has no measured
+    // usage, so it is absent from the reported distribution.
+    expect(
+      parsed.packages.map((p: { packageName: string }) => p.packageName),
+    ).not.toContain('moment');
+  });
+
+  it('names the forbidden package in the human-readable Rules table', () => {
+    const result = run(['comply']); // fixtures/hermex.config.ts forbids moment
+    expect(result.status).toBe(1);
+    expect(result.stdout).toMatch(/forbid_packages/);
+    expect(result.stdout).toMatch(/moment is forbidden/);
+  });
+
+  it('does not forbid a purely transitive dependency the repo cannot remove', () => {
+    const result = run(['comply', '--config', inventoryConfig('transitive')]);
+    expect(result.status).toBe(0);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.bannedPackageViolations).toEqual([]);
+    expect(parsed.compliance.status).toBe('compliant');
+  });
+
+  it('forbids a package that is imported without being declared', () => {
+    const result = run(['comply', '--config', inventoryConfig('undeclared')]);
+    expect(result.status).toBe(1);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.bannedPackageViolations).toHaveLength(1);
+    expect(parsed.bannedPackageViolations[0].packageName).toBe('react-dom');
+  });
+
+  it('packages.ignore drops a package from forbid_packages while it still satisfies require_packages', () => {
+    const result = run(['comply', '--config', inventoryConfig('ignored')]);
+    expect(result.status).toBe(0);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.bannedPackageViolations).toEqual([]);
+    expect(parsed.ruleViolations).toEqual([]);
+  });
+
+  it('a declared but uninstalled package is forbiddable yet does not satisfy require_packages', () => {
+    const result = run(['comply', '--config', inventoryConfig('uninstalled')]);
+    expect(result.status).toBe(1);
+    const parsed = JSON.parse(result.stdout);
+    // forbid_packages reads the declared axis — eslint is in package.json.
+    expect(parsed.bannedPackageViolations).toHaveLength(1);
+    expect(parsed.bannedPackageViolations[0].packageName).toBe('eslint');
+    // require_packages reads the installed axis — eslint is not in the
+    // lockfile, so the requirement is genuinely unsatisfied.
+    expect(parsed.ruleViolations).toHaveLength(1);
+    expect(parsed.ruleViolations[0].type).toBe('require_packages');
+  });
+});
