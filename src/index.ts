@@ -77,8 +77,6 @@ export interface HermexScanResult {
     status: import('./utils/compliance').ComplianceStatus;
     compliant: boolean;
     counts: {
-      /** The canonical total of comply-failing violations. Read this rather than summing the buckets below. */
-      mandatoryViolations: number;
       errorRuleViolations: number;
       releaseAgeViolations: number;
       warningRuleViolations: number;

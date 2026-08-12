@@ -1,6 +1,6 @@
 import type { AggregatedReport } from './aggregator';
 import type { ComplianceResult } from './compliance';
-import { computeCompliance, countMandatoryViolations } from './compliance';
+import { computeCompliance } from './compliance';
 import { getVersion } from './version';
 
 /**
@@ -13,8 +13,6 @@ import { getVersion } from './version';
  *
  * `ruleViolations` is the single list of every rule hit, `forbid_packages`
  * included (#77) — there is no second violations field to remember to read.
- * `counts.mandatoryViolations` is the canonical total for the same reason:
- * the remaining buckets are not disjoint enough to be summed safely.
  *
  * `compliance` defaults to `computeCompliance(aggregated)` so `scan --format
  * json` carries the same verdict as `comply`; callers that already computed
@@ -44,7 +42,6 @@ export function printJson(
       status: compliance.status,
       compliant: compliance.compliant,
       counts: {
-        mandatoryViolations: countMandatoryViolations(compliance),
         errorRuleViolations: compliance.errorRuleViolations.length,
         releaseAgeViolations: compliance.releaseAgeViolations.length,
         warningRuleViolations: compliance.warningRuleViolations.length,

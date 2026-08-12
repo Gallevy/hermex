@@ -102,11 +102,9 @@ describe('computeCompliance', () => {
   });
 
   // #77 regression guard: forbid_packages hits used to live in their own
-  // bucket, so the two error buckets were disjoint and callers summed them.
-  // Now that they're ordinary rule violations, anything still summing
-  // `errorRuleViolations` with a separate banned count double-counts —
-  // `countMandatoryViolations` is the single answer both the CLI verdict and
-  // the JSON `counts.mandatoryViolations` read.
+  // bucket, which the verdict renderers added on top of the rule bucket.
+  // Now that they're ordinary rule violations, that same sum counts each
+  // one twice — `countMandatoryViolations` is what both renderers read.
   it('counts a forbid_packages hit and a rule violation as two mandatory violations, not four', () => {
     const forbidden: RuleViolation = {
       type: 'forbid_packages',

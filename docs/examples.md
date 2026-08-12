@@ -452,7 +452,6 @@ Both `hermex scan --format json` and `hermex comply --format json` emit a top-le
   "status": "compliant",   // "compliant" | "warning" | "non-compliant"
   "compliant": true,        // mirrors the `comply` exit code (0 ⇔ true)
   "counts": {
-    "mandatoryViolations": 0,         // the canonical total — read this one
     "errorRuleViolations": 0,         // includes forbid_packages
     "releaseAgeViolations": 0,        // enforced (severity 'error') + overdue
     "warningRuleViolations": 0        // includes forbid_packages
@@ -466,7 +465,7 @@ Both `hermex scan --format json` and `hermex comply --format json` emit a top-le
 
 `status: 'warning'` never changes the exit code — it exists so dashboards and sheet syncs can surface a three-state signal that still agrees with `comply` on pass/fail.
 
-Read `counts.mandatoryViolations` for the number of comply-failing violations rather than adding the buckets up yourself — `errorRuleViolations` and `releaseAgeViolations` overlap in intent, and summing buckets is what made consumers disagree with `comply` in the first place.
+The `counts` buckets are disjoint, so `errorRuleViolations + releaseAgeViolations` is the number of comply-failing violations — the same number the CLI prints as "N mandatory violations found". Note that `errorRuleViolations` now includes `forbid_packages` hits, which had their own bucket before.
 
 ### Reading the JSON output
 

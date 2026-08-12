@@ -1513,7 +1513,6 @@ describe('printJson', () => {
       status: 'compliant',
       compliant: true,
       counts: {
-        mandatoryViolations: 0,
         errorRuleViolations: 0,
         releaseAgeViolations: 0,
         warningRuleViolations: 0,
@@ -1544,9 +1543,10 @@ describe('printJson', () => {
     expect(parsed).not.toHaveProperty('bannedPackageViolations');
   });
 
-  // The buckets in `counts` are no longer disjoint enough to add up, so the
-  // canonical total is published rather than left to the consumer to derive.
-  it('reports one mandatory-violation total covering forbidden packages and other rules alike', () => {
+  // errorRuleViolations absorbs what errorBannedPackageViolations used to
+  // hold — one bucket, so a consumer counting error-severity rule hits sees
+  // forbidden packages among them instead of missing them.
+  it('counts a forbidden package alongside other rules in errorRuleViolations', () => {
     printJson(
       makeAggregated({
         ruleViolations: [
@@ -1562,7 +1562,6 @@ describe('printJson', () => {
     );
 
     const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
-    expect(parsed.compliance.counts.mandatoryViolations).toBe(2);
     expect(parsed.compliance.counts.errorRuleViolations).toBe(2);
   });
 

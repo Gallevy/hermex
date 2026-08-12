@@ -631,13 +631,13 @@ describe('package inventory axes (end to end)', () => {
   });
 
   // #77 regression guard, end to end: the `uninstalled` fixture is the only
-  // one producing an error forbid_packages hit AND an error rule violation
-  // at once, which is exactly the shape a summed count double-reports.
-  it('counts two mandatory violations when a forbidden package and a failing rule coincide', () => {
+  // one producing an error forbid_packages hit AND another error rule
+  // violation at once — the shape that double-reported while the verdict
+  // still added a separate banned-package bucket on top of the rule bucket.
+  it('counts a coinciding forbidden package and failing rule once each', () => {
     const result = run(['comply', '--config', inventoryConfig('uninstalled')]);
     const parsed = JSON.parse(result.stdout);
     expect(parsed.compliance.counts).toEqual({
-      mandatoryViolations: 2,
       errorRuleViolations: 2,
       releaseAgeViolations: 0,
       warningRuleViolations: 0,

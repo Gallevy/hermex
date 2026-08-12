@@ -73,11 +73,15 @@ export function computeCompliance(
 }
 
 /**
- * The number of mandatory (comply-failing) violations — the single total the
- * CLI prints and the JSON publishes. Exists so consumers never have to sum
- * buckets themselves: before #77 the error buckets were disjoint, and any
- * consumer that kept summing them after `forbid_packages` moved into
- * `ruleViolations` would double-count.
+ * The count behind the "N mandatory violations found" line both the terminal
+ * verdict and `--summary-file` print — a display concern, which is why it
+ * lives here rather than in the emitted JSON (consumers read `compliant`, or
+ * add the buckets themselves; they're disjoint).
+ *
+ * Shared by those two renderers because they had this sum copied between
+ * them, and both got it wrong the same way when `forbid_packages` moved into
+ * `ruleViolations` (#77): each was still adding a separate banned-package
+ * bucket that now overlapped, double-reporting every forbidden package.
  */
 export function countMandatoryViolations(result: ComplianceResult): number {
   return result.errorRuleViolations.length + result.releaseAgeViolations.length;
