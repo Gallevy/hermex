@@ -1,3 +1,10 @@
+## [2.8.1](https://github.com/Gallevy/hermex/compare/v2.8.0...v2.8.1) (2026-08-12)
+
+
+### Bug Fixes
+
+* unify package inventory so every rule sees the same package list ([#75](https://github.com/Gallevy/hermex/issues/75)) ([#76](https://github.com/Gallevy/hermex/issues/76)) ([1f40ccb](https://github.com/Gallevy/hermex/commit/1f40ccbd4c5fe8fec4ab9b9e2d09b6808f043ec1))
+
 # [2.8.0](https://github.com/Gallevy/hermex/compare/v2.7.0...v2.8.0) (2026-08-09)
 
 
