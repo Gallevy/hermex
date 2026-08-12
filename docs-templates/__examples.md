@@ -151,6 +151,23 @@ isn't something your repo can do. Packages excluded by `packages.ignore` are nev
 Every banned package appears in the Rules and Compliance sections. Those with measured usage also get a
 `[BANNED]` or `[RESTRICTED]` badge in the packages table; a declared-but-unused package has no row there.
 
+In the JSON output, each hit is an ordinary entry in `ruleViolations` with `type: "forbid_packages"` —
+`patterns` carries the rule's globs, `packageName` the package that matched, and `matchedFiles` is empty
+(a package isn't a file, and a declared-but-unimported one has none):
+
+```jsonc
+{
+  "type": "forbid_packages",
+  "severity": "error",
+  "patterns": ["moment"],
+  "message": "Use date-fns or dayjs",
+  "matchedFiles": [],
+  "packageName": "moment"
+}
+```
+
+A glob rule that matches several packages produces one entry per package, all sharing the same `patterns`.
+
 ### Script and Field Requirements
 
 ```ts
@@ -219,7 +236,7 @@ If `enforceOn` is omitted, every package's release age counts toward compliance 
 <!-- @package name --> comply
 ```
 
-- **Exit `0`** — compliant: no `error`-severity rule violations, no `error`-severity banned packages, no `error`-severity release-age threshold breaches (minor/patch or major).
+- **Exit `0`** — compliant: no `error`-severity rule violations (banned packages included), no `error`-severity release-age threshold breaches (minor/patch or major).
 - **Exit `1`** — not compliant: at least one mandatory violation found.
 - **Exit `2`** — hermex couldn't run the check at all (no files matched, or an internal error).
 
