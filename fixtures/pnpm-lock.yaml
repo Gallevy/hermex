@@ -17,6 +17,10 @@ importers:
       react-dom:
         specifier: ^18.3.0
         version: 18.3.1
+    devDependencies:
+      moment:
+        specifier: ^2.29.4
+        version: 2.29.4
 
 packages:
 
@@ -31,3 +35,15 @@ packages:
     resolution: {integrity: sha512-mock}
     peerDependencies:
       react: ^18.3.1
+
+  # Declared in package.json (devDependencies) and installed, but never
+  # imported by any fixture source file — the #75 case: invisible to import
+  # analysis, still forbidden by fixtures/hermex.config.ts.
+  moment@2.29.4:
+    resolution: {integrity: sha512-mock}
+
+  # Present only under `packages` and never in `importers`, i.e. pulled in by
+  # another dependency. Purely transitive: nothing this repo declares, so
+  # forbid_packages must not flag it.
+  js-tokens@4.0.0:
+    resolution: {integrity: sha512-mock}

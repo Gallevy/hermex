@@ -52,6 +52,10 @@ export default defineConfig({
 
 Internal packages show an `[int]` badge in the packages table.
 
+`ignore` is a *reporting* filter, not an uninstall: an ignored package is left out of the packages
+table and is never flagged by `forbid_packages`, but it still counts as installed for
+`require_packages` — otherwise ignoring a package would make a rule that requires it start failing.
+
 ## Versus — Migration Tracking
 
 Track usage split between competing packages:
@@ -245,7 +249,17 @@ export default defineConfig({
 });
 ```
 
-Banned packages get a `[BANNED]` or `[RESTRICTED]` badge in the packages table and appear in the Compliance section.
+`forbid_packages` matches any package your repo owns — one that is imported in your scanned source,
+declared in `package.json` (`dependencies`, `devDependencies`, `peerDependencies` or
+`optionalDependencies`), **or** recorded as a direct dependency by your lockfile. Build-only tooling
+that is never imported — something run via `npx`, an npm script or a git hook — is covered, so there is
+no need to spell it out as `forbid_package_fields: ['dependencies.x', 'devDependencies.x']`.
+
+Purely transitive dependencies are never flagged: they arrive through another package, so removing one
+isn't something your repo can do. Packages excluded by `packages.ignore` are never flagged either.
+
+Every banned package appears in the Rules and Compliance sections. Those with measured usage also get a
+`[BANNED]` or `[RESTRICTED]` badge in the packages table; a declared-but-unused package has no row there.
 
 ### CODEOWNERS Rule
 

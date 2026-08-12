@@ -1,5 +1,8 @@
 import type { UsageReport } from '../../src/swc-parser/types';
-import type { PackageDistribution } from '../../src/utils/aggregator';
+import type {
+  PackageDistribution,
+  PackageInventoryEntry,
+} from '../../src/utils/aggregator';
 import type { ReleaseAgeEntry } from '../../src/npm-registry/types';
 
 /**
@@ -65,6 +68,34 @@ export function createMockPackage(
     // package whose only "resolved copy" doesn't match its own installed
     // version — override `allVersions` explicitly for multi-version tests.
     allVersions: version ? [version] : [],
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a minimal PackageInventoryEntry — by default a package that is
+ * declared, installed as a direct dependency, and used once, i.e. present
+ * on all three axes. Override to test a single axis in isolation (e.g.
+ * `{ usageCount: 0, componentCount: 0 }` for declared-but-never-imported,
+ * or `{ declaredIn: [], rootVersion: null }` for purely transitive).
+ */
+export function createMockInventoryEntry(
+  packageName: string,
+  overrides: Partial<PackageInventoryEntry> = {},
+): PackageInventoryEntry {
+  const version = overrides.version !== undefined ? overrides.version : '1.0.0';
+  return {
+    packageName,
+    declaredIn: ['dependencies'],
+    version,
+    rootVersion: version,
+    allVersions: version ? [version] : [],
+    hasVersionConflict: false,
+    internal: false,
+    ignored: false,
+    usageCount: 1,
+    componentCount: 1,
+    components: [],
     ...overrides,
   };
 }

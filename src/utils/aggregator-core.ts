@@ -10,6 +10,11 @@ import {
   calculatePackageDistribution,
   findComponentSource,
 } from './package-distribution';
+import type {
+  DeclaredPackages,
+  PackageInventoryEntry,
+} from './package-inventory';
+import { buildPackageInventory } from './package-inventory';
 import type { BannedPackageViolation } from './package-rules';
 import { detectBannedPackages, detectRequiredPackages } from './package-rules';
 import type { PatternCount } from './pattern-counter';
@@ -26,6 +31,8 @@ export interface AggregatedReport {
   componentUsage: Map<string, ComponentUsage>;
   topComponents: ComponentUsage[];
   allComponents: string[];
+  /** Every package known to this run, on all three axes — the list every rule and view below is derived from. */
+  packageInventory: PackageInventoryEntry[];
   packageDistribution: PackageDistribution[];
   versusResults: VersusResult[];
   ruleViolations: RuleViolation[];
@@ -39,6 +46,7 @@ export function aggregateReports(
   config?: ResolvedHermexConfig,
   multiVersions: MultiVersionMap = {},
   resolutions: LockfileResolutionMap = {},
+  declaredPackages: DeclaredPackages = {},
 ): AggregatedReport {
   const componentUsageMap = new Map<string, ComponentUsage>();
   let totalImports = 0;
@@ -110,12 +118,20 @@ export function aggregateReports(
     }))
     .sort((a, b) => b.count - a.count);
 
-  const packageDistribution = calculatePackageDistribution(
-    componentUsageMap,
+  // Built once, here: every package rule and every reported view below
+  // reads this same list, differing only in which axis it selects.
+  const packageInventory = buildPackageInventory({
     versions,
-    config,
     multiVersions,
     resolutions,
+    declared: declaredPackages,
+    componentUsage: componentUsageMap,
+    config,
+  });
+
+  const packageDistribution = calculatePackageDistribution(
+    packageInventory,
+    config,
   );
 
   const versusResults = calculateVersusResults(
@@ -123,13 +139,12 @@ export function aggregateReports(
     config?.versus ?? [],
   );
   const bannedPackageViolations = detectBannedPackages(
-    packageDistribution,
+    packageInventory,
     config,
   );
 
   const requiredPackageViolations = detectRequiredPackages(
-    packageDistribution,
-    versions,
+    packageInventory,
     config,
   );
 
@@ -142,6 +157,7 @@ export function aggregateReports(
     componentUsage: componentUsageMap,
     topComponents,
     allComponents,
+    packageInventory,
     packageDistribution,
     versusResults,
     ruleViolations: requiredPackageViolations,

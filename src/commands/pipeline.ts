@@ -9,6 +9,7 @@ import { printErrors } from '../utils/print-errors';
 import { findFiles } from '../utils/file-utils';
 import { findAndParseLockfile } from '../lock-parser';
 import { evaluateRules } from '../rules/evaluator';
+import { collectDeclaredPackages } from '../rules/shared';
 import { enrichWithReleaseAge } from '../npm-registry/enricher';
 import { applyOverrides } from '../config/overrides';
 import type { HermexConfig } from '../config/types';
@@ -36,6 +37,7 @@ export async function runPipeline(
   const resolvedConfig = applyOverrides(config, process.cwd());
 
   const lockfileResult = findAndParseLockfile(process.cwd());
+  const declaredPackages = collectDeclaredPackages(process.cwd());
 
   spinner.succeed(
     chalk.blue(
@@ -95,6 +97,7 @@ export async function runPipeline(
     resolvedConfig,
     lockfileResult.multiVersions,
     lockfileResult.resolutions,
+    declaredPackages,
   );
 
   const evaluatorViolations = evaluateRules(

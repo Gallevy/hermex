@@ -4,13 +4,49 @@ import {
   findComponentSource,
 } from '../../src/utils/package-distribution';
 import type { ComponentUsage } from '../../src/utils/package-distribution';
+import { buildPackageInventory } from '../../src/utils/package-inventory';
+import type { DeclaredPackages } from '../../src/utils/package-inventory';
+import type {
+  LockfileResolutionMap,
+  MultiVersionMap,
+} from '../../src/lock-parser';
 import { HermexConfigSchema } from '../../src/config/schema';
 import type { HermexConfigInput } from '../../src/config/schema';
+import { applyOverrides } from '../../src/config/overrides';
 import { createMockReport } from '../helpers/mock-reports';
 
-/** Parse a partial config through the real schema so all defaults apply. */
+/**
+ * Parse a partial config through the real schema, then resolve it like the
+ * pipeline does before the aggregator runs.
+ */
 function createConfig(input: HermexConfigInput = {}) {
-  return HermexConfigSchema.parse(input);
+  return applyOverrides(HermexConfigSchema.parse(input), process.cwd());
+}
+
+/**
+ * Build the inventory then take the distribution view of it — the exact
+ * path `aggregateReports` takes. Keeps these tests written in terms of the
+ * raw inputs (usage + lockfile) while exercising the real two-step.
+ */
+function buildDistribution(
+  componentUsage: Map<string, ComponentUsage>,
+  versions: Record<string, string>,
+  config?: ReturnType<typeof createConfig>,
+  multiVersions: MultiVersionMap = {},
+  resolutions: LockfileResolutionMap = {},
+  declared: DeclaredPackages = {},
+) {
+  return calculatePackageDistribution(
+    buildPackageInventory({
+      versions,
+      multiVersions,
+      resolutions,
+      declared,
+      componentUsage,
+      config,
+    }),
+    config,
+  );
 }
 
 /** Build a ComponentUsage entry for calculatePackageDistribution's input map. */
@@ -72,7 +108,7 @@ describe('calculatePackageDistribution', () => {
       ['Modal', makeComponent('Modal', 'antd', 2)],
     ]);
 
-    const distribution = calculatePackageDistribution(componentUsageMap, {});
+    const distribution = buildDistribution(componentUsageMap, {});
 
     expect(distribution).toHaveLength(1);
     expect(distribution[0].packageName).toBe('antd');
@@ -87,7 +123,7 @@ describe('calculatePackageDistribution', () => {
       ['DatePicker', makeComponent('DatePicker', 'moment', 1)],
     ]);
 
-    const distribution = calculatePackageDistribution(componentUsageMap, {});
+    const distribution = buildDistribution(componentUsageMap, {});
 
     const totalPercentage = distribution.reduce(
       (sum, pkg) => sum + pkg.percentage,
@@ -106,7 +142,7 @@ describe('calculatePackageDistribution', () => {
       ['Button', makeComponent('Button', 'antd', 1)],
     ]);
 
-    const distribution = calculatePackageDistribution(componentUsageMap, {});
+    const distribution = buildDistribution(componentUsageMap, {});
 
     expect(distribution).toHaveLength(1);
     expect(distribution[0].packageName).toBe('antd');
@@ -117,7 +153,7 @@ describe('calculatePackageDistribution', () => {
       ['Ghost', makeComponent('Ghost', 'unknown', 1)],
     ]);
 
-    const distribution = calculatePackageDistribution(componentUsageMap, {});
+    const distribution = buildDistribution(componentUsageMap, {});
 
     expect(distribution).toEqual([]);
   });
@@ -127,7 +163,7 @@ describe('calculatePackageDistribution', () => {
       ['Button', makeComponent('Button', 'antd', 1)],
     ]);
 
-    const distribution = calculatePackageDistribution(componentUsageMap, {
+    const distribution = buildDistribution(componentUsageMap, {
       antd: '5.0.0',
     });
 
@@ -139,7 +175,7 @@ describe('calculatePackageDistribution', () => {
       ['Button', makeComponent('Button', 'antd', 1)],
     ]);
 
-    const distribution = calculatePackageDistribution(componentUsageMap, {});
+    const distribution = buildDistribution(componentUsageMap, {});
 
     expect(distribution[0].version).toBeNull();
   });
@@ -154,7 +190,7 @@ describe('calculatePackageDistribution', () => {
       ['Button', makeComponent('Button', 'antd', 1)],
     ]);
 
-    const distribution = calculatePackageDistribution(
+    const distribution = buildDistribution(
       componentUsageMap,
       { antd: '5.0.0' },
       undefined,
@@ -170,7 +206,7 @@ describe('calculatePackageDistribution', () => {
       ['Button', makeComponent('Button', 'antd', 1)],
     ]);
 
-    const distribution = calculatePackageDistribution(componentUsageMap, {
+    const distribution = buildDistribution(componentUsageMap, {
       antd: '5.0.0',
     });
 
@@ -182,7 +218,7 @@ describe('calculatePackageDistribution', () => {
       ['Button', makeComponent('Button', 'antd', 1)],
     ]);
 
-    const distribution = calculatePackageDistribution(
+    const distribution = buildDistribution(
       componentUsageMap,
       { antd: '5.0.0' }, // display fallback (highest resolved copy)
       undefined,
@@ -198,7 +234,7 @@ describe('calculatePackageDistribution', () => {
       ['Icon', makeComponent('Icon', '@my-org/ui/icons', 1)],
     ]);
 
-    const distribution = calculatePackageDistribution(
+    const distribution = buildDistribution(
       componentUsageMap,
       { '@my-org/ui': '2.0.0' },
       undefined,
@@ -214,7 +250,7 @@ describe('calculatePackageDistribution', () => {
       ['debounce', makeComponent('debounce', 'lodash/debounce', 1)],
     ]);
 
-    const distribution = calculatePackageDistribution(
+    const distribution = buildDistribution(
       componentUsageMap,
       { lodash: '4.17.21' },
       undefined,
@@ -230,7 +266,7 @@ describe('calculatePackageDistribution', () => {
       ['Icon', makeComponent('Icon', '@my-org/ui/icons', 1)],
     ]);
 
-    const distribution = calculatePackageDistribution(componentUsageMap, {
+    const distribution = buildDistribution(componentUsageMap, {
       '@my-org/ui': '2.0.0',
     });
 
@@ -242,7 +278,7 @@ describe('calculatePackageDistribution', () => {
       ['debounce', makeComponent('debounce', 'lodash/debounce', 1)],
     ]);
 
-    const distribution = calculatePackageDistribution(componentUsageMap, {
+    const distribution = buildDistribution(componentUsageMap, {
       lodash: '4.17.21',
     });
 
@@ -254,7 +290,7 @@ describe('calculatePackageDistribution', () => {
       ['Icon', makeComponent('Icon', '@my-org/ui/icons', 1)],
     ]);
 
-    const distribution = calculatePackageDistribution(componentUsageMap, {});
+    const distribution = buildDistribution(componentUsageMap, {});
 
     expect(distribution[0].version).toBeNull();
   });
@@ -264,7 +300,7 @@ describe('calculatePackageDistribution', () => {
       ['debounce', makeComponent('debounce', 'lodash/debounce', 1)],
     ]);
 
-    const distribution = calculatePackageDistribution(componentUsageMap, {});
+    const distribution = buildDistribution(componentUsageMap, {});
 
     expect(distribution[0].version).toBeNull();
   });
@@ -274,7 +310,7 @@ describe('calculatePackageDistribution', () => {
       ['Button', makeComponent('Button', 'antd', 1)],
     ]);
 
-    const distribution = calculatePackageDistribution(
+    const distribution = buildDistribution(
       componentUsageMap,
       { antd: '5.0.0' },
       undefined,
@@ -290,7 +326,7 @@ describe('calculatePackageDistribution', () => {
       ['Button', makeComponent('Button', 'antd', 1)],
     ]);
 
-    const distribution = calculatePackageDistribution(
+    const distribution = buildDistribution(
       componentUsageMap,
       { antd: '5.0.0' },
       undefined,
@@ -307,11 +343,7 @@ describe('calculatePackageDistribution', () => {
     ]);
     const config = createConfig({ packages: { internal: ['@my-org/*'] } });
 
-    const distribution = calculatePackageDistribution(
-      componentUsageMap,
-      {},
-      config,
-    );
+    const distribution = buildDistribution(componentUsageMap, {}, config);
 
     expect(distribution[0].internal).toBe(true);
   });
@@ -322,11 +354,7 @@ describe('calculatePackageDistribution', () => {
     ]);
     const config = createConfig({ packages: { ignore: ['antd'] } });
 
-    const distribution = calculatePackageDistribution(
-      componentUsageMap,
-      {},
-      config,
-    );
+    const distribution = buildDistribution(componentUsageMap, {}, config);
 
     expect(distribution).toEqual([]);
   });
@@ -339,7 +367,7 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
       releaseAge: { enabled: true, enforceOn: ['@acme-ui/pulse-styles'] },
     });
 
-    const distribution = calculatePackageDistribution(
+    const distribution = buildDistribution(
       componentUsageMap,
       { '@acme-ui/pulse-styles': '2.1.0' },
       config,
@@ -357,13 +385,35 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
     });
   });
 
+  // The inventory also knows about packages that are declared in
+  // package.json but missing from the lockfile. Those have no resolved
+  // version to date-check, and release-age enrichment skips versionless
+  // entries — so they must not reach the packages table either.
+  it('does not surface a declared-but-uninstalled package matching enforceOn', () => {
+    const componentUsageMap = new Map<string, ComponentUsage>();
+    const config = createConfig({
+      releaseAge: { enabled: true, enforceOn: ['eslint'] },
+    });
+
+    const distribution = buildDistribution(
+      componentUsageMap,
+      {},
+      config,
+      {},
+      {},
+      { eslint: ['devDependencies'] },
+    );
+
+    expect(distribution).toEqual([]);
+  });
+
   it('does not surface lockfile-only packages when releaseAge is disabled', () => {
     const componentUsageMap = new Map<string, ComponentUsage>();
     const config = createConfig({
       releaseAge: { enabled: false, enforceOn: ['@acme-ui/pulse-styles'] },
     });
 
-    const distribution = calculatePackageDistribution(
+    const distribution = buildDistribution(
       componentUsageMap,
       { '@acme-ui/pulse-styles': '2.1.0' },
       config,
@@ -376,7 +426,7 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
     const componentUsageMap = new Map<string, ComponentUsage>();
     const config = createConfig({ releaseAge: { enabled: true } });
 
-    const distribution = calculatePackageDistribution(
+    const distribution = buildDistribution(
       componentUsageMap,
       { '@acme-ui/pulse-styles': '2.1.0', lodash: '4.17.21' },
       config,
@@ -393,7 +443,7 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
       releaseAge: { enabled: true, enforceOn: ['@acme-ui/pulse-styles'] },
     });
 
-    const distribution = calculatePackageDistribution(
+    const distribution = buildDistribution(
       componentUsageMap,
       { '@acme-ui/pulse-styles': '2.1.0' },
       config,
@@ -411,7 +461,7 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
       releaseAge: { enabled: true, enforceOn: ['@acme-ui/pulse-styles'] },
     });
 
-    const distribution = calculatePackageDistribution(
+    const distribution = buildDistribution(
       componentUsageMap,
       { '@acme-ui/pulse-styles': '2.1.0' },
       config,
@@ -427,7 +477,7 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
       releaseAge: { enabled: true, enforceOn: ['@acme-ui/pulse-styles'] },
     });
 
-    const distribution = calculatePackageDistribution(
+    const distribution = buildDistribution(
       componentUsageMap,
       { '@acme-ui/pulse-styles': '2.1.0' },
       config,
@@ -442,7 +492,7 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
       releaseAge: { enabled: true, enforceOn: ['@acme-ui/pulse-styles'] },
     });
 
-    const distribution = calculatePackageDistribution(
+    const distribution = buildDistribution(
       componentUsageMap,
       { '@acme-ui/pulse-styles': '2.1.0' },
       config,
@@ -466,7 +516,7 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
       releaseAge: { enabled: true, enforceOn: ['@acme-ui/dio'] },
     });
 
-    const distribution = calculatePackageDistribution(
+    const distribution = buildDistribution(
       componentUsageMap,
       { '@acme-ui/dio': '1.0.0' }, // display fallback: highest resolved copy
       config,
@@ -484,7 +534,7 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
       releaseAge: { enabled: true, enforceOn: ['@acme-ui/dio'] },
     });
 
-    const distribution = calculatePackageDistribution(
+    const distribution = buildDistribution(
       componentUsageMap,
       { '@acme-ui/dio': '1.0.0' },
       config,
@@ -501,7 +551,7 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
       releaseAge: { enabled: true, enforceOn: ['@acme-ui/pulse-styles'] },
     });
 
-    const distribution = calculatePackageDistribution(
+    const distribution = buildDistribution(
       componentUsageMap,
       { '@acme-ui/pulse-styles': '2.1.0', lodash: '4.17.21' },
       config,
@@ -520,7 +570,7 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
       releaseAge: { enabled: true, enforceOn: ['@acme-ui/pulse-styles'] },
     });
 
-    const distribution = calculatePackageDistribution(
+    const distribution = buildDistribution(
       componentUsageMap,
       { '@acme-ui/pulse-styles': '2.1.0' },
       config,

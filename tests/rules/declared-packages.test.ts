@@ -1,0 +1,100 @@
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { writeFileSync, rmSync, mkdtempSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { collectDeclaredPackages } from '../../src/rules/shared';
+
+let tempDir: string;
+
+/** Writes a package.json into a fresh temp dir and returns that dir. */
+function withManifest(content: string): string {
+  const dir = mkdtempSync(join(tempDir, 'repo-'));
+  writeFileSync(join(dir, 'package.json'), content);
+  return dir;
+}
+
+beforeAll(() => {
+  tempDir = mkdtempSync(join(tmpdir(), 'hermex-declared-test-'));
+});
+
+afterAll(() => {
+  rmSync(tempDir, { recursive: true, force: true });
+});
+
+describe('collectDeclaredPackages', () => {
+  it('collects names from all four dependency buckets', () => {
+    const dir = withManifest(
+      JSON.stringify({
+        dependencies: { react: '^18.0.0' },
+        devDependencies: { vitest: '^4.0.0' },
+        peerDependencies: { 'react-dom': '^18.0.0' },
+        optionalDependencies: { fsevents: '^2.3.0' },
+      }),
+    );
+
+    expect(collectDeclaredPackages(dir)).toEqual({
+      react: ['dependencies'],
+      vitest: ['devDependencies'],
+      'react-dom': ['peerDependencies'],
+      fsevents: ['optionalDependencies'],
+    });
+  });
+
+  it('records every bucket declaring a package listed more than once', () => {
+    const dir = withManifest(
+      JSON.stringify({
+        peerDependencies: { react: '^18.0.0' },
+        devDependencies: { react: '^18.0.0' },
+      }),
+    );
+
+    expect(collectDeclaredPackages(dir)).toEqual({
+      react: ['devDependencies', 'peerDependencies'],
+    });
+  });
+
+  it('returns nothing when the manifest declares no dependencies', () => {
+    const dir = withManifest(JSON.stringify({ name: 'test-project' }));
+
+    expect(collectDeclaredPackages(dir)).toEqual({});
+  });
+
+  it('returns nothing when package.json is missing', () => {
+    const dir = mkdtempSync(join(tempDir, 'empty-'));
+
+    expect(collectDeclaredPackages(dir)).toEqual({});
+  });
+
+  it('returns nothing when package.json is not valid JSON', () => {
+    const dir = withManifest('{ not json');
+
+    expect(collectDeclaredPackages(dir)).toEqual({});
+  });
+
+  // A manifest is untrusted input: on a plain object literal, a `__proto__`
+  // key would hit the prototype setter rather than creating an own property.
+  it('handles a dependency named __proto__ without dropping it or mutating a prototype', () => {
+    const dir = withManifest(
+      '{"dependencies":{"__proto__":"1.0.0","react":"^18.0.0"}}',
+    );
+
+    const declared = collectDeclaredPackages(dir);
+
+    expect(Object.keys(declared).sort()).toEqual(['__proto__', 'react']);
+    expect(({} as Record<string, unknown>)['polluted']).toBeUndefined();
+  });
+
+  it('skips a malformed bucket without dropping the well-formed ones', () => {
+    const dir = withManifest(
+      JSON.stringify({
+        dependencies: 'oops',
+        peerDependencies: ['react'],
+        devDependencies: { vitest: '^4.0.0' },
+      }),
+    );
+
+    expect(collectDeclaredPackages(dir)).toEqual({
+      vitest: ['devDependencies'],
+    });
+  });
+});

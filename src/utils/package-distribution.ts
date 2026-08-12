@@ -1,15 +1,11 @@
 import micromatch from 'micromatch';
 import type { UsageReport } from '../swc-parser';
-import type { HermexConfig } from '../config/types';
-import type { LockfileResolutionMap, MultiVersionMap } from '../lock-parser';
+import type { ResolvedHermexConfig } from '../config/types';
 import type { ReleaseAgeEntry } from '../npm-registry/types';
+import type { PackageInventoryEntry } from './package-inventory';
+import { isInstalled, isUsed } from './package-inventory';
 
-export interface ComponentUsage {
-  name: string;
-  source: string;
-  count: number;
-  files: Set<string>;
-}
+export type { ComponentUsage } from './package-inventory';
 
 export interface PackageDistribution {
   packageName: string;
@@ -89,150 +85,56 @@ export function findComponentSource(
   return 'unknown';
 }
 
-function getPackageVersion(
-  packageName: string,
-  versions: Record<string, string>,
-): string | null {
-  if (versions[packageName]) return versions[packageName];
-
-  if (packageName.includes('/')) {
-    const parts = packageName.split('/');
-    if (packageName.startsWith('@') && parts.length > 2) {
-      const basePackage = `${parts[0]}/${parts[1]}`;
-      if (versions[basePackage]) return versions[basePackage];
-    }
-    if (!packageName.startsWith('@') && parts.length > 1) {
-      if (versions[parts[0]]) return versions[parts[0]];
-    }
-  }
-
-  return null;
-}
-
-// Same base-package fallback as getPackageVersion (a subpath import like
-// `@scope/pkg/sub` resolves to `@scope/pkg`'s data), but reading the true
-// root/direct-dependency version from the lockfile layer's resolutions
-// rather than the `rootVersion ?? maxSemver(allVersions)` fallback baked
-// into `versions`. `null` here (as opposed to `versions` being silently
-// absent) is the signal `scope: 'root'` needs to correctly decline to
-// enforce a package that was never a direct dependency in the first place.
-function getRootVersion(
-  packageName: string,
-  resolutions: LockfileResolutionMap,
-): string | null {
-  if (resolutions[packageName]) return resolutions[packageName].rootVersion;
-
-  if (packageName.includes('/')) {
-    const parts = packageName.split('/');
-    if (packageName.startsWith('@') && parts.length > 2) {
-      const basePackage = `${parts[0]}/${parts[1]}`;
-      if (resolutions[basePackage]) return resolutions[basePackage].rootVersion;
-    }
-    if (!packageName.startsWith('@') && parts.length > 1) {
-      if (resolutions[parts[0]]) return resolutions[parts[0]].rootVersion;
-    }
-  }
-
-  return null;
-}
-
+/**
+ * The reported view of the package inventory: what the packages table, the
+ * JSON `packages[]` array and release-age enrichment operate on.
+ *
+ * Selects the *used* axis — a package with no measured usage has nothing to
+ * report a percentage or component list for. The one exception is
+ * `releaseAge.enforceOn`: a dependency can be installed and explicitly
+ * enforced yet never imported as a component (a CSS/side-effect-only import
+ * like `import '@acme-ui/pulse-styles/button.css'` has no specifiers, so the
+ * usage scan never sees it), and dropping it here would silently exempt it
+ * from compliance. Those are surfaced with zero usage/component counts.
+ * Scoped to `enforceOn` matches rather than the whole inventory so a default
+ * (empty) `enforceOn` does not fire a registry lookup for every transitive
+ * dependency.
+ */
 export function calculatePackageDistribution(
-  componentUsageMap: Map<string, ComponentUsage>,
-  versions: Record<string, string>,
-  config?: HermexConfig,
-  multiVersions: MultiVersionMap = {},
-  resolutions: LockfileResolutionMap = {},
+  inventory: PackageInventoryEntry[],
+  config?: ResolvedHermexConfig,
 ): PackageDistribution[] {
-  const ignorePatterns = config?.packages.ignore ?? [];
-  const internalPatterns = config?.packages.internal ?? [];
-
-  const packageMap = new Map<string, PackageDistribution>();
-
-  for (const component of componentUsageMap.values()) {
-    if (component.source === 'unknown' || component.source === 'local')
-      continue;
-
-    if (
-      ignorePatterns.length > 0 &&
-      micromatch.isMatch(component.source, ignorePatterns)
-    ) {
-      continue;
-    }
-
-    const existing = packageMap.get(component.source);
-    if (existing) {
-      existing.componentCount++;
-      existing.usageCount += component.count;
-      existing.components.push(component.name);
-    } else {
-      const isInternal =
-        internalPatterns.length > 0
-          ? micromatch.isMatch(component.source, internalPatterns)
-          : false;
-
-      const allVersions = multiVersions[component.source] ?? [];
-      const hasVersionConflict = allVersions.length > 1;
-
-      packageMap.set(component.source, {
-        packageName: component.source,
-        version: getPackageVersion(component.source, versions),
-        rootVersion: getRootVersion(component.source, resolutions),
-        componentCount: 1,
-        usageCount: component.count,
-        percentage: 0,
-        components: [component.name],
-        internal: isInternal,
-        hasVersionConflict,
-        allVersions,
-      });
-    }
-  }
-
-  // A dependency can be installed and listed in the lockfile yet never
-  // imported as a component — e.g. a CSS/side-effect-only import like
-  // `import '@acme-ui/pulse-styles/button.css'` has no specifiers, so the
-  // usage scan above never sees it. That makes it invisible to releaseAge
-  // even when it's explicitly enforced. Surface any lockfile package that
-  // matches `releaseAge.enforceOn` so compliance can still see it, with
-  // zero usage/component counts. Scoped to enforceOn matches (not
-  // the whole lockfile) to avoid firing a registry lookup for every
-  // transitive dependency when enforceOn is left at its default `[]`.
   const enforceOnPatterns = config?.releaseAge.enforceOn ?? [];
-  if (config?.releaseAge.enabled && enforceOnPatterns.length > 0) {
-    for (const packageName of Object.keys(versions)) {
-      if (packageMap.has(packageName)) continue;
-      if (!micromatch.isMatch(packageName, enforceOnPatterns)) continue;
-      if (
-        ignorePatterns.length > 0 &&
-        micromatch.isMatch(packageName, ignorePatterns)
-      ) {
-        continue;
-      }
+  const enforcesUnusedPackages =
+    (config?.releaseAge.enabled ?? false) && enforceOnPatterns.length > 0;
 
-      const isInternal =
-        internalPatterns.length > 0
-          ? micromatch.isMatch(packageName, internalPatterns)
-          : false;
+  const distribution = inventory
+    .filter((entry) => {
+      if (entry.ignored) return false;
+      if (isUsed(entry)) return true;
+      // Installed-only: a package that is merely *declared* (in package.json
+      // but absent from the lockfile) has no resolved version to compare a
+      // release date against, so surfacing it here would add a versionless
+      // row to the packages table that release-age enrichment then skips.
+      return (
+        enforcesUnusedPackages &&
+        isInstalled(entry) &&
+        micromatch.isMatch(entry.packageName, enforceOnPatterns)
+      );
+    })
+    .map((entry) => ({
+      packageName: entry.packageName,
+      version: entry.version,
+      rootVersion: entry.rootVersion,
+      componentCount: entry.componentCount,
+      usageCount: entry.usageCount,
+      percentage: 0,
+      components: entry.components,
+      internal: entry.internal,
+      hasVersionConflict: entry.hasVersionConflict,
+      allVersions: entry.allVersions,
+    }));
 
-      const allVersions = multiVersions[packageName] ?? [];
-      const hasVersionConflict = allVersions.length > 1;
-
-      packageMap.set(packageName, {
-        packageName,
-        version: getPackageVersion(packageName, versions),
-        rootVersion: getRootVersion(packageName, resolutions),
-        componentCount: 0,
-        usageCount: 0,
-        percentage: 0,
-        components: [],
-        internal: isInternal,
-        hasVersionConflict,
-        allVersions,
-      });
-    }
-  }
-
-  const distribution = Array.from(packageMap.values());
   const totalExternalUsage = distribution.reduce(
     (sum, pkg) => sum + pkg.usageCount,
     0,
@@ -243,5 +145,7 @@ export function calculatePackageDistribution(
       totalExternalUsage > 0 ? (pkg.usageCount / totalExternalUsage) * 100 : 0;
   }
 
+  // The inventory is already usage-ordered; re-sorting keeps this view
+  // self-contained rather than silently depending on that.
   return distribution.sort((a, b) => b.usageCount - a.usageCount);
 }

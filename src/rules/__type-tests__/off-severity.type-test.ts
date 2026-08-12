@@ -42,7 +42,7 @@ evaluateEngineVersion('.', resolvedRules);
 evaluateCodeowners('.', resolvedRules, []);
 evaluateRules('.', resolvedRules, []);
 detectBannedPackages([], resolvedConfig);
-detectRequiredPackages([], {}, resolvedConfig);
+detectRequiredPackages([], resolvedConfig);
 
 // Per-boundary checks: an unresolved RulesConfig/HermexConfig (which may
 // still contain 'off' or bare-object rule fields) must be rejected at every
@@ -64,4 +64,4 @@ evaluateRules('.', wideRules, []);
 // @ts-expect-error — detectBannedPackages must require ResolvedHermexConfig
 detectBannedPackages([], wideConfig);
 // @ts-expect-error — detectRequiredPackages must require ResolvedHermexConfig
-detectRequiredPackages([], {}, wideConfig);
+detectRequiredPackages([], wideConfig);
