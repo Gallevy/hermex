@@ -1,3 +1,10 @@
+## [2.8.1-beta.1](https://github.com/Gallevy/hermex/compare/v2.8.0...v2.8.1-beta.1) (2026-08-12)
+
+
+### Bug Fixes
+
+* forbid_packages misses packages declared in package.json but never imported ([#75](https://github.com/Gallevy/hermex/issues/75)) ([b343ca3](https://github.com/Gallevy/hermex/commit/b343ca390261f717bb884d194c5deab0742cd56f))
+
 # [2.8.0](https://github.com/Gallevy/hermex/compare/v2.7.0...v2.8.0) (2026-08-09)
 
 
