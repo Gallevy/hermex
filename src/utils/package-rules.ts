@@ -4,12 +4,6 @@ import type { RuleViolation } from '../rules/evaluator';
 import type { PackageInventoryEntry } from './package-inventory';
 import { isInstalled, isOwnedByRepo, isUsed } from './package-inventory';
 
-export interface BannedPackageViolation {
-  packageName: string;
-  severity: 'error' | 'warn' | 'info';
-  message?: string;
-}
-
 /**
  * Selects the packages this repo owns (`isOwnedByRepo`): declared in
  * `package.json`, recorded as a direct dependency by the lockfile, and/or
@@ -21,26 +15,35 @@ export interface BannedPackageViolation {
  * named it outright. Purely transitive dependencies stay out of scope: the
  * repo cannot remove one without dropping its parent, so flagging it would
  * report a violation nobody can fix.
+ *
+ * Returns `RuleViolation`s like every other rule (#77). One violation per
+ * matched package, so a glob rule (`@legacy/*`) hitting three packages
+ * yields three entries sharing `patterns` and differing on `packageName` —
+ * `matchedFiles` stays empty because the inventory carries no file paths,
+ * and a hit can be declared-only with no files at all (#75).
  */
-export function detectBannedPackages(
+export function detectForbiddenPackages(
   inventory: PackageInventoryEntry[],
   config?: ResolvedHermexConfig,
-): BannedPackageViolation[] {
+): RuleViolation[] {
   const forbidRules = config?.rules.forbid_packages ?? [];
   if (forbidRules.length === 0) {
     return [];
   }
 
-  const violations: BannedPackageViolation[] = [];
+  const violations: RuleViolation[] = [];
   for (const entry of inventory) {
     if (!isOwnedByRepo(entry)) continue;
 
     for (const rule of forbidRules) {
       if (micromatch.isMatch(entry.packageName, rule.patterns)) {
         violations.push({
-          packageName: entry.packageName,
+          type: 'forbid_packages',
           severity: rule.severity,
+          patterns: rule.patterns,
           message: rule.message,
+          matchedFiles: [],
+          packageName: entry.packageName,
         });
         break;
       }

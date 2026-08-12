@@ -261,6 +261,23 @@ isn't something your repo can do. Packages excluded by `packages.ignore` are nev
 Every banned package appears in the Rules and Compliance sections. Those with measured usage also get a
 `[BANNED]` or `[RESTRICTED]` badge in the packages table; a declared-but-unused package has no row there.
 
+In the JSON output, each hit is an ordinary entry in `ruleViolations` with `type: "forbid_packages"` —
+`patterns` carries the rule's globs, `packageName` the package that matched, and `matchedFiles` is empty
+(a package isn't a file, and a declared-but-unimported one has none):
+
+```jsonc
+{
+  "type": "forbid_packages",
+  "severity": "error",
+  "patterns": ["moment"],
+  "message": "Use date-fns or dayjs",
+  "matchedFiles": [],
+  "packageName": "moment"
+}
+```
+
+A glob rule that matches several packages produces one entry per package, all sharing the same `patterns`.
+
 ### CODEOWNERS Rule
 
 Requires every scanned file to have an owner in your `CODEOWNERS` file
@@ -420,7 +437,7 @@ For **yarn**, root-version resolution works by reading the root `package.json`'s
 hermex comply
 ```
 
-- **Exit `0`** — compliant: no `error`-severity rule violations, no `error`-severity banned packages, no `error`-severity release-age threshold breaches (minor/patch or major).
+- **Exit `0`** — compliant: no `error`-severity rule violations (banned packages included), no `error`-severity release-age threshold breaches (minor/patch or major).
 - **Exit `1`** — not compliant: at least one mandatory violation found.
 - **Exit `2`** — hermex couldn't run the check at all (no files matched, or an internal error).
 
@@ -436,19 +453,38 @@ Both `hermex scan --format json` and `hermex comply --format json` emit a top-le
   "compliant": true,        // mirrors the `comply` exit code (0 ⇔ true)
   "counts": {
     "errorRuleViolations": 0,
-    "errorBannedPackageViolations": 0,
     "releaseAgeViolations": 0,        // enforced (severity 'error') + overdue
-    "warningRuleViolations": 0,
-    "warningBannedPackageViolations": 0
+    "warningRuleViolations": 0
   }
 }
 ```
 
 - **`non-compliant`** — at least one mandatory (`error`) violation. Exactly `compliant === false`; the condition `comply` exits `1` on.
-- **`warning`** — passes `comply` (exit `0`), but a `warn`-severity **rule** or **banned-package** violation is present. A non-enforced (`severity: 'warn'`) overdue release-age package or a not-yet-due `pendingUpgrade` is advisory data — it is **not** a warning and does **not** demote `compliant` → `warning`.
+- **`warning`** — passes `comply` (exit `0`), but a `warn`-severity **rule** violation is present. A non-enforced (`severity: 'warn'`) overdue release-age package or a not-yet-due `pendingUpgrade` is advisory data — it is **not** a warning and does **not** demote `compliant` → `warning`.
 - **`compliant`** — no mandatory violations and nothing flagged at `warn`.
 
 `status: 'warning'` never changes the exit code — it exists so dashboards and sheet syncs can surface a three-state signal that still agrees with `comply` on pass/fail.
+
+The `counts` buckets are disjoint, so `errorRuleViolations + releaseAgeViolations` is the number of comply-failing violations — the same number the CLI prints as "N mandatory violations found".
+
+Severity is the only thing that decides which bucket a rule violation lands in; the rule's `type` never does. An `error`-severity violation of any type counts toward `errorRuleViolations`, a `warn`-severity one toward `warningRuleViolations`, and an `info`-severity one toward neither while still appearing in `ruleViolations`.
+
+### Reading the JSON output
+
+`hermex scan --format json` and `hermex comply --format json` emit the same top-level shape:
+
+| Field | What it holds |
+|---|---|
+| `version` | The hermex version that produced the report. |
+| `summary` | Aggregate counts: `filesAnalyzed`, `totalImports`, `totalComponents`, `totalUsagePatterns`. |
+| `packages` | Per-package rows for packages with measured usage, plus any release-age–enforced package. Carries version, usage counts, and `releaseAge` when enrichment ran. |
+| `components` | Every component found, with its source package, usage count and the files using it. |
+| `patterns` | Per-pattern-type usage counts (`imports.named`, `usage.jsx`, …). |
+| `versus` | Head-to-head comparisons configured under `versus`. |
+| `ruleViolations` | **Every rule hit, in one list** — `detect_files`, `require_files`, `require_packages`, `forbid_packages`, `require_scripts`, `require_package_fields`, `forbid_package_fields`, `engine_version`, `codeowners`. Filter on `type`. |
+| `compliance` | The canonical verdict — see above. |
+
+`ruleViolations` is the single source of truth for rule hits. Entries share a common shape (`type`, `severity`, `patterns`, `message?`, `matchedFiles`) and add per-type fields where they apply: `packageName` for `forbid_packages`, `fieldPath`/`actualValue` for the package-field rules, `installedRange`/`requiredRange` for `engine_version`.
 
 ### CI Job Summary / PR Comment
 

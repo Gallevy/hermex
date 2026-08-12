@@ -15,8 +15,10 @@ import type {
   PackageInventoryEntry,
 } from './package-inventory';
 import { buildPackageInventory } from './package-inventory';
-import type { BannedPackageViolation } from './package-rules';
-import { detectBannedPackages, detectRequiredPackages } from './package-rules';
+import {
+  detectForbiddenPackages,
+  detectRequiredPackages,
+} from './package-rules';
 import type { PatternCount } from './pattern-counter';
 import { countPatterns, getPatternDisplayName } from './pattern-counter';
 import type { VersusResult } from './versus';
@@ -35,8 +37,8 @@ export interface AggregatedReport {
   packageInventory: PackageInventoryEntry[];
   packageDistribution: PackageDistribution[];
   versusResults: VersusResult[];
+  /** Every rule hit, `forbid_packages` included (#77) — one list, no second field to remember to read. */
   ruleViolations: RuleViolation[];
-  bannedPackageViolations: BannedPackageViolation[];
   reports: UsageReport[];
 }
 
@@ -138,7 +140,7 @@ export function aggregateReports(
     packageDistribution,
     config?.versus ?? [],
   );
-  const bannedPackageViolations = detectBannedPackages(
+  const forbiddenPackageViolations = detectForbiddenPackages(
     packageInventory,
     config,
   );
@@ -160,8 +162,12 @@ export function aggregateReports(
     packageInventory,
     packageDistribution,
     versusResults,
-    ruleViolations: requiredPackageViolations,
-    bannedPackageViolations,
+    // Detection order: package rules here, then the file/script/manifest
+    // evaluators appended by the pipeline.
+    ruleViolations: [
+      ...forbiddenPackageViolations,
+      ...requiredPackageViolations,
+    ],
     reports,
   };
 }

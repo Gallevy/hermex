@@ -11,6 +11,9 @@ import { getVersion } from './version';
  * `ruleViolations` and drifting from `comply` (#55). `compliant` mirrors the
  * CLI exit code (0 ⇔ true); `status: 'warning'` never changes that exit code.
  *
+ * `ruleViolations` is the single list of every rule hit, `forbid_packages`
+ * included (#77) — there is no second violations field to remember to read.
+ *
  * `compliance` defaults to `computeCompliance(aggregated)` so `scan --format
  * json` carries the same verdict as `comply`; callers that already computed
  * it (comply) pass it through to avoid recomputing.
@@ -35,18 +38,13 @@ export function printJson(
     patterns: aggregated.patternCounts,
     versus: aggregated.versusResults,
     ruleViolations: aggregated.ruleViolations,
-    bannedPackageViolations: aggregated.bannedPackageViolations,
     compliance: {
       status: compliance.status,
       compliant: compliance.compliant,
       counts: {
         errorRuleViolations: compliance.errorRuleViolations.length,
-        errorBannedPackageViolations:
-          compliance.errorBannedPackageViolations.length,
         releaseAgeViolations: compliance.releaseAgeViolations.length,
         warningRuleViolations: compliance.warningRuleViolations.length,
-        warningBannedPackageViolations:
-          compliance.warningBannedPackageViolations.length,
       },
     },
   };

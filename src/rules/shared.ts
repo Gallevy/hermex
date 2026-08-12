@@ -11,6 +11,7 @@ export interface RuleViolation {
     | 'detect_files'
     | 'require_files'
     | 'require_packages'
+    | 'forbid_packages'
     | 'require_scripts'
     | 'require_package_fields'
     | 'forbid_package_fields'
@@ -26,6 +27,14 @@ export interface RuleViolation {
   // package-field rules only
   fieldPath?: string;
   actualValue?: string;
+  /**
+   * forbid_packages only — the package that matched `patterns`. Kept as a
+   * scalar rather than folded into `matchedFiles` because that field is read
+   * as file paths everywhere (`describeViolation` takes basenames off it, the
+   * codeowners branch counts files with it), and because a package's identity
+   * is what the packages table joins on.
+   */
+  packageName?: string;
 }
 
 export function toArray<T>(val: T | T[] | undefined): T[] {

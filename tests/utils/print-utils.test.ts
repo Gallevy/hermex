@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AggregatedReport } from '../../src/utils/aggregator';
 import type { RuleViolation } from '../../src/rules/evaluator';
-import type { BannedPackageViolation } from '../../src/utils/package-rules';
 import { printSummary } from '../../src/utils/print-summary';
 import { stripAnsi } from '../../src/utils/severity-format';
 import {
@@ -43,6 +42,22 @@ function daysAgo(n: number): string {
   return new Date(Date.now() - n * 24 * 60 * 60 * 1000).toISOString();
 }
 
+/** A forbid_packages hit, the shape `detectForbiddenPackages` emits (#77). */
+function forbidViolation(
+  packageName: string,
+  severity: RuleViolation['severity'] = 'error',
+  message?: string,
+): RuleViolation {
+  return {
+    type: 'forbid_packages',
+    severity,
+    patterns: [packageName],
+    message,
+    matchedFiles: [],
+    packageName,
+  };
+}
+
 /**
  * Creates a minimal AggregatedReport with all required fields.
  * Override specific fields via the partial argument.
@@ -64,7 +79,6 @@ function makeAggregated(
     packageDistribution: [],
     versusResults: [],
     ruleViolations: [],
-    bannedPackageViolations: [],
     reports: [],
     ...overrides,
   };
@@ -406,15 +420,15 @@ describe('formatPackageName', () => {
   it('prefixes an error-severity banned package as [BANNED]', () => {
     const pkg = createMockPackage('moment');
     expect(
-      formatPackageName(pkg, { packageName: 'moment', severity: 'error' }),
+      formatPackageName(pkg, forbidViolation('moment', 'error')),
     ).toContain('[BANNED]');
   });
 
   it('prefixes a warn-severity banned package as [RESTRICTED]', () => {
     const pkg = createMockPackage('moment');
-    expect(
-      formatPackageName(pkg, { packageName: 'moment', severity: 'warn' }),
-    ).toContain('[RESTRICTED]');
+    expect(formatPackageName(pkg, forbidViolation('moment', 'warn'))).toContain(
+      '[RESTRICTED]',
+    );
   });
 
   it('prefixes an internal package as [int] when not banned', () => {
@@ -424,10 +438,7 @@ describe('formatPackageName', () => {
 
   it('prefers [BANNED]/[RESTRICTED] over [int] when a package is both internal and banned', () => {
     const pkg = createMockPackage('@my-org/utils', { internal: true });
-    const name = formatPackageName(pkg, {
-      packageName: '@my-org/utils',
-      severity: 'error',
-    });
+    const name = formatPackageName(pkg, forbidViolation('@my-org/utils'));
     expect(name).toContain('[BANNED]');
     expect(name).not.toContain('[int]');
   });
@@ -436,10 +447,7 @@ describe('formatPackageName', () => {
     const pkg = createMockPackage('moment', {
       releaseAge: createMockReleaseAge({ deprecated: 'use dayjs' }),
     });
-    const name = formatPackageName(pkg, {
-      packageName: 'moment',
-      severity: 'error',
-    });
+    const name = formatPackageName(pkg, forbidViolation('moment'));
     expect(name).toContain('[DEPRECATED]');
     expect(name).toContain('[BANNED]');
   });
@@ -888,14 +896,11 @@ describe('printRules', () => {
       patterns: ['.nvmrc'],
       matchedFiles: [],
     };
-    const banned: BannedPackageViolation = {
-      packageName: 'moment',
-      severity: 'warn',
-      message: 'Use dayjs',
-    };
     const aggregated = makeAggregated({
-      ruleViolations: [errorViolation],
-      bannedPackageViolations: [banned],
+      ruleViolations: [
+        errorViolation,
+        forbidViolation('moment', 'warn', 'Use dayjs'),
+      ],
     });
     printRules(aggregated);
     const output = stripAnsi(
@@ -1013,9 +1018,7 @@ describe('printRules', () => {
 
   it('renders a forbid_packages (banned/restricted) violation through the same line shape as other rules', () => {
     const aggregated = makeAggregated({
-      bannedPackageViolations: [
-        { packageName: 'moment', severity: 'warn', message: 'Use dayjs' },
-      ],
+      ruleViolations: [forbidViolation('moment', 'warn', 'Use dayjs')],
     });
     printRules(aggregated);
     const output = consoleSpy.mock.calls
@@ -1189,10 +1192,10 @@ describe('printRules', () => {
       },
     ];
     const aggregated = makeAggregated({
-      ruleViolations: errorViolations,
-      bannedPackageViolations: [
-        { packageName: 'moment', severity: 'warn' },
-        { packageName: 'left-pad', severity: 'warn' },
+      ruleViolations: [
+        ...errorViolations,
+        forbidViolation('moment', 'warn'),
+        forbidViolation('left-pad', 'warn'),
       ],
     });
     printRules(aggregated);
@@ -1286,6 +1289,28 @@ describe('printComplianceVerdict', () => {
     // "days overdue" phrasing this same data renders as there.
     expect(output).not.toContain('@my-org/internal');
     expect(output).not.toContain('release age');
+  });
+
+  // #77 regression guard: this count used to add a separate banned-package
+  // bucket to the rule bucket. Now that forbid_packages hits ARE rule
+  // violations, that same sum would count each one twice.
+  it('counts a forbidden package and a failing rule as two mandatory violations, not four', () => {
+    const missingFile: RuleViolation = {
+      type: 'require_files',
+      severity: 'error',
+      patterns: ['.nvmrc'],
+      matchedFiles: [],
+    };
+    const compliance = computeCompliance(
+      makeAggregated({
+        ruleViolations: [forbidViolation('moment'), missingFile],
+      }),
+    );
+    printComplianceVerdict(compliance);
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('2 mandatory violations found');
   });
 });
 
@@ -1470,7 +1495,6 @@ describe('printJson', () => {
       'patterns',
       'versus',
       'ruleViolations',
-      'bannedPackageViolations',
       'compliance',
     ]);
     expect(parsed.summary.filesAnalyzed).toBe(5);
@@ -1490,12 +1514,55 @@ describe('printJson', () => {
       compliant: true,
       counts: {
         errorRuleViolations: 0,
-        errorBannedPackageViolations: 0,
         releaseAgeViolations: 0,
         warningRuleViolations: 0,
-        warningBannedPackageViolations: 0,
       },
     });
+  });
+
+  // #77: forbid_packages hits used to sit in a separate top-level field, so
+  // a consumer iterating ruleViolations silently missed every one of them.
+  it('emits a forbid_packages hit inside ruleViolations, carrying the matched package', () => {
+    printJson(
+      makeAggregated({
+        ruleViolations: [forbidViolation('moment', 'error', 'Use dayjs')],
+      }),
+    );
+
+    const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+    expect(parsed.ruleViolations).toEqual([
+      {
+        type: 'forbid_packages',
+        severity: 'error',
+        patterns: ['moment'],
+        message: 'Use dayjs',
+        matchedFiles: [],
+        packageName: 'moment',
+      },
+    ]);
+    expect(parsed).not.toHaveProperty('bannedPackageViolations');
+  });
+
+  // errorRuleViolations absorbs what errorBannedPackageViolations used to
+  // hold — one bucket, so a consumer counting error-severity rule hits sees
+  // forbidden packages among them instead of missing them.
+  it('counts a forbidden package alongside other rules in errorRuleViolations', () => {
+    printJson(
+      makeAggregated({
+        ruleViolations: [
+          forbidViolation('moment'),
+          {
+            type: 'require_files',
+            severity: 'error',
+            patterns: ['.nvmrc'],
+            matchedFiles: [],
+          },
+        ],
+      }),
+    );
+
+    const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+    expect(parsed.compliance.counts.errorRuleViolations).toBe(2);
   });
 
   it("reports compliance status 'warning' for warn-severity rules but keeps compliant true (#55)", () => {
@@ -1554,10 +1621,8 @@ describe('printJson', () => {
           matchedFiles: [],
         },
       ],
-      errorBannedPackageViolations: [],
       releaseAgeViolations: [],
       warningRuleViolations: [],
-      warningBannedPackageViolations: [],
     });
 
     const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);

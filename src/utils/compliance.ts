@@ -1,6 +1,5 @@
 import type { AggregatedReport } from './aggregator';
 import type { RuleViolation } from '../rules/evaluator';
-import type { BannedPackageViolation } from './package-rules';
 import type { PackageDistribution } from './package-distribution';
 
 /**
@@ -19,11 +18,11 @@ export type ComplianceStatus = 'compliant' | 'warning' | 'non-compliant';
 export interface ComplianceResult {
   compliant: boolean;
   status: ComplianceStatus;
+  /** Every error-severity rule violation, whatever its `type`. */
   errorRuleViolations: RuleViolation[];
-  errorBannedPackageViolations: BannedPackageViolation[];
   releaseAgeViolations: PackageDistribution[];
+  /** Every warn-severity rule violation, whatever its `type`. */
   warningRuleViolations: RuleViolation[];
-  warningBannedPackageViolations: BannedPackageViolation[];
 }
 
 /**
@@ -34,12 +33,13 @@ export interface ComplianceResult {
  * decides mandatory vs advisory, not which tier breached (#28).
  *
  * The `warning` tier is deliberately narrow: it covers only warn-severity
- * *rule* and *banned-package* violations — signals the policy author opted
- * into. A non-enforced (severity 'warn') overdue release-age package or a
- * not-yet-due `pendingUpgrade` is advisory data, not a warning, and must not
- * on its own demote `compliant` → `warning`. Consumers that treated any
- * non-blocking outdated row as Warning disagreed with `comply`; reading
- * `status` here is the fix (#55).
+ * *rule* violations — signals the policy author opted into. Severity alone
+ * decides the bucket; the rule's `type` never does. A non-enforced
+ * (severity 'warn') overdue
+ * release-age package or a not-yet-due `pendingUpgrade` is advisory data,
+ * not a warning, and must not on its own demote `compliant` → `warning`.
+ * Consumers that treated any non-blocking outdated row as Warning disagreed
+ * with `comply`; reading `status` here is the fix (#55).
  */
 export function computeCompliance(
   aggregated: AggregatedReport,
@@ -47,8 +47,6 @@ export function computeCompliance(
   const errorRuleViolations = aggregated.ruleViolations.filter(
     (v) => v.severity === 'error',
   );
-  const errorBannedPackageViolations =
-    aggregated.bannedPackageViolations.filter((v) => v.severity === 'error');
   const releaseAgeViolations = aggregated.packageDistribution.filter(
     (p) =>
       p.releaseAge?.severity === 'error' && p.releaseAge?.worstLevel !== null,
@@ -56,18 +54,13 @@ export function computeCompliance(
   const warningRuleViolations = aggregated.ruleViolations.filter(
     (v) => v.severity === 'warn',
   );
-  const warningBannedPackageViolations =
-    aggregated.bannedPackageViolations.filter((v) => v.severity === 'warn');
 
   const compliant =
-    errorRuleViolations.length === 0 &&
-    errorBannedPackageViolations.length === 0 &&
-    releaseAgeViolations.length === 0;
+    errorRuleViolations.length === 0 && releaseAgeViolations.length === 0;
 
   const status: ComplianceStatus = !compliant
     ? 'non-compliant'
-    : warningRuleViolations.length > 0 ||
-        warningBannedPackageViolations.length > 0
+    : warningRuleViolations.length > 0
       ? 'warning'
       : 'compliant';
 
@@ -75,9 +68,22 @@ export function computeCompliance(
     compliant,
     status,
     errorRuleViolations,
-    errorBannedPackageViolations,
     releaseAgeViolations,
     warningRuleViolations,
-    warningBannedPackageViolations,
   };
+}
+
+/**
+ * The count behind the "N mandatory violations found" line both the terminal
+ * verdict and `--summary-file` print — a display concern, which is why it
+ * lives here rather than in the emitted JSON (consumers read `compliant`, or
+ * add the buckets themselves; they're disjoint).
+ *
+ * Shared by those two renderers because they had this sum copied between
+ * them, and both got it wrong the same way when `forbid_packages` moved into
+ * `ruleViolations` (#77): each was still adding a separate banned-package
+ * bucket that now overlapped, double-reporting every forbidden package.
+ */
+export function countMandatoryViolations(result: ComplianceResult): number {
+  return result.errorRuleViolations.length + result.releaseAgeViolations.length;
 }

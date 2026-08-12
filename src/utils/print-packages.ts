@@ -1,10 +1,7 @@
 import chalk from 'chalk';
 import Table from 'cli-table3';
-import type {
-  AggregatedReport,
-  BannedPackageViolation,
-  PackageDistribution,
-} from './aggregator';
+import type { AggregatedReport, PackageDistribution } from './aggregator';
+import type { RuleViolation } from '../rules/evaluator';
 import type {
   AvailableUpgrade,
   ReleaseAgeEntry,
@@ -23,7 +20,7 @@ function printHeader() {
 
 export function formatPackageName(
   pkg: PackageDistribution,
-  banned?: BannedPackageViolation,
+  banned?: RuleViolation,
 ): string {
   let prefix = '';
   if (pkg.releaseAge?.deprecated) {
@@ -189,11 +186,19 @@ export function formatUpgradeCell(releaseAge?: ReleaseAgeEntry): string {
   return `${icon} ${description}${suffix}`;
 }
 
-export function getBannedViolation(
+/**
+ * The `forbid_packages` hit for this package, if any. Filters `ruleViolations`
+ * by `type` rather than reading a dedicated banned-packages array, which is
+ * what #77 removed — `packageName` is what keeps the join to a table row
+ * exact, since a violation carries no file paths to match on.
+ */
+export function findForbidViolation(
   pkg: PackageDistribution,
-  violations: BannedPackageViolation[],
-): BannedPackageViolation | undefined {
-  return violations.find((v) => v.packageName === pkg.packageName);
+  violations: RuleViolation[],
+): RuleViolation | undefined {
+  return violations.find(
+    (v) => v.type === 'forbid_packages' && v.packageName === pkg.packageName,
+  );
 }
 
 export function printPackages(
@@ -201,7 +206,7 @@ export function printPackages(
   mode: 'table' | 'chart',
 ) {
   const packages = aggregated.packageDistribution;
-  const violations = aggregated.bannedPackageViolations;
+  const violations = aggregated.ruleViolations;
 
   // Nothing to report — print nothing at all, rather than a "Packages"
   // header plus "No packages found" underneath it. Pure boilerplate when
@@ -220,7 +225,7 @@ export function printPackages(
 // `packages` array — see the "nothing to report" guard there.
 function printPackagesTable(
   packages: PackageDistribution[],
-  violations: BannedPackageViolation[],
+  violations: RuleViolation[],
 ) {
   printHeader();
 
@@ -242,7 +247,7 @@ function printPackagesTable(
   });
 
   packages.forEach((pkg) => {
-    const row = [formatPackageName(pkg, getBannedViolation(pkg, violations))];
+    const row = [formatPackageName(pkg, findForbidViolation(pkg, violations))];
     if (hasReleaseAge) {
       row.push(resolveInstalledVersion(pkg), formatUpgradeCell(pkg.releaseAge));
     } else {
@@ -278,7 +283,7 @@ function printPackagesTable(
 // `packages` array — see the "nothing to report" guard there.
 function printPackagesChart(
   packages: PackageDistribution[],
-  violations: BannedPackageViolation[],
+  violations: RuleViolation[],
 ) {
   printHeader();
 
@@ -295,7 +300,7 @@ function printPackagesChart(
     const emptyLength = maxBarWidth - barLength;
     const label = formatPackageName(
       pkg,
-      getBannedViolation(pkg, violations),
+      findForbidViolation(pkg, violations),
     ).padEnd(maxLabelLength, ' ');
 
     const bar =

@@ -38,7 +38,6 @@ export type {
 } from './utils/package-distribution';
 export type { VersusResult, VersusEntry } from './utils/versus';
 export type { RuleViolation } from './rules/evaluator';
-export type { BannedPackageViolation } from './utils/package-rules';
 export type { ComplianceStatus } from './utils/compliance';
 
 /** Shape of a single entry in `components` — same as `ComponentUsage`, but with `files` as an array (JSON has no `Set`) */
@@ -62,23 +61,21 @@ export interface HermexScanResult {
   components: HermexScanComponent[];
   patterns: import('./utils/pattern-counter').PatternCount[];
   versus: import('./utils/versus').VersusResult[];
+  /** Every rule hit, in one list — filter on `type` to single out a rule. */
   ruleViolations: import('./rules/evaluator').RuleViolation[];
-  bannedPackageViolations: import('./utils/package-rules').BannedPackageViolation[];
   /**
    * The official compliance verdict — read `status` instead of re-deriving
    * one from `packages`/`ruleViolations` (#55). `compliant` mirrors the
-   * `comply` exit code; `status: 'warning'` (warn-severity rules/banned
-   * packages) does not change it.
+   * `comply` exit code; `status: 'warning'` (a warn-severity rule violation)
+   * does not change it.
    */
   compliance: {
     status: import('./utils/compliance').ComplianceStatus;
     compliant: boolean;
     counts: {
       errorRuleViolations: number;
-      errorBannedPackageViolations: number;
       releaseAgeViolations: number;
       warningRuleViolations: number;
-      warningBannedPackageViolations: number;
     };
   };
 }

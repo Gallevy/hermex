@@ -69,7 +69,6 @@ describe('aggregateReports — empty input', () => {
     expect(result.packageDistribution).toEqual([]);
     expect(result.patternCounts).toEqual([]);
     expect(result.versusResults).toEqual([]);
-    expect(result.bannedPackageViolations).toEqual([]);
     expect(result.ruleViolations).toEqual([]);
     expect(result.topComponents).toEqual([]);
     expect(result.allComponents).toEqual([]);
@@ -304,8 +303,8 @@ describe('aggregateReports — package distribution', () => {
   });
 });
 
-describe('aggregateReports — banned packages', () => {
-  it('reports a banned package violation', () => {
+describe('aggregateReports — forbidden packages', () => {
+  it('reports a forbidden package as a rule violation', () => {
     const report = reportWithNamedImport('Moment', 'moment');
     const config = createConfig({
       rules: {
@@ -317,12 +316,34 @@ describe('aggregateReports — banned packages', () => {
 
     const result = aggregateReports([report], { moment: '2.29.0' }, config);
 
-    expect(result.bannedPackageViolations).toHaveLength(1);
-    expect(result.bannedPackageViolations[0]).toEqual({
-      packageName: 'moment',
+    expect(result.ruleViolations).toHaveLength(1);
+    expect(result.ruleViolations[0]).toEqual({
+      type: 'forbid_packages',
       severity: 'error',
+      patterns: ['moment'],
       message: 'Use dayjs',
+      matchedFiles: [],
+      packageName: 'moment',
     });
+  });
+
+  // #77: one list, so a consumer iterating ruleViolations can't miss a
+  // forbid_packages hit the way it could when they lived in their own field.
+  it('puts forbid_packages and require_packages hits in one list, in detection order', () => {
+    const report = reportWithNamedImport('Moment', 'moment');
+    const config = createConfig({
+      rules: {
+        forbid_packages: [{ severity: 'error', patterns: ['moment'] }],
+        require_packages: [{ severity: 'error', patterns: ['dayjs'] }],
+      },
+    });
+
+    const result = aggregateReports([report], { moment: '2.29.0' }, config);
+
+    expect(result.ruleViolations.map((v) => v.type)).toEqual([
+      'forbid_packages',
+      'require_packages',
+    ]);
   });
 
   it('reports no violations when no package matches', () => {
@@ -333,10 +354,10 @@ describe('aggregateReports — banned packages', () => {
 
     const result = aggregateReports([report], { react: '18.0.0' }, config);
 
-    expect(result.bannedPackageViolations).toEqual([]);
+    expect(result.ruleViolations).toEqual([]);
   });
 
-  it('reports a banned package that is only declared in package.json', () => {
+  it('reports a forbidden package that is only declared in package.json', () => {
     const report = reportWithNamedImport('Button', 'react');
     const config = createConfig({
       rules: {
@@ -355,8 +376,15 @@ describe('aggregateReports — banned packages', () => {
       { jest: ['devDependencies'] },
     );
 
-    expect(result.bannedPackageViolations).toEqual([
-      { packageName: 'jest', severity: 'error', message: 'Use vitest' },
+    expect(result.ruleViolations).toEqual([
+      {
+        type: 'forbid_packages',
+        severity: 'error',
+        patterns: ['jest'],
+        message: 'Use vitest',
+        matchedFiles: [],
+        packageName: 'jest',
+      },
     ]);
     // Declared-only packages stay out of the packages table — they have no
     // measured usage to report.

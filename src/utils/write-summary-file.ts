@@ -1,6 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import type { AggregatedReport } from './aggregator';
 import type { ComplianceResult } from './compliance';
+import { countMandatoryViolations } from './compliance';
 import { describeViolation, formatRuleType } from './print-rules';
 import {
   describeUpgradeTarget,
@@ -18,15 +19,12 @@ function buildRulesSection(aggregated: AggregatedReport): string {
   const ruleViolations = aggregated.ruleViolations.filter(
     (v) => v.severity !== 'info',
   );
-  const bannedPackageViolations = aggregated.bannedPackageViolations.filter(
-    (v) => v.severity !== 'info',
-  );
 
   // Nothing to report — omit the section entirely, matching
   // buildPackagesSection below. The verdict section always states pass/fail
   // clearly; a "### Rules / All rule checks passed" block with zero rows
   // is boilerplate indistinguishable from "no rules were ever configured."
-  if (ruleViolations.length === 0 && bannedPackageViolations.length === 0) {
+  if (ruleViolations.length === 0) {
     return '';
   }
 
@@ -43,16 +41,10 @@ function buildRulesSection(aggregated: AggregatedReport): string {
     );
   }
 
-  for (const v of bannedPackageViolations) {
-    const msg = v.message ? ` — ${v.message}` : '';
-    lines.push(
-      `| ${severityIcon(v.severity)} | forbid_packages | ${v.packageName} is forbidden${msg} |`,
-    );
-  }
-
-  const allViolations = [...ruleViolations, ...bannedPackageViolations];
-  const errorCount = allViolations.filter((v) => v.severity === 'error').length;
-  const warnCount = allViolations.filter((v) => v.severity === 'warn').length;
+  const errorCount = ruleViolations.filter(
+    (v) => v.severity === 'error',
+  ).length;
+  const warnCount = ruleViolations.filter((v) => v.severity === 'warn').length;
   const parts: string[] = [];
   if (errorCount > 0)
     parts.push(`${errorCount} error${errorCount > 1 ? 's' : ''}`);
@@ -108,10 +100,7 @@ function buildVerdictSection(compliance: ComplianceResult): string {
     return `### ${severityIcon('success')} COMPLIANT\n`;
   }
 
-  const mandatoryCount =
-    compliance.errorRuleViolations.length +
-    compliance.errorBannedPackageViolations.length +
-    compliance.releaseAgeViolations.length;
+  const mandatoryCount = countMandatoryViolations(compliance);
 
   return `### ${severityIcon('error')} NOT COMPLIANT\n\n${mandatoryCount} mandatory violation${mandatoryCount > 1 ? 's' : ''} found\n`;
 }

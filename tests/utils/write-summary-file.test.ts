@@ -5,7 +5,6 @@ import { tmpdir } from 'node:os';
 import chalk from 'chalk';
 import type { AggregatedReport } from '../../src/utils/aggregator';
 import type { RuleViolation } from '../../src/rules/evaluator';
-import type { BannedPackageViolation } from '../../src/utils/package-rules';
 import { computeCompliance } from '../../src/utils/compliance';
 import {
   writeSummaryFile,
@@ -16,6 +15,22 @@ import {
   createMockPackage,
   createMockReleaseAge,
 } from '../helpers/mock-reports';
+
+/** A forbid_packages hit, the shape `detectForbiddenPackages` emits (#77). */
+function forbidViolation(
+  packageName: string,
+  severity: RuleViolation['severity'] = 'error',
+  message?: string,
+): RuleViolation {
+  return {
+    type: 'forbid_packages',
+    severity,
+    patterns: [packageName],
+    message,
+    matchedFiles: [],
+    packageName,
+  };
+}
 
 function makeAggregated(
   overrides: Partial<AggregatedReport> = {},
@@ -32,7 +47,6 @@ function makeAggregated(
     packageDistribution: [],
     versusResults: [],
     ruleViolations: [],
-    bannedPackageViolations: [],
     reports: [],
     ...overrides,
   };
@@ -165,14 +179,16 @@ describe('writeSummaryFile', () => {
       expect(content).toContain('### 🟢 COMPLIANT');
     });
 
+    // The row wording is unchanged from when banned packages had their own
+    // renderer here — describeViolation now produces it, so the two
+    // duplicated loops could collapse into one (#77).
     it('still shows a banned package as a forbid_packages line', () => {
-      const violation: BannedPackageViolation = {
-        packageName: 'moment',
-        severity: 'error',
-        message: 'Use date-fns or dayjs',
-      };
       const content = write(
-        makeAggregated({ bannedPackageViolations: [violation] }),
+        makeAggregated({
+          ruleViolations: [
+            forbidViolation('moment', 'error', 'Use date-fns or dayjs'),
+          ],
+        }),
       );
       expect(content).toContain(
         '| 🔴 | forbid_packages | moment is forbidden — Use date-fns or dayjs |',
@@ -180,12 +196,8 @@ describe('writeSummaryFile', () => {
     });
 
     it('shows a banned package with no message and no trailing dash', () => {
-      const violation: BannedPackageViolation = {
-        packageName: 'moment',
-        severity: 'error',
-      };
       const content = write(
-        makeAggregated({ bannedPackageViolations: [violation] }),
+        makeAggregated({ ruleViolations: [forbidViolation('moment')] }),
       );
       expect(content).toContain(
         '| 🔴 | forbid_packages | moment is forbidden |',
@@ -219,27 +231,25 @@ describe('writeSummaryFile', () => {
           matchedFiles: [],
         },
       ];
-      const warnings: BannedPackageViolation[] = [
-        { packageName: 'moment', severity: 'warn' },
-        { packageName: 'left-pad', severity: 'warn' },
-      ];
       const content = write(
         makeAggregated({
-          ruleViolations: errors,
-          bannedPackageViolations: warnings,
+          ruleViolations: [
+            ...errors,
+            forbidViolation('moment', 'warn'),
+            forbidViolation('left-pad', 'warn'),
+          ],
         }),
       );
       expect(content).toContain('2 errors, 2 warnings');
     });
 
     it('omits the Rules section for an info-severity-only banned package violation', () => {
-      const violation: BannedPackageViolation = {
-        packageName: 'some-pkg',
-        severity: 'info',
-        message: 'internal note',
-      };
       const content = write(
-        makeAggregated({ bannedPackageViolations: [violation] }),
+        makeAggregated({
+          ruleViolations: [
+            forbidViolation('some-pkg', 'info', 'internal note'),
+          ],
+        }),
       );
       expect(content).not.toContain('### Rules');
       expect(content).not.toContain('some-pkg');
@@ -359,15 +369,12 @@ describe('writeSummaryFile', () => {
 
     it('does not show a banned/restricted package (it is Rules-only, not duplicated here)', () => {
       const banned = createMockPackage('moment');
-      const violation: BannedPackageViolation = {
-        packageName: 'moment',
-        severity: 'error',
-        message: 'Use date-fns or dayjs',
-      };
       const content = write(
         makeAggregated({
           packageDistribution: [banned],
-          bannedPackageViolations: [violation],
+          ruleViolations: [
+            forbidViolation('moment', 'error', 'Use date-fns or dayjs'),
+          ],
         }),
       );
       expect(content).not.toContain('### Packages');
@@ -587,5 +594,23 @@ describe('writeSummaryFile', () => {
     const content = write(makeAggregated({ ruleViolations: [violation] }));
     expect(content).toContain('NOT COMPLIANT');
     expect(content).toContain('1 mandatory violation found');
+  });
+
+  // #77 regression guard: the verdict used to add a separate banned-package
+  // count to the rule count. Now that forbid_packages hits ARE rule
+  // violations, that same sum would count each one twice.
+  it('counts a forbidden package and a failing rule as two mandatory violations, not four', () => {
+    const missingFile: RuleViolation = {
+      type: 'require_files',
+      severity: 'error',
+      patterns: ['.nvmrc'],
+      matchedFiles: [],
+    };
+    const content = write(
+      makeAggregated({
+        ruleViolations: [forbidViolation('moment'), missingFile],
+      }),
+    );
+    expect(content).toContain('2 mandatory violations found');
   });
 });

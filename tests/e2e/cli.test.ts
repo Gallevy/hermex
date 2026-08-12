@@ -543,10 +543,35 @@ describe('package inventory axes (end to end)', () => {
     const result = run(['comply', '--config', inventoryConfig('declared')]);
     expect(result.status).toBe(1);
     const parsed = JSON.parse(result.stdout);
-    expect(parsed.bannedPackageViolations).toEqual([
-      { packageName: 'moment', severity: 'error', message: 'Use date-fns' },
+    expect(parsed.ruleViolations).toEqual([
+      {
+        type: 'forbid_packages',
+        severity: 'error',
+        patterns: ['moment'],
+        message: 'Use date-fns',
+        matchedFiles: [],
+        packageName: 'moment',
+      },
     ]);
     expect(parsed.compliance.status).toBe('non-compliant');
+  });
+
+  // #77: the whole point of the merge — a consumer reading only
+  // `ruleViolations` used to miss every forbid_packages hit.
+  it('emits no separate bannedPackageViolations field', () => {
+    const result = run(['comply', '--config', inventoryConfig('declared')]);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed).not.toHaveProperty('bannedPackageViolations');
+    expect(Object.keys(parsed)).toEqual([
+      'version',
+      'summary',
+      'packages',
+      'components',
+      'patterns',
+      'versus',
+      'ruleViolations',
+      'compliance',
+    ]);
   });
 
   it('reports that declared-but-unimported package without inventing a packages[] row for it', () => {
@@ -570,7 +595,7 @@ describe('package inventory axes (end to end)', () => {
     const result = run(['comply', '--config', inventoryConfig('transitive')]);
     expect(result.status).toBe(0);
     const parsed = JSON.parse(result.stdout);
-    expect(parsed.bannedPackageViolations).toEqual([]);
+    expect(parsed.ruleViolations).toEqual([]);
     expect(parsed.compliance.status).toBe('compliant');
   });
 
@@ -578,15 +603,15 @@ describe('package inventory axes (end to end)', () => {
     const result = run(['comply', '--config', inventoryConfig('undeclared')]);
     expect(result.status).toBe(1);
     const parsed = JSON.parse(result.stdout);
-    expect(parsed.bannedPackageViolations).toHaveLength(1);
-    expect(parsed.bannedPackageViolations[0].packageName).toBe('react-dom');
+    expect(parsed.ruleViolations).toHaveLength(1);
+    expect(parsed.ruleViolations[0].type).toBe('forbid_packages');
+    expect(parsed.ruleViolations[0].packageName).toBe('react-dom');
   });
 
   it('packages.ignore drops a package from forbid_packages while it still satisfies require_packages', () => {
     const result = run(['comply', '--config', inventoryConfig('ignored')]);
     expect(result.status).toBe(0);
     const parsed = JSON.parse(result.stdout);
-    expect(parsed.bannedPackageViolations).toEqual([]);
     expect(parsed.ruleViolations).toEqual([]);
   });
 
@@ -594,12 +619,28 @@ describe('package inventory axes (end to end)', () => {
     const result = run(['comply', '--config', inventoryConfig('uninstalled')]);
     expect(result.status).toBe(1);
     const parsed = JSON.parse(result.stdout);
-    // forbid_packages reads the declared axis — eslint is in package.json.
-    expect(parsed.bannedPackageViolations).toHaveLength(1);
-    expect(parsed.bannedPackageViolations[0].packageName).toBe('eslint');
-    // require_packages reads the installed axis — eslint is not in the
-    // lockfile, so the requirement is genuinely unsatisfied.
-    expect(parsed.ruleViolations).toHaveLength(1);
-    expect(parsed.ruleViolations[0].type).toBe('require_packages');
+    // Both rules fire on the same package, from different axes, into the
+    // same list — forbid_packages reads the declared axis (eslint is in
+    // package.json), require_packages the installed axis (it is not in the
+    // lockfile, so the requirement is genuinely unsatisfied).
+    expect(parsed.ruleViolations.map((v: { type: string }) => v.type)).toEqual([
+      'forbid_packages',
+      'require_packages',
+    ]);
+    expect(parsed.ruleViolations[0].packageName).toBe('eslint');
+  });
+
+  // #77 regression guard, end to end: the `uninstalled` fixture is the only
+  // one producing an error forbid_packages hit AND another error rule
+  // violation at once — the shape that double-reported while the verdict
+  // still added a separate banned-package bucket on top of the rule bucket.
+  it('counts a coinciding forbidden package and failing rule once each', () => {
+    const result = run(['comply', '--config', inventoryConfig('uninstalled')]);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.compliance.counts).toEqual({
+      errorRuleViolations: 2,
+      releaseAgeViolations: 0,
+      warningRuleViolations: 0,
+    });
   });
 });

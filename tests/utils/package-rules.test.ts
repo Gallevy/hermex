@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  detectBannedPackages,
+  detectForbiddenPackages,
   detectRequiredPackages,
 } from '../../src/utils/package-rules';
 import { HermexConfigSchema } from '../../src/config/schema';
@@ -10,7 +10,7 @@ import { createMockInventoryEntry } from '../helpers/mock-reports';
 
 /**
  * Parse a partial config through the real schema, then resolve it exactly
- * like the real pipeline does — detectBannedPackages/detectRequiredPackages
+ * like the real pipeline does — detectForbiddenPackages/detectRequiredPackages
  * only ever receive already-resolved rules (severity 'off' collapsed away),
  * same as every other consumer downstream of applyOverrides. None of these
  * tests configure `overrides`, so the repo path is never actually read.
@@ -35,7 +35,7 @@ const transitiveOnly = (name: string) =>
     componentCount: 0,
   });
 
-describe('detectBannedPackages', () => {
+describe('detectForbiddenPackages', () => {
   it('flags a package matching a forbid pattern with the rule severity and message', () => {
     const config = createConfig({
       rules: {
@@ -45,10 +45,17 @@ describe('detectBannedPackages', () => {
       },
     });
 
-    const violations = detectBannedPackages([used('moment')], config);
+    const violations = detectForbiddenPackages([used('moment')], config);
 
     expect(violations).toEqual([
-      { packageName: 'moment', severity: 'error', message: 'Use dayjs' },
+      {
+        type: 'forbid_packages',
+        severity: 'error',
+        patterns: ['moment'],
+        message: 'Use dayjs',
+        matchedFiles: [],
+        packageName: 'moment',
+      },
     ]);
   });
 
@@ -59,10 +66,53 @@ describe('detectBannedPackages', () => {
       },
     });
 
-    const violations = detectBannedPackages([used('@legacy/widget')], config);
+    const violations = detectForbiddenPackages(
+      [used('@legacy/widget')],
+      config,
+    );
 
     expect(violations).toHaveLength(1);
     expect(violations[0].packageName).toBe('@legacy/widget');
+  });
+
+  // `patterns` carries the RULE's globs, never the matched name — same as
+  // require_packages, and what lets one glob rule produce several violations
+  // that a consumer can still trace back to the rule that fired them.
+  it('carries the rule globs in patterns and the matched package in packageName', () => {
+    const config = createConfig({
+      rules: {
+        forbid_packages: [{ severity: 'error', patterns: ['@legacy/*'] }],
+      },
+    });
+
+    const violations = detectForbiddenPackages(
+      [used('@legacy/widget'), used('@legacy/table')],
+      config,
+    );
+
+    expect(violations.map((v) => v.patterns)).toEqual([
+      ['@legacy/*'],
+      ['@legacy/*'],
+    ]);
+    expect(violations.map((v) => v.packageName)).toEqual([
+      '@legacy/widget',
+      '@legacy/table',
+    ]);
+  });
+
+  // A package is not a file. The inventory carries no file paths at all, and
+  // a declared-but-unimported hit (#75) has none to carry — so matchedFiles
+  // stays empty rather than being repurposed to hold the package name.
+  it('leaves matchedFiles empty', () => {
+    const config = createConfig({
+      rules: {
+        forbid_packages: [{ severity: 'error', patterns: ['moment'] }],
+      },
+    });
+
+    const violations = detectForbiddenPackages([used('moment')], config);
+
+    expect(violations[0].matchedFiles).toEqual([]);
   });
 
   it('uses the first matching rule when a package matches two forbid rules', () => {
@@ -75,7 +125,7 @@ describe('detectBannedPackages', () => {
       },
     });
 
-    const violations = detectBannedPackages([used('moment')], config);
+    const violations = detectForbiddenPackages([used('moment')], config);
 
     expect(violations).toHaveLength(1);
     expect(violations[0].message).toBe('first rule');
@@ -83,23 +133,23 @@ describe('detectBannedPackages', () => {
   });
 
   it('returns an empty array when no config is provided', () => {
-    expect(detectBannedPackages([used('moment')])).toEqual([]);
+    expect(detectForbiddenPackages([used('moment')])).toEqual([]);
   });
 
   it('returns an empty array when there are no forbid_packages rules', () => {
     const config = createConfig();
 
-    expect(detectBannedPackages([used('moment')], config)).toEqual([]);
+    expect(detectForbiddenPackages([used('moment')], config)).toEqual([]);
   });
 
-  it('a forbid_packages rule authored with severity "off" resolves away before it ever reaches detectBannedPackages', () => {
+  it('a forbid_packages rule authored with severity "off" resolves away before it ever reaches detectForbiddenPackages', () => {
     const config = createConfig({
       rules: {
         forbid_packages: [{ severity: 'off', patterns: ['moment'] }],
       },
     });
 
-    expect(detectBannedPackages([used('moment')], config)).toEqual([]);
+    expect(detectForbiddenPackages([used('moment')], config)).toEqual([]);
   });
 
   // #75: the usage axis is built from component imports, so build-only
@@ -118,16 +168,19 @@ describe('detectBannedPackages', () => {
       },
     });
 
-    const violations = detectBannedPackages(
+    const violations = detectForbiddenPackages(
       [declaredOnly('@acme/coverager')],
       config,
     );
 
     expect(violations).toEqual([
       {
-        packageName: '@acme/coverager',
+        type: 'forbid_packages',
         severity: 'error',
+        patterns: ['@acme/coverager'],
         message: 'Remove deprecated internal package',
+        matchedFiles: [],
+        packageName: '@acme/coverager',
       },
     ]);
   });
@@ -139,7 +192,7 @@ describe('detectBannedPackages', () => {
       },
     });
 
-    const violations = detectBannedPackages(
+    const violations = detectForbiddenPackages(
       [createMockInventoryEntry('moment', { declaredIn: [] })],
       config,
     );
@@ -154,7 +207,10 @@ describe('detectBannedPackages', () => {
       },
     });
 
-    const violations = detectBannedPackages([transitiveOnly('moment')], config);
+    const violations = detectForbiddenPackages(
+      [transitiveOnly('moment')],
+      config,
+    );
 
     expect(violations).toEqual([]);
   });
@@ -166,7 +222,7 @@ describe('detectBannedPackages', () => {
       },
     });
 
-    const violations = detectBannedPackages([used('moment')], config);
+    const violations = detectForbiddenPackages([used('moment')], config);
 
     expect(violations).toHaveLength(1);
   });
@@ -179,7 +235,7 @@ describe('detectBannedPackages', () => {
       },
     });
 
-    const violations = detectBannedPackages(
+    const violations = detectForbiddenPackages(
       [createMockInventoryEntry('@legacy/widget', { ignored: true })],
       config,
     );
@@ -194,7 +250,7 @@ describe('detectBannedPackages', () => {
       },
     });
 
-    const violations = detectBannedPackages(
+    const violations = detectForbiddenPackages(
       [used('moment'), declaredOnly('jest')],
       config,
     );
