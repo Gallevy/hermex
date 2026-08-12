@@ -259,7 +259,8 @@ Purely transitive dependencies are never flagged: they arrive through another pa
 isn't something your repo can do. Packages excluded by `packages.ignore` are never flagged either.
 
 Every banned package appears in the Rules and Compliance sections. Those with measured usage also get a
-`[BANNED]` or `[RESTRICTED]` badge in the packages table; a declared-but-unused package has no row there.
+`[BANNED]` or `[RESTRICTED]` badge in the packages table, which since #78 lists every package the repo
+owns — so a declared-but-unimported banned package now has a row there too.
 
 In the JSON output, each hit is an ordinary entry in `ruleViolations` with `type: "forbid_packages"` —
 `patterns` carries the rule's globs, `packageName` the package that matched, and `matchedFiles` is empty
@@ -477,14 +478,38 @@ Severity is the only thing that decides which bucket a rule violation lands in; 
 |---|---|
 | `version` | The hermex version that produced the report. |
 | `summary` | Aggregate counts: `filesAnalyzed`, `totalImports`, `totalComponents`, `totalUsagePatterns`. |
-| `packages` | Per-package rows for packages with measured usage, plus any release-age–enforced package. Carries version, usage counts, and `releaseAge` when enrichment ran. |
-| `components` | Every component found, with its source package, usage count and the files using it. |
+| `packages` | Every package the repo owns — see below. Carries version, `declaredIn`, usage counts, and `releaseAge` when enrichment ran. |
+| `components` | Every component found, with its source package, usage count and the files using it. The one place component names live. |
 | `patterns` | Per-pattern-type usage counts (`imports.named`, `usage.jsx`, …). |
 | `versus` | Head-to-head comparisons configured under `versus`. |
 | `ruleViolations` | **Every rule hit, in one list** — `detect_files`, `require_files`, `require_packages`, `forbid_packages`, `require_scripts`, `require_package_fields`, `forbid_package_fields`, `engine_version`, `codeowners`. Filter on `type`. |
 | `compliance` | The canonical verdict — see above. |
 
 `ruleViolations` is the single source of truth for rule hits. Entries share a common shape (`type`, `severity`, `patterns`, `message?`, `matchedFiles`) and add per-type fields where they apply: `packageName` for `forbid_packages`, `fieldPath`/`actualValue` for the package-field rules, `installedRange`/`requiredRange` for `engine_version`.
+
+#### What `packages[]` contains
+
+Every package the repo **owns**: declared in `package.json` (any dependency bucket), recorded as a direct dependency by the lockfile, or imported by scanned source. Purely transitive dependencies are excluded — they arrive through another package, so this stays your own dependency surface rather than the whole lockfile.
+
+```jsonc
+{
+  "packageName": "moment",
+  "version": "2.29.4",           // null when declared but not installed
+  "declaredIn": ["devDependencies"],  // empty for a phantom/lockfile-only dep
+  "usageCount": 0,                    // component usage — see the caveat below
+  "componentCount": 0,
+  "percentage": 0,
+  "internal": false,
+  "hasVersionConflict": false,
+  "allVersions": ["2.29.4"]
+}
+```
+
+**`usageCount` measures component usage, not imports.** A package imported and called as a function (`lodash`, `moment`, `axios`) reads `0` while still being a real dependency — so use the *presence of a row* to answer "does this repo depend on X?", not `usageCount > 0`. Per-import detail is not currently in the output.
+
+Before v3, `packages[]` held only packages with measured component usage, which made it empty for any project without JSX and silently omitted every function-only dependency.
+
+Component **names** are not on these rows — they live in `components[]`, keyed by `source`. To list one package's components: `components.filter(c => c.source === pkg.packageName)`.
 
 ### CI Job Summary / PR Comment
 
