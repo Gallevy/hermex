@@ -1,3 +1,10 @@
+# [2.9.0](https://github.com/Gallevy/hermex/compare/v2.8.1...v2.9.0) (2026-08-12)
+
+
+### Features
+
+* report forbid_packages hits in ruleViolations ([#77](https://github.com/Gallevy/hermex/issues/77)) ([#82](https://github.com/Gallevy/hermex/issues/82)) ([5de4e3a](https://github.com/Gallevy/hermex/commit/5de4e3a95b52efd9633fb89590b0c687963966bf))
+
 ## [2.8.1](https://github.com/Gallevy/hermex/compare/v2.8.0...v2.8.1) (2026-08-12)
 
 
