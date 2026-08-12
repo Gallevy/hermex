@@ -452,20 +452,22 @@ Both `hermex scan --format json` and `hermex comply --format json` emit a top-le
   "status": "compliant",   // "compliant" | "warning" | "non-compliant"
   "compliant": true,        // mirrors the `comply` exit code (0 ⇔ true)
   "counts": {
-    "errorRuleViolations": 0,         // includes forbid_packages
+    "errorRuleViolations": 0,
     "releaseAgeViolations": 0,        // enforced (severity 'error') + overdue
-    "warningRuleViolations": 0        // includes forbid_packages
+    "warningRuleViolations": 0
   }
 }
 ```
 
 - **`non-compliant`** — at least one mandatory (`error`) violation. Exactly `compliant === false`; the condition `comply` exits `1` on.
-- **`warning`** — passes `comply` (exit `0`), but a `warn`-severity **rule** violation is present (`forbid_packages` among them). A non-enforced (`severity: 'warn'`) overdue release-age package or a not-yet-due `pendingUpgrade` is advisory data — it is **not** a warning and does **not** demote `compliant` → `warning`.
+- **`warning`** — passes `comply` (exit `0`), but a `warn`-severity **rule** violation is present. A non-enforced (`severity: 'warn'`) overdue release-age package or a not-yet-due `pendingUpgrade` is advisory data — it is **not** a warning and does **not** demote `compliant` → `warning`.
 - **`compliant`** — no mandatory violations and nothing flagged at `warn`.
 
 `status: 'warning'` never changes the exit code — it exists so dashboards and sheet syncs can surface a three-state signal that still agrees with `comply` on pass/fail.
 
-The `counts` buckets are disjoint, so `errorRuleViolations + releaseAgeViolations` is the number of comply-failing violations — the same number the CLI prints as "N mandatory violations found". Note that `errorRuleViolations` now includes `forbid_packages` hits, which had their own bucket before.
+The `counts` buckets are disjoint, so `errorRuleViolations + releaseAgeViolations` is the number of comply-failing violations — the same number the CLI prints as "N mandatory violations found".
+
+Severity is the only thing that decides which bucket a rule violation lands in; the rule's `type` never does. An `error`-severity violation of any type counts toward `errorRuleViolations`, a `warn`-severity one toward `warningRuleViolations`, and an `info`-severity one toward neither while still appearing in `ruleViolations`.
 
 ### Reading the JSON output
 

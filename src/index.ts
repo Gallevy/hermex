@@ -61,17 +61,13 @@ export interface HermexScanResult {
   components: HermexScanComponent[];
   patterns: import('./utils/pattern-counter').PatternCount[];
   versus: import('./utils/versus').VersusResult[];
-  /**
-   * Every rule hit, in one list. `forbid_packages` violations live here too
-   * (#77) — filter on `type` to single them out; each carries the matched
-   * package in `packageName`.
-   */
+  /** Every rule hit, in one list — filter on `type` to single out a rule. */
   ruleViolations: import('./rules/evaluator').RuleViolation[];
   /**
    * The official compliance verdict — read `status` instead of re-deriving
    * one from `packages`/`ruleViolations` (#55). `compliant` mirrors the
-   * `comply` exit code; `status: 'warning'` (warn-severity rule violations,
-   * `forbid_packages` among them) does not change it.
+   * `comply` exit code; `status: 'warning'` (a warn-severity rule violation)
+   * does not change it.
    */
   compliance: {
     status: import('./utils/compliance').ComplianceStatus;

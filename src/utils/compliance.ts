@@ -18,10 +18,10 @@ export type ComplianceStatus = 'compliant' | 'warning' | 'non-compliant';
 export interface ComplianceResult {
   compliant: boolean;
   status: ComplianceStatus;
-  /** Includes `forbid_packages` — banned packages are rule violations like any other since #77. */
+  /** Every error-severity rule violation, whatever its `type`. */
   errorRuleViolations: RuleViolation[];
   releaseAgeViolations: PackageDistribution[];
-  /** Includes `forbid_packages`. */
+  /** Every warn-severity rule violation, whatever its `type`. */
   warningRuleViolations: RuleViolation[];
 }
 
@@ -33,8 +33,9 @@ export interface ComplianceResult {
  * decides mandatory vs advisory, not which tier breached (#28).
  *
  * The `warning` tier is deliberately narrow: it covers only warn-severity
- * *rule* violations (`forbid_packages` among them since #77) — signals the
- * policy author opted into. A non-enforced (severity 'warn') overdue
+ * *rule* violations — signals the policy author opted into. Severity alone
+ * decides the bucket; the rule's `type` never does. A non-enforced
+ * (severity 'warn') overdue
  * release-age package or a not-yet-due `pendingUpgrade` is advisory data,
  * not a warning, and must not on its own demote `compliant` → `warning`.
  * Consumers that treated any non-blocking outdated row as Warning disagreed

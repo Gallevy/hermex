@@ -128,6 +128,56 @@ describe('computeCompliance', () => {
     expect(countMandatoryViolations(result)).toBe(2);
   });
 
+  // Severity, not `type`, decides the bucket — forbid_packages is sorted
+  // exactly like every other rule at every severity, which is the whole
+  // point of #77. The 'off' severity never reaches here (applyOverrides
+  // resolves it away), so these three are the complete set.
+  it.each([
+    ['error', 'errorRuleViolations', 'non-compliant', false],
+    ['warn', 'warningRuleViolations', 'warning', true],
+  ] as const)(
+    'sorts a %s-severity forbid_packages hit into %s like any other rule',
+    (severity, bucket, status, compliant) => {
+      const forbidden: RuleViolation = {
+        type: 'forbid_packages',
+        severity,
+        patterns: ['moment'],
+        matchedFiles: [],
+        packageName: 'moment',
+      };
+      const sameSeverityFileRule: RuleViolation = {
+        type: 'require_files',
+        severity,
+        patterns: ['.nvmrc'],
+        matchedFiles: [],
+      };
+      const result = computeCompliance(
+        makeAggregated({ ruleViolations: [forbidden, sameSeverityFileRule] }),
+      );
+
+      expect(result[bucket]).toEqual([forbidden, sameSeverityFileRule]);
+      expect(result.status).toBe(status);
+      expect(result.compliant).toBe(compliant);
+    },
+  );
+
+  it('leaves an info-severity forbid_packages hit out of both buckets', () => {
+    const forbidden: RuleViolation = {
+      type: 'forbid_packages',
+      severity: 'info',
+      patterns: ['moment'],
+      matchedFiles: [],
+      packageName: 'moment',
+    };
+    const result = computeCompliance(
+      makeAggregated({ ruleViolations: [forbidden] }),
+    );
+
+    expect(result.errorRuleViolations).toHaveLength(0);
+    expect(result.warningRuleViolations).toHaveLength(0);
+    expect(result.status).toBe('compliant');
+  });
+
   it('is non-compliant when an enforced package has a major_overdue breach', () => {
     const pkg = createMockPackage('@my-org/internal', {
       releaseAge: createMockReleaseAge({
