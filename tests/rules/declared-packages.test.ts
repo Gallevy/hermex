@@ -32,15 +32,15 @@ describe('collectDeclaredPackages', () => {
       }),
     );
 
-    expect(collectDeclaredPackages(dir).sort()).toEqual([
-      'fsevents',
-      'react',
-      'react-dom',
-      'vitest',
-    ]);
+    expect(collectDeclaredPackages(dir)).toEqual({
+      react: ['dependencies'],
+      vitest: ['devDependencies'],
+      'react-dom': ['peerDependencies'],
+      fsevents: ['optionalDependencies'],
+    });
   });
 
-  it('reports a package listed in two buckets exactly once', () => {
+  it('records every bucket declaring a package listed more than once', () => {
     const dir = withManifest(
       JSON.stringify({
         peerDependencies: { react: '^18.0.0' },
@@ -48,25 +48,27 @@ describe('collectDeclaredPackages', () => {
       }),
     );
 
-    expect(collectDeclaredPackages(dir)).toEqual(['react']);
+    expect(collectDeclaredPackages(dir)).toEqual({
+      react: ['devDependencies', 'peerDependencies'],
+    });
   });
 
-  it('returns an empty array when the manifest declares no dependencies', () => {
+  it('returns nothing when the manifest declares no dependencies', () => {
     const dir = withManifest(JSON.stringify({ name: 'test-project' }));
 
-    expect(collectDeclaredPackages(dir)).toEqual([]);
+    expect(collectDeclaredPackages(dir)).toEqual({});
   });
 
-  it('returns an empty array when package.json is missing', () => {
+  it('returns nothing when package.json is missing', () => {
     const dir = mkdtempSync(join(tempDir, 'empty-'));
 
-    expect(collectDeclaredPackages(dir)).toEqual([]);
+    expect(collectDeclaredPackages(dir)).toEqual({});
   });
 
-  it('returns an empty array when package.json is not valid JSON', () => {
+  it('returns nothing when package.json is not valid JSON', () => {
     const dir = withManifest('{ not json');
 
-    expect(collectDeclaredPackages(dir)).toEqual([]);
+    expect(collectDeclaredPackages(dir)).toEqual({});
   });
 
   it('skips a malformed bucket without dropping the well-formed ones', () => {
@@ -78,6 +80,8 @@ describe('collectDeclaredPackages', () => {
       }),
     );
 
-    expect(collectDeclaredPackages(dir)).toEqual(['vitest']);
+    expect(collectDeclaredPackages(dir)).toEqual({
+      vitest: ['devDependencies'],
+    });
   });
 });

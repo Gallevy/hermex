@@ -6,7 +6,7 @@ import {
 import { HermexConfigSchema } from '../../src/config/schema';
 import type { HermexConfigInput } from '../../src/config/schema';
 import { applyOverrides } from '../../src/config/overrides';
-import { createMockPackage } from '../helpers/mock-reports';
+import { createMockInventoryEntry } from '../helpers/mock-reports';
 
 /**
  * Parse a partial config through the real schema, then resolve it exactly
@@ -19,9 +19,24 @@ function createConfig(input: HermexConfigInput = {}) {
   return applyOverrides(HermexConfigSchema.parse(input), process.cwd());
 }
 
+/** Imported by scanned source, and declared — the common case. */
+const used = (name: string) => createMockInventoryEntry(name);
+
+/** Declared in package.json but never imported — build tooling, hooks, CLIs. */
+const declaredOnly = (name: string) =>
+  createMockInventoryEntry(name, { usageCount: 0, componentCount: 0 });
+
+/** Installed only as someone else's dependency — this repo cannot remove it. */
+const transitiveOnly = (name: string) =>
+  createMockInventoryEntry(name, {
+    declaredIn: [],
+    rootVersion: null,
+    usageCount: 0,
+    componentCount: 0,
+  });
+
 describe('detectBannedPackages', () => {
   it('flags a package matching a forbid pattern with the rule severity and message', () => {
-    const moment = createMockPackage('moment');
     const config = createConfig({
       rules: {
         forbid_packages: [
@@ -30,7 +45,7 @@ describe('detectBannedPackages', () => {
       },
     });
 
-    const violations = detectBannedPackages([moment], config);
+    const violations = detectBannedPackages([used('moment')], config);
 
     expect(violations).toEqual([
       { packageName: 'moment', severity: 'error', message: 'Use dayjs' },
@@ -38,26 +53,19 @@ describe('detectBannedPackages', () => {
   });
 
   it('matches a scoped package against a glob forbid pattern', () => {
-    const legacyWidget = createMockPackage('@legacy/widget');
     const config = createConfig({
       rules: {
         forbid_packages: [{ severity: 'warn', patterns: ['@legacy/*'] }],
       },
     });
 
-    const violations = detectBannedPackages([legacyWidget], config);
+    const violations = detectBannedPackages([used('@legacy/widget')], config);
 
     expect(violations).toHaveLength(1);
     expect(violations[0].packageName).toBe('@legacy/widget');
   });
 
-  it('uses the first matching rule when a package matches two distinct forbid rules', () => {
-    // Distinct `patterns` (not just distinct severity/message) is
-    // deliberate: identical `patterns` would collapse to one rule during
-    // resolveRules's upsert-by-identity (last write wins — see
-    // tests/config/overrides.test.ts), never reaching detectBannedPackages
-    // as two separate rules in production.
-    const moment = createMockPackage('moment');
+  it('uses the first matching rule when a package matches two forbid rules', () => {
     const config = createConfig({
       rules: {
         forbid_packages: [
@@ -67,7 +75,7 @@ describe('detectBannedPackages', () => {
       },
     });
 
-    const violations = detectBannedPackages([moment], config);
+    const violations = detectBannedPackages([used('moment')], config);
 
     expect(violations).toHaveLength(1);
     expect(violations[0].message).toBe('first rule');
@@ -75,30 +83,29 @@ describe('detectBannedPackages', () => {
   });
 
   it('returns an empty array when no config is provided', () => {
-    const moment = createMockPackage('moment');
-
-    expect(detectBannedPackages([moment])).toEqual([]);
+    expect(detectBannedPackages([used('moment')])).toEqual([]);
   });
 
   it('returns an empty array when there are no forbid_packages rules', () => {
-    const moment = createMockPackage('moment');
     const config = createConfig();
 
-    expect(detectBannedPackages([moment], config)).toEqual([]);
+    expect(detectBannedPackages([used('moment')], config)).toEqual([]);
   });
 
   it('a forbid_packages rule authored with severity "off" resolves away before it ever reaches detectBannedPackages', () => {
-    const moment = createMockPackage('moment');
     const config = createConfig({
       rules: {
         forbid_packages: [{ severity: 'off', patterns: ['moment'] }],
       },
     });
 
-    expect(detectBannedPackages([moment], config)).toEqual([]);
+    expect(detectBannedPackages([used('moment')], config)).toEqual([]);
   });
 
-  it('flags a package declared in package.json but absent from the distribution', () => {
+  // #75: the usage axis is built from component imports, so build-only
+  // tooling — run via npx, an npm script or a git hook — is declared but
+  // never used, and used to slip past a rule naming it outright.
+  it('flags a package declared in package.json but never imported', () => {
     const config = createConfig({
       rules: {
         forbid_packages: [
@@ -111,7 +118,10 @@ describe('detectBannedPackages', () => {
       },
     });
 
-    const violations = detectBannedPackages([], config, ['@acme/coverager']);
+    const violations = detectBannedPackages(
+      [declaredOnly('@acme/coverager')],
+      config,
+    );
 
     expect(violations).toEqual([
       {
@@ -122,34 +132,46 @@ describe('detectBannedPackages', () => {
     ]);
   });
 
-  it('reports a package that is both imported and declared exactly once', () => {
-    const moment = createMockPackage('moment');
+  it('flags a package that is imported without being declared (a phantom dependency)', () => {
     const config = createConfig({
       rules: {
         forbid_packages: [{ severity: 'error', patterns: ['moment'] }],
       },
     });
 
-    const violations = detectBannedPackages([moment], config, ['moment']);
+    const violations = detectBannedPackages(
+      [createMockInventoryEntry('moment', { declaredIn: [] })],
+      config,
+    );
 
     expect(violations).toHaveLength(1);
-    expect(violations[0].packageName).toBe('moment');
   });
 
-  it('matches a declared package against a glob forbid pattern', () => {
+  it('does not flag a purely transitive dependency, which the repo cannot remove', () => {
     const config = createConfig({
       rules: {
-        forbid_packages: [{ severity: 'warn', patterns: ['@legacy/*'] }],
+        forbid_packages: [{ severity: 'error', patterns: ['moment'] }],
       },
     });
 
-    const violations = detectBannedPackages([], config, ['@legacy/widget']);
+    const violations = detectBannedPackages([transitiveOnly('moment')], config);
 
-    expect(violations).toHaveLength(1);
-    expect(violations[0].packageName).toBe('@legacy/widget');
+    expect(violations).toEqual([]);
   });
 
-  it('does not flag a declared package excluded by packages.ignore', () => {
+  it('reports a package exactly once however many axes it is present on', () => {
+    const config = createConfig({
+      rules: {
+        forbid_packages: [{ severity: 'error', patterns: ['moment'] }],
+      },
+    });
+
+    const violations = detectBannedPackages([used('moment')], config);
+
+    expect(violations).toHaveLength(1);
+  });
+
+  it('does not flag a package excluded by packages.ignore', () => {
     const config = createConfig({
       packages: { ignore: ['@legacy/*'] },
       rules: {
@@ -157,52 +179,119 @@ describe('detectBannedPackages', () => {
       },
     });
 
-    const violations = detectBannedPackages([], config, ['@legacy/widget']);
+    const violations = detectBannedPackages(
+      [createMockInventoryEntry('@legacy/widget', { ignored: true })],
+      config,
+    );
 
     expect(violations).toEqual([]);
   });
 
-  it('reports distribution packages before declared-only ones', () => {
-    const moment = createMockPackage('moment');
+  it('reports violations in inventory order, which is usage-ranked', () => {
     const config = createConfig({
       rules: {
         forbid_packages: [{ severity: 'error', patterns: ['moment', 'jest'] }],
       },
     });
 
-    const violations = detectBannedPackages([moment], config, [
-      'jest',
-      'moment',
-    ]);
+    const violations = detectBannedPackages(
+      [used('moment'), declaredOnly('jest')],
+      config,
+    );
 
     expect(violations.map((v) => v.packageName)).toEqual(['moment', 'jest']);
   });
 });
 
 describe('detectRequiredPackages', () => {
-  it('is satisfied by a lockfile versions key even when the package is absent from the distribution', () => {
+  it('is satisfied by an installed package that is never imported', () => {
     const config = createConfig({
       rules: {
         require_packages: [{ severity: 'error', patterns: ['react'] }],
       },
     });
 
-    const violations = detectRequiredPackages([], { react: '18.0.0' }, config);
+    const violations = detectRequiredPackages([declaredOnly('react')], config);
 
     expect(violations).toEqual([]);
   });
 
-  it('is satisfied by a distribution packageName even when absent from versions', () => {
-    const reactPkg = createMockPackage('react');
+  it('is satisfied by an imported package that is absent from the lockfile', () => {
     const config = createConfig({
       rules: {
         require_packages: [{ severity: 'error', patterns: ['react'] }],
       },
     });
 
-    const violations = detectRequiredPackages([reactPkg], {}, config);
+    const violations = detectRequiredPackages(
+      [
+        createMockInventoryEntry('react', {
+          version: null,
+          rootVersion: null,
+          allVersions: [],
+        }),
+      ],
+      config,
+    );
 
     expect(violations).toEqual([]);
+  });
+
+  // Unlike forbid_packages, "required" asks whether the package is available
+  // to the code — a transitive copy counts, and `packages.ignore` (a
+  // reporting filter, not an uninstall) must not make it look missing.
+  it('is satisfied by a purely transitive dependency', () => {
+    const config = createConfig({
+      rules: {
+        require_packages: [{ severity: 'error', patterns: ['react'] }],
+      },
+    });
+
+    const violations = detectRequiredPackages(
+      [transitiveOnly('react')],
+      config,
+    );
+
+    expect(violations).toEqual([]);
+  });
+
+  it('is satisfied by an installed package excluded from reporting by packages.ignore', () => {
+    const config = createConfig({
+      packages: { ignore: ['react'] },
+      rules: {
+        require_packages: [{ severity: 'error', patterns: ['react'] }],
+      },
+    });
+
+    const violations = detectRequiredPackages(
+      [createMockInventoryEntry('react', { ignored: true })],
+      config,
+    );
+
+    expect(violations).toEqual([]);
+  });
+
+  it('is not satisfied by a package that is declared but not installed', () => {
+    const config = createConfig({
+      rules: {
+        require_packages: [{ severity: 'error', patterns: ['react'] }],
+      },
+    });
+
+    const violations = detectRequiredPackages(
+      [
+        createMockInventoryEntry('react', {
+          version: null,
+          rootVersion: null,
+          allVersions: [],
+          usageCount: 0,
+          componentCount: 0,
+        }),
+      ],
+      config,
+    );
+
+    expect(violations).toHaveLength(1);
   });
 
   it('yields a require_packages violation with the rule patterns and empty matchedFiles when unsatisfied', () => {
@@ -214,7 +303,7 @@ describe('detectRequiredPackages', () => {
       },
     });
 
-    const violations = detectRequiredPackages([], {}, config);
+    const violations = detectRequiredPackages([], config);
 
     expect(violations).toEqual([
       {
@@ -230,7 +319,7 @@ describe('detectRequiredPackages', () => {
   it('returns an empty array when there are no require_packages rules', () => {
     const config = createConfig();
 
-    expect(detectRequiredPackages([], {}, config)).toEqual([]);
+    expect(detectRequiredPackages([], config)).toEqual([]);
   });
 
   it('a require_packages rule authored with severity "off" resolves away before it ever reaches detectRequiredPackages, even unsatisfied', () => {
@@ -240,6 +329,6 @@ describe('detectRequiredPackages', () => {
       },
     });
 
-    expect(detectRequiredPackages([], {}, config)).toEqual([]);
+    expect(detectRequiredPackages([], config)).toEqual([]);
   });
 });

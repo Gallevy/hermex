@@ -1,6 +1,10 @@
 import { globSync } from 'glob';
 import fs from 'fs';
 import path from 'path';
+import type {
+  DeclaredPackages,
+  DependencyBucket,
+} from '../utils/package-inventory';
 
 export interface RuleViolation {
   type:
@@ -69,32 +73,34 @@ export function readPackageJson(
   }
 }
 
-const DEPENDENCY_FIELDS = [
+const DEPENDENCY_FIELDS: DependencyBucket[] = [
   'dependencies',
   'devDependencies',
   'peerDependencies',
   'optionalDependencies',
-] as const;
+];
 
 /**
- * Every package name the repo itself declares in `package.json`, deduped
- * across all four dependency buckets. Distinct from the lockfile `versions`
- * map, which also contains every transitive dependency — this is only what
- * the repo can actually add or remove, which is what a "this package is
- * forbidden here" rule should act on (#75).
+ * The *declared* axis of the package inventory: every package this repo
+ * lists in `package.json`, with the bucket(s) that declare it.
+ *
+ * Distinct from the lockfile, which also contains every transitive
+ * dependency — this is only what the repo can actually add or remove.
  */
-export function collectDeclaredPackages(repoPath: string): string[] {
+export function collectDeclaredPackages(repoPath: string): DeclaredPackages {
   const pkg = readPackageJson(repoPath);
-  if (!pkg) return [];
+  if (!pkg) return {};
 
-  const names = new Set<string>();
+  const declared: DeclaredPackages = {};
   for (const field of DEPENDENCY_FIELDS) {
     const bucket = pkg[field];
     // The manifest is untyped user input — a malformed bucket (a string, an
     // array, null) must not take the whole scan down.
     if (typeof bucket !== 'object' || bucket === null || Array.isArray(bucket))
       continue;
-    for (const name of Object.keys(bucket)) names.add(name);
+    for (const name of Object.keys(bucket)) {
+      (declared[name] ??= []).push(field);
+    }
   }
-  return [...names];
+  return declared;
 }

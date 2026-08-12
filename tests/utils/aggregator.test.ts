@@ -352,7 +352,7 @@ describe('aggregateReports — banned packages', () => {
       config,
       {},
       {},
-      ['jest'],
+      { jest: ['devDependencies'] },
     );
 
     expect(result.bannedPackageViolations).toEqual([

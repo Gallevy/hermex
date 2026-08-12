@@ -52,6 +52,10 @@ export default defineConfig({
 
 Internal packages show an `[int]` badge in the packages table.
 
+`ignore` is a *reporting* filter, not an uninstall: an ignored package is left out of the packages
+table and is never flagged by `forbid_packages`, but it still counts as installed for
+`require_packages` — otherwise ignoring a package would make a rule that requires it start failing.
+
 ## Versus — Migration Tracking
 
 Track usage split between competing packages:
