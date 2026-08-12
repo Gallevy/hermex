@@ -31,7 +31,11 @@ export function printSummary(aggregated: AggregatedReport) {
 
   table.push(
     ['Files Analyzed', formatCount(aggregated.filesAnalyzed)],
-    ['External Packages', formatCount(aggregated.packageDistribution.length)],
+    // "External Packages" counted rows in packageDistribution, which used to
+    // mean "packages with measured usage". Since #78 that array is every
+    // package the repo owns, so the old label would now overcount what it
+    // claimed to describe.
+    ['Packages', formatCount(aggregated.packageDistribution.length)],
     ['External Components', formatCount(externalComponents)],
     ['Total Usages', formatCount(totalExternalUsage)],
   );

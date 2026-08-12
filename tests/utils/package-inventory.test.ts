@@ -96,7 +96,6 @@ describe('buildPackageInventory — axes', () => {
     const entry = find(inventory, 'antd');
     expect(entry?.usageCount).toBe(5);
     expect(entry?.componentCount).toBe(2);
-    expect(entry?.components).toEqual(['Button', 'Card']);
   });
 
   it('orders entries by usage, so every view derived from it is usage-ranked', () => {

@@ -57,7 +57,18 @@ export interface HermexScanResult {
     totalComponents: number;
     totalUsagePatterns: number;
   };
+  /**
+   * Every package this repo owns — declared in `package.json`, a direct
+   * dependency in the lockfile, and/or imported by scanned source (#78).
+   * Purely transitive dependencies are excluded. `usageCount` is component
+   * usage, so a package used only as a function reads 0 while still being a
+   * real dependency.
+   */
   packages: import('./utils/package-distribution').PackageDistribution[];
+  /**
+   * Every component found, with the package it came from. The one place
+   * component names live — `packages[]` carries only `componentCount` (#79).
+   */
   components: HermexScanComponent[];
   patterns: import('./utils/pattern-counter').PatternCount[];
   versus: import('./utils/versus').VersusResult[];

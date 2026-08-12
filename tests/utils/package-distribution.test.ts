@@ -114,7 +114,6 @@ describe('calculatePackageDistribution', () => {
     expect(distribution[0].packageName).toBe('antd');
     expect(distribution[0].componentCount).toBe(2);
     expect(distribution[0].usageCount).toBe(5);
-    expect(distribution[0].components).toEqual(['Button', 'Modal']);
   });
 
   it('computes percentages that sum to ~100 across external packages', () => {
@@ -380,16 +379,16 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
       componentCount: 0,
       usageCount: 0,
       percentage: 0,
-      components: [],
       internal: false,
     });
   });
 
-  // The inventory also knows about packages that are declared in
-  // package.json but missing from the lockfile. Those have no resolved
-  // version to date-check, and release-age enrichment skips versionless
-  // entries — so they must not reach the packages table either.
-  it('does not surface a declared-but-uninstalled package matching enforceOn', () => {
+  // A package declared in package.json but missing from the lockfile is
+  // still something the repo depends on, so since #78 it gets a row — with
+  // a null version, because there is nothing installed to report. It has no
+  // resolved version to date-check either, so release-age enrichment skips
+  // it regardless of enforceOn (asserted in the enricher's own tests).
+  it('surfaces a declared-but-uninstalled package with a null version', () => {
     const componentUsageMap = new Map<string, ComponentUsage>();
     const config = createConfig({
       releaseAge: { enabled: true, enforceOn: ['eslint'] },
@@ -404,7 +403,13 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
       { eslint: ['devDependencies'] },
     );
 
-    expect(distribution).toEqual([]);
+    expect(distribution).toHaveLength(1);
+    expect(distribution[0]).toMatchObject({
+      packageName: 'eslint',
+      version: null,
+      declaredIn: ['devDependencies'],
+      usageCount: 0,
+    });
   });
 
   it('does not surface lockfile-only packages when releaseAge is disabled', () => {

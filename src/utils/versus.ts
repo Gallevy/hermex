@@ -9,7 +9,6 @@ export interface VersusEntry {
   packageName: string;
   count: number;
   percentage: number;
-  components: string[];
 }
 
 export interface VersusResult {
@@ -32,7 +31,6 @@ export function calculateVersusResults(
         packageName: pkgName,
         count: pkg?.usageCount ?? 0,
         percentage: 0,
-        components: pkg?.components ?? [],
       };
     });
 

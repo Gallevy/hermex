@@ -71,7 +71,6 @@ describe('aggregateReports — empty input', () => {
     expect(result.versusResults).toEqual([]);
     expect(result.ruleViolations).toEqual([]);
     expect(result.topComponents).toEqual([]);
-    expect(result.allComponents).toEqual([]);
   });
 });
 
@@ -88,7 +87,6 @@ describe('aggregateReports — component counting', () => {
     expect(result.topComponents[0].name).toBe('Button');
     expect(result.topComponents[0].count).toBe(1);
     expect(result.topComponents[0].source).toBe('react');
-    expect(result.allComponents).toEqual(['Button']);
   });
 
   it('aggregates the same component used across multiple reports', () => {
@@ -171,7 +169,6 @@ describe('aggregateReports — aliased import canonicalization', () => {
     expect(result.topComponents).toHaveLength(1);
     expect(result.topComponents[0].name).toBe('Card');
     expect(result.topComponents[0].count).toBe(2);
-    expect(result.allComponents).toEqual(['Card']);
   });
 
   it('reflects the canonical name, not the alias, in package distribution', () => {
@@ -186,8 +183,9 @@ describe('aggregateReports — aliased import canonicalization', () => {
     const dist = result.packageDistribution.find(
       (p) => p.packageName === '@acme-ui/pulse',
     );
-    expect(dist?.components).toEqual(['Card']);
     expect(dist?.componentCount).toBe(1);
+    // The names themselves live only in topComponents now (#79).
+    expect(result.topComponents.map((c) => c.name)).toEqual(['Card']);
   });
 
   it('does not canonicalize a default import (no canonical export name exists)', () => {
@@ -231,7 +229,6 @@ describe('aggregateReports — package distribution', () => {
     const dist = result.packageDistribution[0];
     expect(dist.packageName).toBe('react');
     expect(dist.version).toBe('18.0.0');
-    expect(dist.components).toContain('Button');
     expect(dist.componentCount).toBe(1);
     expect(dist.usageCount).toBe(1);
     expect(dist.percentage).toBe(100);
@@ -386,11 +383,19 @@ describe('aggregateReports — forbidden packages', () => {
         packageName: 'jest',
       },
     ]);
-    // Declared-only packages stay out of the packages table — they have no
-    // measured usage to report.
-    expect(
-      result.packageDistribution.map((pkg) => pkg.packageName),
-    ).not.toContain('jest');
+    // Since #78 a declared-only package DOES get a packages[] row — the repo
+    // depends on it, which is what that array now reports. It carries zero
+    // usage, because nothing imports it as a component.
+    const jest = result.packageDistribution.find(
+      (pkg) => pkg.packageName === 'jest',
+    );
+    expect(jest).toMatchObject({
+      packageName: 'jest',
+      declaredIn: ['devDependencies'],
+      usageCount: 0,
+      componentCount: 0,
+      percentage: 0,
+    });
   });
 });
 
@@ -457,7 +462,6 @@ describe('aggregateReports — versus results', () => {
     const dayjs = versus.entries.find((e) => e.packageName === 'dayjs');
     expect(moment?.count).toBe(1);
     expect(moment?.percentage).toBe(50);
-    expect(moment?.components).toEqual(['Moment']);
     expect(dayjs?.count).toBe(1);
     expect(dayjs?.percentage).toBe(50);
   });
@@ -479,6 +483,5 @@ describe('aggregateReports — versus results', () => {
     const dayjs = versus.entries.find((e) => e.packageName === 'dayjs');
     expect(dayjs?.count).toBe(0);
     expect(dayjs?.percentage).toBe(0);
-    expect(dayjs?.components).toEqual([]);
   });
 });
