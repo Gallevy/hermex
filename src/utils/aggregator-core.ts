@@ -32,7 +32,6 @@ export interface AggregatedReport {
   patternCounts: PatternCount[];
   componentUsage: Map<string, ComponentUsage>;
   topComponents: ComponentUsage[];
-  allComponents: string[];
   /** Every package known to this run, on all three axes — the list every rule and view below is derived from. */
   packageInventory: PackageInventoryEntry[];
   packageDistribution: PackageDistribution[];
@@ -108,10 +107,6 @@ export function aggregateReports(
     (a, b) => b.count - a.count,
   );
 
-  const allComponents = Array.from(
-    new Set(Array.from(componentUsageMap.values()).map((c) => c.name)),
-  ).sort();
-
   const patternCounts = Array.from(patternCountMap.entries())
     .map(([type, count]) => ({
       patternType: type,
@@ -158,7 +153,6 @@ export function aggregateReports(
     patternCounts,
     componentUsage: componentUsageMap,
     topComponents,
-    allComponents,
     packageInventory,
     packageDistribution,
     versusResults,

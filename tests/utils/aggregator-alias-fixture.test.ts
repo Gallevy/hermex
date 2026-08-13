@@ -40,10 +40,10 @@ describe('aggregateReports — aliased import canonicalization, through the full
     );
     expect(dist?.componentCount).toBe(1);
     expect(dist?.usageCount).toBe(4);
-    expect(dist?.components).toEqual(['Card']);
-
     // Neither local alias leaks into the reported identity.
-    expect(result.allComponents).not.toContain('PulseCard');
-    expect(result.allComponents).not.toContain('UiCard');
+    const names = result.topComponents.map((c) => c.name);
+    expect(names).toEqual(['Card']);
+    expect(names).not.toContain('PulseCard');
+    expect(names).not.toContain('UiCard');
   });
 });

@@ -84,8 +84,10 @@ describe('aggregateReports — component source collisions', () => {
     const pulseDist = result.packageDistribution.find(
       (p) => p.packageName === '@acme-ui/pulse',
     );
-    expect(classicDist?.components).toEqual(['Button']);
-    expect(pulseDist?.components).toEqual(['Button']);
+    // One Button component per package — the names themselves are asserted
+    // on topComponents above (#79 removed the per-package copy).
+    expect(classicDist?.componentCount).toBe(1);
+    expect(pulseDist?.componentCount).toBe(1);
   });
 
   it('still merges the same name imported from the same source across files', () => {

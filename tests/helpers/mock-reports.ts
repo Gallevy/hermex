@@ -60,7 +60,7 @@ export function createMockPackage(
     componentCount: 1,
     usageCount: 1,
     percentage: 100,
-    components: [],
+    declaredIn: ['dependencies'],
     internal: false,
     hasVersionConflict: false,
     // Defaults to a single-entry array matching `version` (not a fixed
@@ -95,7 +95,6 @@ export function createMockInventoryEntry(
     ignored: false,
     usageCount: 1,
     componentCount: 1,
-    components: [],
     ...overrides,
   };
 }

@@ -574,14 +574,33 @@ describe('package inventory axes (end to end)', () => {
     ]);
   });
 
-  it('reports that declared-but-unimported package without inventing a packages[] row for it', () => {
+  // Before #78 this package was absent from packages[] entirely — it has no
+  // measured usage, and that array only held used packages. It is a real
+  // dependency of the fixture repo, so it now has a row proving the declared
+  // axis reached the reported view, not just the rule.
+  it('gives that declared-but-unimported package a zero-usage packages[] row', () => {
     const result = run(['comply', '--config', inventoryConfig('declared')]);
     const parsed = JSON.parse(result.stdout);
-    // Proves the match came from the declared axis: it has no measured
-    // usage, so it is absent from the reported distribution.
+    const moment = parsed.packages.find(
+      (p: { packageName: string }) => p.packageName === 'moment',
+    );
+    expect(moment).toMatchObject({
+      packageName: 'moment',
+      declaredIn: ['devDependencies'],
+      usageCount: 0,
+      componentCount: 0,
+    });
+  });
+
+  // A purely transitive dependency is in the lockfile but is not the repo's
+  // to add or remove, so `packages[]` stays the repo's own dependency
+  // surface rather than the whole lockfile.
+  it('leaves a purely transitive dependency out of packages[]', () => {
+    const result = run(['comply', '--config', inventoryConfig('transitive')]);
+    const parsed = JSON.parse(result.stdout);
     expect(
       parsed.packages.map((p: { packageName: string }) => p.packageName),
-    ).not.toContain('moment');
+    ).not.toContain('js-tokens');
   });
 
   it('names the forbidden package in the human-readable Rules table', () => {

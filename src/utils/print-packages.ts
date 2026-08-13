@@ -285,15 +285,23 @@ function printPackagesChart(
   packages: PackageDistribution[],
   violations: RuleViolation[],
 ) {
+  // A share-of-usage chart has nothing to say about a package with no
+  // measured usage — every such row would be a 0% empty bar, and since #78
+  // `packages` is every package the repo owns rather than only the used
+  // ones. With all-zero usage `maxPercentage` would also be 0, making every
+  // bar length NaN.
+  const charted = packages.filter((p) => p.usageCount > 0);
+  if (charted.length === 0) return;
+
   printHeader();
 
   const maxBarWidth = 40;
-  const maxPercentage = Math.max(...packages.map((p) => p.percentage));
+  const maxPercentage = Math.max(...charted.map((p) => p.percentage));
   const maxLabelLength = Math.max(
-    ...packages.map((p) => p.packageName.length + (p.internal ? 6 : 0)),
+    ...charted.map((p) => p.packageName.length + (p.internal ? 6 : 0)),
   );
 
-  packages.forEach((pkg) => {
+  charted.forEach((pkg) => {
     const barLength = Math.round(
       (pkg.percentage / maxPercentage) * maxBarWidth,
     );

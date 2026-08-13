@@ -21,7 +21,6 @@ function makeAggregated(
     patternCounts: [],
     componentUsage: new Map(),
     topComponents: [],
-    allComponents: [],
     packageDistribution: [],
     versusResults: [],
     ruleViolations: [],

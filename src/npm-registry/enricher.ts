@@ -1,6 +1,7 @@
 import semver from 'semver';
 import micromatch from 'micromatch';
 import type { PackageDistribution } from '../utils/aggregator';
+import { isReleaseAgeTarget } from '../utils/package-distribution';
 import type { ReleaseAgeConfig } from '../config/types';
 import type {
   AvailableUpgrade,
@@ -354,7 +355,14 @@ export async function enrichWithReleaseAge(
   const registryUrl = config.registry;
   const authToken =
     config.authToken ?? process.env['HERMEX_REGISTRY_AUTH_TOKEN'];
-  const targets = packages.filter((p) => !p.internal && p.version);
+  // `packages` is every package the repo owns (#78); only a subset is in
+  // scope for a registry lookup — see `isReleaseAgeTarget`. Filtering here
+  // rather than upstream keeps `packages[]` honest about what the repo
+  // depends on while leaving registry traffic and the compliance verdict
+  // exactly where they were.
+  const targets = packages.filter(
+    (p) => !p.internal && p.version && isReleaseAgeTarget(p, config.enforceOn),
+  );
   const enriched = [...packages];
   let skipped = 0;
 

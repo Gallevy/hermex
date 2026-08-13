@@ -50,6 +50,58 @@ describe('enrichWithReleaseAge â€” skipped packages', () => {
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
+  // #78 made `packages[]` every package the repo owns rather than only the
+  // used ones. Enrichment must NOT follow it there: one registry request per
+  // declared dependency is a large traffic increase, and — because an empty
+  // `enforceOn` marks every fetched package severity 'error' — every
+  // newly-visible overdue dependency would become a mandatory violation,
+  // failing `comply` for repos that pass today.
+  it('does not look up a declared-but-unused package when enforceOn is empty', async () => {
+    const used = createMockPackage('react', {
+      version: '18.0.0',
+      usageCount: 3,
+    });
+    const declaredOnly = createMockPackage('eslint', {
+      version: '9.0.0',
+      usageCount: 0,
+    });
+    mockFetch.mockResolvedValue({
+      name: 'pkg',
+      time: { created: daysAgo(500), modified: daysAgo(1) },
+      versions: {},
+    });
+
+    const { enriched } = await enrichWithReleaseAge(
+      [used, declaredOnly],
+      BASE_CONFIG,
+    );
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(mockFetch.mock.calls[0][0]).toBe('react');
+    expect(
+      enriched.find((p) => p.packageName === 'eslint')?.releaseAge,
+    ).toBeUndefined();
+  });
+
+  it('looks up an unused package that enforceOn names explicitly', async () => {
+    const enforced = createMockPackage('@acme-ui/pulse-styles', {
+      version: '2.1.0',
+      usageCount: 0,
+    });
+    mockFetch.mockResolvedValue({
+      name: 'pkg',
+      time: { created: daysAgo(500), modified: daysAgo(1) },
+      versions: {},
+    });
+
+    await enrichWithReleaseAge([enforced], {
+      ...BASE_CONFIG,
+      enforceOn: ['@acme-ui/*'],
+    });
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
   it('increments skipped counter when registry returns null', async () => {
     const pkg = createMockPackage('react', { version: '18.0.0' });
     mockFetch.mockResolvedValueOnce(null);

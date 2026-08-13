@@ -50,8 +50,13 @@ export interface PackageInventoryEntry {
   /** Matches `packages.ignore`. Kept in the inventory rather than filtered out at construction so each consumer can decide — the packages table and forbid rules skip these, `require_packages` deliberately does not. */
   ignored: boolean;
   usageCount: number;
+  /**
+   * How many distinct components this package supplies. The names themselves
+   * live only in the aggregator's flat component list (#79) — carrying them
+   * here too meant the same strings were serialized twice, and every
+   * consumer had to decide which copy was canonical.
+   */
   componentCount: number;
-  components: string[];
 }
 
 export interface BuildInventoryInput {
@@ -161,7 +166,7 @@ export function buildPackageInventory(
   // components can come from the same source.
   const usage = new Map<
     string,
-    { usageCount: number; componentCount: number; components: string[] }
+    { usageCount: number; componentCount: number }
   >();
   for (const component of componentUsage?.values() ?? []) {
     if (NON_PACKAGE_SOURCES.has(component.source)) continue;
@@ -170,12 +175,10 @@ export function buildPackageInventory(
     if (existing) {
       existing.usageCount += component.count;
       existing.componentCount++;
-      existing.components.push(component.name);
     } else {
       usage.set(component.source, {
         usageCount: component.count,
         componentCount: 1,
-        components: [component.name],
       });
     }
   }
@@ -205,7 +208,6 @@ export function buildPackageInventory(
       ignored: isIgnored(packageName),
       usageCount: packageUsage?.usageCount ?? 0,
       componentCount: packageUsage?.componentCount ?? 0,
-      components: packageUsage?.components ?? [],
     });
   }
 

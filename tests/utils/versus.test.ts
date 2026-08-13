@@ -24,11 +24,8 @@ describe('calculateVersusResults', () => {
     expect(result.entries[1].percentage).toBeCloseTo(25);
   });
 
-  it('gives a configured package absent from the distribution a zero count and no components', () => {
-    const moment = createMockPackage('moment', {
-      usageCount: 5,
-      components: ['Calendar'],
-    });
+  it('gives a configured package absent from the distribution a zero count', () => {
+    const moment = createMockPackage('moment', { usageCount: 5 });
     const versusConfigs: VersusConfig[] = [
       { name: 'Date libraries', packages: ['moment', 'dayjs'] },
     ];
@@ -37,7 +34,7 @@ describe('calculateVersusResults', () => {
 
     const dayjsEntry = result.entries.find((e) => e.packageName === 'dayjs');
     expect(dayjsEntry?.count).toBe(0);
-    expect(dayjsEntry?.components).toEqual([]);
+    expect(dayjsEntry?.percentage).toBe(0);
   });
 
   it('returns an empty array when there is no versus config', () => {

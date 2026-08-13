@@ -1,19 +1,28 @@
 import micromatch from 'micromatch';
 import type { UsageReport } from '../swc-parser';
-import type { ResolvedHermexConfig } from '../config/types';
 import type { ReleaseAgeEntry } from '../npm-registry/types';
-import type { PackageInventoryEntry } from './package-inventory';
-import { isInstalled, isUsed } from './package-inventory';
+import type { ResolvedHermexConfig } from '../config/types';
+import type {
+  DependencyBucket,
+  PackageInventoryEntry,
+} from './package-inventory';
+import { isInstalled, isOwnedByRepo } from './package-inventory';
 
 export type { ComponentUsage } from './package-inventory';
 
 export interface PackageDistribution {
   packageName: string;
   version: string | null;
+  /**
+   * The `package.json` buckets declaring this package; empty when the repo
+   * imports it without declaring it (a phantom dependency) or the lockfile
+   * alone records it as a direct dependency.
+   */
+  declaredIn: DependencyBucket[];
   componentCount: number;
   usageCount: number;
+  /** Share of total measured component usage. 0 for a package that is never rendered as a component — which includes every package used only as a function. */
   percentage: number;
-  components: string[];
   internal: boolean;
   hasVersionConflict: boolean;
   allVersions: string[];
@@ -86,38 +95,48 @@ export function findComponentSource(
 }
 
 /**
- * The reported view of the package inventory: what the packages table, the
- * JSON `packages[]` array and release-age enrichment operate on.
+ * The reported view of the package inventory: what the packages table and
+ * the JSON `packages[]` array show.
  *
- * Selects the *used* axis — a package with no measured usage has nothing to
- * report a percentage or component list for. The one exception is
- * `releaseAge.enforceOn`: a dependency can be installed and explicitly
- * enforced yet never imported as a component (a CSS/side-effect-only import
- * like `import '@acme-ui/pulse-styles/button.css'` has no specifiers, so the
- * usage scan never sees it), and dropping it here would silently exempt it
- * from compliance. Those are surfaced with zero usage/component counts.
- * Scoped to `enforceOn` matches rather than the whole inventory so a default
- * (empty) `enforceOn` does not fire a registry lookup for every transitive
- * dependency.
+ * Selects the packages this repo *owns* (`isOwnedByRepo`) — declared in
+ * `package.json`, recorded as a direct dependency by the lockfile, and/or
+ * imported by scanned source. Before #78 this selected the *used* axis
+ * instead, which made the name a lie: usage is measured from JSX component
+ * rendering, so a package imported and called as a function (`lodash`,
+ * `moment`) never appeared, and a repo with no JSX at all reported zero
+ * packages while depending on dozens. "Does this repo depend on X?" is the
+ * question the field's name promises to answer, and now does.
+ *
+ * Purely transitive dependencies stay out: `isOwnedByRepo` excludes them, so
+ * this is still the repo's own dependency surface rather than the whole
+ * lockfile. The one exception is a transitive package explicitly named by
+ * `releaseAge.enforceOn` — installed and deliberately enforced, yet owned by
+ * nobody. Dropping it here would silently exempt it from compliance, so it
+ * is surfaced with zero usage.
+ *
+ * Note this is deliberately NOT the set release-age enrichment operates on —
+ * see `isReleaseAgeTarget`. Enriching every owned package would fire a
+ * registry request per declared dependency, and (with the default empty
+ * `enforceOn`, which marks every fetched package `severity: 'error'`) would
+ * turn newly-visible overdue dependencies into mandatory compliance
+ * failures for repos that pass today.
  */
 export function calculatePackageDistribution(
   inventory: PackageInventoryEntry[],
   config?: ResolvedHermexConfig,
 ): PackageDistribution[] {
   const enforceOnPatterns = config?.releaseAge.enforceOn ?? [];
-  const enforcesUnusedPackages =
+  const enforcesUnownedPackages =
     (config?.releaseAge.enabled ?? false) && enforceOnPatterns.length > 0;
 
   const distribution = inventory
     .filter((entry) => {
       if (entry.ignored) return false;
-      if (isUsed(entry)) return true;
-      // Installed-only: a package that is merely *declared* (in package.json
-      // but absent from the lockfile) has no resolved version to compare a
-      // release date against, so surfacing it here would add a versionless
-      // row to the packages table that release-age enrichment then skips.
+      if (isOwnedByRepo(entry)) return true;
+      // Transitive, but explicitly enforced. Requires an installed version:
+      // there is no release date to check without one.
       return (
-        enforcesUnusedPackages &&
+        enforcesUnownedPackages &&
         isInstalled(entry) &&
         micromatch.isMatch(entry.packageName, enforceOnPatterns)
       );
@@ -126,10 +145,10 @@ export function calculatePackageDistribution(
       packageName: entry.packageName,
       version: entry.version,
       rootVersion: entry.rootVersion,
+      declaredIn: entry.declaredIn,
       componentCount: entry.componentCount,
       usageCount: entry.usageCount,
       percentage: 0,
-      components: entry.components,
       internal: entry.internal,
       hasVersionConflict: entry.hasVersionConflict,
       allVersions: entry.allVersions,
@@ -146,6 +165,33 @@ export function calculatePackageDistribution(
   }
 
   // The inventory is already usage-ordered; re-sorting keeps this view
-  // self-contained rather than silently depending on that.
+  // self-contained rather than silently depending on that. Equal usage keeps
+  // insertion order, so the zero-usage tail stays in discovery order.
   return distribution.sort((a, b) => b.usageCount - a.usageCount);
+}
+
+/**
+ * Whether release-age enrichment should look this package up in the
+ * registry. Deliberately narrower than `packages[]` itself (#78): that array
+ * is now every package the repo owns, and enriching all of them would
+ * - fire one registry request per declared dependency rather than per
+ *   *used* one, and
+ * - with the default empty `enforceOn` — which `enricher.ts` reads as
+ *   "everything is severity `error`" — promote every newly-visible overdue
+ *   dependency to a mandatory violation, flipping `comply` to a failure for
+ *   repos that pass today.
+ *
+ * So the target set is exactly what it was before `packages[]` expanded:
+ * packages with measured usage, plus `enforceOn` matches (which can be
+ * installed and explicitly enforced yet never imported as a component — a
+ * side-effect-only `import '@acme-ui/pulse-styles/button.css'` has no
+ * specifiers, so the usage scan never sees it, and skipping it would
+ * silently exempt it from compliance).
+ */
+export function isReleaseAgeTarget(
+  pkg: Pick<PackageDistribution, 'packageName' | 'usageCount'>,
+  enforceOn: string[],
+): boolean {
+  if (pkg.usageCount > 0) return true;
+  return enforceOn.length > 0 && micromatch.isMatch(pkg.packageName, enforceOn);
 }
