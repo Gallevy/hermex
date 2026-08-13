@@ -1,0 +1,5 @@
+hermex v<version>
+- Parsing lockfile...
+✔ Found yarn lockfile (supports: v1, v2+) - 7 packages
+✔ Found 1 files
+✔ Analysis complete! Analyzed 1/1 files

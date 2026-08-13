@@ -1,0 +1,8 @@
+hermex v<version>
+- Parsing lockfile...
+✔ Found pnpm lockfile (supports: v5, v6, v9) - 2 packages
+✔ Found 2 files
+✔ Analysis complete! Analyzed 2/2 files
+
+🟢 COMPLIANT
+

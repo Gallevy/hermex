@@ -1,0 +1,132 @@
+# .github/workflows/output-review.yaml
+#
+# Puts hermex's real output in front of a human on the PR that changes it.
+# Runs the case matrix in fixtures/cases.ts, diffs it against the committed
+# baselines, renders every case into the job summary, and leaves one sticky
+# comment with a row and a link per case.
+#
+# Advisory on purpose. It renders the diff; a reviewer decides whether the
+# change is intended and updates the baselines in the same PR. Promoting it
+# to a required check is a follow-up, once the diffs have proven stable.
+name: Output review
+
+on:
+  pull_request:
+    branches: ['main', 'beta']
+    types: [opened, synchronize, reopened, labeled]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # Decides whether to run, and opts output-shaped PRs in by default.
+  #
+  # The decision is an output rather than a re-trigger: a label applied with
+  # the default GITHUB_TOKEN does not start a new workflow run, so a job
+  # gated only on `contains(labels, ...)` would never fire for an
+  # auto-labelled PR. A label a person adds by hand does re-trigger, and is
+  # picked up by the first branch below.
+  decide:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    outputs:
+      run: ${{ steps.decide.outputs.run }}
+    steps:
+      - name: Decide whether this PR needs an output review
+        id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+          LABELLED: ${{ contains(github.event.pull_request.labels.*.name, 'output-review') }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+
+          if [ "$EVENT" = "workflow_dispatch" ] || [ "$LABELLED" = "true" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Paths that can change what a user sees: the renderers, the
+          # verdict, the config surface that gates sections, the commands
+          # themselves, and the fixtures and baselines the review reads.
+          if gh pr diff "$PR" --name-only | grep -qE '^(src/commands/|src/config/schema\.ts|src/utils/(print-|write-summary-file|chart-renderer|compliance|severity-format)|fixtures/|scripts/output-review\.ts|tests/__output_baselines__/)'; then
+            gh pr edit "$PR" --add-label output-review
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  review:
+    needs: decide
+    if: needs.decide.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm CLI
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Advisory: a changed baseline is the thing this job exists to show,
+      # not a reason to go red. The comment below says what changed.
+      - name: Run the output matrix
+        id: matrix
+        continue-on-error: true
+        run: pnpm run test:output
+
+      - name: Post the review comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('node:fs');
+            const body = fs.readFileSync('.output-review/comment.md', 'utf8');
+            const marker = '<!-- hermex-output-review -->';
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              per_page: 100,
+            });
+            const existing = comments.find(
+              (comment) =>
+                comment.user.type === 'Bot' && comment.body.includes(marker),
+            );
+
+            // Updated in place rather than appended: one PR gets one output
+            // review, and a thread of stale matrices is worse than none.
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
