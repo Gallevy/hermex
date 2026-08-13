@@ -56,7 +56,7 @@ export const cases: FixtureCase[] = [
   {
     name: 'scan-json',
     proves:
-      'The full JSON contract: summary.patternCounts (#80), every owned package in packages[], de-duplicated components (#78, #79), subjectCount on violations (#83), and the compliance block (#55).',
+      'The full JSON contract: summary.patternCounts (#80), every owned package in packages[], de-duplicated components (#78, #79), and the compliance block (#55).',
     cwd: '.',
     args: ['scan', '--format', 'json'],
     expectExit: 0,
@@ -131,7 +131,7 @@ export const cases: FixtureCase[] = [
   {
     name: 'comply-all-rule-types-json',
     proves:
-      'The machine-readable shape of every rule type: fieldPath and actualValue on package-field hits, installedRange/requiredRange on engine_version, matchedFiles on codeowners, subjectCount everywhere (#83).',
+      'The machine-readable shape of every rule type: fieldPath and actualValue on package-field hits, installedRange/requiredRange on engine_version, matchedFiles on codeowners. Also where #95 is visible — the two codeowners entries are byte-identical apart from matchedFiles.',
     cwd: 'repos/all-rule-types',
     args: ['comply', '--format', 'json'],
     expectExit: 1,

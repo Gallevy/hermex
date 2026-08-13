@@ -47,7 +47,7 @@ the manifest omits (`react-dom`), and installed transitively only
 | Repo | Proves |
 | --- | --- |
 | `repos/compliant/` | The mirror of the primary repo: the same rules, all satisfied. `comply` prints a clean verdict and exits 0. Keep its rules in step with `hermex.config.ts` — the pass/fail pair only means something while the policy is identical and the repo is not. |
-| `repos/all-rule-types/` | All nine rule types firing at once, at three severities. The only fixture that renders an `engine_version`, `codeowners`, or package-field row, so it is the one that covers those renderers at all. |
+| `repos/all-rule-types/` | All nine rule types firing at once, at three severities. The only fixture that renders an `engine_version`, `codeowners`, or package-field row, so it is the one that covers those renderers at all. Its CODEOWNERS deliberately leaves one file unowned and gives another to a team outside `requiredOwners` — which is how it surfaced #95. |
 | `repos/version-conflict/` | One package resolved at two versions (react 18.3.1 at the root, 17.0.2 nested). The only fixture where `releaseAge.scope` changes the verdict — `root` enforces the direct copy and reports the nested one as advisory, `tree` enforces both (#57). |
 | `repos/lockfile-npm/`, `-yarn/`, `-pnpm/` | One resolved dependency tree in three lock formats, with identical manifests and identical source. `scan --format json` must produce identical output for all three; the `lockfile-parity` invariant enforces it. |
 

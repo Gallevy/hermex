@@ -45,9 +45,14 @@ export default {
     // engines.node is ">=16", so this reports both ranges rather than the
     // "not specified" shape.
     engine_version: { severity: 'error', range: '>=20', message: 'Minimum Node 20 required' },
-    // CODEOWNERS covers two of the three scanned files, and the one it does
-    // cover belongs to a team outside `requiredOwners` — so this produces
-    // both codeowners violations, unowned and wrong-owner.
+    // CODEOWNERS covers two of the three scanned files, and one of those
+    // belongs to a team outside `requiredOwners` — so this produces both
+    // codeowners violations, unowned and wrong-owner.
+    //
+    // The baseline currently describes both as "have no owner", which is
+    // wrong for src/legacy.tsx: it has an owner, just not a required one.
+    // That is #95, left unfixed on purpose — the recorded output is the
+    // evidence, and refreshing this baseline is how the fix gets reviewed.
     codeowners: {
       severity: 'info',
       requiredOwners: ['@org/platform'],
