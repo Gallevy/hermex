@@ -54,10 +54,22 @@ jobs:
           # Paths that can change what a user sees: the renderers, the
           # verdict, the config surface that gates sections, the commands
           # themselves, and the fixtures and baselines the review reads.
-          if gh pr diff "$PR" --name-only | grep -qE '^(src/commands/|src/config/schema\.ts|src/utils/(print-|write-summary-file|chart-renderer|compliance|severity-format)|fixtures/|scripts/output-review\.ts|tests/__output_baselines__/)'; then
+          #
+          # The file list is captured first, and grep runs without -q, on
+          # purpose: `gh pr diff | grep -q` makes grep exit on the first
+          # match, gh die of SIGPIPE, and `pipefail` report the whole
+          # pipeline as failed — so a matching PR would take the "no review
+          # needed" branch, which is exactly what happened the first time.
+          changed="$(gh pr diff "$PR" --name-only)"
+          matched="$(printf '%s\n' "$changed" | grep -E '^(src/commands/|src/config/schema\.ts|src/utils/(print-|write-summary-file|chart-renderer|compliance|severity-format)|fixtures/|scripts/output-review\.ts|tests/__output_baselines__/)' || true)"
+
+          if [ -n "$matched" ]; then
+            echo "Output-shaped paths changed:"
+            printf '  %s\n' $matched
             gh pr edit "$PR" --add-label output-review
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
+            echo "No output-shaped paths changed — skipping the review."
             echo "run=false" >> "$GITHUB_OUTPUT"
           fi
 
