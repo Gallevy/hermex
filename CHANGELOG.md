@@ -1,3 +1,10 @@
+# [2.10.0](https://github.com/Gallevy/hermex/compare/v2.9.0...v2.10.0) (2026-08-13)
+
+
+### Features
+
+* report every owned package in packages[] and de-duplicate components ([#78](https://github.com/Gallevy/hermex/issues/78), [#79](https://github.com/Gallevy/hermex/issues/79)) ([#85](https://github.com/Gallevy/hermex/issues/85)) ([30e93e7](https://github.com/Gallevy/hermex/commit/30e93e7ee6e202bb795e9a5b98171749e1a8373a))
+
 # [2.9.0](https://github.com/Gallevy/hermex/compare/v2.8.1...v2.9.0) (2026-08-12)
 
 
