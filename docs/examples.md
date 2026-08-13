@@ -484,7 +484,27 @@ Severity is the only thing that decides which bucket a rule violation lands in; 
 | `ruleViolations` | **Every rule hit, in one list** — `detect_files`, `require_files`, `require_packages`, `forbid_packages`, `require_scripts`, `require_package_fields`, `forbid_package_fields`, `engine_version`, `codeowners`. Filter on `type`. |
 | `compliance` | The canonical verdict — see above. |
 
-`ruleViolations` is the single source of truth for rule hits. Entries share a common shape (`type`, `severity`, `patterns`, `message?`, `matchedFiles`) and add per-type fields where they apply: `packageName` for `forbid_packages`, `fieldPath`/`actualValue` for the package-field rules, `installedRange`/`requiredRange` for `engine_version`.
+`ruleViolations` is the single source of truth for rule hits. Entries share a common shape (`type`, `severity`, `patterns`, `message?`, `matchedFiles`, `subjectCount`) and add per-type fields where they apply: `packageName` for `forbid_packages`, `fieldPath`/`actualValue` for the package-field rules, `installedRange`/`requiredRange` for `engine_version`.
+
+#### Counting violations vs counting problems
+
+A violation is one **policy breach**, which is not the same as one **thing to fix**. Most rules produce one violation per problem, but `detect_files` and `codeowners` fold every match into a single violation:
+
+```jsonc
+{ "type": "forbid_packages", "packageName": "moment",  "subjectCount": 1 }  // 1 package to remove
+{ "type": "detect_files",    "matchedFiles": [ … 9 … ], "subjectCount": 9 }  // 9 files to delete
+```
+
+So a run with 4 forbidden packages and 9 offending files reports `5` violations covering `13` problems. Both numbers are legitimate — one measures how many policies you're breaking, the other how much work there is — but they are different numbers:
+
+```js
+const findings = report.ruleViolations.length;                                 // 5
+const toFix    = report.ruleViolations.reduce((n, v) => n + v.subjectCount, 0); // 13
+```
+
+`subjectCount` exists because the second number was previously underivable: the subject list lives in a different field per rule type (`matchedFiles`, `patterns`, `packageName`, `fieldPath`, `requiredRange`), so counting it meant knowing the internals of all nine rules.
+
+The `comply` exit code and `compliance.counts` are unaffected — they count violations, as before.
 
 #### What `packages[]` contains
 

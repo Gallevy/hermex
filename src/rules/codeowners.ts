@@ -148,6 +148,8 @@ export function evaluateCodeowners(
         patterns: CODEOWNERS_LOCATIONS,
         message: rule.message,
         matchedFiles: [],
+        // One missing CODEOWNERS file.
+        subjectCount: 1,
       },
     ];
   }
@@ -184,6 +186,8 @@ export function evaluateCodeowners(
       patterns: [path.basename(filePath)],
       message: rule.message,
       matchedFiles: unowned,
+      // Every unowned file needs its own CODEOWNERS entry.
+      subjectCount: unowned.length,
     });
   }
   if (wrongOwner.length > 0) {
@@ -195,6 +199,8 @@ export function evaluateCodeowners(
         rule.message ??
         `Files must be owned by one of: ${requiredOwners!.join(', ')}`,
       matchedFiles: wrongOwner,
+      // Every wrongly-owned file needs its own reassignment.
+      subjectCount: wrongOwner.length,
     });
   }
   return violations;

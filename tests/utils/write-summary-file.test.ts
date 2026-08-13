@@ -28,6 +28,7 @@ function forbidViolation(
     patterns: [packageName],
     message,
     matchedFiles: [],
+    subjectCount: 1,
     packageName,
   };
 }

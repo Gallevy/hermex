@@ -18,6 +18,8 @@ export function evaluateFileRules(
         patterns: rule.patterns,
         message: rule.message,
         matchedFiles: matches,
+        // Every matched file is its own thing to remove.
+        subjectCount: matches.length,
       });
     }
   }
@@ -31,6 +33,8 @@ export function evaluateFileRules(
         patterns: rule.patterns,
         message: rule.message,
         matchedFiles: [],
+        // Patterns are OR-ed, so this is one unmet requirement.
+        subjectCount: 1,
       });
     }
   }

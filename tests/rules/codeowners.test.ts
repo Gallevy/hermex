@@ -176,6 +176,28 @@ describe('evaluateCodeowners', () => {
     );
     expect(result).toHaveLength(1);
     expect(result[0].matchedFiles).toEqual(['lib/x.ts']);
+    expect(result[0].subjectCount).toBe(1);
+  });
+
+  // #83's extreme case: codeowners is a singleton rule that folds EVERY
+  // unowned file into a single violation, so a repo with hundreds of
+  // unowned files still reports one. subjectCount is the only place that
+  // scale is visible. Previously untested beyond a single unowned file.
+  it('folds many unowned files into one violation, counted by subjectCount', () => {
+    tempDir = mkdtempSync(join(tmpdir(), 'hermex-codeowners-test-'));
+    mkdirSync(join(tempDir, '.github'));
+    writeFileSync(join(tempDir, '.github', 'CODEOWNERS'), 'src/ @a\n');
+    const unowned = ['lib/a.ts', 'lib/b.ts', 'lib/c.ts', 'docs/d.md'];
+
+    const result = evaluateCodeowners(
+      tempDir,
+      { ...emptyRules, codeowners: { severity: 'error' } },
+      ['src/App.tsx', ...unowned],
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].matchedFiles).toEqual(unowned);
+    expect(result[0].subjectCount).toBe(4);
   });
 
   it('no violation when the rule is not configured, even without a CODEOWNERS file', () => {

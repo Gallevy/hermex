@@ -81,6 +81,47 @@ describe('evaluateFileRules', () => {
     expect(result[0].matchedFiles).toContain('src/legacy.js');
   });
 
+  // #83 pins the cardinality contract: detect_files folds every match into
+  // ONE violation, so the violation count measures policy breaches while
+  // subjectCount measures how many files actually have to go. The
+  // aggregation was previously untested and could have silently drifted to
+  // a fan-out.
+  it('folds every matched file into one detect_files violation, counted by subjectCount', () => {
+    const result = evaluateFileRules(
+      tempDir,
+      {
+        ...emptyRules,
+        detect_files: [{ severity: 'error', patterns: ['src/*'] }],
+      },
+      [],
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].matchedFiles.length).toBeGreaterThan(1);
+    expect(result[0].subjectCount).toBe(result[0].matchedFiles.length);
+  });
+
+  it('reports one require_files violation per rule regardless of pattern count', () => {
+    const result = evaluateFileRules(
+      tempDir,
+      {
+        ...emptyRules,
+        require_files: [
+          {
+            severity: 'error',
+            patterns: ['.nvmrc', '.node-version', '.tool-versions'],
+          },
+        ],
+      },
+      [],
+    );
+
+    // Patterns are OR-ed — three ways to satisfy one requirement, so one
+    // unmet requirement, not three.
+    expect(result).toHaveLength(1);
+    expect(result[0].subjectCount).toBe(1);
+  });
+
   it('no violation when require_files pattern matches a file', () => {
     const result = evaluateFileRules(
       tempDir,
@@ -303,6 +344,43 @@ describe('evaluatePackageFieldRules', () => {
     expect(result).toHaveLength(1);
     expect(result[0].type).toBe('forbid_package_fields');
     expect(result[0].fieldPath).toBe('jest');
+    expect(result[0].subjectCount).toBe(1);
+  });
+
+  // #83: this is the one field rule that fans out — one violation per
+  // matching pattern, each naming its own fieldPath, so subjectCount is
+  // always 1 and the violation count already equals the problem count.
+  // Contrast require_package_fields below, which reports one violation for
+  // the whole rule. Previously untested.
+  it('emits one forbid_package_fields violation per matching pattern', () => {
+    const result = evaluatePackageFieldRules(tempDir, {
+      ...emptyRules,
+      forbid_package_fields: [
+        { severity: 'error', patterns: ['jest', 'license', 'packageManager'] },
+      ],
+    });
+
+    expect(result).toHaveLength(3);
+    expect(result.map((v) => v.fieldPath)).toEqual([
+      'jest',
+      'license',
+      'packageManager',
+    ]);
+    expect(result.every((v) => v.subjectCount === 1)).toBe(true);
+  });
+
+  it('emits one require_package_fields violation for the whole rule', () => {
+    const result = evaluatePackageFieldRules(tempDir, {
+      ...emptyRules,
+      require_package_fields: [
+        { severity: 'error', patterns: ['repository', 'homepage', 'bugs'] },
+      ],
+    });
+
+    // Three missing fields, but the patterns are OR-ed — one unmet
+    // requirement, not three.
+    expect(result).toHaveLength(1);
+    expect(result[0].subjectCount).toBe(1);
   });
 
   it('no violation when a forbidden field is absent', () => {

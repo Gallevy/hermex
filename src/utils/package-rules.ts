@@ -43,6 +43,8 @@ export function detectForbiddenPackages(
           patterns: rule.patterns,
           message: rule.message,
           matchedFiles: [],
+          // One package to remove per violation — this rule already fans out.
+          subjectCount: 1,
           packageName: entry.packageName,
         });
         break;
@@ -85,6 +87,8 @@ export function detectRequiredPackages(
         patterns: rule.patterns,
         message: rule.message,
         matchedFiles: [],
+        // Patterns are OR-ed — one unsatisfied requirement.
+        subjectCount: 1,
       });
     }
   }

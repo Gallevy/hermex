@@ -552,6 +552,7 @@ describe('package inventory axes (end to end)', () => {
         patterns: ['moment'],
         message: 'Use date-fns',
         matchedFiles: [],
+        subjectCount: 1,
         packageName: 'moment',
       },
     ]);

@@ -30,5 +30,7 @@ export function evaluateScriptRules(
       patterns: rule.patterns,
       message: rule.message,
       matchedFiles: [],
+      // Patterns are OR-ed — one missing script requirement.
+      subjectCount: 1,
     }));
 }

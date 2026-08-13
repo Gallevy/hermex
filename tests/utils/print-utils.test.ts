@@ -54,6 +54,7 @@ function forbidViolation(
     patterns: [packageName],
     message,
     matchedFiles: [],
+    subjectCount: 1,
     packageName,
   };
 }
@@ -1556,6 +1557,7 @@ describe('printJson', () => {
         patterns: ['moment'],
         message: 'Use dayjs',
         matchedFiles: [],
+        subjectCount: 1,
         packageName: 'moment',
       },
     ]);

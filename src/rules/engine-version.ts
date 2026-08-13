@@ -24,6 +24,7 @@ export function evaluateEngineVersion(
           patterns: [],
           message: rule.message ?? 'engines.node not specified in package.json',
           matchedFiles: [],
+          subjectCount: 1,
           requiredRange: rule.range,
         },
       ];
@@ -38,6 +39,7 @@ export function evaluateEngineVersion(
           patterns: [],
           message: rule.message,
           matchedFiles: [],
+          subjectCount: 1,
           installedRange: nodeRange,
           requiredRange: rule.range,
         },
