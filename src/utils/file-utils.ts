@@ -17,7 +17,12 @@ export async function findFiles(
     windowsPathsNoEscape: true,
   });
 
-  return files.map((f) => f.replace(/\\/g, '/'));
+  // Sorted because glob returns directory-walk order, which varies by
+  // filesystem and platform. Everything downstream inherits this order —
+  // component tie-breaks, `components[].files`, the order parse errors are
+  // reported in — so leaving it unsorted makes hermex's own output differ
+  // between two machines analyzing the identical repo.
+  return files.map((f) => f.replace(/\\/g, '/')).sort();
 }
 
 /**
