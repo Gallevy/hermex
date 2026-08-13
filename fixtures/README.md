@@ -47,14 +47,49 @@ the manifest omits (`react-dom`), and installed transitively only
 | Repo | Proves |
 | --- | --- |
 | `repos/compliant/` | The mirror of the primary repo: the same rules, all satisfied. `comply` prints a clean verdict and exits 0. Keep its rules in step with `hermex.config.ts` — the pass/fail pair only means something while the policy is identical and the repo is not. |
-| `repos/lockfile-npm/`, `-yarn/`, `-pnpm/` | One resolved dependency tree in three lock formats, with identical manifests and identical source. `scan --format json` should produce identical output for all three; the runner checks that and reports any divergence. |
+| `repos/all-rule-types/` | All nine rule types firing at once, at three severities. The only fixture that renders an `engine_version`, `codeowners`, or package-field row, so it is the one that covers those renderers at all. |
+| `repos/version-conflict/` | One package resolved at two versions (react 18.3.1 at the root, 17.0.2 nested). The only fixture where `releaseAge.scope` changes the verdict — `root` enforces the direct copy and reports the nested one as advisory, `tree` enforces both (#57). |
+| `repos/lockfile-npm/`, `-yarn/`, `-pnpm/` | One resolved dependency tree in three lock formats, with identical manifests and identical source. `scan --format json` should produce identical output for all three; the `lockfile-parity` invariant checks that. |
 
 > **Known divergence:** the npm arm currently reports the hoisted transitive
 > packages (`js-tokens`, `loose-envify`, `scheduler`) as direct
 > dependencies, because npm's lockfile lists them at `node_modules/<name>`
 > and the adapter reads that depth as "root". yarn and pnpm report only the
 > four declared packages. The baselines record this as it is today; the
-> runner reports it as advisory rather than failing on it.
+> `lockfile-parity` invariant is marked advisory so a known parser bug does
+> not keep the job permanently red.
+
+## Invariants
+
+A baseline records what happened. It cannot record what must *never*
+happen — and because `--update` rewrites every baseline at once, a rule
+encoded only in the recorded bytes is absorbed silently the moment those
+bytes change together. Three lock formats can drift apart in one commit; a
+gap in the scrubber gets faithfully re-recorded.
+
+So some claims live outside the baselines, in `scripts/output-review.ts`.
+Each is named, says what it guarantees, and is reported separately from the
+per-case diffs:
+
+| Invariant | Guarantees | |
+| --- | --- | --- |
+| `lockfile-parity` | The same dependency tree parses to the same inventory whichever lock format records it. | advisory |
+| `ansi-purity` | Nothing but a deliberately coloured case emits escape sequences — and a file written with `--summary-file` never does, whatever the colour settings. | blocking |
+| `exit-code-agrees-with-verdict` | A script reading the exit code and a human reading the verdict reach the same conclusion. Covers both the human wording and `compliance.compliant` in JSON. | blocking |
+| `json-stdout-is-only-json` | `--format json` puts nothing but the payload on stdout, so it can be piped straight into a parser — progress chrome belongs on stderr (#55). | blocking |
+| `no-unscrubbed-volatiles` | No baseline records an absolute path, a process id or a released version, any of which would make the next run differ for reasons that are not code changes. | blocking |
+| `suppressed-sections-stay-absent` | A section switched off in config leaves no trace (#63). Driven by each case's `absent` list, because an absence nobody states is an absence nobody notices. | blocking |
+| `no-orphaned-baselines` | Every committed baseline belongs to a live case, so a renamed case cannot leave a directory nobody reads behind. | blocking |
+
+**Blocking** fails the run even under `--update` — these describe things no
+baseline should ever be allowed to record. **Advisory** is for a breach that
+is known, understood and tracked elsewhere: it is still reported, but a
+permanently red advisory job is one nobody reads.
+
+Worth adding later: re-running each case and requiring identical output
+(determinism as an assertion rather than a convention), and a check that
+every rule type and every `output.*` value appears in at least one case, so
+the matrix cannot silently fall behind the config schema.
 
 ## Release-age fixtures
 

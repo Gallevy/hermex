@@ -52,6 +52,12 @@ export interface FixtureCase {
   registry?: boolean;
   /** Also keep the raw, un-stripped stdout, so escape sequences are diffed. */
   keepAnsi?: boolean;
+  /**
+   * Strings that must not appear in stdout. An absence a reviewer would
+   * have to notice is an absence nobody notices — this states it, and the
+   * `suppressed-sections-stay-absent` invariant enforces it.
+   */
+  absent?: string[];
   /** The exit code this case is asserting. A mismatch fails even with --update. */
   expectExit: number;
 }
@@ -69,9 +75,16 @@ interface FixtureTimeline {
 /** One captured file: `stdout.txt`, `exit-code.txt`, `summary.md`, … */
 type Artifacts = Record<string, string>;
 
-interface CaseResult {
+/** Scrubbed but not ANSI-stripped — what the CLI really wrote. */
+export interface RawCapture {
+  stdout: string;
+  stderr: string;
+}
+
+export interface CaseResult {
   fixture: FixtureCase;
   artifacts: Artifacts;
+  raw: RawCapture;
   /** Set when the process exit code did not match `expectExit`. */
   exitMismatch?: { expected: number; actual: number };
   changed: string[];
@@ -116,8 +129,16 @@ function baseEnv(): Record<string, string> {
   };
 }
 
-// oxlint-disable-next-line no-control-regex -- matching the ANSI escape byte is the point
-const ANSI_ESCAPE_PATTERN = /\u001B\[[0-9;]*m/g;
+// The escape-sequence pattern, kept as a source string so the global
+// (replace) and non-global (test) forms cannot drift. .test() on a /g/
+// regex is stateful, so the two genuinely have to be separate objects.
+const ANSI_ESCAPE = '\\u001B\\[[0-9;]*m';
+const ANSI_ESCAPE_PATTERN = new RegExp(ANSI_ESCAPE, 'g');
+const ANSI_ESCAPE_TEST = new RegExp(ANSI_ESCAPE);
+
+function hasAnsi(text: string): boolean {
+  return ANSI_ESCAPE_TEST.test(text);
+}
 
 function stripAnsi(text: string): string {
   return text.replace(ANSI_ESCAPE_PATTERN, '');
@@ -260,7 +281,7 @@ function spawnCapture(
 async function runCase(
   fixture: FixtureCase,
   registryUrl: string | null,
-): Promise<{ artifacts: Artifacts; status: number }> {
+): Promise<{ artifacts: Artifacts; status: number; raw: RawCapture }> {
   const scratch = mkdtempSync(join(tmpdir(), `hermex-output-${fixture.name}-`));
   try {
     const args = fixture.args.map((arg) => arg.replace('{OUT}', scratch));
@@ -297,7 +318,10 @@ async function runCase(
         : '<file was not written>\n';
     }
 
-    return { artifacts, status };
+    // The un-stripped text goes back alongside the artifacts, not into
+    // them: the ANSI-purity invariant has to look at what the CLI actually
+    // emitted, and by the time a baseline is written the escapes are gone.
+    return { artifacts, status, raw: { stdout, stderr } };
   } finally {
     rmSync(scratch, { recursive: true, force: true });
   }
@@ -407,7 +431,11 @@ export function unifiedDiff(
   return lines.join('\n');
 }
 
-function compare(fixture: FixtureCase, artifacts: Artifacts): CaseResult {
+function compare(
+  fixture: FixtureCase,
+  artifacts: Artifacts,
+  raw: RawCapture,
+): CaseResult {
   const baseline = readBaseline(fixture.name);
   const changed: string[] = [];
   const added: string[] = [];
@@ -433,6 +461,7 @@ function compare(fixture: FixtureCase, artifacts: Artifacts): CaseResult {
   return {
     fixture,
     artifacts,
+    raw,
     changed,
     added,
     removed,
@@ -449,39 +478,263 @@ function isClean(result: CaseResult): boolean {
   );
 }
 
-// ── Lock-file parity ─────────────────────────────────────────────────────────
+// ── Invariants ───────────────────────────────────────────────────────────────
+//
+// Claims about the *relationship between* cases, or about properties every
+// case must hold, that no single baseline can express.
+//
+// A baseline records what happened; it cannot record what must never
+// happen. Worse, `--update` rewrites every baseline at once, so a rule
+// encoded only in the recorded bytes is absorbed silently the moment the
+// bytes change together — three lock formats drifting apart in the same
+// commit, or a scrubber gap that gets faithfully re-recorded. These checks
+// sit outside the baselines for exactly that reason, and are reported
+// separately in the job summary and the PR comment.
+
+interface Invariant {
+  name: string;
+  /** What it guarantees, printed with any breach. */
+  guarantees: string;
+  /**
+   * `false` for a breach that is known, understood and tracked elsewhere —
+   * it still gets reported, but does not fail the run. A permanently red
+   * advisory job is one nobody reads.
+   */
+  blocking: boolean;
+  check(context: InvariantContext): string[];
+}
+
+interface InvariantContext {
+  results: CaseResult[];
+  /** False under --filter, where whole-matrix claims cannot be judged. */
+  full: boolean;
+}
+
+interface Breach {
+  invariant: Invariant;
+  detail: string;
+}
 
 const LOCKFILE_CASES = ['lockfile-npm', 'lockfile-yarn', 'lockfile-pnpm'];
 
-/**
- * The three lock-file repos describe one resolved tree in three formats, so
- * their payloads should be identical to each other — a claim the per-case
- * baselines cannot make on their own, because updating all three at once
- * would hide the divergence.
- *
- * Reported, not enforced. They currently disagree: npm's lockfile lists
- * hoisted transitive packages at `node_modules/<name>`, and the npm adapter
- * reads that depth as "direct dependency", so an npm repo reports
- * transitive packages as owned while yarn and pnpm do not. That is a
- * pre-existing parser bug with its own fix, and failing this advisory job
- * on it would just make the job something people ignore.
- */
-function lockfileParity(results: CaseResult[]): string | null {
-  const present = LOCKFILE_CASES.map((name) =>
-    results.find((r) => r.fixture.name === name),
-  ).filter((r): r is CaseResult => r !== undefined);
-  if (present.length < 2) return null;
+function payloadOf(result: CaseResult): string {
+  return (
+    result.artifacts['stdout.json'] ?? result.artifacts['stdout.txt'] ?? ''
+  );
+}
 
-  const payloadOf = (result: CaseResult) =>
-    result.artifacts['stdout.json'] ?? result.artifacts['stdout.txt'] ?? '';
-  const reference = present[0];
-  const divergent = present
-    .slice(1)
-    .filter((r) => payloadOf(r) !== payloadOf(reference))
-    .map((r) => r.fixture.name);
+function isJsonCase(result: CaseResult): boolean {
+  return result.fixture.args.includes('json');
+}
 
-  if (divergent.length === 0) return null;
-  return `${divergent.join(', ')} disagree with ${reference.fixture.name}. The same tree in a different lock format should parse to the same inventory — advisory only, not a failure.`;
+function isComplyCase(result: CaseResult): boolean {
+  return result.fixture.args[0] === 'comply';
+}
+
+export const INVARIANTS: Invariant[] = [
+  {
+    name: 'lockfile-parity',
+    guarantees:
+      'the same dependency tree parses to the same inventory whichever lock format records it',
+    // Known breach: npm's lockfile lists hoisted transitive packages at
+    // `node_modules/<name>`, and the adapter reads that depth as "direct
+    // dependency", so an npm repo reports transitive packages as owned
+    // while yarn and pnpm do not. Pre-existing, needs its own fix and its
+    // own output diff.
+    blocking: false,
+    check({ results }) {
+      const present = LOCKFILE_CASES.map((name) =>
+        results.find((r) => r.fixture.name === name),
+      ).filter((r): r is CaseResult => r !== undefined);
+      if (present.length < 2) return [];
+
+      const reference = present[0];
+      return present
+        .slice(1)
+        .filter((r) => payloadOf(r) !== payloadOf(reference))
+        .map(
+          (r) =>
+            `${r.fixture.name} disagrees with ${reference.fixture.name} on the same tree`,
+        );
+    },
+  },
+  {
+    name: 'ansi-purity',
+    guarantees:
+      'nothing but a deliberately coloured case emits escape sequences, so CI logs, summary files and PR comments stay readable',
+    blocking: true,
+    check({ results }) {
+      const breaches: string[] = [];
+      for (const result of results) {
+        if (!result.fixture.keepAnsi) {
+          if (hasAnsi(result.raw.stdout)) {
+            breaches.push(`${result.fixture.name}: stdout carries colour`);
+          }
+          if (hasAnsi(result.raw.stderr)) {
+            breaches.push(`${result.fixture.name}: stderr carries colour`);
+          }
+        }
+        // A written file is never a terminal, whatever the colour settings
+        // — --summary-file exists to be pasted somewhere that cannot
+        // render escapes.
+        for (const name of result.fixture.writes ?? []) {
+          if (hasAnsi(result.artifacts[name] ?? '')) {
+            breaches.push(`${result.fixture.name}: ${name} carries colour`);
+          }
+        }
+      }
+      return breaches;
+    },
+  },
+  {
+    name: 'exit-code-agrees-with-verdict',
+    guarantees:
+      'the exit code and the printed verdict never disagree, so a script and a human reading the same run reach the same conclusion',
+    blocking: true,
+    check({ results }) {
+      const breaches: string[] = [];
+      for (const result of results.filter(isComplyCase)) {
+        const exit = Number(result.artifacts['exit-code.txt']?.trim());
+        // Exit 2 is a pipeline failure — no verdict was reached at all, so
+        // there is nothing to agree with.
+        if (exit === 2) continue;
+
+        if (isJsonCase(result)) {
+          const parsed = JSON.parse(payloadOf(result)) as {
+            compliance?: { compliant?: boolean };
+          };
+          const compliant = parsed.compliance?.compliant;
+          if (compliant !== (exit === 0)) {
+            breaches.push(
+              `${result.fixture.name}: compliance.compliant is ${String(compliant)} but the process exited ${exit}`,
+            );
+          }
+          continue;
+        }
+
+        const text = payloadOf(result);
+        const saysNotCompliant = text.includes('NOT COMPLIANT');
+        const saysCompliant = text.includes('COMPLIANT') && !saysNotCompliant;
+        if (exit === 0 && !saysCompliant) {
+          breaches.push(
+            `${result.fixture.name}: exited 0 without printing a compliant verdict`,
+          );
+        }
+        if (exit === 1 && !saysNotCompliant) {
+          breaches.push(
+            `${result.fixture.name}: exited 1 without printing a non-compliant verdict`,
+          );
+        }
+      }
+      return breaches;
+    },
+  },
+  {
+    name: 'json-stdout-is-only-json',
+    guarantees:
+      '--format json puts nothing but the payload on stdout, so a consumer can pipe it straight into a parser (#55)',
+    blocking: true,
+    check({ results }) {
+      return results
+        .filter(isJsonCase)
+        .filter((result) => !isJson(payloadOf(result)))
+        .map(
+          (result) =>
+            `${result.fixture.name}: stdout is not parseable as a single JSON document — progress chrome belongs on stderr`,
+        );
+    },
+  },
+  {
+    name: 'no-unscrubbed-volatiles',
+    guarantees:
+      'no baseline records an absolute path, a process id or a released version — any of which would make the next run differ for reasons that are not code changes',
+    blocking: true,
+    check({ results }) {
+      // Each pattern requires a non-letter before the path so a URL scheme
+      // does not read as a drive letter — `https://` ends in `s:/` and
+      // matched the naive version of this check.
+      const leaks: [RegExp, string][] = [
+        [/(?:^|[^A-Za-z])[A-Za-z]:\//, 'an absolute Windows path'],
+        [/(?:^|[^\w-])\/(?:home|Users)\//, 'an absolute POSIX path'],
+        [/hermex v\d+\.\d+\.\d+/, "hermex's own version"],
+        [/\(node:\d+\)/, 'a process id'],
+      ];
+      const breaches: string[] = [];
+      for (const result of results) {
+        for (const [file, content] of Object.entries(result.artifacts)) {
+          for (const [pattern, what] of leaks) {
+            if (pattern.test(content)) {
+              breaches.push(
+                `${result.fixture.name}/${file} contains ${what} the scrubber missed`,
+              );
+            }
+          }
+        }
+      }
+      return breaches;
+    },
+  },
+  {
+    name: 'suppressed-sections-stay-absent',
+    guarantees:
+      'a section switched off in config leaves no trace in the output at all (#63)',
+    blocking: true,
+    check({ results }) {
+      const breaches: string[] = [];
+      for (const result of results) {
+        for (const needle of result.fixture.absent ?? []) {
+          if (payloadOf(result).includes(needle)) {
+            breaches.push(
+              `${result.fixture.name}: "${needle}" is still present in stdout`,
+            );
+          }
+        }
+      }
+      return breaches;
+    },
+  },
+  {
+    name: 'no-orphaned-baselines',
+    guarantees:
+      'every committed baseline belongs to a live case, so a renamed or deleted case cannot leave a directory nobody reads behind',
+    blocking: true,
+    check({ results, full }) {
+      if (!full || !existsSync(BASELINES)) return [];
+      const live = new Set(results.map((r) => r.fixture.name));
+      return readdirSync(BASELINES, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory() && !live.has(entry.name))
+        .map(
+          (entry) =>
+            `tests/__output_baselines__/${entry.name}/ has no case in fixtures/cases.ts`,
+        );
+    },
+  },
+];
+
+function checkInvariants(results: CaseResult[], full: boolean): Breach[] {
+  const breaches: Breach[] = [];
+  for (const invariant of INVARIANTS) {
+    for (const detail of invariant.check({ results, full })) {
+      breaches.push({ invariant, detail });
+    }
+  }
+  return breaches;
+}
+
+/** The Warnings block shared by the job summary and the PR comment. */
+function renderBreaches(breaches: Breach[]): string[] {
+  if (breaches.length === 0) return [];
+
+  const lines = ['> [!WARNING]', '> **Invariants**'];
+  for (const invariant of INVARIANTS) {
+    const mine = breaches.filter((b) => b.invariant === invariant);
+    if (mine.length === 0) continue;
+    lines.push(
+      `> - \`${invariant.name}\`${invariant.blocking ? '' : ' _(advisory)_'} — ${invariant.guarantees}.`,
+    );
+    for (const breach of mine) lines.push(`>   - ${breach.detail}`);
+  }
+  return [...lines, ''];
 }
 
 // ── Reporting ────────────────────────────────────────────────────────────────
@@ -521,10 +774,10 @@ function forSummary(content: string): string {
 }
 
 /** The reviewable surface: every case's output, inline, no download step. */
-function buildJobSummary(results: CaseResult[], parity: string | null): string {
+function buildJobSummary(results: CaseResult[], breaches: Breach[]): string {
   const lines: string[] = ['# Output review', ''];
   lines.push(buildTable(results, null), '');
-  if (parity) lines.push(`> [!WARNING]`, `> Lock-file parity: ${parity}`, '');
+  lines.push(...renderBreaches(breaches));
 
   for (const result of results) {
     lines.push(`### ${result.fixture.name}`, '');
@@ -569,7 +822,7 @@ function buildTable(results: CaseResult[], summaryUrl: string | null): string {
 }
 
 /** The sticky PR comment: one row and one link per case, nothing else. */
-function buildComment(results: CaseResult[], parity: string | null): string {
+function buildComment(results: CaseResult[], breaches: Breach[]): string {
   const changed = results.filter((r) => !isClean(r)).length;
   const summaryUrl =
     process.env['GITHUB_SERVER_URL'] &&
@@ -580,13 +833,12 @@ function buildComment(results: CaseResult[], parity: string | null): string {
 
   const lines = [
     '<!-- hermex-output-review -->',
-    `**Output review** — ${results.length} cases, ${changed} changed`,
+    `**Output review** — ${results.length} cases, ${changed} changed, ${breaches.length} invariant breach(es)`,
     '',
     buildTable(results, summaryUrl),
     '',
+    ...renderBreaches(breaches),
   ];
-
-  if (parity) lines.push(`> [!WARNING]`, `> Lock-file parity: ${parity}`, '');
 
   lines.push(
     changed === 0
@@ -635,11 +887,11 @@ async function main(): Promise<void> {
   const results: CaseResult[] = [];
   try {
     for (const fixture of selected) {
-      const { artifacts, status } = await runCase(
+      const { artifacts, status, raw } = await runCase(
         fixture,
         fixture.registry && registry ? registry.url : null,
       );
-      const result = compare(fixture, artifacts);
+      const result = compare(fixture, artifacts, raw);
       if (status !== fixture.expectExit) {
         result.exitMismatch = { expected: fixture.expectExit, actual: status };
       }
@@ -655,17 +907,22 @@ async function main(): Promise<void> {
     registry?.close();
   }
 
-  const parity = lockfileParity(results);
+  const breaches = checkInvariants(results, filter === null);
   mkdirSync(REPORT_DIR, { recursive: true });
-  writeFileSync(join(REPORT_DIR, 'comment.md'), buildComment(results, parity));
+  writeFileSync(
+    join(REPORT_DIR, 'comment.md'),
+    buildComment(results, breaches),
+  );
   writeFileSync(
     join(REPORT_DIR, 'summary.md'),
-    buildJobSummary(results, parity),
+    buildJobSummary(results, breaches),
   );
 
   const stepSummary = process.env['GITHUB_STEP_SUMMARY'];
   if (stepSummary) {
-    writeFileSync(stepSummary, buildJobSummary(results, parity), { flag: 'a' });
+    writeFileSync(stepSummary, buildJobSummary(results, breaches), {
+      flag: 'a',
+    });
   }
 
   // An exit-code mismatch is never absorbed by --update: the manifest says
@@ -677,7 +934,11 @@ async function main(): Promise<void> {
       `\n${result.fixture.name}: expected exit ${result.exitMismatch?.expected}, got ${result.exitMismatch?.actual}. Update expectExit in fixtures/cases.ts if this is intended.\n`,
     );
   }
-  if (parity) process.stderr.write(`\nLock-file parity: ${parity}\n`);
+  for (const { invariant, detail } of breaches) {
+    process.stderr.write(
+      `\n${invariant.blocking ? 'invariant' : 'advisory '} ${invariant.name}: ${detail}\n  guarantees ${invariant.guarantees}\n`,
+    );
+  }
 
   const differing = results.filter((r) => !isClean(r));
   if (update) {
@@ -694,8 +955,13 @@ async function main(): Promise<void> {
     );
   }
 
-  // Parity is deliberately absent from this condition — see `lockfileParity`.
-  const failed = mismatched.length > 0 || (!update && differing.length > 0);
+  // A blocking invariant fails the run even under --update, for the same
+  // reason an exit-code mismatch does: it describes something no baseline
+  // should ever be allowed to record.
+  const failed =
+    mismatched.length > 0 ||
+    breaches.some(({ invariant }) => invariant.blocking) ||
+    (!update && differing.length > 0);
   process.exitCode = failed ? 1 : 0;
 }
 

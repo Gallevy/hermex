@@ -93,6 +93,21 @@ One entry in `fixtures/cases.ts` plus, usually, one config in
 and the PR comment all read it from there. `fixtures/README.md` explains
 what each existing fixture proves; say the same for yours.
 
+### Invariants
+
+Some claims cannot live in a baseline: `--update` rewrites every baseline at
+once, so a rule encoded only in the recorded bytes is absorbed the moment
+those bytes change together. Those claims are named invariants in
+`scripts/output-review.ts` — ANSI purity, exit code agreeing with the
+printed verdict, `--format json` putting nothing but JSON on stdout, no
+unscrubbed absolute paths or versions, suppressed sections staying absent,
+and no orphaned baseline directories. `fixtures/README.md` lists them with
+what each one guarantees.
+
+A **blocking** invariant fails the run even under `--update`. Mark one
+**advisory** only when the breach is known, understood and tracked
+elsewhere — a permanently red advisory job is one nobody reads.
+
 ### Keeping output deterministic
 
 A case that differs between two runs of identical code makes the whole

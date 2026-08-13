@@ -56,6 +56,10 @@ export const RELEASE_TIMELINES: Record<string, FixtureTimeline> = {
   react: {
     latest: '19.1.0',
     releases: {
+      // Only reachable from `repos/version-conflict/`, where a nested copy
+      // resolves this far back — the version whose enforcement `scope`
+      // decides (#57).
+      '17.0.2': { daysAgo: 1500 },
       '18.3.1': { daysAgo: 700 },
       '19.0.0': { daysAgo: 400 },
       '19.1.0': { daysAgo: 10 },

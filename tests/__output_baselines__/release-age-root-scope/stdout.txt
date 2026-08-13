@@ -1,0 +1,25 @@
+hermex v<version>
+- Parsing lockfile...
+✔ Found pnpm lockfile (supports: v5, v6, v9) - 2 packages
+✔ Found 3 files
+✔ Analysis complete! Analyzed 3/3 files
+✔ Release age fetched
+
+📦 Packages
+
+┌───────────────┬───────────┬────────────────────────────────────┐
+│ Package       │ Installed │ Target                             │
+├───────────────┼───────────┼────────────────────────────────────┤
+│ legacy-widget │ 1.0.0     │                                    │
+├───────────────┼───────────┼────────────────────────────────────┤
+│ react         │ 18.3.1    │ 🔴 major 19.1.0 (340 days overdue) │
+└───────────────┴───────────┴────────────────────────────────────┘
+
+Notes:
+  🔵 react → 2 versions installed (bundle impact): 17.0.2, 18.3.1 → 1 nested copy overdue, not enforced but recommended to resolve
+
+Total: 2 packages
+
+🔴 NOT COMPLIANT
+  1 mandatory violation found
+

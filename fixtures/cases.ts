@@ -46,6 +46,9 @@ export const cases: FixtureCase[] = [
       'Section toggles actually suppress output — every section off except the summary (#63).',
     cwd: '.',
     args: ['scan', '--config', 'configs/minimal.config.ts'],
+    // Named rather than left to the reader: "the packages table is gone" is
+    // the kind of absence a human skims straight past in a 40-line baseline.
+    absent: ['📦 Packages', '⚛️ Components', '🔍 Rules', '⚖️ Versus'],
     expectExit: 0,
   },
 
@@ -61,7 +64,7 @@ export const cases: FixtureCase[] = [
   {
     name: 'scan-json-toggles',
     proves:
-      'JSON honours output.* the same way human output does — disabled sections must not reappear in the payload (#63).',
+      'What output.* toggles do to --format json: today, nothing. The payload below is emitted with every section switched off, so `versus` and `ruleViolations` are still present — pair it with scan-human-minimal to see the two formats diverge.',
     cwd: '.',
     args: ['scan', '--format', 'json', '--config', 'configs/minimal.config.ts'],
     expectExit: 0,
@@ -117,6 +120,77 @@ export const cases: FixtureCase[] = [
     registry: true,
     expectExit: 1,
   },
+  {
+    name: 'comply-all-rule-types',
+    proves:
+      'Every one of the nine rule types in one table, at three severities — the only case that renders engine_version, codeowners and both package-field shapes.',
+    cwd: 'repos/all-rule-types',
+    args: ['comply'],
+    expectExit: 1,
+  },
+  {
+    name: 'comply-all-rule-types-json',
+    proves:
+      'The machine-readable shape of every rule type: fieldPath and actualValue on package-field hits, installedRange/requiredRange on engine_version, matchedFiles on codeowners, subjectCount everywhere (#83).',
+    cwd: 'repos/all-rule-types',
+    args: ['comply', '--format', 'json'],
+    expectExit: 1,
+  },
+  {
+    name: 'comply-summary-title',
+    proves:
+      '--summary-title replaces the default heading, so a consumer embedding the markdown can name it after the policy rather than the tool.',
+    cwd: '.',
+    args: [
+      'comply',
+      '--summary-file',
+      '{OUT}/summary.md',
+      '--summary-title',
+      'Design System Compliance',
+    ],
+    writes: ['summary.md'],
+    expectExit: 1,
+  },
+  {
+    name: 'comply-exit-2',
+    proves:
+      'A pipeline failure (nothing matched `includes`) exits 2, not 1 — a consumer must be able to tell "could not run" from "not compliant".',
+    cwd: '.',
+    args: ['comply', '--config', 'configs/no-files.config.ts'],
+    expectExit: 2,
+  },
+  {
+    name: 'scan-no-files',
+    proves:
+      'The same pipeline failure under `scan` reports the problem and exits 0 — the deliberate asymmetry with comply-exit-2, kept visible so it cannot drift unnoticed.',
+    cwd: '.',
+    args: ['scan', '--config', 'configs/no-files.config.ts'],
+    expectExit: 0,
+  },
+
+  // ── release-age scope ────────────────────────────────────────────────────
+  // The same repo — react 18.3.1 at the root, react 17.0.2 nested under
+  // legacy-widget — under both scopes. The diff between these two baselines
+  // is exactly what `releaseAge.scope` does (#57).
+  {
+    name: 'release-age-root-scope',
+    proves:
+      'scope: root enforces only the direct copy, and still surfaces the overdue nested copy as an advisory breach rather than hiding it.',
+    cwd: 'repos/version-conflict',
+    args: ['comply'],
+    registry: true,
+    expectExit: 1,
+  },
+  {
+    name: 'release-age-tree-scope',
+    proves:
+      'scope: tree enforces every resolved copy, so the nested version becomes the mandatory failure and the reported installed version follows it.',
+    cwd: 'repos/version-conflict',
+    args: ['comply', '--config', 'tree.config.ts'],
+    registry: true,
+    expectExit: 1,
+  },
+
   {
     name: 'comply-overrides',
     proves:
