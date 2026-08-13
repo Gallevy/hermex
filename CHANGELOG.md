@@ -1,3 +1,10 @@
+# [2.11.0](https://github.com/Gallevy/hermex/compare/v2.10.0...v2.11.0) (2026-08-13)
+
+
+### Features
+
+* move patterns[] under summary as summary.patternCounts ([#80](https://github.com/Gallevy/hermex/issues/80)) ([#89](https://github.com/Gallevy/hermex/issues/89)) ([efe1c07](https://github.com/Gallevy/hermex/commit/efe1c076dd8063df1e2c9b22f164a93145557306))
+
 # [2.10.0](https://github.com/Gallevy/hermex/compare/v2.9.0...v2.10.0) (2026-08-13)
 
 
