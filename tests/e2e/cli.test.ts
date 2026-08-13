@@ -89,8 +89,10 @@ describe('CLI smoke tests', () => {
     expect(parsed).toHaveProperty('summary');
     expect(parsed).toHaveProperty('packages');
     expect(parsed).toHaveProperty('components');
-    expect(parsed).toHaveProperty('patterns');
     expect(parsed.summary).toHaveProperty('filesAnalyzed');
+    // Aggregate stats live under summary, not as a top-level field (#80).
+    expect(parsed).not.toHaveProperty('patterns');
+    expect(parsed.summary).toHaveProperty('patternCounts');
     // scan --format json carries the same official compliance verdict as
     // comply, so consumers get a canonical status off either command (#55).
     expect(parsed).toHaveProperty('compliance');
@@ -567,7 +569,6 @@ describe('package inventory axes (end to end)', () => {
       'summary',
       'packages',
       'components',
-      'patterns',
       'versus',
       'ruleViolations',
       'compliance',

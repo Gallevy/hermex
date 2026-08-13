@@ -56,6 +56,8 @@ export interface HermexScanResult {
     totalImports: number;
     totalComponents: number;
     totalUsagePatterns: number;
+    /** `totalUsagePatterns` broken down by pattern type — aggregate counts, not per-item records (#80). */
+    patternCounts: import('./utils/pattern-counter').PatternCount[];
   };
   /**
    * Every package this repo owns — declared in `package.json`, a direct
@@ -70,7 +72,6 @@ export interface HermexScanResult {
    * component names live — `packages[]` carries only `componentCount` (#79).
    */
   components: HermexScanComponent[];
-  patterns: import('./utils/pattern-counter').PatternCount[];
   versus: import('./utils/versus').VersusResult[];
   /** Every rule hit, in one list — filter on `type` to single out a rule. */
   ruleViolations: import('./rules/evaluator').RuleViolation[];
