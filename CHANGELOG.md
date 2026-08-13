@@ -1,3 +1,10 @@
+## [2.11.1](https://github.com/Gallevy/hermex/compare/v2.11.0...v2.11.1) (2026-08-13)
+
+
+### Bug Fixes
+
+* correct npm root resolution and sort scan output; add the output review ([#90](https://github.com/Gallevy/hermex/issues/90)) ([#94](https://github.com/Gallevy/hermex/issues/94)) ([497104a](https://github.com/Gallevy/hermex/commit/497104a5fc705698846b1e6038c119e6c1fb9722))
+
 # [2.11.0](https://github.com/Gallevy/hermex/compare/v2.10.0...v2.11.0) (2026-08-13)
 
 
