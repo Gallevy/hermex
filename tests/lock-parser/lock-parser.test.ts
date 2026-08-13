@@ -217,6 +217,42 @@ describe('NpmLockfileAdapter', () => {
     expect(resolutions['parent-pkg/nested-pkg']).toBeUndefined();
   });
 
+  it('treats only manifest-declared packages as direct, not everything npm hoisted to the top level', () => {
+    const resolutions = adapter.resolve(
+      join(FIXTURES, 'package-lock-hoisted.json'),
+      FIXTURES,
+    );
+
+    // Declared across all four dependency buckets — every one is direct.
+    expect(resolutions['react'].rootVersion).toBe('18.3.1');
+    expect(resolutions['vitest'].rootVersion).toBe('1.6.0');
+    expect(resolutions['fsevents'].rootVersion).toBe('2.3.3');
+    expect(resolutions['typescript'].rootVersion).toBe('5.9.2');
+
+    // Hoisted to node_modules/<name> — the same depth as a direct
+    // dependency — but declared by nobody. Reading depth as "direct" made
+    // the repo look like it owned packages it never asked for, so
+    // forbid_packages could demand the removal of something only a
+    // transitive parent pulls in.
+    expect(resolutions['loose-envify'].rootVersion).toBeNull();
+    expect(resolutions['loose-envify'].allVersions).toEqual(['1.4.0']);
+    expect(resolutions['js-tokens'].rootVersion).toBeNull();
+
+    // Genuinely nested copies are unaffected.
+    expect(resolutions['chai'].rootVersion).toBeNull();
+  });
+
+  it('falls back to depth when the lockfile records no root manifest dependencies', () => {
+    // package-lock-nested.json has a `packages[""]` entry carrying only a
+    // name, so there is no declared set to filter by and depth is the only
+    // signal available.
+    const resolutions = adapter.resolve(
+      join(FIXTURES, 'package-lock-nested.json'),
+      FIXTURES,
+    );
+    expect(resolutions['foo'].rootVersion).toBe('1.0.0');
+  });
+
   it('filters out nested node_modules entries from rootVersion and skips packages without a version', () => {
     const resolutions = adapter.resolve(
       join(FIXTURES, 'package-lock-nested.json'),

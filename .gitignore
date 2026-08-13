@@ -23,3 +23,7 @@ build/
 
 # Test coverage
 coverage/
+
+# Output review report (the baselines under tests/__output_baselines__/ are
+# committed; this is just the rendered summary and PR comment for one run)
+.output-review/

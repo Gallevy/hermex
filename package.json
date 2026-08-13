@@ -46,6 +46,7 @@
     "test": "vitest",
     "test:ci": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:output": "node scripts/output-review.ts",
     "typecheck": "tsc --noEmit",
     "build": "tsdown",
     "build:ci": "tsdown",

@@ -1,0 +1,25 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      moment:
+        specifier: ^2.29.4
+        version: 2.29.4
+      react:
+        specifier: ^18.3.0
+        version: 18.3.1
+
+packages:
+
+  moment@2.29.4:
+    resolution: {integrity: sha512-mock}
+
+  react@18.3.1:
+    resolution: {integrity: sha512-mock}
+    engines: {node: '>=0.10.0'}

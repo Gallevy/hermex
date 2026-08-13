@@ -1,0 +1,94 @@
+# .github/workflows/output-review.yaml
+#
+# Puts hermex's real output in front of a human on every PR. Runs the case
+# matrix in fixtures/cases.ts, diffs it against the committed baselines,
+# renders every case into the job summary, and leaves one sticky comment
+# with a row and a link per case.
+#
+# This is a required check, not an advisory one. A failure means either the
+# output changed and the baselines were not refreshed in the same PR, or an
+# invariant that no baseline can express has been broken. Both are things a
+# reviewer has to see before merge, so the job goes red and stays red until
+# `pnpm run test:output -- --update` is run and the diff reviewed.
+name: Output review
+
+on:
+  pull_request:
+    branches: ['main', 'beta']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm CLI
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run the output matrix
+        run: pnpm run test:output
+
+      # `always()`: the comment is most useful precisely when the step above
+      # failed — it is what tells the reviewer which cases changed and where
+      # to read them.
+      - name: Post the review comment
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('node:fs');
+            const path = '.output-review/comment.md';
+            if (!fs.existsSync(path)) {
+              core.warning('No output-review report was produced.');
+              return;
+            }
+            const body = fs.readFileSync(path, 'utf8');
+            const marker = '<!-- hermex-output-review -->';
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              per_page: 100,
+            });
+            const existing = comments.find(
+              (comment) =>
+                comment.user.type === 'Bot' && comment.body.includes(marker),
+            );
+
+            // Updated in place rather than appended: one PR gets one output
+            // review, and a thread of stale matrices is worse than none.
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }

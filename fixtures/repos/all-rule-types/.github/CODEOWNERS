@@ -1,0 +1,4 @@
+# owned.tsx has the required platform owner; legacy.tsx is owned by a team
+# that is not in `requiredOwners`; orphan.tsx matches nothing at all.
+/src/owned.tsx   @org/platform
+/src/legacy.tsx  @org/legacy

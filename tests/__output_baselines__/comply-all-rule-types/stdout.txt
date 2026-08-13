@@ -1,0 +1,37 @@
+hermex v<version>
+- Parsing lockfile...
+✔ Found pnpm lockfile (supports: v5, v6, v9) - 2 packages
+✔ Found 3 files
+✔ Analysis complete! Analyzed 3/3 files
+
+🔍 Rules
+
+┌──────────────────┬───────────────────────────────────────────────────────────────────────────────────────────────┐
+│ Rule             │ Description                                                                                   │
+├──────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ forbid_packages  │ 🔴 moment is forbidden — Use date-fns or dayjs                                                │
+├──────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ require_packages │ 🔴 typescript not installed — TypeScript is required                                          │
+├──────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ detect_files     │ 🔴 jest.config.*, .babelrc detected (jest.config.js, .babelrc) — Use vitest + Vite            │
+├──────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ require_files    │ 🔴 .nvmrc not found                                                                           │
+├──────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ require_scripts  │ 🔴 script build, test missing in package.json — Required npm scripts                          │
+├──────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ package_fields   │ 🟡 field license missing in package.json                                                      │
+├──────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ package_fields   │ 🟡 field publishConfig.registry is forbidden in package.json — Publish to the public registry │
+├──────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ engine_version   │ 🔴 engines.node is >=16, required >=20 — Minimum Node 20 required                             │
+├──────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ codeowners       │ 🔵 1 scanned file(s) have no owner: src/orphan.tsx — Every file needs a platform owner        │
+├──────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ codeowners       │ 🔵 1 scanned file(s) have no owner: src/legacy.tsx — Every file needs a platform owner        │
+└──────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────┘
+
+6 errors, 2 warnings
+
+🔴 NOT COMPLIANT
+  6 mandatory violations found
+

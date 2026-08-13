@@ -1,0 +1,34 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      legacy-widget:
+        specifier: ^1.0.0
+        version: 1.0.0
+      react:
+        specifier: ^18.3.0
+        version: 18.3.1
+
+packages:
+
+  legacy-widget@1.0.0:
+    resolution: {integrity: sha512-mock}
+    peerDependencies:
+      react: ^17.0.0
+
+  react@18.3.1:
+    resolution: {integrity: sha512-mock}
+    engines: {node: '>=0.10.0'}
+
+  # The nested copy legacy-widget resolves for itself. Present only under
+  # `packages`, never in `importers` — so it counts toward allVersions but
+  # is not the root resolution.
+  react@17.0.2:
+    resolution: {integrity: sha512-mock}
+    engines: {node: '>=0.10.0'}
