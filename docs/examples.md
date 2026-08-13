@@ -477,10 +477,9 @@ Severity is the only thing that decides which bucket a rule violation lands in; 
 | Field | What it holds |
 |---|---|
 | `version` | The hermex version that produced the report. |
-| `summary` | Aggregate counts: `filesAnalyzed`, `totalImports`, `totalComponents`, `totalUsagePatterns`. |
+| `summary` | Aggregate counts: `filesAnalyzed`, `totalImports`, `totalComponents`, `totalUsagePatterns`, plus `patternCounts` — per-pattern-type usage counts (`imports.named`, `usage.jsx`, …). |
 | `packages` | Every package the repo owns — see below. Carries version, `declaredIn`, usage counts, and `releaseAge` when enrichment ran. |
 | `components` | Every component found, with its source package, usage count and the files using it. The one place component names live. |
-| `patterns` | Per-pattern-type usage counts (`imports.named`, `usage.jsx`, …). |
 | `versus` | Head-to-head comparisons configured under `versus`. |
 | `ruleViolations` | **Every rule hit, in one list** — `detect_files`, `require_files`, `require_packages`, `forbid_packages`, `require_scripts`, `require_package_fields`, `forbid_package_fields`, `engine_version`, `codeowners`. Filter on `type`. |
 | `compliance` | The canonical verdict — see above. |

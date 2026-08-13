@@ -1487,7 +1487,6 @@ describe('printJson', () => {
       'summary',
       'packages',
       'components',
-      'patterns',
       'versus',
       'ruleViolations',
       'compliance',
@@ -1496,6 +1495,31 @@ describe('printJson', () => {
     expect(parsed.summary.totalImports).toBe(10);
     expect(parsed.summary.totalComponents).toBe(3);
     expect(parsed.summary.totalUsagePatterns).toBe(7);
+  });
+
+  // #80: these are aggregate counts — the same kind of number as
+  // totalUsagePatterns beside them, just broken down by pattern type — so
+  // they belong in summary rather than alongside the per-item datasets.
+  it('nests pattern counts under summary rather than as a top-level field', () => {
+    printJson(
+      makeAggregated({
+        patternCounts: [
+          { patternType: 'usage.jsx', displayName: 'JSX Usage', count: 5 },
+          {
+            patternType: 'imports.named',
+            displayName: 'Named Imports',
+            count: 2,
+          },
+        ],
+      }),
+    );
+
+    const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+    expect(parsed).not.toHaveProperty('patterns');
+    expect(parsed.summary.patternCounts).toEqual([
+      { patternType: 'usage.jsx', displayName: 'JSX Usage', count: 5 },
+      { patternType: 'imports.named', displayName: 'Named Imports', count: 2 },
+    ]);
   });
 
   it('emits the official compliance verdict (status + counts) so consumers need not re-derive it (#55)', () => {
