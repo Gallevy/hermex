@@ -152,48 +152,6 @@
       "allVersions": [
         "18.2.0"
       ]
-    },
-    {
-      "packageName": "js-tokens",
-      "version": "4.0.0",
-      "rootVersion": "4.0.0",
-      "declaredIn": [],
-      "componentCount": 0,
-      "usageCount": 0,
-      "percentage": 0,
-      "internal": false,
-      "hasVersionConflict": false,
-      "allVersions": [
-        "4.0.0"
-      ]
-    },
-    {
-      "packageName": "loose-envify",
-      "version": "1.4.0",
-      "rootVersion": "1.4.0",
-      "declaredIn": [],
-      "componentCount": 0,
-      "usageCount": 0,
-      "percentage": 0,
-      "internal": false,
-      "hasVersionConflict": false,
-      "allVersions": [
-        "1.4.0"
-      ]
-    },
-    {
-      "packageName": "scheduler",
-      "version": "0.23.0",
-      "rootVersion": "0.23.0",
-      "declaredIn": [],
-      "componentCount": 0,
-      "usageCount": 0,
-      "percentage": 0,
-      "internal": false,
-      "hasVersionConflict": false,
-      "allVersions": [
-        "0.23.0"
-      ]
     }
   ],
   "components": [

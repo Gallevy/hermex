@@ -76,15 +76,20 @@ Baselines live in `tests/__output_baselines__/<case>/`. They are committed
 on purpose: **refreshing a baseline is part of your PR diff**, which is what
 makes "is this change intended?" answerable in review.
 
-### When to apply the `output-review` label
+### It runs on every PR, and it has to pass
 
-CI applies it automatically when a PR touches anything that can change what
-a user sees — `src/commands/**`, the `src/utils/print-*` renderers,
-`write-summary-file`, `chart-renderer`, `compliance`, `severity-format`,
-`src/config/schema.ts`, `fixtures/**`, or the baselines themselves. Add it
-by hand when you have changed output in a way those paths do not capture
-(an aggregator change that alters counts, say). The job is advisory: it
-renders the diff and comments one row per case, and a human decides.
+There is no opt-in and no label. The job runs on every pull request, posts a
+sticky comment with a row and a link per case, and is a **required check**.
+
+If it is red, one of two things happened:
+
+1. **The output changed and the baselines did not.** Read the comment or the
+   job summary, confirm every diff is what you meant, then run
+   `pnpm run test:output -- --update` and commit the result. The refreshed
+   baselines are the record of what you approved.
+2. **An invariant broke.** No baseline refresh fixes that — an invariant
+   describes what must never happen, so the check stays red until the
+   behaviour changes.
 
 ### Adding a case
 

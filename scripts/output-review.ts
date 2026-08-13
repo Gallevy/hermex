@@ -536,12 +536,12 @@ export const INVARIANTS: Invariant[] = [
     name: 'lockfile-parity',
     guarantees:
       'the same dependency tree parses to the same inventory whichever lock format records it',
-    // Known breach: npm's lockfile lists hoisted transitive packages at
-    // `node_modules/<name>`, and the adapter reads that depth as "direct
-    // dependency", so an npm repo reports transitive packages as owned
-    // while yarn and pnpm do not. Pre-existing, needs its own fix and its
-    // own output diff.
-    blocking: false,
+    // Blocking. This was advisory while the npm adapter read hoisting
+    // depth as "direct dependency" and the three arms genuinely disagreed;
+    // that is fixed (see `declaredRootNames` in the npm adapter), so a
+    // divergence now means a parser has regressed and there is nothing to
+    // be gained by letting it merge.
+    blocking: true,
     check({ results }) {
       const present = LOCKFILE_CASES.map((name) =>
         results.find((r) => r.fixture.name === name),
@@ -840,11 +840,19 @@ function buildComment(results: CaseResult[], breaches: Breach[]): string {
     ...renderBreaches(breaches),
   ];
 
-  lines.push(
-    changed === 0
-      ? 'Nothing changed. No output review needed.'
-      : 'Click a case to read its output in the job summary. Reviewed and correct? Approve the PR. Wrong? The baselines are in `tests/__output_baselines__/`, refreshed with `pnpm run test:output -- --update`.',
-  );
+  // This job is a required check, so the closing line has to say what it
+  // takes to go green — a red run with no instructions is just an obstacle.
+  if (breaches.length > 0) {
+    lines.push(
+      'An invariant above is broken. That is not something a baseline refresh fixes — it describes what must never happen, so the check stays red until the behaviour changes.',
+    );
+  } else if (changed === 0) {
+    lines.push('Output is unchanged. Nothing to review.');
+  } else {
+    lines.push(
+      'Click a case to read its output in the job summary. If every change is intended, run `pnpm run test:output -- --update` and commit the refreshed baselines — that diff is the record of what you approved, and this check goes green once it matches.',
+    );
+  }
   return lines.join('\n');
 }
 

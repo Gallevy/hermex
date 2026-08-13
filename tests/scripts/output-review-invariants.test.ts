@@ -243,9 +243,13 @@ describe('lockfile-parity', () => {
     expect(breaches).toEqual([]);
   });
 
-  it('is advisory, so a known parser divergence cannot block the run', () => {
+  it('blocks, now that the three arms genuinely agree', () => {
     const parity = INVARIANTS.find((i) => i.name === 'lockfile-parity');
-    expect(parity?.blocking).toBe(false);
+    expect(parity?.blocking).toBe(true);
+  });
+
+  it('every invariant is blocking — advisory is for a tracked, understood breach', () => {
+    expect(INVARIANTS.filter((i) => !i.blocking)).toEqual([]);
   });
 });
 

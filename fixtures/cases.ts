@@ -64,7 +64,7 @@ export const cases: FixtureCase[] = [
   {
     name: 'scan-json-toggles',
     proves:
-      'What output.* toggles do to --format json: today, nothing. The payload below is emitted with every section switched off, so `versus` and `ruleViolations` are still present — pair it with scan-human-minimal to see the two formats diverge.',
+      'What output.* toggles do to --format json: today, nothing (#91). The payload below is emitted with every section switched off, yet still carries packages, components, versus and ruleViolations in full. Pair it with scan-human-minimal to see the two formats diverge; when #91 lands, this baseline shrinking is the proof.',
     cwd: '.',
     args: ['scan', '--format', 'json', '--config', 'configs/minimal.config.ts'],
     expectExit: 0,

@@ -49,15 +49,15 @@ the manifest omits (`react-dom`), and installed transitively only
 | `repos/compliant/` | The mirror of the primary repo: the same rules, all satisfied. `comply` prints a clean verdict and exits 0. Keep its rules in step with `hermex.config.ts` — the pass/fail pair only means something while the policy is identical and the repo is not. |
 | `repos/all-rule-types/` | All nine rule types firing at once, at three severities. The only fixture that renders an `engine_version`, `codeowners`, or package-field row, so it is the one that covers those renderers at all. |
 | `repos/version-conflict/` | One package resolved at two versions (react 18.3.1 at the root, 17.0.2 nested). The only fixture where `releaseAge.scope` changes the verdict — `root` enforces the direct copy and reports the nested one as advisory, `tree` enforces both (#57). |
-| `repos/lockfile-npm/`, `-yarn/`, `-pnpm/` | One resolved dependency tree in three lock formats, with identical manifests and identical source. `scan --format json` should produce identical output for all three; the `lockfile-parity` invariant checks that. |
+| `repos/lockfile-npm/`, `-yarn/`, `-pnpm/` | One resolved dependency tree in three lock formats, with identical manifests and identical source. `scan --format json` must produce identical output for all three; the `lockfile-parity` invariant enforces it. |
 
-> **Known divergence:** the npm arm currently reports the hoisted transitive
-> packages (`js-tokens`, `loose-envify`, `scheduler`) as direct
-> dependencies, because npm's lockfile lists them at `node_modules/<name>`
-> and the adapter reads that depth as "root". yarn and pnpm report only the
-> four declared packages. The baselines record this as it is today; the
-> `lockfile-parity` invariant is marked advisory so a known parser bug does
-> not keep the job permanently red.
+The lock-file trio found a real bug the first time it ran: the npm arm
+reported the hoisted transitive packages (`js-tokens`, `loose-envify`,
+`scheduler`) as direct dependencies, because npm installs a conflict-free
+transitive dependency at `node_modules/<name>` — exactly where a direct one
+lives — and the adapter read that depth as "root". The adapter now reads the
+declared set from the lockfile's own `packages[""]` entry, and the three
+arms agree.
 
 ## Invariants
 
@@ -71,20 +71,22 @@ So some claims live outside the baselines, in `scripts/output-review.ts`.
 Each is named, says what it guarantees, and is reported separately from the
 per-case diffs:
 
-| Invariant | Guarantees | |
-| --- | --- | --- |
-| `lockfile-parity` | The same dependency tree parses to the same inventory whichever lock format records it. | advisory |
-| `ansi-purity` | Nothing but a deliberately coloured case emits escape sequences — and a file written with `--summary-file` never does, whatever the colour settings. | blocking |
-| `exit-code-agrees-with-verdict` | A script reading the exit code and a human reading the verdict reach the same conclusion. Covers both the human wording and `compliance.compliant` in JSON. | blocking |
-| `json-stdout-is-only-json` | `--format json` puts nothing but the payload on stdout, so it can be piped straight into a parser — progress chrome belongs on stderr (#55). | blocking |
-| `no-unscrubbed-volatiles` | No baseline records an absolute path, a process id or a released version, any of which would make the next run differ for reasons that are not code changes. | blocking |
-| `suppressed-sections-stay-absent` | A section switched off in config leaves no trace (#63). Driven by each case's `absent` list, because an absence nobody states is an absence nobody notices. | blocking |
-| `no-orphaned-baselines` | Every committed baseline belongs to a live case, so a renamed case cannot leave a directory nobody reads behind. | blocking |
+| Invariant | Guarantees |
+| --- | --- |
+| `lockfile-parity` | The same dependency tree parses to the same inventory whichever lock format records it. |
+| `ansi-purity` | Nothing but a deliberately coloured case emits escape sequences — and a file written with `--summary-file` never does, whatever the colour settings. |
+| `exit-code-agrees-with-verdict` | A script reading the exit code and a human reading the verdict reach the same conclusion. Covers both the human wording and `compliance.compliant` in JSON. |
+| `json-stdout-is-only-json` | `--format json` puts nothing but the payload on stdout, so it can be piped straight into a parser — progress chrome belongs on stderr (#55). |
+| `no-unscrubbed-volatiles` | No baseline records an absolute path, a process id or a released version, any of which would make the next run differ for reasons that are not code changes. |
+| `suppressed-sections-stay-absent` | A section switched off in config leaves no trace (#63). Driven by each case's `absent` list, because an absence nobody states is an absence nobody notices. |
+| `no-orphaned-baselines` | Every committed baseline belongs to a live case, so a renamed case cannot leave a directory nobody reads behind. |
 
-**Blocking** fails the run even under `--update` — these describe things no
-baseline should ever be allowed to record. **Advisory** is for a breach that
-is known, understood and tracked elsewhere: it is still reported, but a
-permanently red advisory job is one nobody reads.
+All of them are **blocking**: they fail the run even under `--update`,
+because they describe things no baseline should ever be allowed to record.
+An invariant can be marked advisory instead, and `lockfile-parity` was while
+the npm adapter genuinely disagreed with its siblings — but that is a
+holding position for a breach already understood and being fixed, not a
+place to leave one. A permanently amber check is one nobody reads.
 
 Worth adding later: re-running each case and requiring identical output
 (determinism as an assertion rather than a convention), and a check that
