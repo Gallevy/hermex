@@ -22,13 +22,13 @@
 [90m┌──────────────────[39m[90m┬──────────────────────────────────────────────────────┐[39m
 [90m│[39m[36m Rule             [39m[90m│[39m[36m Description                                          [39m[90m│[39m
 [90m├──────────────────[39m[90m┼──────────────────────────────────────────────────────┤[39m
-[90m│[39m no-packages      [90m│[39m 🔴 moment is forbidden[90m — Use date-fns or dayjs[39m       [90m│[39m
+[90m│[39m forbid_packages  [90m│[39m 🔴 moment is forbidden[90m — Use date-fns or dayjs[39m       [90m│[39m
 [90m├──────────────────[39m[90m┼──────────────────────────────────────────────────────┤[39m
-[90m│[39m require-packages [90m│[39m 🔴 typescript not installed[90m — TypeScript is required[39m [90m│[39m
+[90m│[39m require_packages [90m│[39m 🔴 typescript not installed[90m — TypeScript is required[39m [90m│[39m
 [90m├──────────────────[39m[90m┼──────────────────────────────────────────────────────┤[39m
-[90m│[39m require-files    [90m│[39m 🔴 .nvmrc not found                                  [90m│[39m
+[90m│[39m require_files    [90m│[39m 🔴 .nvmrc not found                                  [90m│[39m
 [90m├──────────────────[39m[90m┼──────────────────────────────────────────────────────┤[39m
-[90m│[39m require-files    [90m│[39m 🟡 .editorconfig not found                           [90m│[39m
+[90m│[39m require_files    [90m│[39m 🟡 .editorconfig not found                           [90m│[39m
 [90m└──────────────────[39m[90m┴──────────────────────────────────────────────────────┘[39m
 [90m[39m
 [90m[31m3 errors[39m[90m, [33m1 warning[39m[90m[39m

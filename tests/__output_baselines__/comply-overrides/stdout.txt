@@ -22,11 +22,11 @@ Caused by:
 ┌──────────────────┬────────────────────────────────────────────────────────────────────────┐
 │ Rule             │ Description                                                            │
 ├──────────────────┼────────────────────────────────────────────────────────────────────────┤
-│ no-packages      │ 🟡 moment is forbidden — Use date-fns or dayjs (scheduled for removal) │
+│ forbid_packages  │ 🟡 moment is forbidden — Use date-fns or dayjs (scheduled for removal) │
 ├──────────────────┼────────────────────────────────────────────────────────────────────────┤
-│ require-packages │ 🔴 typescript not installed — TypeScript is required                   │
+│ require_packages │ 🔴 typescript not installed — TypeScript is required                   │
 ├──────────────────┼────────────────────────────────────────────────────────────────────────┤
-│ require-files    │ 🔴 .nvmrc not found                                                    │
+│ require_files    │ 🔴 .nvmrc not found                                                    │
 └──────────────────┴────────────────────────────────────────────────────────────────────────┘
 
 2 errors, 1 warning
