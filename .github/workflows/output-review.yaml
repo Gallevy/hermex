@@ -1,9 +1,18 @@
 # .github/workflows/output-review.yaml
 #
 # Puts hermex's real output in front of a human on every PR. Runs the case
-# matrix in fixtures/cases.ts, diffs it against the committed baselines,
-# renders every case into the job summary, and leaves one sticky comment
-# with a row and a link per case.
+# matrix in fixtures/cases.ts and diffs it against the committed baselines,
+# then reports it twice, deliberately differently:
+#
+#   - The sticky PR comment carries only the cases that **changed**: what
+#     each asserts, links to the config and fixture it ran against, and a
+#     blob link per changed line range of the committed baseline. Not the
+#     diffs — a renderer tweak moves every row of sixteen cases at once,
+#     which is 60 KB against GitHub's 65,536-character comment limit.
+#   - The job summary carries **every** case with its full diff and output.
+#
+# A comment listing two dozen `unchanged` rows is what the first version
+# did, and a wall is what people stop reading.
 #
 # This is a required check, not an advisory one. A failure means either the
 # output changed and the baselines were not refreshed in the same PR, or an

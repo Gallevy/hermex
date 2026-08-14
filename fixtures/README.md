@@ -16,8 +16,8 @@ change.
 | --- | --- |
 | `hermex.config.ts`, `package.json`, `pnpm-lock.yaml` | The **primary fixture repo**: a deliberately messy app under a deliberately failing policy, so `scan` and `comply` both have something to say. Running `hermex` from `fixtures/` analyzes this. |
 | `patterns/`, `aliasing/`, `versus/`, `declarations/`, `broken/` | The source it analyzes — see below. |
-| `configs/` | Config variants over the primary repo. Each spreads `../hermex.config.ts` and changes one thing, so the difference between two outputs is never a difference between two policies. |
-| `repos/` | Secondary mini-repos that cases run against with their own `cwd`. |
+| [`configs/`](./configs/README.md) | Config variants over the primary repo. Each spreads `../hermex.config.ts` and changes one thing, so the difference between two outputs is never a difference between two policies. |
+| `repos/` | Secondary mini-repos that cases run against with their own `cwd`. Each has its own README. |
 | `registry/` | Recorded npm release timelines, so release-age checks never touch the network. |
 | `cases.ts` | The output-review matrix. |
 
@@ -44,12 +44,16 @@ the manifest omits (`react-dom`), and installed transitively only
 
 ## The secondary repos
 
+Each links to its own README, which the output review puts one click away
+from every diff — a reviewer looking at a changed case should not have to
+reconstruct what it was run against.
+
 | Repo | Proves |
 | --- | --- |
-| `repos/compliant/` | The mirror of the primary repo: the same rules, all satisfied. `comply` prints a clean verdict and exits 0. Keep its rules in step with `hermex.config.ts` — the pass/fail pair only means something while the policy is identical and the repo is not. |
-| `repos/all-rule-types/` | All nine rule types firing at once, at three severities. The only fixture that renders an `engine_version`, `codeowners`, or package-field row, so it is the one that covers those renderers at all. Its CODEOWNERS deliberately leaves one file unowned and gives another to a team outside `requiredOwners` — which is how it surfaced #95. |
-| `repos/version-conflict/` | One package resolved at two versions (react 18.3.1 at the root, 17.0.2 nested). The only fixture where `releaseAge.scope` changes the verdict — `root` enforces the direct copy and reports the nested one as advisory, `tree` enforces both (#57). |
-| `repos/lockfile-npm/`, `-yarn/`, `-pnpm/` | One resolved dependency tree in three lock formats, with identical manifests and identical source. `scan --format json` must produce identical output for all three; the `lockfile-parity` invariant enforces it. |
+| [`repos/compliant/`](./repos/compliant/README.md) | The mirror of the primary repo: the same rules, all satisfied. `comply` prints a clean verdict and exits 0. Keep its rules in step with `hermex.config.ts` — the pass/fail pair only means something while the policy is identical and the repo is not. |
+| [`repos/all-rule-types/`](./repos/all-rule-types/README.md) | All nine rule types firing at once, at three severities. The only fixture that renders an `engine_version`, `codeowners`, or package-field row, so it is the one that covers those renderers at all. Its CODEOWNERS deliberately leaves one file unowned and gives another to a team outside `requiredOwners` — which is how it surfaced #95. |
+| [`repos/version-conflict/`](./repos/version-conflict/README.md) | One package resolved at two versions (react 18.3.1 at the root, 17.0.2 nested). The only fixture where `releaseAge.scope` changes the verdict — `root` enforces the direct copy and reports the nested one as advisory, `tree` enforces both (#57). |
+| [`repos/lockfile-npm/`](./repos/lockfile-npm/README.md), [`-yarn/`](./repos/lockfile-yarn/README.md), [`-pnpm/`](./repos/lockfile-pnpm/README.md) | One resolved dependency tree in three lock formats, with identical manifests and identical source. `scan --format json` must produce identical output for all three; the `lockfile-parity` invariant enforces it. |
 
 The lock-file trio found a real bug the first time it ran: the npm arm
 reported the hoisted transitive packages (`js-tokens`, `loose-envify`,
@@ -122,3 +126,35 @@ causes it.
 Adding a case is one entry in `cases.ts` plus (usually) one config in
 `configs/`. Nothing else knows the list — the runner, the CI job and the PR
 comment all read it from there.
+
+### Where the review shows up
+
+Two views, deliberately not the same view:
+
+| Where | Shows | For |
+| --- | --- | --- |
+| **The sticky PR comment** | Only the cases that **changed**: what each asserts, the config and fixture it ran against, per-artifact `+/-` counts, and a link to each changed line range. | Review, and triage — which cases moved, by how much, and is that the set you expected? |
+| **The job summary** (Actions → the run) | Every case, changed or not, with its full diff, stdout, stderr and written files. | Reading the change itself, and browsing what a case emits at all. |
+
+The comment does **not** carry the diffs. An output change is rarely one
+line in one case — swapping a table border character rewrites every row of
+sixteen cases at once, which is 60 KB of comment against GitHub's 65,536
+limit, and unreadable long before it is rejected. So the comment shows a
+bounded excerpt of the first hunk per case while it has room for one, and
+degrades to counts and links when it does not.
+
+Diffs are unified format. `-` is the committed baseline, `+` is this run,
+and `@@ -12,7 +12,9 @@` is a hunk header: unchanged lines were skipped, and
+the hunk below covers 7 lines starting at line 12 of the baseline and 9
+lines starting at line 12 of this run.
+
+Those numbers are also what the comment's links are built from. Each hunk
+becomes a `…/tests/__output_baselines__/<case>/stdout.txt#L19-L119` link —
+a blob range, which is the one form of deep link GitHub honours exactly. It
+points at the **committed baseline**, so it works before anyone runs
+`--update`: it shows what the output used to be, at the lines that stopped
+being true.
+
+Both reports are written locally too, as `.output-review/comment.md` and
+`.output-review/summary.md`, so the CI rendering can be checked without
+pushing.

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { resolve } from 'node:path';
-import { scrub, unifiedDiff } from '../../scripts/output-review';
+import { diffHunks, scrub, unifiedDiff } from '../../scripts/output-review';
 
 const ROOT = resolve(__dirname, '../..');
 
@@ -55,11 +55,17 @@ describe('scrub', () => {
 });
 
 describe('unifiedDiff', () => {
-  it('reports nothing but context markers when the text is unchanged', () => {
+  it('emits nothing at all when the text is unchanged', () => {
     const text = Array.from({ length: 20 }, (_, i) => `line ${i}`).join('\n');
-    const diff = unifiedDiff('stdout.txt', text, text);
-    expect(diff.split('\n').filter((l) => l.startsWith('+line'))).toEqual([]);
-    expect(diff.split('\n').filter((l) => l.startsWith('-line'))).toEqual([]);
+    expect(unifiedDiff('stdout.txt', text, text)).toBe('');
+  });
+
+  it('labels the two sides baseline and current rather than a and b', () => {
+    const diff = unifiedDiff('stdout.txt', 'a', 'b');
+    expect(diff.split('\n').slice(0, 2)).toEqual([
+      '--- baseline/stdout.txt',
+      '+++ current/stdout.txt',
+    ]);
   });
 
   it('marks a changed line and keeps surrounding context', () => {
@@ -83,8 +89,106 @@ describe('unifiedDiff', () => {
     const after = [...before];
     after[20] = 'changed';
     const diff = unifiedDiff('stdout.txt', before.join('\n'), after.join('\n'));
-    expect(diff).toContain('@@');
-    expect(diff).not.toContain(' line 0');
+    expect(diff).not.toContain(' line 0\n');
     expect(diff).toContain(' line 19');
+  });
+
+  /**
+   * The bare `@@` this used to emit said only "something was skipped". The
+   * numbers are the part that lets a reviewer find the changed line in the
+   * baseline file instead of counting from the top — so they are pinned.
+   */
+  describe('hunk headers', () => {
+    const hunks = (diff: string) =>
+      diff.split('\n').filter((line) => line.startsWith('@@'));
+
+    it('states where the hunk starts and how many lines it covers', () => {
+      const before = Array.from({ length: 40 }, (_, i) => `line ${i}`);
+      const after = [...before];
+      after[20] = 'changed';
+      const diff = unifiedDiff(
+        'stdout.txt',
+        before.join('\n'),
+        after.join('\n'),
+      );
+      // Line 21 is `line 20` 1-based; three lines of context either side
+      // makes a seven-line hunk starting at line 18 on both sides.
+      expect(hunks(diff)).toEqual(['@@ -18,7 +18,7 @@']);
+    });
+
+    it('counts the two sides separately when lines are added', () => {
+      const before = ['a', 'b', 'c'].join('\n');
+      const after = ['a', 'b', 'b2', 'b3', 'c'].join('\n');
+      expect(hunks(unifiedDiff('stdout.txt', before, after))).toEqual([
+        '@@ -1,3 +1,5 @@',
+      ]);
+    });
+
+    it('opens one hunk per change region rather than one for the file', () => {
+      const before = Array.from({ length: 60 }, (_, i) => `line ${i}`);
+      const after = [...before];
+      after[10] = 'first';
+      after[50] = 'second';
+      const diff = unifiedDiff(
+        'stdout.txt',
+        before.join('\n'),
+        after.join('\n'),
+      );
+      expect(hunks(diff)).toEqual(['@@ -8,7 +8,7 @@', '@@ -48,7 +48,7 @@']);
+    });
+
+    it('starts at 0 on the side where the file does not exist', () => {
+      const added = unifiedDiff('summary.md', '', ['x', 'y'].join('\n'));
+      expect(hunks(added)).toEqual(['@@ -0,0 +1,2 @@']);
+
+      const removed = unifiedDiff('summary.md', ['x', 'y'].join('\n'), '');
+      expect(hunks(removed)).toEqual(['@@ -1,2 +0,0 @@']);
+    });
+  });
+});
+
+/**
+ * The PR comment links at `…/stdout.txt#L12-L19` rather than inlining the
+ * diff, and those line numbers come from here. A hunk whose `oldStart` is
+ * off by one sends every reviewer to the wrong line of the baseline — a
+ * failure that looks like a working link, which is the worst kind.
+ */
+describe('diffHunks', () => {
+  it('reports no hunks when the two sides are identical', () => {
+    expect(diffHunks('a\nb\nc', 'a\nb\nc')).toEqual([]);
+  });
+
+  it('anchors a hunk at its first baseline line', () => {
+    const before = Array.from({ length: 40 }, (_, i) => `line ${i}`);
+    const after = [...before];
+    after[20] = 'changed';
+    const [hunk, ...rest] = diffHunks(before.join('\n'), after.join('\n'));
+    expect(rest).toEqual([]);
+    expect(hunk.oldStart).toBe(18);
+    expect(hunk.oldCount).toBe(7);
+    // The linked range is oldStart..oldStart+oldCount-1, and `line 20` sits
+    // at baseline line 21 — inside it.
+    expect(hunk.oldStart + hunk.oldCount - 1).toBe(24);
+  });
+
+  it('counts additions and deletions separately per hunk', () => {
+    const [hunk] = diffHunks('a\nb\nc', 'a\nb\nb2\nb3\nc');
+    expect(hunk.rows.filter((row) => row.sign === '+')).toHaveLength(2);
+    expect(hunk.rows.filter((row) => row.sign === '-')).toHaveLength(0);
+  });
+
+  it('leaves no baseline lines to link at for a newly written file', () => {
+    const [hunk] = diffHunks('', 'x\ny');
+    expect(hunk.oldCount).toBe(0);
+    expect(hunk.oldStart).toBe(0);
+  });
+
+  it('keeps distant changes in separate hunks so each gets its own link', () => {
+    const before = Array.from({ length: 60 }, (_, i) => `line ${i}`);
+    const after = [...before];
+    after[10] = 'first';
+    after[50] = 'second';
+    const found = diffHunks(before.join('\n'), after.join('\n'));
+    expect(found.map((hunk) => hunk.oldStart)).toEqual([8, 48]);
   });
 });
