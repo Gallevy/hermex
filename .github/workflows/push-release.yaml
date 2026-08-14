@@ -1,23 +1,44 @@
-# .github/workflows/push-release.yml
+# .github/workflows/push-release.yaml
+#
+# Changesets release pipeline. Merging a PR that carries a changeset opens (or
+# updates) a "Version Packages" PR; merging that PR publishes to npm and cuts a
+# GitHub Release.
+#
+# The work is split across jobs so that `id-token: write` — the credential that
+# can publish to npm via trusted publishing — is only ever granted to the
+# `publish` job, which does not build or run any project code.
 name: Release
 
 on:
   push:
-    branches: ['main', 'beta']
+    branches: ['main']
+
+# Reset permissions; every job grants only what it needs.
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
-  release:
+  # Decides what the rest of the pipeline does:
+  #   version -> changesets are pending, open/update the Version Packages PR
+  #   publish -> no changesets pending and there is something publishable
+  #   none    -> nothing to do
+  select-mode:
     runs-on: ubuntu-latest
 
     permissions:
-      id-token: write
-      contents: write
-      issues: write
-      pull-requests: write
+      contents: read
+
+    outputs:
+      mode: ${{ steps.select-mode.outputs.mode }}
+      publish-plan-artifact-id: ${{ steps.select-mode.outputs.publish-plan-artifact-id }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Setup pnpm CLI
         uses: pnpm/action-setup@v6
@@ -29,6 +50,93 @@ jobs:
         with:
           node-version: 26
           cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Select Changesets mode
+        id: select-mode
+        uses: changesets/action/select-mode@v2
+
+  # Applies pending changesets and opens/updates the Version Packages PR.
+  #
+  # The GitHub App token is required, not cosmetic: PRs opened with the default
+  # GITHUB_TOKEN do not trigger workflows, so the Version Packages PR would
+  # never run `validate` or the required `review` check and could not be merged.
+  version:
+    needs: select-mode
+    if: needs.select-mode.outputs.mode == 'version'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm CLI
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Version packages
+        uses: changesets/action/version@v2
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+        env:
+          # @changesets/changelog-github resolves PR numbers and authors.
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+
+  # Runs the full quality gate, builds, then packs tarballs for `publish`.
+  # Nothing reaches npm unless every check here passes.
+  pack:
+    needs: select-mode
+    if: needs.select-mode.outputs.mode == 'publish'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    outputs:
+      pack-dir-artifact-id: ${{ steps.pack.outputs.pack-dir-artifact-id }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm CLI
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          package-manager-cache: false
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -48,8 +156,46 @@ jobs:
       - name: Build project
         run: pnpm run build:ci
 
-      - name: Run semantic-release
-        run: npx semantic-release
+      - name: Pack packages
+        id: pack
+        uses: changesets/action/pack@v2
+        with:
+          publish-plan-artifact-id: ${{ needs.select-mode.outputs.publish-plan-artifact-id }}
+
+  # Publishes the packed tarballs to npm, pushes git tags and cuts GitHub
+  # Releases. This is the only job holding `id-token: write`.
+  publish:
+    needs: pack
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write # push git tags and create GitHub Releases
+      id-token: write # npm trusted publishing (OIDC)
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm CLI
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Publish packages
+        uses: changesets/action/publish@v2
+        with:
+          pack-dir-artifact-id: ${{ needs.pack.outputs.pack-dir-artifact-id }}
+          create-github-releases: true
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true

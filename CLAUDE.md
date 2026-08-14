@@ -15,7 +15,7 @@ This is an open source static analysis tool for frontend code called **hermex**.
 - Test framework: vitest
 - Linting: oxlint
 - Formatter: oxfmt
-- Release: semantic-release
+- Release: Changesets
 - CI/CD: GitHub Actions
 
 ## Project Structure

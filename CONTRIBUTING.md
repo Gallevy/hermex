@@ -129,14 +129,60 @@ rather than papered over:
 If you add something time-, path- or environment-dependent to the output,
 pin it before you add a case that renders it.
 
+## Describing Your Change
+
+hermex versions and publishes with [Changesets](https://changesets.dev). If your
+PR changes anything a user of hermex would notice, add a changeset to it:
+
+```bash
+pnpm changeset
+```
+
+Pick the bump type, then write the summary. Two things to get right:
+
+- **Pick the bump from the user's point of view.** `patch` for a fix, `minor`
+  for a new rule, option or output field, `major` for anything that breaks an
+  existing config or changes the shape of existing output. Renaming or removing
+  a field in the scan JSON is a breaking change even when the code change is
+  small — people parse that output.
+- **Write the summary for someone upgrading, not for a reviewer.** It goes
+  straight into the changelog and the GitHub Release, so say what changed for
+  them and what they need to do about it. "Report `forbid_packages` hits under
+  `ruleViolations`" is useful; "refactor rule plumbing" is not.
+
+This writes a Markdown file to `.changeset/`. Commit it with your change — a
+bot comments on every PR saying whether one is present.
+
+Not every PR needs one. Docs, CI, refactors and test-only changes release
+nothing, so they legitimately carry no changeset and CI will not fail without
+one. If you want to be explicit that a change is deliberately unreleasable, run
+`pnpm changeset add --empty`.
+
+## How Releases Happen
+
+You do not need to do anything beyond adding a changeset — releases are not cut
+by hand and versions are never edited directly.
+
+1. Merging a PR that carries a changeset opens (or updates) a **Version
+   Packages** PR. It applies the pending changesets: bumps the version in
+   `package.json` and writes the new `CHANGELOG.md` entries.
+2. That PR is the release gate. Reviewing it means reviewing the exact version
+   and the exact release notes before anything is published.
+3. Merging it publishes to npm with provenance, tags the commit `vX.Y.Z`, and
+   cuts a GitHub Release from the changelog entry.
+
+Changesets accumulate, so several merged PRs batch into one release rather than
+publishing once per merge.
+
 ## Submission Process
 
 1. Fork the repository and create a feature branch
 2. Make your changes following these guidelines
 3. Write or update tests as needed
 4. Update documentation if applicable
-5. Ensure all tests pass and code meets style requirements
-6. Submit a pull request with a clear description of the changes
+5. Add a changeset if the change is user-facing (see above)
+6. Ensure all tests pass and code meets style requirements
+7. Submit a pull request with a clear description of the changes
 
 ## Questions?
 
