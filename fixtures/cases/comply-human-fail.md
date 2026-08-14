@@ -15,6 +15,14 @@ The rules table on a failing repo: row ordering, severity badges, the error/warn
 | **Fixture** | [`fixtures`](..) — [overview](../README.md) |
 | **Asserted exit code** | `1` |
 
+## Expected red
+
+This case's baseline is **v3's intended output, written before the code that produces it** — what hermex should print, not what it does. `pnpm run test:output` reports it as expected red rather than a failure, and `--update` will not overwrite it.
+
+Rule ids go kebab-case — #101. The baseline is the intended table; the run still prints the v2 snake_case ids.
+
+When hermex produces this output the case goes green, and the marker has to come off: drop `v3Expected` from its entry in `fixtures/cases.ts`. The `v3-expected-cases-are-still-red` invariant fails the run until someone does, so a landed change cannot leave a stale marker behind.
+
 ## Recorded output
 
 The committed baseline is [`tests/__output_baselines__/comply-human-fail/`](../../tests/__output_baselines__/comply-human-fail), which holds this case's stdout, stderr, exit code and any file it wrote. A change to hermex's output shows up as a diff there, in the same PR that causes it.

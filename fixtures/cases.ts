@@ -86,6 +86,8 @@ export const cases: FixtureCase[] = [
     cwd: '.',
     args: ['comply'],
     expectExit: 1,
+    v3Expected:
+      'Rule ids go kebab-case — #101. The baseline is the intended table; the run still prints the v2 snake_case ids.',
   },
   {
     name: 'comply-human-warn-only',
@@ -101,6 +103,8 @@ export const cases: FixtureCase[] = [
     cwd: '.',
     args: ['comply', '--format', 'json'],
     expectExit: 1,
+    v3Expected:
+      'ruleViolations[].type goes kebab-case — #101. Whether the field is still called `type` is #115 and not settled, so the baseline only changes the ids.',
   },
   {
     name: 'comply-summary-file',
