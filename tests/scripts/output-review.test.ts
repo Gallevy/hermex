@@ -477,7 +477,11 @@ describe('v3-expected reporting', () => {
 
   it('splits the tally into expected and unexpected', () => {
     const comment = buildComment(
-      [marked('explain-why'), regressed('scan-json'), caseResult(fixtureCase({ name: 'quiet' }))],
+      [
+        marked('explain-why'),
+        regressed('scan-json'),
+        caseResult(fixtureCase({ name: 'quiet' })),
+      ],
       [],
     );
     expect(comment).toContain('**1 expected red · 1 unexpected**');
@@ -500,7 +504,10 @@ describe('v3-expected reporting', () => {
     // One table holding both is how an expected red gets read as a regression
     // — and a regression gets waved through as expected.
     const comment = buildComment(
-      [marked('explain-why', 'Goes green when #105 lands.'), regressed('scan-json')],
+      [
+        marked('explain-why', 'Goes green when #105 lands.'),
+        regressed('scan-json'),
+      ],
       [],
     );
     const burndown = comment.indexOf('| Case | Waiting on | |');

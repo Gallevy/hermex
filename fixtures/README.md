@@ -85,6 +85,8 @@ per-case diffs:
 | `no-unscrubbed-volatiles` | No baseline records an absolute path, a process id or a released version, any of which would make the next run differ for reasons that are not code changes. |
 | `suppressed-sections-stay-absent` | A section switched off in config leaves no trace (#63). Driven by each case's `absent` list, because an absence nobody states is an absence nobody notices. |
 | `no-orphaned-baselines` | Every committed baseline belongs to a live case, so a renamed case cannot leave a directory nobody reads behind. |
+| `case-docs-are-current` | Every case has a dossier at `cases/<name>.md` that still describes it. A stale dossier is worse than a missing one: it is believed. |
+| `v3-expected-cases-are-still-red` | A case marked `v3Expected` is still failing, so a baseline hermex has caught up with demands promotion instead of quietly going green. See below. |
 
 All of them are **blocking**: they fail the run even under `--update`,
 because they describe things no baseline should ever be allowed to record.
@@ -97,6 +99,50 @@ Worth adding later: re-running each case and requiring identical output
 (determinism as an assertion rather than a convention), and a check that
 every rule type and every `output.*` value appears in at least one case, so
 the matrix cannot silently fall behind the config schema.
+
+## Expected red: baselines written ahead of the code (v3 only)
+
+v3 is a big-bang release, and its baselines land on `main` **before** the
+code that produces them — that is deliberate, and it is what makes
+"implementation is execution, not discovery" true. A baseline written that
+way holds what hermex *should* print, so the case fails from the day it is
+committed.
+
+One permanently red check is a check nobody reads, and a check nobody reads
+hides the regression someone caused this morning. So a case can say so:
+
+```ts
+{
+  name: 'explain-why-react',
+  proves: '…',
+  cwd: '.',
+  args: ['explain', 'why', 'react'],
+  expectExit: 0,
+  v3Expected: 'Goes green when `explain why` lands — #105.',
+}
+```
+
+The review then reports **`N expected red, 0 unexpected`**, and the marked
+count is the v3 burndown. Three behaviours follow, and all three are the
+point:
+
+- **`--update` never rewrites a marked baseline.** It is hand-written
+  intent, not a recording. Refreshing some other case would otherwise
+  overwrite it with today's v2 output and erase the whole claim.
+- **A red marked case does not fail the run**, including on exit code — the
+  case is declaring its entire captured behaviour as not yet true.
+- **A marked case that goes green fails the run.** Promotion is an edit to
+  `cases.ts`, not a silent pass. `v3-expected-cases-are-still-red` is
+  blocking, so `--update` cannot absorb it either.
+
+Writing the marked baseline is by hand: create
+`tests/__output_baselines__/<case>/` and author the files v3 should produce.
+Nothing generates it, because there is nothing yet to generate it from.
+
+This is **scaffolding with a removal date**. At 3.0.0 GA the marked set is
+empty, and `v3Expected`, its invariant and its reporting come out together.
+With nothing marked, every surface renders exactly as it did before it
+existed, so that removal is a deletion rather than a rewrite.
 
 ## Release-age fixtures
 
@@ -129,8 +175,6 @@ Adding a case is one entry in `cases.ts` plus (usually) one config in
 comment all read it from there.
 
 ### Where the review shows up
-
-Two views, deliberately not the same view:
 
 Three surfaces, split by what stays put and what changes every run:
 

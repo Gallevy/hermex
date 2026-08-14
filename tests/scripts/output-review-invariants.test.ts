@@ -284,7 +284,9 @@ describe('v3-expected-cases-are-still-red', () => {
 
   it('stays quiet while the marked case is still red', () => {
     const breaches = run('v3-expected-cases-are-still-red', [
-      red(caseResult({ name: 'explain-why', v3Expected: 'Lands with #105.' }, {})),
+      red(
+        caseResult({ name: 'explain-why', v3Expected: 'Lands with #105.' }, {}),
+      ),
     ]);
     expect(breaches).toEqual([]);
   });
