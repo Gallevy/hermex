@@ -6,13 +6,9 @@ title: "Output Review"
 {% raw %}
 # Output Review
 
-26 cases · 1 changed · 0 invariant breach(es)
+26 cases · 0 changed · 0 invariant breach(es)
 
-## Changed
-
-| Case | Status | Proves |
-| --- | --- | --- |
-| [`scan-no-files`](./scan-no-files.html) | **changed** <span class="or-add">+0</span> <span class="or-del">−1</span> | The same pipeline failure under `scan` reports the problem and exits 0 — the deliberate asymmetry with comply-exit-2, kept visible so it cannot drift unnoticed. |
+Every case matches its baseline.
 
 ## All cases
 
@@ -34,7 +30,7 @@ title: "Output Review"
 | [`comply-all-rule-types-json`](./comply-all-rule-types-json.html) | unchanged | The machine-readable shape of every rule type: fieldPath and actualValue on package-field hits, installedRange/requiredRange on engine_version, matchedFiles on codeowners. Also where #95 is visible — the two codeowners entries are byte-identical apart from matchedFiles. |
 | [`comply-summary-title`](./comply-summary-title.html) | unchanged | --summary-title replaces the default heading, so a consumer embedding the markdown can name it after the policy rather than the tool. |
 | [`comply-exit-2`](./comply-exit-2.html) | unchanged | A pipeline failure (nothing matched `includes`) exits 2, not 1 — a consumer must be able to tell "could not run" from "not compliant". |
-| [`scan-no-files`](./scan-no-files.html) | **changed** <span class="or-add">+0</span> <span class="or-del">−1</span> | The same pipeline failure under `scan` reports the problem and exits 0 — the deliberate asymmetry with comply-exit-2, kept visible so it cannot drift unnoticed. |
+| [`scan-no-files`](./scan-no-files.html) | unchanged | The same pipeline failure under `scan` reports the problem and exits 0 — the deliberate asymmetry with comply-exit-2, kept visible so it cannot drift unnoticed. |
 | [`release-age-root-scope`](./release-age-root-scope.html) | unchanged | scope: root enforces only the direct copy, and still surfaces the overdue nested copy as an advisory breach rather than hiding it. |
 | [`release-age-tree-scope`](./release-age-tree-scope.html) | unchanged | scope: tree enforces every resolved copy, so the nested version becomes the mandatory failure and the reported installed version follows it. |
 | [`comply-overrides`](./comply-overrides.html) | unchanged | Repo-scoped overrides re-scope severities: one rule downgraded to warn, one switched off and gone from the table. |
