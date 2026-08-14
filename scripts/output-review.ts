@@ -1055,8 +1055,10 @@ function renderBreaches(
     );
   });
   return [
-    '<div style="border-left:4px solid #cf222e;background:#ffebe9;color:#1f2328;' +
-      'padding:0.75rem 1rem;border-radius:0 6px 6px 0;margin:1rem 0">',
+    // Styled by `.or-callout` in the site stylesheet, not inline: an inline
+    // `style=` attribute hardcodes light-mode colours that no stylesheet
+    // (and no dark-mode media query) can then override.
+    '<div class="or-callout">',
     '<strong>⚠ Invariants broken</strong>',
     `<ul>${items.join('')}</ul>`,
     '</div>',
@@ -1295,7 +1297,7 @@ function buildJobSummary(results: CaseResult[], breaches: Breach[]): string {
   const clean = results.filter(isClean);
 
   const lines: string[] = [
-    '# Output review',
+    '# Output Review',
     '',
     `${results.length} cases · ${differing.length} changed · ${breaches.length} invariant breach(es)`,
     '',
@@ -1351,14 +1353,26 @@ function buildTable(results: CaseResult[]): string {
   return lines.join('\n');
 }
 
-/** Total change across every artifact a case touched. */
-function caseTotals(result: CaseResult): string {
+/**
+ * Total change across every artifact a case touched.
+ *
+ * `colored` emits `+N`/`−M` as HTML spans styled by `.or-add`/`.or-del` in
+ * the site stylesheet — used on the site pages, where that stylesheet is
+ * loaded. It stays off in the PR comment: GitHub strips `style`/`class`
+ * attributes from comment bodies, so the spans would render as bare,
+ * unstyled text there anyway.
+ */
+function caseTotals(result: CaseResult, colored = false): string {
   const additions = result.fileDiffs.reduce((sum, e) => sum + e.additions, 0);
   const deletions = result.fileDiffs.reduce((sum, e) => sum + e.deletions, 0);
   if (result.exitMismatch) {
     return `exit ${result.exitMismatch.actual}, expected ${result.exitMismatch.expected}`;
   }
-  return `+${additions} −${deletions}`;
+  if (!colored) return `+${additions} −${deletions}`;
+  return (
+    `<span class="or-add">+${additions}</span> ` +
+    `<span class="or-del">−${deletions}</span>`
+  );
 }
 
 /**
@@ -1403,7 +1417,7 @@ function buildComment(results: CaseResult[], breaches: Breach[]): string {
 
   const lines = [
     '<!-- hermex-output-review -->',
-    '### Output review',
+    '### Output Review',
     '',
     `**${differing.length} of ${results.length} case(s) changed** · ${breaches.length} invariant breach(es) · ${index}`,
     '',
@@ -1464,8 +1478,167 @@ const RAW_CLOSE = '{% endraw %}';
  */
 export const SITE_CONFIG = [
   'theme: jekyll-theme-primer',
-  'title: hermex output review',
+  'title: Hermex Output Review',
   'description: What the CLI actually printed, one page per case.',
+  '',
+].join('\n');
+
+/**
+ * The one stylesheet this site owns, layered on top of the theme via
+ * Jekyll's documented `assets/css/style.scss` override point — the standard
+ * way to touch a GitHub Pages theme without forking its layout.
+ *
+ * Primer's default layout renders the site title (the "hermex output
+ * review" logo link back to the site root) as a bare `<h1>`, immediately
+ * followed by each page's own `<h1>` — "Output Review", or a case name.
+ * Both come out the same size, so the page's actual title reads as a
+ * second, redundant copy of the one above it rather than the thing the
+ * page is about. This demotes the logo link to a small caption so the
+ * page's own heading is unambiguously the title.
+ */
+export const SITE_STYLE = [
+  '---',
+  '---',
+  '@import "{{ site.theme }}";',
+  '',
+  '.markdown-body > h1:first-child {',
+  '  font-size: 14px;',
+  '  font-weight: 600;',
+  '  color: #57606a;',
+  '  text-transform: uppercase;',
+  '  letter-spacing: 0.02em;',
+  '  margin-bottom: 4px;',
+  '}',
+  '',
+  '.markdown-body > h1:first-child a {',
+  '  color: inherit;',
+  '}',
+  '',
+  '/* Case names in the "All cases" table are the short, structured column —',
+  '   let them stay on one line and leave wrapping to the "Proves" prose. */',
+  '.markdown-body table td:first-child,',
+  '.markdown-body table th:first-child {',
+  '  white-space: nowrap;',
+  '}',
+  '',
+  '/* The +N/-M change badge next to a changed case, coloured the way a diff',
+  '   is everywhere else: additions green, deletions red. */',
+  '.or-add {',
+  '  color: #1a7f37;',
+  '  font-weight: 600;',
+  '}',
+  '',
+  '.or-del {',
+  '  color: #cf222e;',
+  '  font-weight: 600;',
+  '}',
+  '',
+  '/* The broken-invariants callout. A class rather than an inline style, so',
+  '   it — and only it — needs overriding below for dark mode; nothing here',
+  '   duplicates colours the theme already sets. */',
+  '.or-callout {',
+  '  border-left: 4px solid #cf222e;',
+  '  background: #ffebe9;',
+  '  color: #1f2328;',
+  '  padding: 0.75rem 1rem;',
+  '  border-radius: 0 6px 6px 0;',
+  '  margin: 1rem 0;',
+  '}',
+  '',
+  '/* jekyll-theme-primer is a light-only theme with every colour hardcoded,',
+  '   so a reader on a dark system gets a stark white page next to every',
+  "   other tab. This mirrors GitHub's own dark palette rather than",
+  '   introducing a new one, and only touches what the theme does not',
+  '   already key off `prefers-color-scheme` (nothing — it keys off nothing). */',
+  '@media (prefers-color-scheme: dark) {',
+  '  body {',
+  '    background-color: #0d1117;',
+  '  }',
+  '',
+  '  .markdown-body {',
+  '    color: #c9d1d9;',
+  '  }',
+  '',
+  '  .markdown-body > h1:first-child {',
+  '    color: #8b949e;',
+  '  }',
+  '',
+  '  .markdown-body h1,',
+  '  .markdown-body h2,',
+  '  .markdown-body h3,',
+  '  .markdown-body h4 {',
+  '    color: #e6edf3;',
+  '    border-bottom-color: #21262d;',
+  '  }',
+  '',
+  '  .markdown-body a {',
+  '    color: #58a6ff;',
+  '  }',
+  '',
+  '  .markdown-body hr {',
+  '    background-color: #21262d;',
+  '  }',
+  '',
+  '  .markdown-body blockquote {',
+  '    color: #8b949e;',
+  '    border-left-color: #3b434b;',
+  '  }',
+  '',
+  '  .markdown-body table th,',
+  '  .markdown-body table td {',
+  '    border-color: #30363d;',
+  '  }',
+  '',
+  '  .markdown-body table tr {',
+  '    background-color: #0d1117;',
+  '    border-top-color: #21262d;',
+  '  }',
+  '',
+  '  .markdown-body table tr:nth-child(2n) {',
+  '    background-color: #161b22;',
+  '  }',
+  '',
+  '  .markdown-body code,',
+  '  .markdown-body pre,',
+  '  .markdown-body .highlight {',
+  '    background-color: #161b22;',
+  '    color: #c9d1d9;',
+  '  }',
+  '',
+  '  .markdown-body pre {',
+  '    border-color: #30363d;',
+  '  }',
+  '',
+  '  .markdown-body details summary {',
+  '    color: #c9d1d9;',
+  '  }',
+  '',
+  "  /* Rouge's diff-fence colours (`.gd` deletion, `.gi` addition) are also",
+  '     hardcoded light, so a ```diff block would otherwise be the one',
+  '     unreadable corner of an otherwise-dark page. */',
+  '  .markdown-body .gd {',
+  '    background-color: rgba(248, 81, 73, 0.15);',
+  '    color: #ffdcd7;',
+  '  }',
+  '',
+  '  .markdown-body .gi {',
+  '    background-color: rgba(63, 185, 80, 0.15);',
+  '    color: #d2f6da;',
+  '  }',
+  '',
+  '  .or-add {',
+  '    color: #3fb950;',
+  '  }',
+  '',
+  '  .or-del {',
+  '    color: #f85149;',
+  '  }',
+  '',
+  '  .or-callout {',
+  '    background: rgba(248, 81, 73, 0.1);',
+  '    color: #c9d1d9;',
+  '  }',
+  '}',
   '',
 ].join('\n');
 
@@ -1555,7 +1728,7 @@ function statusTable(results: CaseResult[]): string[] {
     const name = `[\`${result.fixture.name}\`](./${encodeURIComponent(result.fixture.name)}.html)`;
     const status = isClean(result)
       ? shortStatus(result)
-      : `**${shortStatus(result)}** ${caseTotals(result)}`;
+      : `**${shortStatus(result)}** ${caseTotals(result, true)}`;
     return `| ${name} | ${status} | ${result.fixture.proves} |`;
   });
   return ['| Case | Status | Proves |', '| --- | --- | --- |', ...rows, ''];
@@ -1571,9 +1744,9 @@ export function buildSite(
   const differing = results.filter((result) => !isClean(result));
 
   const index = [
-    ...frontMatter('Output review'),
+    ...frontMatter('Output Review'),
     RAW_OPEN,
-    '# Output review',
+    '# Output Review',
     '',
     `${results.length} cases · ${differing.length} changed · ${breaches.length} invariant breach(es)`,
     '',
@@ -1590,7 +1763,7 @@ export function buildSite(
 
   for (const result of results) {
     const body = [
-      ...frontMatter(`${result.fixture.name} — output review`),
+      ...frontMatter(`${result.fixture.name} — Output Review`),
       RAW_OPEN,
       '[← all cases](./index.html)',
       '',
@@ -1707,6 +1880,10 @@ async function main(): Promise<void> {
   // from the root of what it builds, which is the branch root, not this
   // PR's directory. The publish step copies it there.
   writeFileSync(join(REPORT_DIR, 'jekyll-config.yml'), SITE_CONFIG);
+  // Same reasoning as jekyll-config.yml: Jekyll only reads
+  // `assets/css/style.scss` from the root of what it builds, so this rides
+  // alongside the config for the publish step to place at the branch root.
+  writeFileSync(join(REPORT_DIR, 'jekyll-style.scss'), SITE_STYLE);
 
   const stepSummary = process.env['GITHUB_STEP_SUMMARY'];
   if (stepSummary) {

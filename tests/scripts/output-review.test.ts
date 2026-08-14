@@ -349,7 +349,7 @@ describe('buildSite', () => {
       buildSite([caseResult(fixtureCase({ name: 'has"quote' }))], [], null).get(
         'has"quote.md',
       ) ?? '';
-    expect(page).toContain('title: "has\\"quote — output review"');
+    expect(page).toContain('title: "has\\"quote — Output Review"');
   });
 
   /**
@@ -411,7 +411,7 @@ describe('buildSite', () => {
     };
     const index = buildSite(results, [breach], null).get('index.md') ?? '';
     expect(index).not.toContain('[!WARNING]');
-    expect(index).toContain('#cf222e');
+    expect(index).toContain('class="or-callout"');
     expect(index).toContain('alpha disagrees with beta');
   });
 

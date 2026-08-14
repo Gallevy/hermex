@@ -129,6 +129,8 @@ jobs:
           # at the branch root, since that is the root of what Jekyll builds.
           rm -f "$pages/.nojekyll"
           cp "$workspace/.output-review/jekyll-config.yml" "$pages/_config.yml"
+          mkdir -p "$pages/assets/css"
+          cp "$workspace/.output-review/jekyll-style.scss" "$pages/assets/css/style.scss"
           rm -rf "${pages:?}/$TARGET"
           mkdir -p "$pages/$TARGET"
           cp -R "$site/." "$pages/$TARGET/"
@@ -143,10 +145,10 @@ jobs:
           {
             echo '---'
             echo 'layout: default'
-            echo 'title: "hermex output review"'
+            echo 'title: "Hermex Output Review"'
             echo '---'
             echo
-            echo '# hermex output review'
+            echo '# Hermex Output Review'
             echo
             echo 'What the hermex CLI actually printed, one page per case, published per pull request by `.github/workflows/output-review.yaml`.'
             echo
