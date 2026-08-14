@@ -304,57 +304,107 @@ describe('buildSite', () => {
     caseResult(
       fixtureCase({ name: 'beta' }),
       { 'stdout.txt': 'b\n' },
-      '--- baseline/stdout.txt\n+++ current/stdout.txt\n@@ -1,1 +1,1 @@\n-a\n+b',
+      [
+        '--- baseline/stdout.txt',
+        '+++ current/stdout.txt',
+        '@@ -1,1 +1,1 @@',
+        '-a',
+        '+b',
+      ].join('\n'),
     ),
   ];
 
-  it('writes an index plus one page per case', () => {
-    const site = buildSite(results, []);
+  it('writes Markdown — an index plus one page per case', () => {
+    const site = buildSite(results, [], null);
     expect([...site.keys()].sort()).toEqual([
-      'alpha.html',
-      'beta.html',
-      'index.html',
+      'alpha.md',
+      'beta.md',
+      'index.md',
     ]);
   });
 
-  it('links every case from the index', () => {
-    const index = buildSite(results, []).get('index.html') ?? '';
-    expect(index).toContain('href="./alpha.html"');
-    expect(index).toContain('href="./beta.html"');
+  it('links every case from the index at its rendered .html path', () => {
+    // Jekyll turns foo.md into foo.html, so the links have to name the
+    // rendered page rather than the source that produced it.
+    const index = buildSite(results, [], null).get('index.md') ?? '';
+    expect(index).toContain('(./alpha.html)');
+    expect(index).toContain('(./beta.html)');
   });
 
   it('keeps a case page to its own case', () => {
-    const alpha = buildSite(results, []).get('alpha.html') ?? '';
+    const alpha = buildSite(results, [], null).get('alpha.md') ?? '';
     expect(alpha).toContain('alpha');
     expect(alpha).not.toContain('beta.html');
   });
 
-  it('renders the diff with the added and removed sides distinguished', () => {
-    const beta = buildSite(results, []).get('beta.html') ?? '';
-    expect(beta).toContain('<span class="d">-a</span>');
-    expect(beta).toContain('<span class="a">+b</span>');
+  it('gives every page front matter so the theme applies', () => {
+    for (const page of buildSite(results, [], null).values()) {
+      expect(page.startsWith('---\nlayout: default\n')).toBe(true);
+    }
   });
 
-  it('escapes output so a fixture cannot inject markup into the page', () => {
+  it('escapes quotes in a title so the front matter stays valid YAML', () => {
+    const page =
+      buildSite([caseResult(fixtureCase({ name: 'has"quote' }))], [], null).get(
+        'has"quote.md',
+      ) ?? '';
+    expect(page).toContain('title: "has\\"quote — output review"');
+  });
+
+  /**
+   * Jekyll runs Liquid before Markdown, so a stray `{{` anywhere in captured
+   * CLI output would fail the build — for every PR at once, not only the one
+   * that introduced it. Every page body is wrapped for that reason, and this
+   * is the test that stops someone removing the wrapper as noise.
+   */
+  it('wraps page bodies so Liquid never parses captured output', () => {
     const hostile = [
       caseResult(fixtureCase({ name: 'hostile' }), {
-        'stdout.txt': '<script>alert(1)</script>\n',
+        'stdout.txt': 'a {{ template }} and a {% tag %}\n',
       }),
     ];
-    const page = buildSite(hostile, []).get('hostile.html') ?? '';
-    expect(page).not.toContain('<script>alert(1)</script>');
-    expect(page).toContain('&lt;script&gt;');
+    const page = buildSite(hostile, [], null).get('hostile.md') ?? '';
+    expect(page).toContain('{% raw %}');
+    expect(page.trimEnd().endsWith('{% endraw %}')).toBe(true);
+    expect(page.indexOf('{% raw %}')).toBeLessThan(
+      page.indexOf('a {{ template }}'),
+    );
   });
 
-  it('makes escape bytes visible instead of rendering them as nothing', () => {
-    // Without this an ANSI baseline looks identical to the plain one on the
-    // page — the exact distinction the colour cases exist to show.
-    const coloured = [
-      caseResult(fixtureCase({ name: 'coloured', keepAnsi: true }), {
-        'stdout.ansi.txt': `${String.fromCharCode(27)}[31mred`,
-      }),
-    ];
-    const page = buildSite(coloured, []).get('coloured.html') ?? '';
-    expect(page).toContain('␛[31mred');
+  it('puts the diff in a diff fence, so colouring comes from the theme', () => {
+    const beta = buildSite(results, [], null).get('beta.md') ?? '';
+    expect(beta).toContain('```diff');
+    expect(beta).toContain('-a');
+    expect(beta).toContain('+b');
+  });
+
+  it('inlines the config a case ran under, not merely a link to it', () => {
+    // "What policy produced this output?" is the one question a diff cannot
+    // answer, and a reviewer who has to open another tab mostly does not.
+    const page =
+      buildSite(
+        [
+          caseResult(
+            fixtureCase({
+              name: 'configured',
+              args: ['scan', '--config', 'configs/minimal.config.ts'],
+            }),
+          ),
+        ],
+        [],
+        null,
+      ).get('configured.md') ?? '';
+    expect(page).toContain('## Config');
+    expect(page).toContain('HermexConfigInput');
+  });
+
+  it('says so plainly when a case runs on schema defaults', () => {
+    const page =
+      buildSite(
+        [caseResult(fixtureCase({ name: 'bare', cwd: 'repos/lockfile-npm' }))],
+        [],
+        null,
+      ).get('bare.md') ?? '';
+    expect(page).toContain('schema defaults');
   });
 });

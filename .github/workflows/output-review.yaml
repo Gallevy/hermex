@@ -5,13 +5,15 @@
 # then reports it twice, deliberately differently:
 #
 #   - The sticky PR comment carries one row per **changed** case — name,
-#     +N -M, and a single link — plus a preview when three or fewer moved.
-#     Not the diffs: a renderer tweak moves every row of sixteen cases at
-#     once, which is 60 KB against GitHub's 65,536-character comment limit.
+#     +N -M, and a single link. No diffs: a renderer tweak moves every row
+#     of sixteen cases at once, which is 60 KB against GitHub's
+#     65,536-character comment limit.
 #   - A page per case, published to gh-pages when OUTPUT_REVIEW_SITE is set
 #     and uploaded as an artifact regardless, carrying that case's context,
-#     full diff and complete output. Two cases cannot be confused for each
-#     other if they were never on the same page.
+#     the config it ran under, its full diff and its complete output. Two
+#     cases cannot be confused if they were never on the same page. The
+#     pages are Markdown rendered by Pages' Jekyll build, so there is no
+#     stylesheet here to maintain.
 #   - The job summary, as the fallback destination when nothing is
 #     published, and the whole matrix in one scrollable place.
 #
@@ -103,7 +105,8 @@ jobs:
           TARGET: output-review/pr-${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
-          site="$PWD/.output-review/site"
+          workspace="$PWD"
+          site="$workspace/.output-review/site"
           if [ ! -d "$site" ]; then
             echo "No site was generated; nothing to publish."
             exit 0
@@ -121,9 +124,11 @@ jobs:
             find "$pages" -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
           fi
 
-          # Without .nojekyll, Pages runs the files through Jekyll, which
-          # silently drops anything beginning with an underscore.
-          touch "$pages/.nojekyll"
+          # The pages are Markdown, so Jekyll is what renders them — the
+          # opposite of the usual `.nojekyll` reflex. Its config has to sit
+          # at the branch root, since that is the root of what Jekyll builds.
+          rm -f "$pages/.nojekyll"
+          cp "$workspace/.output-review/jekyll-config.yml" "$pages/_config.yml"
           rm -rf "${pages:?}/$TARGET"
           mkdir -p "$pages/$TARGET"
           cp -R "$site/." "$pages/$TARGET/"

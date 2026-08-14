@@ -1151,7 +1151,7 @@ function caseContext(result: CaseResult, base: string | null): string[] {
           ? ` (${fileLink(sources.overview, base, 'overview')})`
           : ''
       }`,
-      `**Case** ${fileLink('fixtures/cases.ts', base, `\`${fixture.name}\``)}`,
+      `**Case** ${fileLink('fixtures/cases.ts', base, `\`${fixture.name}\``)} (${fileLink(`fixtures/cases/${fixture.name}.md`, base, 'dossier')})`,
     ].join(' · '),
     '',
   ];
@@ -1268,29 +1268,19 @@ function buildJobSummary(results: CaseResult[], breaches: Breach[]): string {
   return lines.join('\n');
 }
 
-/** One case in the job summary: context, diff, then every artifact. */
+/**
+ * One case in the job summary — the same Markdown the case page uses, so
+ * there is one renderer to keep correct rather than two saying the same
+ * things in different dialects.
+ */
 function renderCase(result: CaseResult, base: string | null): string[] {
-  const lines = [`### ${result.fixture.name}`, '', `_${statusOf(result)}_`, ''];
-  lines.push(...caseContext(result, base));
-
-  if (result.diff) {
-    lines.push('<details open><summary>Diff against baseline</summary>', '');
-    lines.push('```diff', result.diff, '```', '', '</details>', '');
-  }
-
-  for (const [file, content] of Object.entries(result.artifacts)) {
-    if (file === 'exit-code.txt') continue;
-    lines.push(`<details><summary>${file}</summary>`, '');
-    lines.push(
-      '```' + fence(file),
-      forSummary(content),
-      '```',
-      '',
-      '</details>',
-      '',
-    );
-  }
-  return lines;
+  return [
+    `### ${result.fixture.name}`,
+    '',
+    `_${statusOf(result)}_`,
+    '',
+    ...caseBody(result, base),
+  ];
 }
 
 function buildTable(results: CaseResult[]): string {
@@ -1302,19 +1292,6 @@ function buildTable(results: CaseResult[]): string {
   }
   return lines.join('\n');
 }
-
-/**
- * A GitHub issue comment is capped at 65,536 characters — and hermex's
- * output is box-drawing characters and emoji at three and four bytes each,
- * so a comment measuring 40k characters is 60k bytes on the wire.
- *
- * There is no byte budget here any more, because the comment is now bounded
- * by construction: one table row per changed case, and a preview only when
- * three or fewer changed. The worst case is 26 rows and 48 diff lines. The
- * previous version needed a running budget precisely because it inlined
- * whole diffs, which is what made it capable of exceeding the limit at all.
- */
-const MAX_CASE_EXCERPT_LINES = 16;
 
 /** Total change across every artifact a case touched. */
 function caseTotals(result: CaseResult): string {
@@ -1338,27 +1315,6 @@ function caseLink(name: string, site: string | null, summary: string | null) {
   if (site) return `[case →](${site}/${encodeURIComponent(name)}.html)`;
   if (summary) return `[case →](${summary})`;
   return `\`.output-review/site/${name}.html\``;
-}
-
-/** The first hunk, bounded — enough to recognize the change, never a wall. */
-function excerpt(result: CaseResult): string[] {
-  const entry = result.fileDiffs[0];
-  const first = entry?.hunks[0];
-  if (!entry || !first) return [];
-  const rows = first.rows.map((row) => `${row.sign}${row.text}`);
-  const shown = rows.slice(0, MAX_CASE_EXCERPT_LINES);
-  return [
-    `**${result.fixture.name}** · \`${entry.file}\``,
-    '',
-    '```diff',
-    `@@ -${first.oldStart},${first.oldCount} +${first.newStart},${first.newCount} @@`,
-    ...shown,
-    ...(rows.length > shown.length || entry.hunks.length > 1
-      ? ['… truncated — the full diff is on the case page']
-      : []),
-    '```',
-    '',
-  ];
 }
 
 /**
@@ -1404,21 +1360,6 @@ function buildComment(results: CaseResult[], breaches: Breach[]): string {
       );
     }
     lines.push('');
-
-    if (differing.length <= 3) {
-      const preview = differing.flatMap(excerpt);
-      if (preview.length > 0) {
-        lines.push(
-          '<details open><summary>Preview of the first change in each case</summary>',
-          '',
-          ...preview,
-          DIFF_LEGEND,
-          '',
-          '</details>',
-          '',
-        );
-      }
-    }
   }
 
   // This job is a required check, so the closing line has to say what it
@@ -1439,228 +1380,158 @@ function buildComment(results: CaseResult[], breaches: Breach[]): string {
 
 // ── The per-case site ────────────────────────────────────────────────────────
 //
-// One HTML page per case, plus an index, written to `.output-review/site/`.
+// One Markdown page per case, plus an index, written to
+// `.output-review/site/` and rendered by GitHub Pages' own Jekyll build.
 //
-// This is what the PR comment's single link per case points at. A page per
-// case is the whole point: two cases can no longer be confused for each
-// other, because they are not on the same page and never were. Each carries
-// its own context, its own full diff and its own complete output, so a
-// reviewer lands on one case and reads exactly it.
+// Markdown rather than hand-written HTML, and for one reason: it is the same
+// language the job summary and the case dossiers are already written in, so
+// all three come out of one renderer instead of a Markdown one and an HTML
+// one saying the same things in two dialects. The styling problem goes away
+// with it — a theme in `_config.yml` is the whole of it, and diff colouring
+// comes free from the ```diff fence rather than from a stylesheet nobody
+// wants to own.
 //
-// Deliberately hosting-agnostic. The generator writes a directory of static
-// files and knows nothing about where they end up — GitHub Pages, an
-// artifact someone unzips locally, or nothing at all. When no site URL is
-// configured the comment falls back to the job summary and the pages are
-// still produced, so the decision about hosting can be made and remade
-// without touching this code.
+// The cost is that Jekyll processes Liquid before Markdown, so a stray `{{`
+// anywhere in captured CLI output would fail the build for every PR at once.
+// Every page body is wrapped in `{% raw %}` for that reason. It is the one
+// Jekyll sharp edge this design has to know about.
 
-function escapeHtml(text: string): string {
-  return (
-    text
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      // The colour cases record real escape bytes. Rendered as-is they are
-      // invisible control characters, which makes the ANSI baseline look
-      // identical to the plain one — the exact thing the case exists to show.
-      .replace(//g, '␛')
-  );
-}
+const RAW_OPEN = '{% raw %}';
+const RAW_CLOSE = '{% endraw %}';
 
-const SITE_CSS = `
-:root { color-scheme: light dark;
-  --bg:#fff; --fg:#1f2328; --muted:#59636e; --line:#d1d9e0; --card:#f6f8fa;
-  --add:#1a7f37; --addbg:#e6ffec; --del:#cf222e; --delbg:#ffebe9; --meta:#8250df; }
-@media (prefers-color-scheme: dark) { :root {
-  --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1; --line:#3d444d; --card:#151b23;
-  --add:#3fb950; --addbg:#12261e; --del:#f85149; --delbg:#25171c; --meta:#ab7df8; } }
-* { box-sizing: border-box; }
-body { margin:0 auto; padding:2rem 1.25rem 4rem; max-width:64rem; background:var(--bg);
-  color:var(--fg); font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; }
-h1 { font-size:1.6rem; margin:0 0 .25rem; }
-h2 { font-size:1.15rem; margin:2rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--line); }
-a { color:inherit; }
-code, pre { font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace; font-size:13px; }
-code { background:var(--card); padding:.15em .35em; border-radius:4px; }
-pre { background:var(--card); border:1px solid var(--line); border-radius:6px;
-  padding:.75rem 1rem; overflow-x:auto; margin:0; }
-pre code { background:none; padding:0; }
-table { border-collapse:collapse; width:100%; margin:.5rem 0 1rem; display:block; overflow-x:auto; }
-th, td { border:1px solid var(--line); padding:.4rem .6rem; text-align:left; vertical-align:top; }
-th { background:var(--card); font-size:.85rem; }
-.muted { color:var(--muted); }
-.sub { color:var(--muted); font-size:.85rem; }
-.pill { display:inline-block; padding:.05rem .5rem; border-radius:999px; font-size:.8rem;
-  border:1px solid var(--line); background:var(--card); }
-.pill.changed { color:var(--del); border-color:var(--del); }
-.pill.clean { color:var(--add); border-color:var(--add); }
-.warn { border-left:4px solid var(--del); background:var(--delbg); padding:.75rem 1rem;
-  border-radius:0 6px 6px 0; margin:1rem 0; }
-.diff .a { color:var(--add); background:var(--addbg); display:block; }
-.diff .d { color:var(--del); background:var(--delbg); display:block; }
-.diff .h { color:var(--meta); display:block; margin-top:.4rem; }
-.diff .f { color:var(--muted); display:block; }
-details { border:1px solid var(--line); border-radius:6px; padding:.5rem .75rem; margin:.5rem 0; }
-summary { cursor:pointer; font-weight:600; }
-details[open] summary { margin-bottom:.5rem; }
-nav { margin-bottom:1.5rem; font-size:.9rem; }
-`.trim();
+/**
+ * Jekyll needs a theme to render anything but bare text, and pages need a
+ * layout to pick it up. `jekyll-theme-primer` is GitHub's own — so a case
+ * page looks like the rest of GitHub without a line of CSS here.
+ */
+export const SITE_CONFIG = ['theme: jekyll-theme-primer', ''].join('\n');
 
-function page(title: string, body: string): string {
+function frontMatter(title: string): string[] {
+  // Quoted and escaped: a case name is safe, but `proves` text is not, and a
+  // colon in an unquoted YAML scalar breaks the build.
   return [
-    '<!doctype html>',
-    '<html lang="en"><head><meta charset="utf-8">',
-    '<meta name="viewport" content="width=device-width,initial-scale=1">',
-    `<title>${escapeHtml(title)}</title>`,
-    `<style>${SITE_CSS}</style>`,
-    '</head><body>',
-    body,
-    '</body></html>',
-  ].join('\n');
-}
-
-/** A unified diff as coloured HTML, without shipping a highlighter. */
-function diffHtml(diff: string): string {
-  const rows = diff.split('\n').map((line) => {
-    if (line.startsWith('@@'))
-      return `<span class="h">${escapeHtml(line)}</span>`;
-    if (line.startsWith('---') || line.startsWith('+++')) {
-      return `<span class="f">${escapeHtml(line)}</span>`;
-    }
-    if (line.startsWith('+'))
-      return `<span class="a">${escapeHtml(line)}</span>`;
-    if (line.startsWith('-'))
-      return `<span class="d">${escapeHtml(line)}</span>`;
-    return `<span>${escapeHtml(line) || '&nbsp;'}</span>`;
-  });
-  return `<pre class="diff"><code>${rows.join('')}</code></pre>`;
-}
-
-function breachesHtml(breaches: Breach[]): string {
-  if (breaches.length === 0) return '';
-  const items = INVARIANTS.flatMap((invariant) => {
-    const mine = breaches.filter((breach) => breach.invariant === invariant);
-    if (mine.length === 0) return [];
-    return [
-      `<li><code>${invariant.name}</code>${invariant.blocking ? '' : ' <em>(advisory)</em>'} — ${escapeHtml(invariant.guarantees)}.<ul>${mine
-        .map((breach) => `<li>${escapeHtml(breach.detail)}</li>`)
-        .join('')}</ul></li>`,
-    ];
-  });
-  return `<div class="warn"><strong>Invariants broken</strong><ul>${items.join('')}</ul></div>`;
-}
-
-function caseContextHtml(result: CaseResult): string {
-  const fixture = result.fixture;
-  const sources = sourcesOf(fixture);
-  const exit = result.artifacts['exit-code.txt']?.trim();
-  const command = fixture.args
-    .map((arg) => arg.replace('{OUT}', '$OUT'))
-    .join(' ');
-  const cwd = fixture.cwd === '.' ? 'fixtures/' : `fixtures/${fixture.cwd}`;
-
-  const rows: [string, string][] = [
-    ['Command', `<code>hermex ${escapeHtml(command)}</code>`],
-    ['Working directory', `<code>${escapeHtml(cwd)}</code>`],
-    [
-      'Config',
-      sources.config
-        ? `<code>${escapeHtml(sources.config)}</code>`
-        : '<span class="muted">none — schema defaults</span>',
-    ],
-    ['Fixture', `<code>${escapeHtml(sources.fixture)}</code>`],
-    [
-      'Exit code',
-      exit === String(fixture.expectExit)
-        ? `<code>${escapeHtml(exit ?? '')}</code> <span class="muted">as asserted</span>`
-        : `<strong>${escapeHtml(exit ?? '')}</strong> — the case asserts <code>${fixture.expectExit}</code>`,
-    ],
+    '---',
+    'layout: default',
+    `title: "${title.replace(/"/g, '\\"')}"`,
+    '---',
+    '',
   ];
-  if (fixture.absent && fixture.absent.length > 0) {
-    rows.push([
-      'Must not appear',
-      fixture.absent.map((n) => `<code>${escapeHtml(n)}</code>`).join(' · '),
-    ]);
-  }
-  if (fixture.registry) {
-    rows.push(['Registry', 'offline fixture registry — never the network']);
+}
+
+/** The config a case actually loaded, inlined so the policy is on the page. */
+function configBlock(fixture: FixtureCase, base: string | null): string[] {
+  const sources = sourcesOf(fixture);
+  if (!sources.config) {
+    return [
+      '## Config',
+      '',
+      'None. `src/config/loader.ts` looks for `hermex.config.ts` in the working directory and does not walk up, so this case runs on the built-in schema defaults.',
+      '',
+    ];
   }
 
+  const absolute = join(ROOT, sources.config);
+  const contents = existsSync(absolute) ? readFileSync(absolute, 'utf8') : null;
   return [
-    `<p>${escapeHtml(fixture.proves)}</p>`,
-    fixture.notes ? `<p class="muted">${escapeHtml(fixture.notes)}</p>` : '',
-    '<table><tbody>',
-    ...rows.map(
-      ([label, value]) => `<tr><th>${label}</th><td>${value}</td></tr>`,
-    ),
-    '</tbody></table>',
-    `<p class="sub">Reproduce locally: <code>pnpm run test:output -- --filter ${escapeHtml(fixture.name)}</code></p>`,
-  ].join('\n');
+    '## Config',
+    '',
+    // Inlined rather than only linked. "What policy produced this output?"
+    // is the question a diff cannot answer, and a reviewer who has to open
+    // another tab to answer it mostly does not answer it.
+    `${fileLink(sources.config, base)}`,
+    '',
+    ...(contents
+      ? ['```ts', contents.trimEnd(), '```', '']
+      : ['_Not readable at report time._', '']),
+  ];
+}
+
+/** Everything about one case, in the Markdown both the site and summary use. */
+function caseBody(result: CaseResult, base: string | null): string[] {
+  const lines = [...caseContext(result, base)];
+  lines.push(...configBlock(result.fixture, base));
+
+  if (result.diff) {
+    lines.push(
+      '## Diff against the committed baseline',
+      '',
+      DIFF_LEGEND,
+      '',
+      '```diff',
+      result.diff,
+      '```',
+      '',
+    );
+  }
+
+  lines.push('## Full output', '');
+  for (const [file, content] of Object.entries(result.artifacts)) {
+    if (file === 'exit-code.txt') continue;
+    lines.push(
+      `<details><summary><code>${file}</code></summary>`,
+      '',
+      '```' + fence(file),
+      forSummary(content),
+      '```',
+      '',
+      '</details>',
+      '',
+    );
+  }
+  return lines;
+}
+
+function statusTable(results: CaseResult[], link: boolean): string[] {
+  const rows = results.map((result) => {
+    const name = link
+      ? `[\`${result.fixture.name}\`](./${encodeURIComponent(result.fixture.name)}.html)`
+      : `\`${result.fixture.name}\``;
+    return `| ${name} | ${emphasizedStatus(result)} | ${result.fixture.proves} |`;
+  });
+  return ['| Case | Status | Proves |', '| --- | --- | --- |', ...rows, ''];
 }
 
 /** Every page of the site, keyed by filename. */
 export function buildSite(
   results: CaseResult[],
   breaches: Breach[],
+  base: string | null = blobBase(),
 ): Map<string, string> {
   const pages = new Map<string, string>();
   const differing = results.filter((result) => !isClean(result));
 
-  const row = (result: CaseResult) => {
-    const clean = isClean(result);
-    return [
-      '<tr>',
-      `<td><a href="./${encodeURIComponent(result.fixture.name)}.html"><code>${escapeHtml(result.fixture.name)}</code></a></td>`,
-      `<td><span class="pill ${clean ? 'clean' : 'changed'}">${escapeHtml(statusOf(result))}</span></td>`,
-      `<td>${escapeHtml(result.fixture.proves)}</td>`,
-      '</tr>',
-    ].join('');
-  };
-
-  pages.set(
-    'index.html',
-    page(
-      'Output review',
-      [
-        '<h1>Output review</h1>',
-        `<p class="sub">${results.length} cases · ${differing.length} changed · ${breaches.length} invariant breach(es)</p>`,
-        breachesHtml(breaches),
-        differing.length > 0 ? '<h2>Changed</h2>' : '',
-        differing.length > 0
-          ? `<table><thead><tr><th>Case</th><th>Status</th><th>Proves</th></tr></thead><tbody>${differing.map(row).join('')}</tbody></table>`
-          : '<p>Every case matches its baseline.</p>',
-        '<h2>All cases</h2>',
-        `<table><thead><tr><th>Case</th><th>Status</th><th>Proves</th></tr></thead><tbody>${results.map(row).join('')}</tbody></table>`,
-      ].join('\n'),
-    ),
-  );
+  const index = [
+    ...frontMatter('Output review'),
+    RAW_OPEN,
+    '# Output review',
+    '',
+    `${results.length} cases · ${differing.length} changed · ${breaches.length} invariant breach(es)`,
+    '',
+    ...renderBreaches(breaches),
+    ...(differing.length > 0
+      ? ['## Changed', '', ...statusTable(differing, true)]
+      : ['Every case matches its baseline.', '']),
+    '## All cases',
+    '',
+    ...statusTable(results, true),
+    RAW_CLOSE,
+  ];
+  pages.set('index.md', index.join('\n'));
 
   for (const result of results) {
-    const artifacts = Object.entries(result.artifacts)
-      .filter(([file]) => file !== 'exit-code.txt')
-      .map(
-        ([file, content]) =>
-          `<details><summary>${escapeHtml(file)}</summary><pre><code>${escapeHtml(content.trimEnd())}</code></pre></details>`,
-      )
-      .join('\n');
-
-    pages.set(
-      `${result.fixture.name}.html`,
-      page(
-        `${result.fixture.name} — output review`,
-        [
-          '<nav><a href="./index.html">← all cases</a></nav>',
-          `<h1><code>${escapeHtml(result.fixture.name)}</code></h1>`,
-          `<p><span class="pill ${isClean(result) ? 'clean' : 'changed'}">${escapeHtml(statusOf(result))}</span></p>`,
-          caseContextHtml(result),
-          result.diff
-            ? `<h2>Diff against the committed baseline</h2>${diffHtml(result.diff)}`
-            : '',
-          '<h2>Full output</h2>',
-          artifacts,
-        ].join('\n'),
-      ),
-    );
+    const body = [
+      ...frontMatter(`${result.fixture.name} — output review`),
+      RAW_OPEN,
+      '[← all cases](./index.html)',
+      '',
+      `# \`${result.fixture.name}\``,
+      '',
+      `**${statusOf(result)}**`,
+      '',
+      ...caseBody(result, base),
+      RAW_CLOSE,
+    ];
+    pages.set(`${result.fixture.name}.md`, body.join('\n'));
   }
 
   return pages;
@@ -1759,9 +1630,13 @@ async function main(): Promise<void> {
   const site = join(REPORT_DIR, 'site');
   rmSync(site, { recursive: true, force: true });
   mkdirSync(site, { recursive: true });
-  for (const [name, html] of buildSite(results, breaches)) {
-    writeFileSync(join(site, name), html);
+  for (const [name, markdown] of buildSite(results, breaches)) {
+    writeFileSync(join(site, name), markdown);
   }
+  // Beside the site rather than inside it: Jekyll only reads `_config.yml`
+  // from the root of what it builds, which is the branch root, not this
+  // PR's directory. The publish step copies it there.
+  writeFileSync(join(REPORT_DIR, 'jekyll-config.yml'), SITE_CONFIG);
 
   const stepSummary = process.env['GITHUB_STEP_SUMMARY'];
   if (stepSummary) {
