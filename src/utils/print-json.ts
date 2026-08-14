@@ -11,7 +11,7 @@ import { getVersion } from './version';
  * `ruleViolations` and drifting from `comply` (#55). `compliant` mirrors the
  * CLI exit code (0 ⇔ true); `status: 'warning'` never changes that exit code.
  *
- * `ruleViolations` is the single list of every rule hit, `forbid_packages`
+ * `ruleViolations` is the single list of every rule hit, `no-packages`
  * included (#77) — there is no second violations field to remember to read.
  *
  * Every top-level key besides `version`, `summary` and `compliance` is a

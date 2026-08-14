@@ -499,7 +499,7 @@
   ],
   "ruleViolations": [
     {
-      "type": "forbid_packages",
+      "ruleId": "no-packages",
       "severity": "error",
       "patterns": [
         "moment"
@@ -509,7 +509,7 @@
       "packageName": "moment"
     },
     {
-      "type": "require_packages",
+      "ruleId": "require-packages",
       "severity": "error",
       "patterns": [
         "typescript"
@@ -518,7 +518,7 @@
       "matchedFiles": []
     },
     {
-      "type": "require_files",
+      "ruleId": "require-files",
       "severity": "error",
       "patterns": [
         ".nvmrc"
@@ -526,7 +526,7 @@
       "matchedFiles": []
     },
     {
-      "type": "require_files",
+      "ruleId": "require-files",
       "severity": "warn",
       "patterns": [
         ".editorconfig"

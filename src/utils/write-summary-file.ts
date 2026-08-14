@@ -37,7 +37,7 @@ function buildRulesSection(aggregated: AggregatedReport): string {
 
   for (const v of ruleViolations) {
     lines.push(
-      `| ${severityIcon(v.severity)} | ${formatRuleType(v.type)} | ${describeViolation(v)} |`,
+      `| ${severityIcon(v.severity)} | ${formatRuleType(v.ruleId)} | ${describeViolation(v)} |`,
     );
   }
 
@@ -60,7 +60,7 @@ function buildRulesSection(aggregated: AggregatedReport): string {
 // that are mandatory failures" (src/utils/compliance.ts), so the row list
 // can never drift from the verdict's mandatory-violation count. Banned and
 // deprecated-only/not-enforced packages don't get a row here: banned ones
-// are already shown in Rules as a forbid_packages line, and
+// are already shown in Rules as a no-packages line, and
 // deprecated-only or not-enforced-overdue packages are info-level, not
 // enforceable (#31).
 //

@@ -2,7 +2,7 @@
 // lockfile, but no fixture source file imports it — the #75 case.
 export default {
   rules: {
-    forbid_packages: [
+    'no-packages': [
       { severity: 'error', patterns: ['moment'], message: 'Use date-fns' },
     ],
   },

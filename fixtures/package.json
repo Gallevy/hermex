@@ -2,7 +2,7 @@
   "name": "hermex-fixtures",
   "version": "0.0.0",
   "private": true,
-  "description": "Fixture manifest. Paired with pnpm-lock.yaml so the fixtures cover every package-inventory axis: declared+installed+used (@design-system/foundation, react), declared+installed but never imported (moment — the forbid_packages case from #75), declared but not installed (eslint — a manifest/lockfile mismatch, which forbid_packages flags but require_packages does not accept as satisfied), a root dependency the lockfile knows about but this manifest omits (react-dom), and installed transitively only (js-tokens).",
+  "description": "Fixture manifest. Paired with pnpm-lock.yaml so the fixtures cover every package-inventory axis: declared+installed+used (@design-system/foundation, react), declared+installed but never imported (moment — the no-packages case from #75), declared but not installed (eslint — a manifest/lockfile mismatch, which no-packages flags but require-packages does not accept as satisfied), a root dependency the lockfile knows about but this manifest omits (react-dom), and installed transitively only (js-tokens).",
   "license": "MIT",
   "type": "module",
   "engines": {

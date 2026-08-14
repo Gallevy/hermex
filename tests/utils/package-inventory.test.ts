@@ -169,7 +169,7 @@ describe('buildPackageInventory — config flags', () => {
     });
 
     const entry = find(inventory, 'react');
-    // Still present — `require_packages` must be able to see it — but
+    // Still present — `require-packages` must be able to see it — but
     // marked so reporting views and forbid rules can skip it.
     expect(entry).toBeDefined();
     expect(entry?.ignored).toBe(true);

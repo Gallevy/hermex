@@ -39,7 +39,7 @@ describe('computeCompliance', () => {
 
   it('is non-compliant when an error-severity rule violation is present', () => {
     const violation: RuleViolation = {
-      type: 'require_files',
+      ruleId: 'require-files',
       severity: 'error',
       patterns: ['.nvmrc'],
       matchedFiles: [],
@@ -53,13 +53,13 @@ describe('computeCompliance', () => {
 
   it('warn and info severity rule violations do not affect compliance', () => {
     const warnViolation: RuleViolation = {
-      type: 'require_files',
+      ruleId: 'require-files',
       severity: 'warn',
       patterns: ['.editorconfig'],
       matchedFiles: [],
     };
     const infoViolation: RuleViolation = {
-      type: 'detect_files',
+      ruleId: 'no-files',
       severity: 'info',
       patterns: ['orbis.config.*'],
       matchedFiles: ['orbis.config.ts'],
@@ -70,9 +70,9 @@ describe('computeCompliance', () => {
     expect(result.compliant).toBe(true);
   });
 
-  it('is non-compliant when an error-severity forbid_packages violation is present', () => {
+  it('is non-compliant when an error-severity no-packages violation is present', () => {
     const violation: RuleViolation = {
-      type: 'forbid_packages',
+      ruleId: 'no-packages',
       severity: 'error',
       patterns: ['moment'],
       message: 'Use date-fns',
@@ -86,9 +86,9 @@ describe('computeCompliance', () => {
     expect(result.errorRuleViolations).toEqual([violation]);
   });
 
-  it('warn-severity forbid_packages violations do not affect compliance', () => {
+  it('warn-severity no-packages violations do not affect compliance', () => {
     const violation: RuleViolation = {
-      type: 'forbid_packages',
+      ruleId: 'no-packages',
       severity: 'warn',
       patterns: ['lodash'],
       matchedFiles: [],
@@ -100,20 +100,20 @@ describe('computeCompliance', () => {
     expect(result.compliant).toBe(true);
   });
 
-  // #77 regression guard: forbid_packages hits used to live in their own
+  // #77 regression guard: no-packages hits used to live in their own
   // bucket, which the verdict renderers added on top of the rule bucket.
   // Now that they're ordinary rule violations, that same sum counts each
   // one twice — `countMandatoryViolations` is what both renderers read.
-  it('counts a forbid_packages hit and a rule violation as two mandatory violations, not four', () => {
+  it('counts a no-packages hit and a rule violation as two mandatory violations, not four', () => {
     const forbidden: RuleViolation = {
-      type: 'forbid_packages',
+      ruleId: 'no-packages',
       severity: 'error',
       patterns: ['moment'],
       matchedFiles: [],
       packageName: 'moment',
     };
     const missingFile: RuleViolation = {
-      type: 'require_files',
+      ruleId: 'require-files',
       severity: 'error',
       patterns: ['.nvmrc'],
       matchedFiles: [],
@@ -127,7 +127,7 @@ describe('computeCompliance', () => {
     expect(countMandatoryViolations(result)).toBe(2);
   });
 
-  // Severity, not `type`, decides the bucket — forbid_packages is sorted
+  // Severity, not `type`, decides the bucket — no-packages is sorted
   // exactly like every other rule at every severity, which is the whole
   // point of #77. The 'off' severity never reaches here (applyOverrides
   // resolves it away), so these three are the complete set.
@@ -135,17 +135,17 @@ describe('computeCompliance', () => {
     ['error', 'errorRuleViolations', 'non-compliant', false],
     ['warn', 'warningRuleViolations', 'warning', true],
   ] as const)(
-    'sorts a %s-severity forbid_packages hit into %s like any other rule',
+    'sorts a %s-severity no-packages hit into %s like any other rule',
     (severity, bucket, status, compliant) => {
       const forbidden: RuleViolation = {
-        type: 'forbid_packages',
+        ruleId: 'no-packages',
         severity,
         patterns: ['moment'],
         matchedFiles: [],
         packageName: 'moment',
       };
       const sameSeverityFileRule: RuleViolation = {
-        type: 'require_files',
+        ruleId: 'require-files',
         severity,
         patterns: ['.nvmrc'],
         matchedFiles: [],
@@ -160,9 +160,9 @@ describe('computeCompliance', () => {
     },
   );
 
-  it('leaves an info-severity forbid_packages hit out of both buckets', () => {
+  it('leaves an info-severity no-packages hit out of both buckets', () => {
     const forbidden: RuleViolation = {
-      type: 'forbid_packages',
+      ruleId: 'no-packages',
       severity: 'info',
       patterns: ['moment'],
       matchedFiles: [],
@@ -241,7 +241,7 @@ describe('computeCompliance — status (#55)', () => {
 
   it("status is 'non-compliant' when an error-severity rule violation is present", () => {
     const violation: RuleViolation = {
-      type: 'require_files',
+      ruleId: 'require-files',
       severity: 'error',
       patterns: ['.nvmrc'],
       matchedFiles: [],
@@ -261,7 +261,7 @@ describe('computeCompliance — status (#55)', () => {
       }),
     });
     const warnRule: RuleViolation = {
-      type: 'require_files',
+      ruleId: 'require-files',
       severity: 'warn',
       patterns: ['.editorconfig'],
       matchedFiles: [],
@@ -279,7 +279,7 @@ describe('computeCompliance — status (#55)', () => {
 
   it("status is 'warning' when only a warn-severity rule violation is present", () => {
     const violation: RuleViolation = {
-      type: 'require_files',
+      ruleId: 'require-files',
       severity: 'warn',
       patterns: ['.editorconfig'],
       matchedFiles: [],
@@ -292,9 +292,9 @@ describe('computeCompliance — status (#55)', () => {
     expect(result.warningRuleViolations).toEqual([violation]);
   });
 
-  it("status is 'warning' when only a warn-severity forbid_packages violation is present", () => {
+  it("status is 'warning' when only a warn-severity no-packages violation is present", () => {
     const violation: RuleViolation = {
-      type: 'forbid_packages',
+      ruleId: 'no-packages',
       severity: 'warn',
       patterns: ['lodash'],
       matchedFiles: [],
@@ -310,12 +310,12 @@ describe('computeCompliance — status (#55)', () => {
 
   it("status stays 'compliant' for a mixed shape: info signal + non-enforced overdues + pending-only, no warn/error rules", () => {
     // Reproduces a mix that was wrongly demoted to Warning by consumers: an
-    // `info` detect_files signal (Orbis), overdue react-* at severity 'warn'
+    // `info` no-files signal (Orbis), overdue react-* at severity 'warn'
     // (not enforced), and pending-only @acme-ui/* entries (worstLevel null).
     // None of these are warn-severity *rules*, so the
     // official status must remain 'compliant'.
     const infoSignal: RuleViolation = {
-      type: 'detect_files',
+      ruleId: 'no-files',
       severity: 'info',
       patterns: ['orbis.config.*'],
       matchedFiles: ['orbis.config.ts'],

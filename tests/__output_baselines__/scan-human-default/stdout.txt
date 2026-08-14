@@ -48,13 +48,13 @@ Total: 5 packages
 ┌──────────────────┬──────────────────────────────────────────────────────┐
 │ Rule             │ Description                                          │
 ├──────────────────┼──────────────────────────────────────────────────────┤
-│ forbid_packages  │ 🔴 moment is forbidden — Use date-fns or dayjs       │
+│ no-packages      │ 🔴 moment is forbidden — Use date-fns or dayjs       │
 ├──────────────────┼──────────────────────────────────────────────────────┤
-│ require_packages │ 🔴 typescript not installed — TypeScript is required │
+│ require-packages │ 🔴 typescript not installed — TypeScript is required │
 ├──────────────────┼──────────────────────────────────────────────────────┤
-│ require_files    │ 🔴 .nvmrc not found                                  │
+│ require-files    │ 🔴 .nvmrc not found                                  │
 ├──────────────────┼──────────────────────────────────────────────────────┤
-│ require_files    │ 🟡 .editorconfig not found                           │
+│ require-files    │ 🟡 .editorconfig not found                           │
 └──────────────────┴──────────────────────────────────────────────────────┘
 
 3 errors, 1 warning

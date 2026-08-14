@@ -5,26 +5,26 @@ import type { RuleViolation } from '../rules/evaluator';
 import { formatTruncatedList } from './format-utils';
 import { severityIcon } from './severity-format';
 
-export function formatRuleType(type: RuleViolation['type']): string {
-  switch (type) {
-    case 'detect_files':
-      return 'detect_files';
-    case 'require_files':
-      return 'require_files';
-    case 'require_packages':
-      return 'require_packages';
-    case 'forbid_packages':
-      return 'forbid_packages';
-    case 'require_scripts':
-      return 'require_scripts';
-    case 'require_package_fields':
-      return 'package_fields';
-    case 'forbid_package_fields':
-      return 'package_fields';
-    case 'engine_version':
-      return 'engine_version';
-    case 'codeowners':
-      return 'codeowners';
+export function formatRuleType(ruleId: RuleViolation['ruleId']): string {
+  switch (ruleId) {
+    case 'no-files':
+      return 'no-files';
+    case 'require-files':
+      return 'require-files';
+    case 'require-packages':
+      return 'require-packages';
+    case 'no-packages':
+      return 'no-packages';
+    case 'require-scripts':
+      return 'require-scripts';
+    case 'require-package-fields':
+      return 'package-fields';
+    case 'no-package-fields':
+      return 'package-fields';
+    case 'require-engine-version':
+      return 'require-engine-version';
+    case 'require-codeowners':
+      return 'require-codeowners';
   }
 }
 
@@ -32,7 +32,7 @@ export function describeViolation(v: RuleViolation): string {
   const patterns = v.patterns.join(', ');
   const suffix = v.message ? chalk.gray(` — ${v.message}`) : '';
 
-  if (v.type === 'detect_files') {
+  if (v.ruleId === 'no-files') {
     const files = v.matchedFiles.map((f) => {
       const parts = f.replace(/\\/g, '/').split('/');
       return parts[parts.length - 1];
@@ -40,28 +40,28 @@ export function describeViolation(v: RuleViolation): string {
     return `${patterns} detected (${formatTruncatedList(files, 'file')})${suffix}`;
   }
 
-  if (v.type === 'require_files') return `${patterns} not found${suffix}`;
-  if (v.type === 'require_packages')
+  if (v.ruleId === 'require-files') return `${patterns} not found${suffix}`;
+  if (v.ruleId === 'require-packages')
     return `${patterns} not installed${suffix}`;
-  if (v.type === 'forbid_packages')
+  if (v.ruleId === 'no-packages')
     return `${v.packageName ?? patterns} is forbidden${suffix}`;
-  if (v.type === 'require_scripts')
+  if (v.ruleId === 'require-scripts')
     return `script ${patterns} missing in package.json${suffix}`;
-  if (v.type === 'require_package_fields') {
+  if (v.ruleId === 'require-package-fields') {
     if (v.fieldPath && v.actualValue !== undefined)
       return `field ${v.fieldPath} is ${chalk.yellow(v.actualValue)}, does not match required value${suffix}`;
     return `field ${patterns} missing in package.json${suffix}`;
   }
-  if (v.type === 'forbid_package_fields')
+  if (v.ruleId === 'no-package-fields')
     return `field ${v.fieldPath ?? patterns} is forbidden in package.json${suffix}`;
 
-  if (v.type === 'engine_version') {
+  if (v.ruleId === 'require-engine-version') {
     if (!v.installedRange)
       return `engines.node not specified (required ${v.requiredRange})${suffix}`;
     return `engines.node is ${chalk.yellow(v.installedRange)}, required ${chalk.cyan(v.requiredRange)}${suffix}`;
   }
 
-  if (v.type === 'codeowners') {
+  if (v.ruleId === 'require-codeowners') {
     if (v.matchedFiles.length === 0)
       return `CODEOWNERS not found (looked in ${patterns})${suffix}`;
     return `${v.matchedFiles.length} scanned file(s) have no owner: ${formatTruncatedList(v.matchedFiles, 'file')}${suffix}`;
@@ -91,7 +91,7 @@ export function printRules(aggregated: AggregatedReport): void {
 
   for (const v of ruleViolations) {
     table.push([
-      formatRuleType(v.type),
+      formatRuleType(v.ruleId),
       `${severityIcon(v.severity)} ${describeViolation(v)}`,
     ]);
   }

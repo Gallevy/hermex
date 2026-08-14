@@ -232,7 +232,7 @@ describe('NpmLockfileAdapter', () => {
     // Hoisted to node_modules/<name> — the same depth as a direct
     // dependency — but declared by nobody. Reading depth as "direct" made
     // the repo look like it owned packages it never asked for, so
-    // forbid_packages could demand the removal of something only a
+    // no-packages could demand the removal of something only a
     // transitive parent pulls in.
     expect(resolutions['loose-envify'].rootVersion).toBeNull();
     expect(resolutions['loose-envify'].allVersions).toEqual(['1.4.0']);

@@ -47,7 +47,7 @@ export interface PackageInventoryEntry {
   hasVersionConflict: boolean;
   /** Matches `packages.internal`. */
   internal: boolean;
-  /** Matches `packages.ignore`. Kept in the inventory rather than filtered out at construction so each consumer can decide — the packages table and forbid rules skip these, `require_packages` deliberately does not. */
+  /** Matches `packages.ignore`. Kept in the inventory rather than filtered out at construction so each consumer can decide — the packages table and forbid rules skip these, `require-packages` deliberately does not. */
   ignored: boolean;
   usageCount: number;
   /**
@@ -140,8 +140,8 @@ function getRootVersion(
  * The single list of packages every downstream consumer reads.
  *
  * Before this existed, each feature answered "what packages are in this
- * repo?" for itself — the packages table and `forbid_packages` from import
- * analysis, `require_packages` from the lockfile, `forbid_package_fields`
+ * repo?" for itself — the packages table and `no-packages` from import
+ * analysis, `require-packages` from the lockfile, `no-package-fields`
  * from the manifest — so a package could be visible to one rule and
  * invisible to another (#75). Merging the three axes once, here, means the
  * features differ only in which axis they *select*, not in what they can

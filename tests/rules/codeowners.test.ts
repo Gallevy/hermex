@@ -12,15 +12,15 @@ import {
 import type { CodeownersEntry } from '../../src/rules/codeowners';
 
 const emptyRules: ResolvedRulesConfig = {
-  detect_files: [],
-  require_files: [],
-  forbid_packages: [],
-  require_packages: [],
-  require_scripts: [],
-  require_package_fields: [],
-  forbid_package_fields: [],
-  engine_version: [],
-  codeowners: undefined,
+  'no-files': [],
+  'require-files': [],
+  'no-packages': [],
+  'require-packages': [],
+  'require-scripts': [],
+  'require-package-fields': [],
+  'no-package-fields': [],
+  'require-engine-version': [],
+  'require-codeowners': undefined,
 };
 
 describe('codeownersPatternToGlobs', () => {
@@ -145,11 +145,11 @@ describe('evaluateCodeowners', () => {
     tempDir = mkdtempSync(join(tmpdir(), 'hermex-codeowners-test-'));
     const result = evaluateCodeowners(
       tempDir,
-      { ...emptyRules, codeowners: { severity: 'error' } },
+      { ...emptyRules, 'require-codeowners': { severity: 'error' } },
       ['src/App.tsx'],
     );
     expect(result).toHaveLength(1);
-    expect(result[0].type).toBe('codeowners');
+    expect(result[0].ruleId).toBe('require-codeowners');
     expect(result[0].matchedFiles).toEqual([]);
   });
 
@@ -159,7 +159,7 @@ describe('evaluateCodeowners', () => {
     writeFileSync(join(tempDir, '.github', 'CODEOWNERS'), '* @org/frontend\n');
     const result = evaluateCodeowners(
       tempDir,
-      { ...emptyRules, codeowners: { severity: 'error' } },
+      { ...emptyRules, 'require-codeowners': { severity: 'error' } },
       ['src/App.tsx', 'lib/x.ts'],
     );
     expect(result).toHaveLength(0);
@@ -171,7 +171,7 @@ describe('evaluateCodeowners', () => {
     writeFileSync(join(tempDir, '.github', 'CODEOWNERS'), 'src/ @a\n');
     const result = evaluateCodeowners(
       tempDir,
-      { ...emptyRules, codeowners: { severity: 'error' } },
+      { ...emptyRules, 'require-codeowners': { severity: 'error' } },
       ['src/App.tsx', 'lib/x.ts'],
     );
     expect(result).toHaveLength(1);
@@ -191,7 +191,7 @@ describe('evaluateCodeowners', () => {
     writeFileSync(join(tempDir, '.github', 'CODEOWNERS'), 'src/ @a\n');
     const result = evaluateCodeowners(
       tempDir,
-      { ...emptyRules, codeowners: { severity: 'error' } },
+      { ...emptyRules, 'require-codeowners': { severity: 'error' } },
       [join(tempDir, 'src', 'App.tsx')],
     );
     expect(result).toHaveLength(0);
@@ -204,7 +204,7 @@ describe('evaluateCodeowners', () => {
     writeFileSync(join(tempDir, 'CODEOWNERS'), '');
     const result = evaluateCodeowners(
       tempDir,
-      { ...emptyRules, codeowners: { severity: 'error' } },
+      { ...emptyRules, 'require-codeowners': { severity: 'error' } },
       ['src/App.tsx'],
     );
     // Root CODEOWNERS is empty (no owners at all); if it were used instead,
@@ -228,7 +228,10 @@ describe('evaluateCodeowners — requiredOwners', () => {
       tempDir,
       {
         ...emptyRules,
-        codeowners: { severity: 'error', requiredOwners: ['@platform-team'] },
+        'require-codeowners': {
+          severity: 'error',
+          requiredOwners: ['@platform-team'],
+        },
       },
       ['src/App.tsx'],
     );
@@ -247,7 +250,10 @@ describe('evaluateCodeowners — requiredOwners', () => {
       tempDir,
       {
         ...emptyRules,
-        codeowners: { severity: 'error', requiredOwners: ['@platform-team'] },
+        'require-codeowners': {
+          severity: 'error',
+          requiredOwners: ['@platform-team'],
+        },
       },
       ['src/App.tsx'],
     );
@@ -262,7 +268,10 @@ describe('evaluateCodeowners — requiredOwners', () => {
       tempDir,
       {
         ...emptyRules,
-        codeowners: { severity: 'error', requiredOwners: ['@platform-team'] },
+        'require-codeowners': {
+          severity: 'error',
+          requiredOwners: ['@platform-team'],
+        },
       },
       ['src/App.tsx', 'lib/x.ts'],
     );
@@ -286,7 +295,7 @@ describe('evaluateCodeowners — requiredOwners', () => {
       tempDir,
       {
         ...emptyRules,
-        codeowners: {
+        'require-codeowners': {
           severity: 'error',
           requiredOwners: ['@platform-team'],
           message: 'wrong owner for this path',
@@ -304,7 +313,7 @@ describe('evaluateCodeowners — requiredOwners', () => {
     writeFileSync(join(tempDir, '.github', 'CODEOWNERS'), 'src/ @any-team\n');
     const result = evaluateCodeowners(
       tempDir,
-      { ...emptyRules, codeowners: { severity: 'error' } },
+      { ...emptyRules, 'require-codeowners': { severity: 'error' } },
       ['src/App.tsx'],
     );
     expect(result).toHaveLength(0);

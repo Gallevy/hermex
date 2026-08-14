@@ -1,6 +1,6 @@
 export default {
   rules: {
-    require_packages: [
+    'require-packages': [
       {
         severity: 'error',
         patterns: ['@acme/shell'],
@@ -12,13 +12,13 @@ export default {
     {
       match: ['@acme/legacy-off'],
       rules: {
-        require_packages: [{ severity: 'off', patterns: ['@acme/shell'] }],
+        'require-packages': [{ severity: 'off', patterns: ['@acme/shell'] }],
       },
     },
     {
       match: ['@acme/legacy-warn'],
       rules: {
-        require_packages: [
+        'require-packages': [
           {
             severity: 'warn',
             patterns: ['@acme/shell'],

@@ -80,7 +80,7 @@ export function computeCompliance(
  * add the buckets themselves; they're disjoint).
  *
  * Shared by those two renderers because they had this sum copied between
- * them, and both got it wrong the same way when `forbid_packages` moved into
+ * them, and both got it wrong the same way when `no-packages` moved into
  * `ruleViolations` (#77): each was still adding a separate banned-package
  * bucket that now overlapped, double-reporting every forbidden package.
  */

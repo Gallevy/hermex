@@ -39,7 +39,7 @@ describe('detectForbiddenPackages', () => {
   it('flags a package matching a forbid pattern with the rule severity and message', () => {
     const config = createConfig({
       rules: {
-        forbid_packages: [
+        'no-packages': [
           { severity: 'error', patterns: ['moment'], message: 'Use dayjs' },
         ],
       },
@@ -49,7 +49,7 @@ describe('detectForbiddenPackages', () => {
 
     expect(violations).toEqual([
       {
-        type: 'forbid_packages',
+        ruleId: 'no-packages',
         severity: 'error',
         patterns: ['moment'],
         message: 'Use dayjs',
@@ -62,7 +62,7 @@ describe('detectForbiddenPackages', () => {
   it('matches a scoped package against a glob forbid pattern', () => {
     const config = createConfig({
       rules: {
-        forbid_packages: [{ severity: 'warn', patterns: ['@legacy/*'] }],
+        'no-packages': [{ severity: 'warn', patterns: ['@legacy/*'] }],
       },
     });
 
@@ -76,12 +76,12 @@ describe('detectForbiddenPackages', () => {
   });
 
   // `patterns` carries the RULE's globs, never the matched name — same as
-  // require_packages, and what lets one glob rule produce several violations
+  // require-packages, and what lets one glob rule produce several violations
   // that a consumer can still trace back to the rule that fired them.
   it('carries the rule globs in patterns and the matched package in packageName', () => {
     const config = createConfig({
       rules: {
-        forbid_packages: [{ severity: 'error', patterns: ['@legacy/*'] }],
+        'no-packages': [{ severity: 'error', patterns: ['@legacy/*'] }],
       },
     });
 
@@ -106,7 +106,7 @@ describe('detectForbiddenPackages', () => {
   it('leaves matchedFiles empty', () => {
     const config = createConfig({
       rules: {
-        forbid_packages: [{ severity: 'error', patterns: ['moment'] }],
+        'no-packages': [{ severity: 'error', patterns: ['moment'] }],
       },
     });
 
@@ -118,7 +118,7 @@ describe('detectForbiddenPackages', () => {
   it('uses the first matching rule when a package matches two forbid rules', () => {
     const config = createConfig({
       rules: {
-        forbid_packages: [
+        'no-packages': [
           { severity: 'error', patterns: ['moment'], message: 'first rule' },
           { severity: 'warn', patterns: ['mom*'], message: 'second rule' },
         ],
@@ -136,16 +136,16 @@ describe('detectForbiddenPackages', () => {
     expect(detectForbiddenPackages([used('moment')])).toEqual([]);
   });
 
-  it('returns an empty array when there are no forbid_packages rules', () => {
+  it('returns an empty array when there are no no-packages rules', () => {
     const config = createConfig();
 
     expect(detectForbiddenPackages([used('moment')], config)).toEqual([]);
   });
 
-  it('a forbid_packages rule authored with severity "off" resolves away before it ever reaches detectForbiddenPackages', () => {
+  it('a no-packages rule authored with severity "off" resolves away before it ever reaches detectForbiddenPackages', () => {
     const config = createConfig({
       rules: {
-        forbid_packages: [{ severity: 'off', patterns: ['moment'] }],
+        'no-packages': [{ severity: 'off', patterns: ['moment'] }],
       },
     });
 
@@ -158,7 +158,7 @@ describe('detectForbiddenPackages', () => {
   it('flags a package declared in package.json but never imported', () => {
     const config = createConfig({
       rules: {
-        forbid_packages: [
+        'no-packages': [
           {
             severity: 'error',
             patterns: ['@acme/coverager'],
@@ -175,7 +175,7 @@ describe('detectForbiddenPackages', () => {
 
     expect(violations).toEqual([
       {
-        type: 'forbid_packages',
+        ruleId: 'no-packages',
         severity: 'error',
         patterns: ['@acme/coverager'],
         message: 'Remove deprecated internal package',
@@ -188,7 +188,7 @@ describe('detectForbiddenPackages', () => {
   it('flags a package that is imported without being declared (a phantom dependency)', () => {
     const config = createConfig({
       rules: {
-        forbid_packages: [{ severity: 'error', patterns: ['moment'] }],
+        'no-packages': [{ severity: 'error', patterns: ['moment'] }],
       },
     });
 
@@ -203,7 +203,7 @@ describe('detectForbiddenPackages', () => {
   it('does not flag a purely transitive dependency, which the repo cannot remove', () => {
     const config = createConfig({
       rules: {
-        forbid_packages: [{ severity: 'error', patterns: ['moment'] }],
+        'no-packages': [{ severity: 'error', patterns: ['moment'] }],
       },
     });
 
@@ -218,7 +218,7 @@ describe('detectForbiddenPackages', () => {
   it('reports a package exactly once however many axes it is present on', () => {
     const config = createConfig({
       rules: {
-        forbid_packages: [{ severity: 'error', patterns: ['moment'] }],
+        'no-packages': [{ severity: 'error', patterns: ['moment'] }],
       },
     });
 
@@ -231,7 +231,7 @@ describe('detectForbiddenPackages', () => {
     const config = createConfig({
       packages: { ignore: ['@legacy/*'] },
       rules: {
-        forbid_packages: [{ severity: 'error', patterns: ['@legacy/*'] }],
+        'no-packages': [{ severity: 'error', patterns: ['@legacy/*'] }],
       },
     });
 
@@ -246,7 +246,7 @@ describe('detectForbiddenPackages', () => {
   it('reports violations in inventory order, which is usage-ranked', () => {
     const config = createConfig({
       rules: {
-        forbid_packages: [{ severity: 'error', patterns: ['moment', 'jest'] }],
+        'no-packages': [{ severity: 'error', patterns: ['moment', 'jest'] }],
       },
     });
 
@@ -263,7 +263,7 @@ describe('detectRequiredPackages', () => {
   it('is satisfied by an installed package that is never imported', () => {
     const config = createConfig({
       rules: {
-        require_packages: [{ severity: 'error', patterns: ['react'] }],
+        'require-packages': [{ severity: 'error', patterns: ['react'] }],
       },
     });
 
@@ -275,7 +275,7 @@ describe('detectRequiredPackages', () => {
   it('is satisfied by an imported package that is absent from the lockfile', () => {
     const config = createConfig({
       rules: {
-        require_packages: [{ severity: 'error', patterns: ['react'] }],
+        'require-packages': [{ severity: 'error', patterns: ['react'] }],
       },
     });
 
@@ -293,13 +293,13 @@ describe('detectRequiredPackages', () => {
     expect(violations).toEqual([]);
   });
 
-  // Unlike forbid_packages, "required" asks whether the package is available
+  // Unlike no-packages, "required" asks whether the package is available
   // to the code — a transitive copy counts, and `packages.ignore` (a
   // reporting filter, not an uninstall) must not make it look missing.
   it('is satisfied by a purely transitive dependency', () => {
     const config = createConfig({
       rules: {
-        require_packages: [{ severity: 'error', patterns: ['react'] }],
+        'require-packages': [{ severity: 'error', patterns: ['react'] }],
       },
     });
 
@@ -315,7 +315,7 @@ describe('detectRequiredPackages', () => {
     const config = createConfig({
       packages: { ignore: ['react'] },
       rules: {
-        require_packages: [{ severity: 'error', patterns: ['react'] }],
+        'require-packages': [{ severity: 'error', patterns: ['react'] }],
       },
     });
 
@@ -330,7 +330,7 @@ describe('detectRequiredPackages', () => {
   it('is not satisfied by a package that is declared but not installed', () => {
     const config = createConfig({
       rules: {
-        require_packages: [{ severity: 'error', patterns: ['react'] }],
+        'require-packages': [{ severity: 'error', patterns: ['react'] }],
       },
     });
 
@@ -350,10 +350,10 @@ describe('detectRequiredPackages', () => {
     expect(violations).toHaveLength(1);
   });
 
-  it('yields a require_packages violation with the rule patterns and empty matchedFiles when unsatisfied', () => {
+  it('yields a require-packages violation with the rule patterns and empty matchedFiles when unsatisfied', () => {
     const config = createConfig({
       rules: {
-        require_packages: [
+        'require-packages': [
           { severity: 'error', patterns: ['react'], message: 'Need react' },
         ],
       },
@@ -363,7 +363,7 @@ describe('detectRequiredPackages', () => {
 
     expect(violations).toEqual([
       {
-        type: 'require_packages',
+        ruleId: 'require-packages',
         severity: 'error',
         patterns: ['react'],
         message: 'Need react',
@@ -372,16 +372,16 @@ describe('detectRequiredPackages', () => {
     ]);
   });
 
-  it('returns an empty array when there are no require_packages rules', () => {
+  it('returns an empty array when there are no require-packages rules', () => {
     const config = createConfig();
 
     expect(detectRequiredPackages([], config)).toEqual([]);
   });
 
-  it('a require_packages rule authored with severity "off" resolves away before it ever reaches detectRequiredPackages, even unsatisfied', () => {
+  it('a require-packages rule authored with severity "off" resolves away before it ever reaches detectRequiredPackages, even unsatisfied', () => {
     const config = createConfig({
       rules: {
-        require_packages: [{ severity: 'off', patterns: ['react'] }],
+        'require-packages': [{ severity: 'off', patterns: ['react'] }],
       },
     });
 

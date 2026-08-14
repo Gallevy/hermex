@@ -1,5 +1,5 @@
 export default {
   rules: {
-    require_files: [{ severity: 'error', patterns: ['.nvmrc'] }],
+    'require-files': [{ severity: 'error', patterns: ['.nvmrc'] }],
   },
 };

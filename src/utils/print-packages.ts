@@ -187,8 +187,8 @@ export function formatUpgradeCell(releaseAge?: ReleaseAgeEntry): string {
 }
 
 /**
- * The `forbid_packages` hit for this package, if any. Filters `ruleViolations`
- * by `type` rather than reading a dedicated banned-packages array, which is
+ * The `no-packages` hit for this package, if any. Filters `ruleViolations`
+ * by `ruleId` rather than reading a dedicated banned-packages array, which is
  * what #77 removed — `packageName` is what keeps the join to a table row
  * exact, since a violation carries no file paths to match on.
  */
@@ -197,7 +197,7 @@ export function findForbidViolation(
   violations: RuleViolation[],
 ): RuleViolation | undefined {
   return violations.find(
-    (v) => v.type === 'forbid_packages' && v.packageName === pkg.packageName,
+    (v) => v.ruleId === 'no-packages' && v.packageName === pkg.packageName,
   );
 }
 

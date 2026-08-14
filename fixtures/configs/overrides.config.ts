@@ -8,8 +8,8 @@ import base from '../hermex.config.ts';
  * show the *resolved* severities rather than the ones authored in the base
  * config:
  *
- * - `forbid_packages` on `moment` drops from error to warn.
- * - `require_files` on `.editorconfig` is switched off entirely and must
+ * - `no-packages` on `moment` drops from error to warn.
+ * - `require-files` on `.editorconfig` is switched off entirely and must
  *   disappear from the output, not appear greyed out.
  *
  * The remaining error-severity rules are left alone on purpose — an
@@ -22,12 +22,12 @@ export default {
     {
       match: ['hermex-fixtures'],
       rules: {
-        forbid_packages: {
+        'no-packages': {
           severity: 'warn',
           patterns: ['moment'],
           message: 'Use date-fns or dayjs (scheduled for removal)',
         },
-        require_files: { severity: 'off', patterns: ['.editorconfig'] },
+        'require-files': { severity: 'off', patterns: ['.editorconfig'] },
       },
     },
   ],

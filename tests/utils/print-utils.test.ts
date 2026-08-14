@@ -42,14 +42,14 @@ function daysAgo(n: number): string {
   return new Date(Date.now() - n * 24 * 60 * 60 * 1000).toISOString();
 }
 
-/** A forbid_packages hit, the shape `detectForbiddenPackages` emits (#77). */
+/** A no-packages hit, the shape `detectForbiddenPackages` emits (#77). */
 function forbidViolation(
   packageName: string,
   severity: RuleViolation['severity'] = 'error',
   message?: string,
 ): RuleViolation {
   return {
-    type: 'forbid_packages',
+    ruleId: 'no-packages',
     severity,
     patterns: [packageName],
     message,
@@ -889,7 +889,7 @@ describe('printRules', () => {
   // leading the Description cell (mirroring the Target cell convention).
   it('renders violations as a Rule/Description table, not a bullet list', () => {
     const errorViolation: RuleViolation = {
-      type: 'require_files',
+      ruleId: 'require-files',
       severity: 'error',
       patterns: ['.nvmrc'],
       matchedFiles: [],
@@ -906,9 +906,9 @@ describe('printRules', () => {
     );
     expect(output).toContain('Rule');
     expect(output).toContain('Description');
-    expect(output).toMatch(/│\s*require_files\s*│\s*🔴 \.nvmrc not found\s*│/);
+    expect(output).toMatch(/│\s*require-files\s*│\s*🔴 \.nvmrc not found\s*│/);
     expect(output).toMatch(
-      /│\s*forbid_packages\s*│\s*🟡 moment is forbidden — Use dayjs\s*│/,
+      /│\s*no-packages\s*│\s*🟡 moment is forbidden — Use dayjs\s*│/,
     );
     // No leftover bullet-list markers from the old rendering.
     expect(output).not.toMatch(/^\s*- 🔴/m);
@@ -924,7 +924,7 @@ describe('printRules', () => {
 
   it('prints violations when present', () => {
     const violation: RuleViolation = {
-      type: 'require_packages',
+      ruleId: 'require-packages',
       severity: 'error',
       patterns: ['eslint'],
       message: 'eslint is required',
@@ -942,7 +942,7 @@ describe('printRules', () => {
 
   it('info-severity violations do not affect errorCount/warnCount in the summary line', () => {
     const infoViolation: RuleViolation = {
-      type: 'detect_files',
+      ruleId: 'no-files',
       severity: 'info',
       patterns: ['orbis.config.*'],
       message: 'Orbis detected',
@@ -959,7 +959,7 @@ describe('printRules', () => {
 
   it('renders info-severity violations with a distinct icon from warn/error', () => {
     const infoViolation: RuleViolation = {
-      type: 'detect_files',
+      ruleId: 'no-files',
       severity: 'info',
       patterns: ['orbis.config.*'],
       matchedFiles: ['orbis.config.ts'],
@@ -974,9 +974,9 @@ describe('printRules', () => {
     expect(output).not.toContain('🟡');
   });
 
-  it('renders require_package_fields/forbid_package_fields violations under the package_fields label', () => {
+  it('renders require-package-fields/no-package-fields violations under the package-fields label', () => {
     const violation: RuleViolation = {
-      type: 'require_package_fields',
+      ruleId: 'require-package-fields',
       severity: 'warn',
       patterns: ['license'],
       matchedFiles: [],
@@ -986,13 +986,13 @@ describe('printRules', () => {
     const output = consoleSpy.mock.calls
       .map((call) => call.join(' '))
       .join('\n');
-    expect(output).toContain('package_fields');
+    expect(output).toContain('package-fields');
     expect(output).not.toContain('pkg_fields');
   });
 
-  it('truncates a detect_files violation with many matched files instead of listing them all', () => {
+  it('truncates a no-files violation with many matched files instead of listing them all', () => {
     const violation: RuleViolation = {
-      type: 'detect_files',
+      ruleId: 'no-files',
       severity: 'error',
       patterns: ['*.config.js'],
       matchedFiles: [
@@ -1014,7 +1014,7 @@ describe('printRules', () => {
     expect(output).not.toContain('webpack.config.js');
   });
 
-  it('renders a forbid_packages (banned/restricted) violation through the same line shape as other rules', () => {
+  it('renders a no-packages (banned/restricted) violation through the same line shape as other rules', () => {
     const aggregated = makeAggregated({
       ruleViolations: [forbidViolation('moment', 'warn', 'Use dayjs')],
     });
@@ -1022,14 +1022,14 @@ describe('printRules', () => {
     const output = consoleSpy.mock.calls
       .map((call) => call.join(' '))
       .join('\n');
-    expect(output).toContain('forbid_packages');
+    expect(output).toContain('no-packages');
     expect(output).toContain('moment is forbidden');
     expect(output).toContain('🟡');
   });
 
-  it('renders a require_files violation as "not found"', () => {
+  it('renders a require-files violation as "not found"', () => {
     const violation: RuleViolation = {
-      type: 'require_files',
+      ruleId: 'require-files',
       severity: 'error',
       patterns: ['.nvmrc'],
       matchedFiles: [],
@@ -1042,9 +1042,9 @@ describe('printRules', () => {
     expect(output).toContain('.nvmrc not found');
   });
 
-  it('renders a require_scripts violation with the script name and package.json context', () => {
+  it('renders a require-scripts violation with the script name and package.json context', () => {
     const violation: RuleViolation = {
-      type: 'require_scripts',
+      ruleId: 'require-scripts',
       severity: 'error',
       patterns: ['test'],
       matchedFiles: [],
@@ -1057,9 +1057,9 @@ describe('printRules', () => {
     expect(output).toContain('script test missing in package.json');
   });
 
-  it('renders a require_package_fields violation with fieldPath/actualValue as a mismatch message', () => {
+  it('renders a require-package-fields violation with fieldPath/actualValue as a mismatch message', () => {
     const violation: RuleViolation = {
-      type: 'require_package_fields',
+      ruleId: 'require-package-fields',
       severity: 'error',
       patterns: ['license'],
       matchedFiles: [],
@@ -1076,9 +1076,9 @@ describe('printRules', () => {
     );
   });
 
-  it('renders a forbid_package_fields violation using fieldPath when present', () => {
+  it('renders a no-package-fields violation using fieldPath when present', () => {
     const violation: RuleViolation = {
-      type: 'forbid_package_fields',
+      ruleId: 'no-package-fields',
       severity: 'error',
       patterns: ['scripts.postinstall'],
       matchedFiles: [],
@@ -1092,9 +1092,9 @@ describe('printRules', () => {
     expect(output).toContain('field scripts.postinstall is forbidden');
   });
 
-  it('renders a forbid_package_fields violation falling back to patterns when fieldPath is absent', () => {
+  it('renders a no-package-fields violation falling back to patterns when fieldPath is absent', () => {
     const violation: RuleViolation = {
-      type: 'forbid_package_fields',
+      ruleId: 'no-package-fields',
       severity: 'error',
       patterns: ['scripts.postinstall'],
       matchedFiles: [],
@@ -1107,9 +1107,9 @@ describe('printRules', () => {
     expect(output).toContain('field scripts.postinstall is forbidden');
   });
 
-  it('renders an engine_version violation showing installedRange when present', () => {
+  it('renders an require-engine-version violation showing installedRange when present', () => {
     const violation: RuleViolation = {
-      type: 'engine_version',
+      ruleId: 'require-engine-version',
       severity: 'error',
       patterns: [],
       matchedFiles: [],
@@ -1127,9 +1127,9 @@ describe('printRules', () => {
     expect(output).toContain('>=18');
   });
 
-  it('renders an engine_version violation as "not specified" when installedRange is absent', () => {
+  it('renders an require-engine-version violation as "not specified" when installedRange is absent', () => {
     const violation: RuleViolation = {
-      type: 'engine_version',
+      ruleId: 'require-engine-version',
       severity: 'error',
       patterns: [],
       matchedFiles: [],
@@ -1146,7 +1146,7 @@ describe('printRules', () => {
 
   it('renders a codeowners violation as "not found" when there are no matched files', () => {
     const violation: RuleViolation = {
-      type: 'codeowners',
+      ruleId: 'require-codeowners',
       severity: 'error',
       patterns: ['CODEOWNERS'],
       matchedFiles: [],
@@ -1161,7 +1161,7 @@ describe('printRules', () => {
 
   it('renders a codeowners violation listing unowned files when matched files are present', () => {
     const violation: RuleViolation = {
-      type: 'codeowners',
+      ruleId: 'require-codeowners',
       severity: 'error',
       patterns: ['CODEOWNERS'],
       matchedFiles: ['src/foo.ts', 'src/bar.ts'],
@@ -1177,13 +1177,13 @@ describe('printRules', () => {
   it('pluralizes the error/warning summary counts when there is more than one of each', () => {
     const errorViolations: RuleViolation[] = [
       {
-        type: 'require_files',
+        ruleId: 'require-files',
         severity: 'error',
         patterns: ['a'],
         matchedFiles: [],
       },
       {
-        type: 'require_files',
+        ruleId: 'require-files',
         severity: 'error',
         patterns: ['b'],
         matchedFiles: [],
@@ -1210,7 +1210,7 @@ describe('describeViolation', () => {
     // Defensive fallback for a violation type outside the known union —
     // e.g. a newer config schema evaluated against an older build.
     const violation = {
-      type: 'some_future_rule_type',
+      ruleId: 'some-future-rule-type',
       severity: 'error',
       patterns: ['whatever'],
       matchedFiles: [],
@@ -1222,7 +1222,7 @@ describe('describeViolation', () => {
 describe('printComplianceVerdict', () => {
   it('uses the singular "violation" when exactly one mandatory violation is present', () => {
     const violation: RuleViolation = {
-      type: 'require_files',
+      ruleId: 'require-files',
       severity: 'error',
       patterns: ['.nvmrc'],
       matchedFiles: [],
@@ -1249,7 +1249,7 @@ describe('printComplianceVerdict', () => {
 
   it('prints NOT COMPLIANT with a count when mandatory violations are present, without repeating per-violation detail', () => {
     const errorViolation: RuleViolation = {
-      type: 'require_files',
+      ruleId: 'require-files',
       severity: 'error',
       patterns: ['.nvmrc'],
       matchedFiles: [],
@@ -1290,11 +1290,11 @@ describe('printComplianceVerdict', () => {
   });
 
   // #77 regression guard: this count used to add a separate banned-package
-  // bucket to the rule bucket. Now that forbid_packages hits ARE rule
+  // bucket to the rule bucket. Now that no-packages hits ARE rule
   // violations, that same sum would count each one twice.
   it('counts a forbidden package and a failing rule as two mandatory violations, not four', () => {
     const missingFile: RuleViolation = {
-      type: 'require_files',
+      ruleId: 'require-files',
       severity: 'error',
       patterns: ['.nvmrc'],
       matchedFiles: [],
@@ -1539,9 +1539,9 @@ describe('printJson', () => {
     });
   });
 
-  // #77: forbid_packages hits used to sit in a separate top-level field, so
+  // #77: no-packages hits used to sit in a separate top-level field, so
   // a consumer iterating ruleViolations silently missed every one of them.
-  it('emits a forbid_packages hit inside ruleViolations, carrying the matched package', () => {
+  it('emits a no-packages hit inside ruleViolations, carrying the matched package', () => {
     printJson(
       makeAggregated({
         ruleViolations: [forbidViolation('moment', 'error', 'Use dayjs')],
@@ -1551,7 +1551,7 @@ describe('printJson', () => {
     const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
     expect(parsed.ruleViolations).toEqual([
       {
-        type: 'forbid_packages',
+        ruleId: 'no-packages',
         severity: 'error',
         patterns: ['moment'],
         message: 'Use dayjs',
@@ -1571,7 +1571,7 @@ describe('printJson', () => {
         ruleViolations: [
           forbidViolation('moment'),
           {
-            type: 'require_files',
+            ruleId: 'require-files',
             severity: 'error',
             patterns: ['.nvmrc'],
             matchedFiles: [],
@@ -1588,7 +1588,7 @@ describe('printJson', () => {
     const aggregated = makeAggregated({
       ruleViolations: [
         {
-          type: 'require_files',
+          ruleId: 'require-files',
           severity: 'warn',
           patterns: ['.editorconfig'],
           matchedFiles: [],
@@ -1634,7 +1634,7 @@ describe('printJson', () => {
       status: 'non-compliant',
       errorRuleViolations: [
         {
-          type: 'require_files',
+          ruleId: 'require-files',
           severity: 'error',
           patterns: ['.nvmrc'],
           matchedFiles: [],

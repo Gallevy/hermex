@@ -6,7 +6,7 @@ three different severities.
 ## What it proves
 
 The primary fixture repo only ever trips three of the nine. Without this
-repo the rules table has never been reviewed with an `engine_version` row, a
+repo the rules table has never been reviewed with an `require-engine-version` row, a
 `codeowners` row, or either of the two package-field shapes in it — so
 nothing would catch a renderer that mishandles `fieldPath`,
 `installedRange`, or a long `matchedFiles` list.
@@ -19,18 +19,18 @@ field reports the offending value.
 
 | Rule | Severity | Tripped by |
 | --- | --- | --- |
-| `detect_files` | error | `jest.config.js` and `.babelrc` exist |
-| `require_files` | error | `.nvmrc` does not exist |
-| `forbid_packages` | error | `moment` is declared |
-| `require_packages` | error | `typescript` is not declared |
-| `require_scripts` | error | no `build`, no `test` — only `lint` |
-| `require_package_fields` | warn | `license` is missing |
-| `forbid_package_fields` | warn | `publishConfig.registry` points at an internal registry |
-| `engine_version` | error | `engines.node` is `>=16`, below the required `>=20` |
+| `no-files` | error | `jest.config.js` and `.babelrc` exist |
+| `require-files` | error | `.nvmrc` does not exist |
+| `no-packages` | error | `moment` is declared |
+| `require-packages` | error | `typescript` is not declared |
+| `require-scripts` | error | no `build`, no `test` — only `lint` |
+| `require-package-fields` | warn | `license` is missing |
+| `no-package-fields` | warn | `publishConfig.registry` points at an internal registry |
+| `require-engine-version` | error | `engines.node` is `>=16`, below the required `>=20` |
 | `codeowners` | info | fires **twice** — see below |
 
 `includes` is scoped to `src/` so `jest.config.js` is found by
-`detect_files` without also being parsed as source.
+`no-files` without also being parsed as source.
 
 ## The CODEOWNERS trap
 
@@ -60,10 +60,10 @@ two rows into one distinct wording is the fix landing, not a regression.
 ## Layout
 
 ```
-.babelrc                 detect_files hit
+.babelrc                 no-files hit
 .github/CODEOWNERS       two of three src files covered
 hermex.config.ts         all nine rules, three severities
-jest.config.js           detect_files hit
+jest.config.js           no-files hit
 package.json             engines >=16, no license, publishConfig.registry, moment
 src/legacy.tsx           owned by the wrong team
 src/orphan.tsx           owned by nobody

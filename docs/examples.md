@@ -53,8 +53,8 @@ export default defineConfig({
 Internal packages show an `[int]` badge in the packages table.
 
 `ignore` is a *reporting* filter, not an uninstall: an ignored package is left out of the packages
-table and is never flagged by `forbid_packages`, but it still counts as installed for
-`require_packages` — otherwise ignoring a package would make a rule that requires it start failing.
+table and is never flagged by `no-packages`, but it still counts as installed for
+`require-packages` — otherwise ignoring a package would make a rule that requires it start failing.
 
 ## Versus — Migration Tracking
 
@@ -82,10 +82,10 @@ Output shows a neutral bar split per group — no directional assumption, just u
 When one shared `hermex.config.ts` is reused across many repos, `overrides`
 lets a subset of them get adjusted rules without forking the config. Each
 entry checks the *current repo's* `package.json` `name` field against
-`match` (micromatch patterns, same matching engine as `forbid_packages`);
+`match` (micromatch patterns, same matching engine as `no-packages`);
 when it matches, the entry's `rules` are upserted into the base `rules`
 above, keyed by identity — a rule's `patterns` (or `range` for
-`engine_version`).
+`require-engine-version`).
 
 - A rule whose `patterns` don't match any existing base rule is **added**.
 - A rule whose `patterns` match an existing base rule **replaces** it
@@ -97,7 +97,7 @@ above, keyed by identity — a rule's `patterns` (or `range` for
 ```ts
 export default defineConfig({
   rules: {
-    require_packages: [
+    'require-packages': [
       { severity: 'error', patterns: ['typescript'] },
       { severity: 'error', patterns: ['@acme/shell'] },
     ],
@@ -108,7 +108,7 @@ export default defineConfig({
       // this array to add/remove repos, no other config changes needed
       match: ['@acme/checkout', '@acme/billing'],
       rules: {
-        require_packages: [
+        'require-packages': [
           { severity: 'error', patterns: ['@acme/telemetry'] },
         ],
       },
@@ -117,14 +117,14 @@ export default defineConfig({
       // legacy repo can't adopt @acme/shell yet — exempt it entirely
       match: ['@acme/legacy-app'],
       rules: {
-        require_packages: [{ severity: 'off', patterns: ['@acme/shell'] }],
+        'require-packages': [{ severity: 'off', patterns: ['@acme/shell'] }],
       },
     },
     {
       // this repo isn't ready to fail CI over it yet — nudge instead
       match: ['@acme/in-progress-app'],
       rules: {
-        require_packages: [
+        'require-packages': [
           {
             severity: 'warn',
             patterns: ['@acme/shell'],
@@ -137,7 +137,7 @@ export default defineConfig({
 });
 ```
 
-`@acme/checkout` ends up with all three `require_packages` rules
+`@acme/checkout` ends up with all three `require-packages` rules
 (`typescript` and `@acme/shell` from the base, `@acme/telemetry` from its
 override — none of the `patterns` collide, so all are added).
 `@acme/legacy-app` keeps the base `typescript` rule but loses `@acme/shell`
@@ -152,11 +152,11 @@ has no `name`, no overrides can match.
 same set of strings), not a glob comparison — write the override's
 `patterns` identically to the base rule you want to replace or cancel.
 
-Every rule type supports this (`detect_files`, `require_files`,
-`forbid_packages`, `require_packages`, `require_scripts`,
-`require_package_fields`, `forbid_package_fields`, `engine_version`). The
-exception is `codeowners`, which only ever holds a single rule — any
-matching override's `codeowners` replaces the base one outright, and
+Every rule type supports this (`no-files`, `require-files`,
+`no-packages`, `require-packages`, `require-scripts`,
+`require-package-fields`, `no-package-fields`, `require-engine-version`). The
+exception is `require-codeowners`, which only ever holds a single rule — any
+matching override's `require-codeowners` replaces the base one outright, and
 severity `'off'` clears it.
 
 When more than one override entry matches the same repo, all of them apply,
@@ -171,7 +171,7 @@ disables a rule wherever it's written:
 ```ts
 export default defineConfig({
   rules: {
-    require_packages: [
+    'require-packages': [
       { severity: 'error', patterns: ['typescript'] },
       { severity: 'off', patterns: ['@acme/shell'] }, // written, but disabled
     ],
@@ -183,7 +183,7 @@ This repo only ever gets the `typescript` rule — the `@acme/shell` entry is
 resolved away before it reaches anything that evaluates rules. It's the
 same upsert-by-identity machinery `overrides` uses, just applied to the
 base config against itself, so two rules sharing the same `patterns`
-(or `range`, for `engine_version`) also collapse to the last one written,
+(or `range`, for `require-engine-version`) also collapse to the last one written,
 last write wins — useful if you ever generate `rules` programmatically in
 `hermex.config.ts` (it's plain TypeScript) rather than hand-authoring it.
 
@@ -191,8 +191,8 @@ last write wins — useful if you ever generate `rules` programmatically in
 
 ### File Rules
 
-File rules fall into two axes: **presence-triggered** (`detect_files`) and
-**absence-triggered** (`require_files`). `detect_files` supports three
+File rules fall into two axes: **presence-triggered** (`no-files`) and
+**absence-triggered** (`require-files`). `no-files` supports three
 severities — `info` for pure tracking (never a violation-style concern,
 just recorded), `warn` for a nudge, and `error` for a hard requirement
 that a file must NOT be present.
@@ -200,7 +200,7 @@ that a file must NOT be present.
 ```ts
 export default defineConfig({
   rules: {
-    detect_files: [
+    'no-files': [
       {
         severity: 'error',
         patterns: ['jest.config.*', '.babelrc'],
@@ -213,7 +213,7 @@ export default defineConfig({
         message: 'Orbis build toolchain detected',
       },
     ],
-    require_files: [
+    'require-files': [
       { severity: 'error', patterns: ['.nvmrc', 'vitest.config.*'] },
       { severity: 'warn', patterns: ['.editorconfig'] },
     ],
@@ -226,7 +226,7 @@ export default defineConfig({
 ```ts
 export default defineConfig({
   rules: {
-    forbid_packages: [
+    'no-packages': [
       {
         severity: 'error',
         patterns: ['moment'],
@@ -238,7 +238,7 @@ export default defineConfig({
         message: 'Use lodash-es or native JS',
       },
     ],
-    require_packages: [
+    'require-packages': [
       {
         severity: 'error',
         patterns: ['typescript'],
@@ -249,11 +249,11 @@ export default defineConfig({
 });
 ```
 
-`forbid_packages` matches any package your repo owns — one that is imported in your scanned source,
+`no-packages` matches any package your repo owns — one that is imported in your scanned source,
 declared in `package.json` (`dependencies`, `devDependencies`, `peerDependencies` or
 `optionalDependencies`), **or** recorded as a direct dependency by your lockfile. Build-only tooling
 that is never imported — something run via `npx`, an npm script or a git hook — is covered, so there is
-no need to spell it out as `forbid_package_fields: ['dependencies.x', 'devDependencies.x']`.
+no need to spell it out as `'no-package-fields': ['dependencies.x', 'devDependencies.x']`.
 
 Purely transitive dependencies are never flagged: they arrive through another package, so removing one
 isn't something your repo can do. Packages excluded by `packages.ignore` are never flagged either.
@@ -262,13 +262,13 @@ Every banned package appears in the Rules and Compliance sections. Those with me
 `[BANNED]` or `[RESTRICTED]` badge in the packages table, which since #78 lists every package the repo
 owns — so a declared-but-unimported banned package now has a row there too.
 
-In the JSON output, each hit is an ordinary entry in `ruleViolations` with `type: "forbid_packages"` —
+In the JSON output, each hit is an ordinary entry in `ruleViolations` with `ruleId: "no-packages"` —
 `patterns` carries the rule's globs, `packageName` the package that matched, and `matchedFiles` is empty
 (a package isn't a file, and a declared-but-unimported one has none):
 
 ```jsonc
 {
-  "type": "forbid_packages",
+  "ruleId": "no-packages",
   "severity": "error",
   "patterns": ["moment"],
   "message": "Use date-fns or dayjs",
@@ -288,7 +288,7 @@ that order):
 ```ts
 export default defineConfig({
   rules: {
-    codeowners: {
+    'require-codeowners': {
       severity: 'error',
       message: 'Every scanned file must have a CODEOWNERS entry',
     },
@@ -309,7 +309,7 @@ critical paths that must be reviewed by a particular team:
 ```ts
 export default defineConfig({
   rules: {
-    codeowners: {
+    'require-codeowners': {
       severity: 'error',
       requiredOwners: ['@org/platform-team'],
       message: 'Critical paths must be owned by @org/platform-team',
@@ -329,17 +329,17 @@ who isn't in `requiredOwners`.
 ```ts
 export default defineConfig({
   rules: {
-    require_scripts: [
+    'require-scripts': [
       {
         severity: 'error',
         patterns: ['build', 'test'],
         message: 'Required npm scripts',
       },
     ],
-    require_package_fields: [
+    'require-package-fields': [
       { severity: 'warn', patterns: ['engines', 'license', 'repository'] },
     ],
-    forbid_package_fields: [
+    'no-package-fields': [
       {
         severity: 'error',
         patterns: ['scripts.preinstall', 'scripts.postinstall'],
@@ -352,7 +352,7 @@ export default defineConfig({
         message: 'Package must not be marked unlicensed/proprietary',
       },
     ],
-    engine_version: {
+    'require-engine-version': {
       severity: 'error',
       range: '>=20',
       message: 'Node 20+ required',
@@ -361,10 +361,10 @@ export default defineConfig({
 });
 ```
 
-`forbid_package_fields` is the mirror of `require_package_fields`: it fires
+`no-package-fields` is the mirror of `require-package-fields`: it fires
 when a field **is present** at the given dot-path (e.g. `scripts.preinstall`)
 — optionally scoped further with `values` (micromatch patterns the field's
-stringified value must match, same as `require_package_fields`'s `values`).
+stringified value must match, same as `require-package-fields`'s `values`).
 Omitting `values` means "forbidden if present at all, regardless of value."
 
 ## Release Age (opt-in)
@@ -481,10 +481,10 @@ Severity is the only thing that decides which bucket a rule violation lands in; 
 | `packages` | Every package the repo owns — see below. Carries version, `declaredIn`, usage counts, and `releaseAge` when enrichment ran. |
 | `components` | Every component found, with its source package, usage count and the files using it. The one place component names live. |
 | `versus` | Head-to-head comparisons configured under `versus`. |
-| `ruleViolations` | **Every rule hit, in one list** — `detect_files`, `require_files`, `require_packages`, `forbid_packages`, `require_scripts`, `require_package_fields`, `forbid_package_fields`, `engine_version`, `codeowners`. Filter on `type`. |
+| `ruleViolations` | **Every rule hit, in one list** — `no-files`, `require-files`, `require-packages`, `no-packages`, `require-scripts`, `require-package-fields`, `no-package-fields`, `require-engine-version`, `require-codeowners`. Filter on `ruleId`. |
 | `compliance` | The canonical verdict — see above. |
 
-`ruleViolations` is the single source of truth for rule hits. Entries share a common shape (`type`, `severity`, `patterns`, `message?`, `matchedFiles`) and add per-type fields where they apply: `packageName` for `forbid_packages`, `fieldPath`/`actualValue` for the package-field rules, `installedRange`/`requiredRange` for `engine_version`.
+`ruleViolations` is the single source of truth for rule hits. Entries share a common shape (`ruleId`, `severity`, `patterns`, `message?`, `matchedFiles`) and add per-type fields where they apply: `packageName` for `no-packages`, `fieldPath`/`actualValue` for the package-field rules, `installedRange`/`requiredRange` for `require-engine-version`.
 
 #### What `packages[]` contains
 
@@ -574,15 +574,15 @@ export default defineConfig({
   ],
 
   rules: {
-    detect_files: [
+    'no-files': [
       { severity: 'error', patterns: ['jest.config.*'], message: 'Use vitest' },
     ],
-    require_files: [{ severity: 'error', patterns: ['.nvmrc'] }],
-    forbid_packages: [
+    'require-files': [{ severity: 'error', patterns: ['.nvmrc'] }],
+    'no-packages': [
       { severity: 'warn', patterns: ['moment'], message: 'Use date-fns' },
     ],
-    require_scripts: [{ severity: 'error', patterns: ['build', 'test'] }],
-    engine_version: { severity: 'error', range: '>=20' },
+    'require-scripts': [{ severity: 'error', patterns: ['build', 'test'] }],
+    'require-engine-version': { severity: 'error', range: '>=20' },
   },
 
   releaseAge: {

@@ -36,7 +36,7 @@ export interface AggregatedReport {
   packageInventory: PackageInventoryEntry[];
   packageDistribution: PackageDistribution[];
   versusResults: VersusResult[];
-  /** Every rule hit, `forbid_packages` included (#77) — one list, no second field to remember to read. */
+  /** Every rule hit, `no-packages` included (#77) — one list, no second field to remember to read. */
   ruleViolations: RuleViolation[];
   reports: UsageReport[];
 }

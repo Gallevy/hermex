@@ -136,14 +136,14 @@ export function evaluateCodeowners(
   rulesConfig: ResolvedRulesConfig,
   scannedFiles: string[],
 ): RuleViolation[] {
-  const rule = rulesConfig.codeowners;
+  const rule = rulesConfig['require-codeowners'];
   if (!rule) return [];
 
   const filePath = findCodeownersFile(repoPath);
   if (!filePath) {
     return [
       {
-        type: 'codeowners',
+        ruleId: 'require-codeowners',
         severity: rule.severity,
         patterns: CODEOWNERS_LOCATIONS,
         message: rule.message,
@@ -179,7 +179,7 @@ export function evaluateCodeowners(
   const violations: RuleViolation[] = [];
   if (unowned.length > 0) {
     violations.push({
-      type: 'codeowners',
+      ruleId: 'require-codeowners',
       severity: rule.severity,
       patterns: [path.basename(filePath)],
       message: rule.message,
@@ -188,7 +188,7 @@ export function evaluateCodeowners(
   }
   if (wrongOwner.length > 0) {
     violations.push({
-      type: 'codeowners',
+      ruleId: 'require-codeowners',
       severity: rule.severity,
       patterns: [path.basename(filePath)],
       message:

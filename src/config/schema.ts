@@ -51,17 +51,17 @@ const ThresholdSchema = z.union([z.number(), z.literal(false)]);
 // way `resolveRules` resolves the base config against itself.
 const OverrideRulesSchema = z
   .object({
-    detect_files: RuleConfigOrArraySchema.optional(),
-    require_files: RuleConfigOrArraySchema.optional(),
-    forbid_packages: RuleConfigOrArraySchema.optional(),
-    require_packages: RuleConfigOrArraySchema.optional(),
-    require_scripts: RuleConfigOrArraySchema.optional(),
-    require_package_fields: PackageFieldRuleOrArraySchema.optional(),
-    forbid_package_fields: PackageFieldRuleOrArraySchema.optional(),
-    engine_version: z
+    'no-files': RuleConfigOrArraySchema.optional(),
+    'require-files': RuleConfigOrArraySchema.optional(),
+    'no-packages': RuleConfigOrArraySchema.optional(),
+    'require-packages': RuleConfigOrArraySchema.optional(),
+    'require-scripts': RuleConfigOrArraySchema.optional(),
+    'require-package-fields': PackageFieldRuleOrArraySchema.optional(),
+    'no-package-fields': PackageFieldRuleOrArraySchema.optional(),
+    'require-engine-version': z
       .union([EngineVersionRuleSchema, z.array(EngineVersionRuleSchema)])
       .optional(),
-    codeowners: CodeownersRuleSchema.optional(),
+    'require-codeowners': CodeownersRuleSchema.optional(),
   })
   .default(() => ({}));
 
@@ -94,36 +94,37 @@ export const HermexConfigSchema = z.object({
    * Repo-scoped rule adjustments: when the current repo's package.json "name"
    * matches an entry's `match` patterns, its `rules` are upserted into the
    * base `rules` below, keyed by identity (a rule's `patterns`, or `range`
-   * for engine_version) — a rule with new patterns is added, one whose
-   * patterns match an existing base rule replaces it, and severity 'off'
-   * replaces it with nothing (like ESLint's per-rule 'off'). Lets one shared
-   * config both add rules to a subset of repos (a mandatory dependency for
-   * 30 of 150 apps) and loosen/cancel an org-wide rule for specific repos.
+   * for require-engine-version) — a rule with new patterns is added, one
+   * whose patterns match an existing base rule replaces it, and severity
+   * 'off' replaces it with nothing (like ESLint's per-rule 'off'). Lets one
+   * shared config both add rules to a subset of repos (a mandatory
+   * dependency for 30 of 150 apps) and loosen/cancel an org-wide rule for
+   * specific repos.
    */
   overrides: z.array(OverrideSchema).default([]),
 
   rules: z
     .object({
-      detect_files: RuleConfigOrArraySchema.default([]),
-      require_files: RuleConfigOrArraySchema.default([]),
-      forbid_packages: RuleConfigOrArraySchema.default([]),
-      require_packages: RuleConfigOrArraySchema.default([]),
-      require_scripts: RuleConfigOrArraySchema.default([]),
-      require_package_fields: PackageFieldRuleOrArraySchema.default([]),
-      forbid_package_fields: PackageFieldRuleOrArraySchema.default([]),
-      engine_version: z
+      'no-files': RuleConfigOrArraySchema.default([]),
+      'require-files': RuleConfigOrArraySchema.default([]),
+      'no-packages': RuleConfigOrArraySchema.default([]),
+      'require-packages': RuleConfigOrArraySchema.default([]),
+      'require-scripts': RuleConfigOrArraySchema.default([]),
+      'require-package-fields': PackageFieldRuleOrArraySchema.default([]),
+      'no-package-fields': PackageFieldRuleOrArraySchema.default([]),
+      'require-engine-version': z
         .union([EngineVersionRuleSchema, z.array(EngineVersionRuleSchema)])
         .optional(),
-      codeowners: CodeownersRuleSchema.optional(),
+      'require-codeowners': CodeownersRuleSchema.optional(),
     })
     .default(() => ({
-      detect_files: [] as RuleConfig[],
-      require_files: [] as RuleConfig[],
-      forbid_packages: [] as RuleConfig[],
-      require_packages: [] as RuleConfig[],
-      require_scripts: [] as RuleConfig[],
-      require_package_fields: [] as PackageFieldRule[],
-      forbid_package_fields: [] as PackageFieldRule[],
+      'no-files': [] as RuleConfig[],
+      'require-files': [] as RuleConfig[],
+      'no-packages': [] as RuleConfig[],
+      'require-packages': [] as RuleConfig[],
+      'require-scripts': [] as RuleConfig[],
+      'require-package-fields': [] as PackageFieldRule[],
+      'no-package-fields': [] as PackageFieldRule[],
     })),
 
   output: z

@@ -123,7 +123,7 @@ export const cases: FixtureCase[] = [
   {
     name: 'comply-all-rule-types',
     proves:
-      'Every one of the nine rule types in one table, at three severities — the only case that renders engine_version, codeowners and both package-field shapes.',
+      'Every one of the nine rule types in one table, at three severities — the only case that renders require-engine-version, codeowners and both package-field shapes.',
     cwd: 'repos/all-rule-types',
     args: ['comply'],
     expectExit: 1,
@@ -131,7 +131,7 @@ export const cases: FixtureCase[] = [
   {
     name: 'comply-all-rule-types-json',
     proves:
-      'The machine-readable shape of every rule type: fieldPath and actualValue on package-field hits, installedRange/requiredRange on engine_version, matchedFiles on codeowners. Also where #95 is visible — the two codeowners entries are byte-identical apart from matchedFiles.',
+      'The machine-readable shape of every rule type: fieldPath and actualValue on package-field hits, installedRange/requiredRange on require-engine-version, matchedFiles on codeowners. Also where #95 is visible — the two codeowners entries are byte-identical apart from matchedFiles.',
     cwd: 'repos/all-rule-types',
     args: ['comply', '--format', 'json'],
     expectExit: 1,
