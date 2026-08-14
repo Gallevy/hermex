@@ -1,6 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { resolve } from 'node:path';
-import { diffHunks, scrub, unifiedDiff } from '../../scripts/output-review';
+import {
+  buildSite,
+  caseDoc,
+  diffHunks,
+  scrub,
+  unifiedDiff,
+} from '../../scripts/output-review';
+import type { CaseResult, FixtureCase } from '../../scripts/output-review';
 
 const ROOT = resolve(__dirname, '../..');
 
@@ -148,10 +155,11 @@ describe('unifiedDiff', () => {
 });
 
 /**
- * The PR comment links at `…/stdout.txt#L12-L19` rather than inlining the
- * diff, and those line numbers come from here. A hunk whose `oldStart` is
- * off by one sends every reviewer to the wrong line of the baseline — a
- * failure that looks like a working link, which is the worst kind.
+ * Every `@@` header a reviewer reads is built from these numbers, and they
+ * are what turn an elision into something navigable — "the changed line is
+ * near line 18 of the baseline" rather than "some lines were skipped". A
+ * hunk whose `oldStart` is off by one sends the reader to the wrong place
+ * while looking entirely correct, which is the worst kind of wrong.
  */
 describe('diffHunks', () => {
   it('reports no hunks when the two sides are identical', () => {
@@ -190,5 +198,163 @@ describe('diffHunks', () => {
     after[50] = 'second';
     const found = diffHunks(before.join('\n'), after.join('\n'));
     expect(found.map((hunk) => hunk.oldStart)).toEqual([8, 48]);
+  });
+});
+
+function fixtureCase(
+  overrides: Partial<FixtureCase> & { name: string },
+): FixtureCase {
+  return {
+    proves: 'a thing worth proving',
+    cwd: '.',
+    args: ['scan'],
+    expectExit: 0,
+    ...overrides,
+  };
+}
+
+function caseResult(
+  fixture: FixtureCase,
+  artifacts: Record<string, string> = {},
+  diff = '',
+): CaseResult {
+  return {
+    fixture,
+    artifacts: { 'exit-code.txt': `${fixture.expectExit}\n`, ...artifacts },
+    raw: { stdout: '', stderr: '' },
+    changed: diff ? ['stdout.txt'] : [],
+    added: [],
+    removed: [],
+    fileDiffs: [],
+    diff,
+  };
+}
+
+/**
+ * The dossier is what the PR comment sends a reviewer to, and it is
+ * generated — so a field that silently stops being rendered produces a page
+ * that looks complete and is not. The `case-docs-are-current` invariant
+ * catches drift between the file and the generator; these pin what the
+ * generator is supposed to say in the first place.
+ */
+describe('caseDoc', () => {
+  it('records the command with the scratch directory left symbolic', () => {
+    const doc = caseDoc(
+      fixtureCase({
+        name: 'comply-summary-file',
+        args: ['comply', '--summary-file', '{OUT}/summary.md'],
+        writes: ['summary.md'],
+      }),
+    );
+    // The resolved path is a temp directory that differs every run — naming
+    // it would be both meaningless and a scrubber leak.
+    expect(doc).toContain('hermex comply --summary-file $OUT/summary.md');
+    expect(doc).not.toContain('{OUT}');
+  });
+
+  it('says a case runs on schema defaults when no config is loaded', () => {
+    // Mirrors src/config/loader.ts, which does not walk up: the lock-file
+    // repos have no hermex.config.ts of their own, so claiming they use the
+    // primary one would be a lie a reviewer might act on.
+    const doc = caseDoc(
+      fixtureCase({ name: 'lockfile-npm', cwd: 'repos/lockfile-npm' }),
+    );
+    expect(doc).toContain('schema defaults');
+  });
+
+  it('links the explicit config a case names', () => {
+    const doc = caseDoc(
+      fixtureCase({
+        name: 'scan-human-minimal',
+        args: ['scan', '--config', 'configs/minimal.config.ts'],
+      }),
+    );
+    expect(doc).toContain('(../configs/minimal.config.ts)');
+  });
+
+  it('states the absences a reviewer would otherwise have to notice', () => {
+    const doc = caseDoc(
+      fixtureCase({ name: 'minimal', absent: ['📦 Packages', '🔍 Rules'] }),
+    );
+    expect(doc).toContain('Must not appear in stdout');
+    expect(doc).toContain('`📦 Packages`');
+    expect(doc).toContain('`🔍 Rules`');
+  });
+
+  it('carries the hand-written notes the generator cannot derive', () => {
+    const doc = caseDoc(
+      fixtureCase({ name: 'noted', notes: 'Look at the ordering first.' }),
+    );
+    expect(doc).toContain('Look at the ordering first.');
+  });
+
+  it('is a pure function of the case, so the freshness check is stable', () => {
+    const fixture = fixtureCase({ name: 'stable' });
+    expect(caseDoc(fixture)).toBe(caseDoc(fixture));
+  });
+});
+
+/**
+ * One page per case is the point of the site: two cases cannot be confused
+ * for each other if they were never on the same page.
+ */
+describe('buildSite', () => {
+  const results = [
+    caseResult(fixtureCase({ name: 'alpha' }), { 'stdout.txt': 'a\n' }),
+    caseResult(
+      fixtureCase({ name: 'beta' }),
+      { 'stdout.txt': 'b\n' },
+      '--- baseline/stdout.txt\n+++ current/stdout.txt\n@@ -1,1 +1,1 @@\n-a\n+b',
+    ),
+  ];
+
+  it('writes an index plus one page per case', () => {
+    const site = buildSite(results, []);
+    expect([...site.keys()].sort()).toEqual([
+      'alpha.html',
+      'beta.html',
+      'index.html',
+    ]);
+  });
+
+  it('links every case from the index', () => {
+    const index = buildSite(results, []).get('index.html') ?? '';
+    expect(index).toContain('href="./alpha.html"');
+    expect(index).toContain('href="./beta.html"');
+  });
+
+  it('keeps a case page to its own case', () => {
+    const alpha = buildSite(results, []).get('alpha.html') ?? '';
+    expect(alpha).toContain('alpha');
+    expect(alpha).not.toContain('beta.html');
+  });
+
+  it('renders the diff with the added and removed sides distinguished', () => {
+    const beta = buildSite(results, []).get('beta.html') ?? '';
+    expect(beta).toContain('<span class="d">-a</span>');
+    expect(beta).toContain('<span class="a">+b</span>');
+  });
+
+  it('escapes output so a fixture cannot inject markup into the page', () => {
+    const hostile = [
+      caseResult(fixtureCase({ name: 'hostile' }), {
+        'stdout.txt': '<script>alert(1)</script>\n',
+      }),
+    ];
+    const page = buildSite(hostile, []).get('hostile.html') ?? '';
+    expect(page).not.toContain('<script>alert(1)</script>');
+    expect(page).toContain('&lt;script&gt;');
+  });
+
+  it('makes escape bytes visible instead of rendering them as nothing', () => {
+    // Without this an ANSI baseline looks identical to the plain one on the
+    // page — the exact distinction the colour cases exist to show.
+    const coloured = [
+      caseResult(fixtureCase({ name: 'coloured', keepAnsi: true }), {
+        'stdout.ansi.txt': `${String.fromCharCode(27)}[31mred`,
+      }),
+    ];
+    const page = buildSite(coloured, []).get('coloured.html') ?? '';
+    expect(page).toContain('␛[31mred');
   });
 });

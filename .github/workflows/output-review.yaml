@@ -4,12 +4,16 @@
 # matrix in fixtures/cases.ts and diffs it against the committed baselines,
 # then reports it twice, deliberately differently:
 #
-#   - The sticky PR comment carries only the cases that **changed**: what
-#     each asserts, links to the config and fixture it ran against, and a
-#     blob link per changed line range of the committed baseline. Not the
-#     diffs — a renderer tweak moves every row of sixteen cases at once,
-#     which is 60 KB against GitHub's 65,536-character comment limit.
-#   - The job summary carries **every** case with its full diff and output.
+#   - The sticky PR comment carries one row per **changed** case — name,
+#     +N -M, and a single link — plus a preview when three or fewer moved.
+#     Not the diffs: a renderer tweak moves every row of sixteen cases at
+#     once, which is 60 KB against GitHub's 65,536-character comment limit.
+#   - A page per case, published to gh-pages when OUTPUT_REVIEW_SITE is set
+#     and uploaded as an artifact regardless, carrying that case's context,
+#     full diff and complete output. Two cases cannot be confused for each
+#     other if they were never on the same page.
+#   - The job summary, as the fallback destination when nothing is
+#     published, and the whole matrix in one scrollable place.
 #
 # A comment listing two dozen `unchanged` rows is what the first version
 # did, and a wall is what people stop reading.
@@ -33,7 +37,10 @@ jobs:
   review:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      # `contents: write` is for the gh-pages branch the case pages are
+      # published to, and nothing else. It is only exercised when the
+      # OUTPUT_REVIEW_SITE variable is set.
+      contents: write
       pull-requests: write
     steps:
       - name: Checkout repository
@@ -53,12 +60,81 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # OUTPUT_REVIEW_SITE is the Pages base URL, e.g.
+      # https://gallevy.github.io/hermex/output-review. Setting it is what
+      # switches the per-case pages on: the comment then links a page per
+      # case, and the publish step below runs. Leave it unset and the pages
+      # are still generated and uploaded as an artifact, but the comment
+      # falls back to linking the job summary. Hosting is therefore a
+      # repository setting, not a code change.
       - name: Run the output matrix
+        env:
+          OUTPUT_REVIEW_SITE_URL: >-
+            ${{ vars.OUTPUT_REVIEW_SITE != '' && github.event_name == 'pull_request'
+            && format('{0}/pr-{1}', vars.OUTPUT_REVIEW_SITE, github.event.pull_request.number)
+            || '' }}
         run: pnpm run test:output
 
-      # `always()`: the comment is most useful precisely when the step above
-      # failed — it is what tells the reviewer which cases changed and where
-      # to read them.
+      # Uploaded whether or not Pages is configured — it is the fallback way
+      # to read a case page, and it costs nothing when nobody downloads it.
+      - name: Upload the case pages
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: output-review-site
+          path: .output-review/site
+          if-no-files-found: ignore
+          retention-days: 14
+
+      # One directory per PR, overwritten on each run rather than one per
+      # run: a reviewer wants the current state of this PR, and a directory
+      # per run would grow the branch without bound.
+      - name: Publish the case pages
+        if: always() && vars.OUTPUT_REVIEW_SITE != '' && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET: pr-${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          site="$PWD/.output-review/site"
+          if [ ! -d "$site" ]; then
+            echo "No site was generated; nothing to publish."
+            exit 0
+          fi
+
+          remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          pages="$(mktemp -d)"
+          if git clone --depth 1 --branch gh-pages "$remote" "$pages" 2>/dev/null; then
+            echo "Updating the existing gh-pages branch."
+          else
+            echo "Creating gh-pages."
+            git clone --depth 1 "$remote" "$pages"
+            git -C "$pages" checkout --orphan gh-pages
+            git -C "$pages" rm -rq --cached . || true
+            find "$pages" -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          fi
+
+          # Without .nojekyll, Pages runs the files through Jekyll, which
+          # silently drops anything beginning with an underscore.
+          touch "$pages/.nojekyll"
+          rm -rf "${pages:?}/$TARGET"
+          mkdir -p "$pages/$TARGET"
+          cp -R "$site/." "$pages/$TARGET/"
+
+          cd "$pages"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if git diff --quiet --cached; then
+            echo "The published pages are already current."
+          else
+            git commit -m "output review: $TARGET"
+            git push origin gh-pages
+          fi
+
+      # `always()`: the comment is most useful precisely when the run failed
+      # — it is what tells the reviewer which cases changed and where to
+      # read them.
       - name: Post the review comment
         if: always() && github.event_name == 'pull_request'
         uses: actions/github-script@v8
