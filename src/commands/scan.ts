@@ -71,9 +71,10 @@ function printScanResults(
   aggregated: ReturnType<typeof aggregateReports>,
   config: HermexConfig,
 ) {
-  if (config.output.packages) {
-    printPackages(aggregated, config.output.packages);
-  }
+  // DEMO ONLY — DO NOT MERGE. Deliberately ignores the `packages` toggle so
+  // the output review has something to report: it changes two cases and
+  // breaks the `suppressed-sections-stay-absent` invariant (#63).
+  printPackages(aggregated, config.output.packages || 'table');
 
   if (config.output.versus) {
     printVersus(aggregated);
