@@ -8,19 +8,19 @@ title: "comply-all-rule-types-json — output review"
 
 # `comply-all-rule-types-json`
 
-_unchanged_
+_changed_
 
 **Asserts** — The machine-readable shape of every rule type: fieldPath and actualValue on package-field hits, installedRange/requiredRange on require-engine-version, matchedFiles on codeowners. Also where #95 is visible — the two codeowners entries are byte-identical apart from matchedFiles.
 
 **Ran** `hermex comply --format json` in `fixtures/repos/all-rule-types` → exit 1, as asserted
 
-**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/c897d417c3a73fab5c932cb131016fdcf37d4cad/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/c897d417c3a73fab5c932cb131016fdcf37d4cad/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/c897d417c3a73fab5c932cb131016fdcf37d4cad/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types-json`](https://github.com/Gallevy/hermex/blob/c897d417c3a73fab5c932cb131016fdcf37d4cad/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/c897d417c3a73fab5c932cb131016fdcf37d4cad/fixtures/cases/comply-all-rule-types-json.md))
+**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types-json`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/cases/comply-all-rule-types-json.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-all-rule-types-json`</sub>
 
 ## Config
 
-[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/c897d417c3a73fab5c932cb131016fdcf37d4cad/fixtures/repos/all-rule-types/hermex.config.ts)
+[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/repos/all-rule-types/hermex.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../../../src/config/types.ts';
@@ -91,6 +91,105 @@ export default {
     versus: false,
   },
 } satisfies HermexConfigInput;
+```
+
+## Diff against the committed baseline
+
+<sub>Diffs are unified format: `-` is the committed baseline, `+` is this run. `@@ -12,7 +12,9 @@` is a hunk header — unchanged lines were skipped, and the hunk below covers 7 lines from line 12 of the baseline and 9 lines from line 12 of this run — which is where to look in `tests/__output_baselines__/`.</sub>
+
+```diff
+--- baseline/stdout.json
++++ current/stdout.json
+@@ -135,7 +135,7 @@
+   "versus": [],
+   "ruleViolations": [
+     {
+-      "type": "forbid_packages",
++      "ruleId": "no-packages",
+       "severity": "error",
+       "patterns": [
+         "moment"
+@@ -145,7 +145,7 @@
+       "packageName": "moment"
+     },
+     {
+-      "type": "require_packages",
++      "ruleId": "require-packages",
+       "severity": "error",
+       "patterns": [
+         "typescript"
+@@ -154,7 +154,7 @@
+       "matchedFiles": []
+     },
+     {
+-      "type": "detect_files",
++      "ruleId": "no-files",
+       "severity": "error",
+       "patterns": [
+         "jest.config.*",
+@@ -167,7 +167,7 @@
+       ]
+     },
+     {
+-      "type": "require_files",
++      "ruleId": "require-files",
+       "severity": "error",
+       "patterns": [
+         ".nvmrc"
+@@ -175,7 +175,7 @@
+       "matchedFiles": []
+     },
+     {
+-      "type": "require_scripts",
++      "ruleId": "require-scripts",
+       "severity": "error",
+       "patterns": [
+         "build",
+@@ -185,7 +185,7 @@
+       "matchedFiles": []
+     },
+     {
+-      "type": "require_package_fields",
++      "ruleId": "require-package-fields",
+       "severity": "warn",
+       "patterns": [
+         "license"
+@@ -193,7 +193,7 @@
+       "matchedFiles": []
+     },
+     {
+-      "type": "forbid_package_fields",
++      "ruleId": "no-package-fields",
+       "severity": "warn",
+       "patterns": [
+         "publishConfig.registry"
+@@ -204,7 +204,7 @@
+       "actualValue": "https://npm.internal.example.com"
+     },
+     {
+-      "type": "engine_version",
++      "ruleId": "require-engine-version",
+       "severity": "error",
+       "patterns": [],
+       "message": "Minimum Node 20 required",
+@@ -213,7 +213,7 @@
+       "requiredRange": ">=20"
+     },
+     {
+-      "type": "codeowners",
++      "ruleId": "require-codeowners",
+       "severity": "info",
+       "patterns": [
+         "CODEOWNERS"
+@@ -224,7 +224,7 @@
+       ]
+     },
+     {
+-      "type": "codeowners",
++      "ruleId": "require-codeowners",
+       "severity": "info",
+       "patterns": [
+         "CODEOWNERS"
 ```
 
 ## Full output

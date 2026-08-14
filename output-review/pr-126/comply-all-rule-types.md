@@ -8,19 +8,19 @@ title: "comply-all-rule-types — output review"
 
 # `comply-all-rule-types`
 
-_unchanged_
+_changed_
 
 **Asserts** — Every one of the nine rule types in one table, at three severities — the only case that renders require-engine-version, codeowners and both package-field shapes.
 
 **Ran** `hermex comply` in `fixtures/repos/all-rule-types` → exit 1, as asserted
 
-**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/c897d417c3a73fab5c932cb131016fdcf37d4cad/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/c897d417c3a73fab5c932cb131016fdcf37d4cad/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/c897d417c3a73fab5c932cb131016fdcf37d4cad/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types`](https://github.com/Gallevy/hermex/blob/c897d417c3a73fab5c932cb131016fdcf37d4cad/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/c897d417c3a73fab5c932cb131016fdcf37d4cad/fixtures/cases/comply-all-rule-types.md))
+**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/cases/comply-all-rule-types.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-all-rule-types`</sub>
 
 ## Config
 
-[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/c897d417c3a73fab5c932cb131016fdcf37d4cad/fixtures/repos/all-rule-types/hermex.config.ts)
+[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/repos/all-rule-types/hermex.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../../../src/config/types.ts';
@@ -91,6 +91,68 @@ export default {
     versus: false,
   },
 } satisfies HermexConfigInput;
+```
+
+## Diff against the committed baseline
+
+<sub>Diffs are unified format: `-` is the committed baseline, `+` is this run. `@@ -12,7 +12,9 @@` is a hunk header — unchanged lines were skipped, and the hunk below covers 7 lines from line 12 of the baseline and 9 lines from line 12 of this run — which is where to look in `tests/__output_baselines__/`.</sub>
+
+```diff
+--- baseline/stdout.txt
++++ current/stdout.txt
+@@ -6,29 +6,29 @@
+ 
+ 🔍 Rules
+ 
+-┌──────────────────┬───────────────────────────────────────────────────────────────────────────────────────────────┐
+-│ Rule             │ Description                                                                                   │
+-├──────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+-│ forbid_packages  │ 🔴 moment is forbidden — Use date-fns or dayjs                                                │
+-├──────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+-│ require_packages │ 🔴 typescript not installed — TypeScript is required                                          │
+-├──────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+-│ detect_files     │ 🔴 jest.config.*, .babelrc detected (jest.config.js, .babelrc) — Use vitest + Vite            │
+-├──────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+-│ require_files    │ 🔴 .nvmrc not found                                                                           │
+-├──────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+-│ require_scripts  │ 🔴 script build, test missing in package.json — Required npm scripts                          │
+-├──────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+-│ package_fields   │ 🟡 field license missing in package.json                                                      │
+-├──────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+-│ package_fields   │ 🟡 field publishConfig.registry is forbidden in package.json — Publish to the public registry │
+-├──────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+-│ engine_version   │ 🔴 engines.node is >=16, required >=20 — Minimum Node 20 required                             │
+-├──────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+-│ codeowners       │ 🔵 1 scanned file(s) have no owner: src/orphan.tsx — Every file needs a platform owner        │
+-├──────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+-│ codeowners       │ 🔵 1 scanned file(s) have no owner: src/legacy.tsx — Every file needs a platform owner        │
+-└──────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────┘
++┌────────────────────────┬───────────────────────────────────────────────────────────────────────────────────────────────┐
++│ Rule                   │ Description                                                                                   │
++├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
++│ no-packages            │ 🔴 moment is forbidden — Use date-fns or dayjs                                                │
++├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
++│ require-packages       │ 🔴 typescript not installed — TypeScript is required                                          │
++├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
++│ no-files               │ 🔴 jest.config.*, .babelrc detected (jest.config.js, .babelrc) — Use vitest + Vite            │
++├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
++│ require-files          │ 🔴 .nvmrc not found                                                                           │
++├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
++│ require-scripts        │ 🔴 script build, test missing in package.json — Required npm scripts                          │
++├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
++│ package-fields         │ 🟡 field license missing in package.json                                                      │
++├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
++│ package-fields         │ 🟡 field publishConfig.registry is forbidden in package.json — Publish to the public registry │
++├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
++│ require-engine-version │ 🔴 engines.node is >=16, required >=20 — Minimum Node 20 required                             │
++├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
++│ require-codeowners     │ 🔵 1 scanned file(s) have no owner: src/orphan.tsx — Every file needs a platform owner        │
++├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
++│ require-codeowners     │ 🔵 1 scanned file(s) have no owner: src/legacy.tsx — Every file needs a platform owner        │
++└────────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────┘
+ 
+ 6 errors, 2 warnings
+ 
 ```
 
 ## Full output

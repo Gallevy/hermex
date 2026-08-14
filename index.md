@@ -1,9 +1,9 @@
 ---
 layout: default
-title: "Hermex Output Review"
+title: "hermex output review"
 ---
 
-# Hermex Output Review
+# hermex output review
 
 What the hermex CLI actually printed, one page per case, published per pull request by `.github/workflows/output-review.yaml`.
 

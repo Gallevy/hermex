@@ -8,19 +8,19 @@ title: "comply-human-warn-only — output review"
 
 # `comply-human-warn-only`
 
-_unchanged_
+_changed_
 
 **Asserts** — Warn and info findings are reported but do not fail the build — verdict wording plus exit 0.
 
 **Ran** `hermex comply --config configs/warn-only.config.ts` in `fixtures/` → exit 0, as asserted
 
-**Config** [`fixtures/configs/warn-only.config.ts`](https://github.com/Gallevy/hermex/blob/c897d417c3a73fab5c932cb131016fdcf37d4cad/fixtures/configs/warn-only.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/c897d417c3a73fab5c932cb131016fdcf37d4cad/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/c897d417c3a73fab5c932cb131016fdcf37d4cad/fixtures/README.md)) · **Case** [`comply-human-warn-only`](https://github.com/Gallevy/hermex/blob/c897d417c3a73fab5c932cb131016fdcf37d4cad/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/c897d417c3a73fab5c932cb131016fdcf37d4cad/fixtures/cases/comply-human-warn-only.md))
+**Config** [`fixtures/configs/warn-only.config.ts`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/configs/warn-only.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/README.md)) · **Case** [`comply-human-warn-only`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/cases/comply-human-warn-only.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-human-warn-only`</sub>
 
 ## Config
 
-[`fixtures/configs/warn-only.config.ts`](https://github.com/Gallevy/hermex/blob/c897d417c3a73fab5c932cb131016fdcf37d4cad/fixtures/configs/warn-only.config.ts)
+[`fixtures/configs/warn-only.config.ts`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/configs/warn-only.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../../src/config/types.ts';
@@ -67,6 +67,33 @@ export default {
     'require-engine-version': { severity: 'info', range: '>=20', message: 'Minimum Node 20 required' },
   },
 } satisfies HermexConfigInput;
+```
+
+## Diff against the committed baseline
+
+<sub>Diffs are unified format: `-` is the committed baseline, `+` is this run. `@@ -12,7 +12,9 @@` is a hunk header — unchanged lines were skipped, and the hunk below covers 7 lines from line 12 of the baseline and 9 lines from line 12 of this run — which is where to look in `tests/__output_baselines__/`.</sub>
+
+```diff
+--- baseline/stdout.txt
++++ current/stdout.txt
+@@ -22,13 +22,13 @@
+ ┌──────────────────┬──────────────────────────────────────────────────────┐
+ │ Rule             │ Description                                          │
+ ├──────────────────┼──────────────────────────────────────────────────────┤
+-│ forbid_packages  │ 🟡 moment is forbidden — Use date-fns or dayjs       │
++│ no-packages      │ 🟡 moment is forbidden — Use date-fns or dayjs       │
+ ├──────────────────┼──────────────────────────────────────────────────────┤
+-│ require_packages │ 🔵 typescript not installed — TypeScript is required │
++│ require-packages │ 🔵 typescript not installed — TypeScript is required │
+ ├──────────────────┼──────────────────────────────────────────────────────┤
+-│ require_files    │ 🟡 .nvmrc not found                                  │
++│ require-files    │ 🟡 .nvmrc not found                                  │
+ ├──────────────────┼──────────────────────────────────────────────────────┤
+-│ require_files    │ 🔵 .editorconfig not found                           │
++│ require-files    │ 🔵 .editorconfig not found                           │
+ └──────────────────┴──────────────────────────────────────────────────────┘
+ 
+ 2 warnings
 ```
 
 ## Full output

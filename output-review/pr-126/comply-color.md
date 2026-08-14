@@ -8,13 +8,13 @@ title: "comply-color — output review"
 
 # `comply-color`
 
-_unchanged_
+_changed_
 
 **Asserts** — The coloured path a developer actually sees in a terminal. Captured raw, so escape sequences are part of the diff.
 
 **Ran** `hermex comply` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/c897d417c3a73fab5c932cb131016fdcf37d4cad/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/c897d417c3a73fab5c932cb131016fdcf37d4cad/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/c897d417c3a73fab5c932cb131016fdcf37d4cad/fixtures/README.md)) · **Case** [`comply-color`](https://github.com/Gallevy/hermex/blob/c897d417c3a73fab5c932cb131016fdcf37d4cad/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/c897d417c3a73fab5c932cb131016fdcf37d4cad/fixtures/cases/comply-color.md))
+**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/README.md)) · **Case** [`comply-color`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/cases/comply-color.md))
 
 **Environment** `NO_COLOR` unset, `FORCE_COLOR=3`
 
@@ -22,7 +22,7 @@ _unchanged_
 
 ## Config
 
-[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/c897d417c3a73fab5c932cb131016fdcf37d4cad/fixtures/hermex.config.ts)
+[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/hermex.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../src/config/types.ts';
@@ -95,6 +95,54 @@ export default {
     patterns: false,
   },
 } satisfies HermexConfigInput;
+```
+
+## Diff against the committed baseline
+
+<sub>Diffs are unified format: `-` is the committed baseline, `+` is this run. `@@ -12,7 +12,9 @@` is a hunk header — unchanged lines were skipped, and the hunk below covers 7 lines from line 12 of the baseline and 9 lines from line 12 of this run — which is where to look in `tests/__output_baselines__/`.</sub>
+
+```diff
+--- baseline/stdout.txt
++++ current/stdout.txt
+@@ -22,13 +22,13 @@
+ ┌──────────────────┬──────────────────────────────────────────────────────┐
+ │ Rule             │ Description                                          │
+ ├──────────────────┼──────────────────────────────────────────────────────┤
+-│ forbid_packages  │ 🔴 moment is forbidden — Use date-fns or dayjs       │
++│ no-packages      │ 🔴 moment is forbidden — Use date-fns or dayjs       │
+ ├──────────────────┼──────────────────────────────────────────────────────┤
+-│ require_packages │ 🔴 typescript not installed — TypeScript is required │
++│ require-packages │ 🔴 typescript not installed — TypeScript is required │
+ ├──────────────────┼──────────────────────────────────────────────────────┤
+-│ require_files    │ 🔴 .nvmrc not found                                  │
++│ require-files    │ 🔴 .nvmrc not found                                  │
+ ├──────────────────┼──────────────────────────────────────────────────────┤
+-│ require_files    │ 🟡 .editorconfig not found                           │
++│ require-files    │ 🟡 .editorconfig not found                           │
+ └──────────────────┴──────────────────────────────────────────────────────┘
+ 
+ 3 errors, 1 warning
+
+--- baseline/stdout.ansi.txt
++++ current/stdout.ansi.txt
+@@ -22,13 +22,13 @@
+ [90m┌──────────────────[39m[90m┬──────────────────────────────────────────────────────┐[39m
+ [90m│[39m[36m Rule             [39m[90m│[39m[36m Description                                          [39m[90m│[39m
+ [90m├──────────────────[39m[90m┼──────────────────────────────────────────────────────┤[39m
+-[90m│[39m forbid_packages  [90m│[39m 🔴 moment is forbidden[90m — Use date-fns or dayjs[39m       [90m│[39m
++[90m│[39m no-packages      [90m│[39m 🔴 moment is forbidden[90m — Use date-fns or dayjs[39m       [90m│[39m
+ [90m├──────────────────[39m[90m┼──────────────────────────────────────────────────────┤[39m
+-[90m│[39m require_packages [90m│[39m 🔴 typescript not installed[90m — TypeScript is required[39m [90m│[39m
++[90m│[39m require-packages [90m│[39m 🔴 typescript not installed[90m — TypeScript is required[39m [90m│[39m
+ [90m├──────────────────[39m[90m┼──────────────────────────────────────────────────────┤[39m
+-[90m│[39m require_files    [90m│[39m 🔴 .nvmrc not found                                  [90m│[39m
++[90m│[39m require-files    [90m│[39m 🔴 .nvmrc not found                                  [90m│[39m
+ [90m├──────────────────[39m[90m┼──────────────────────────────────────────────────────┤[39m
+-[90m│[39m require_files    [90m│[39m 🟡 .editorconfig not found                           [90m│[39m
++[90m│[39m require-files    [90m│[39m 🟡 .editorconfig not found                           [90m│[39m
+ [90m└──────────────────[39m[90m┴──────────────────────────────────────────────────────┘[39m
+ [90m[39m
+ [90m[31m3 errors[39m[90m, [33m1 warning[39m[90m[39m
 ```
 
 ## Full output

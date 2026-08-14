@@ -8,13 +8,13 @@ title: "comply-summary-file — output review"
 
 # `comply-summary-file`
 
-_unchanged_
+_changed_
 
 **Asserts** — The markdown a consumer pastes into a PR comment or job summary — ANSI-free, rules + flagged packages + verdict.
 
 **Ran** `hermex comply --summary-file $OUT/summary.md` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/c897d417c3a73fab5c932cb131016fdcf37d4cad/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/c897d417c3a73fab5c932cb131016fdcf37d4cad/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/c897d417c3a73fab5c932cb131016fdcf37d4cad/fixtures/README.md)) · **Case** [`comply-summary-file`](https://github.com/Gallevy/hermex/blob/c897d417c3a73fab5c932cb131016fdcf37d4cad/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/c897d417c3a73fab5c932cb131016fdcf37d4cad/fixtures/cases/comply-summary-file.md))
+**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/README.md)) · **Case** [`comply-summary-file`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/cases/comply-summary-file.md))
 
 **Writes** `summary.md` into `$OUT` — captured and diffed the same as stdout
 
@@ -22,7 +22,7 @@ _unchanged_
 
 ## Config
 
-[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/c897d417c3a73fab5c932cb131016fdcf37d4cad/fixtures/hermex.config.ts)
+[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/hermex.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../src/config/types.ts';
@@ -95,6 +95,51 @@ export default {
     patterns: false,
   },
 } satisfies HermexConfigInput;
+```
+
+## Diff against the committed baseline
+
+<sub>Diffs are unified format: `-` is the committed baseline, `+` is this run. `@@ -12,7 +12,9 @@` is a hunk header — unchanged lines were skipped, and the hunk below covers 7 lines from line 12 of the baseline and 9 lines from line 12 of this run — which is where to look in `tests/__output_baselines__/`.</sub>
+
+```diff
+--- baseline/stdout.txt
++++ current/stdout.txt
+@@ -22,13 +22,13 @@
+ ┌──────────────────┬──────────────────────────────────────────────────────┐
+ │ Rule             │ Description                                          │
+ ├──────────────────┼──────────────────────────────────────────────────────┤
+-│ forbid_packages  │ 🔴 moment is forbidden — Use date-fns or dayjs       │
++│ no-packages      │ 🔴 moment is forbidden — Use date-fns or dayjs       │
+ ├──────────────────┼──────────────────────────────────────────────────────┤
+-│ require_packages │ 🔴 typescript not installed — TypeScript is required │
++│ require-packages │ 🔴 typescript not installed — TypeScript is required │
+ ├──────────────────┼──────────────────────────────────────────────────────┤
+-│ require_files    │ 🔴 .nvmrc not found                                  │
++│ require-files    │ 🔴 .nvmrc not found                                  │
+ ├──────────────────┼──────────────────────────────────────────────────────┤
+-│ require_files    │ 🟡 .editorconfig not found                           │
++│ require-files    │ 🟡 .editorconfig not found                           │
+ └──────────────────┴──────────────────────────────────────────────────────┘
+ 
+ 3 errors, 1 warning
+
+--- baseline/summary.md
++++ current/summary.md
+@@ -4,10 +4,10 @@
+ 
+ | | Rule | Description |
+ |---|---|---|
+-| 🔴 | forbid_packages | moment is forbidden — Use date-fns or dayjs |
+-| 🔴 | require_packages | typescript not installed — TypeScript is required |
+-| 🔴 | require_files | .nvmrc not found |
+-| 🟡 | require_files | .editorconfig not found |
++| 🔴 | no-packages | moment is forbidden — Use date-fns or dayjs |
++| 🔴 | require-packages | typescript not installed — TypeScript is required |
++| 🔴 | require-files | .nvmrc not found |
++| 🟡 | require-files | .editorconfig not found |
+ 
+ 3 errors, 1 warning
+ 
 ```
 
 ## Full output

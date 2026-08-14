@@ -8,19 +8,19 @@ title: "scan-json-toggles — output review"
 
 # `scan-json-toggles`
 
-_unchanged_
+_changed_
 
 **Asserts** — What output.* toggles do to --format json: today, nothing (#91). The payload below is emitted with every section switched off, yet still carries packages, components, versus and ruleViolations in full. Pair it with scan-human-minimal to see the two formats diverge; when #91 lands, this baseline shrinking is the proof.
 
 **Ran** `hermex scan --format json --config configs/minimal.config.ts` in `fixtures/` → exit 0, as asserted
 
-**Config** [`fixtures/configs/minimal.config.ts`](https://github.com/Gallevy/hermex/blob/c897d417c3a73fab5c932cb131016fdcf37d4cad/fixtures/configs/minimal.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/c897d417c3a73fab5c932cb131016fdcf37d4cad/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/c897d417c3a73fab5c932cb131016fdcf37d4cad/fixtures/README.md)) · **Case** [`scan-json-toggles`](https://github.com/Gallevy/hermex/blob/c897d417c3a73fab5c932cb131016fdcf37d4cad/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/c897d417c3a73fab5c932cb131016fdcf37d4cad/fixtures/cases/scan-json-toggles.md))
+**Config** [`fixtures/configs/minimal.config.ts`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/configs/minimal.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/README.md)) · **Case** [`scan-json-toggles`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/cases/scan-json-toggles.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter scan-json-toggles`</sub>
 
 ## Config
 
-[`fixtures/configs/minimal.config.ts`](https://github.com/Gallevy/hermex/blob/c897d417c3a73fab5c932cb131016fdcf37d4cad/fixtures/configs/minimal.config.ts)
+[`fixtures/configs/minimal.config.ts`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/configs/minimal.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../../src/config/types.ts';
@@ -44,6 +44,51 @@ export default {
     rules: false,
   },
 } satisfies HermexConfigInput;
+```
+
+## Diff against the committed baseline
+
+<sub>Diffs are unified format: `-` is the committed baseline, `+` is this run. `@@ -12,7 +12,9 @@` is a hunk header — unchanged lines were skipped, and the hunk below covers 7 lines from line 12 of the baseline and 9 lines from line 12 of this run — which is where to look in `tests/__output_baselines__/`.</sub>
+
+```diff
+--- baseline/stdout.json
++++ current/stdout.json
+@@ -499,7 +499,7 @@
+   ],
+   "ruleViolations": [
+     {
+-      "type": "forbid_packages",
++      "ruleId": "no-packages",
+       "severity": "error",
+       "patterns": [
+         "moment"
+@@ -509,7 +509,7 @@
+       "packageName": "moment"
+     },
+     {
+-      "type": "require_packages",
++      "ruleId": "require-packages",
+       "severity": "error",
+       "patterns": [
+         "typescript"
+@@ -518,7 +518,7 @@
+       "matchedFiles": []
+     },
+     {
+-      "type": "require_files",
++      "ruleId": "require-files",
+       "severity": "error",
+       "patterns": [
+         ".nvmrc"
+@@ -526,7 +526,7 @@
+       "matchedFiles": []
+     },
+     {
+-      "type": "require_files",
++      "ruleId": "require-files",
+       "severity": "warn",
+       "patterns": [
+         ".editorconfig"
 ```
 
 ## Full output
