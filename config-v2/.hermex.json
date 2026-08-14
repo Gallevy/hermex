@@ -1,9 +1,0 @@
-{
-  "$schema2": "...",
-  "files": {
-    "includes": ["**", "!!**/dist", "!!code-examples/**"]
-  },
-  "imports": ["/@biomejs/biome"],
-  "ignoreImports": [],
-  "summary": "log"
-}
