@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { resolve } from 'node:path';
 import {
+  buildComment,
   buildSite,
   caseDoc,
   diffHunks,
@@ -451,5 +452,100 @@ describe('buildSite', () => {
         null,
       ).get('bare.md') ?? '';
     expect(page).toContain('schema defaults');
+  });
+});
+
+/**
+ * v3's baselines land on `main` red, before the code that produces them. What
+ * makes that survivable is that the report can tell an expected red from a
+ * regression someone caused this morning — so these pin the counting, not the
+ * prose.
+ */
+describe('v3-expected reporting', () => {
+  const marked = (name: string, waiting = 'Goes green with #105.') =>
+    caseResult(
+      fixtureCase({ name, v3Expected: waiting }),
+      { 'stdout.txt': 'v2 output\n' },
+      '--- baseline/stdout.txt\n+++ current/stdout.txt',
+    );
+  const regressed = (name: string) =>
+    caseResult(
+      fixtureCase({ name }),
+      { 'stdout.txt': 'oops\n' },
+      '--- baseline/stdout.txt\n+++ current/stdout.txt',
+    );
+
+  it('splits the tally into expected and unexpected', () => {
+    const comment = buildComment(
+      [marked('explain-why'), regressed('scan-json'), caseResult(fixtureCase({ name: 'quiet' }))],
+      [],
+    );
+    expect(comment).toContain('**1 expected red · 1 unexpected**');
+    expect(comment).toContain('3 cases');
+  });
+
+  it('leaves the headline exactly as it was when nothing is marked', () => {
+    // The marker is scaffolding with a removal date. A permanent "0 expected
+    // red" on a report nobody has marked anything in is how scaffolding
+    // outlives its purpose.
+    const comment = buildComment(
+      [regressed('scan-json'), caseResult(fixtureCase({ name: 'quiet' }))],
+      [],
+    );
+    expect(comment).toContain('**1 of 2 case(s) changed**');
+    expect(comment).not.toContain('expected red');
+  });
+
+  it('tables the expected reds separately, with what each waits on', () => {
+    // One table holding both is how an expected red gets read as a regression
+    // — and a regression gets waved through as expected.
+    const comment = buildComment(
+      [marked('explain-why', 'Goes green when #105 lands.'), regressed('scan-json')],
+      [],
+    );
+    const burndown = comment.indexOf('| Case | Waiting on | |');
+    expect(burndown).toBeGreaterThan(comment.indexOf('| Case | Change | |'));
+    expect(comment).toContain('Goes green when #105 lands.');
+    // The regression is in the other table, not this one.
+    expect(comment.slice(burndown)).not.toContain('scan-json');
+  });
+
+  it('reports a clean run as clean while marked cases remain', () => {
+    const comment = buildComment([marked('explain-why')], []);
+    expect(comment).toContain('Nothing changed unexpectedly');
+    expect(comment).toContain('burndown');
+  });
+
+  it('gives the marked cases their own section on the site index', () => {
+    const index =
+      buildSite([marked('explain-why'), regressed('scan-json')], [], null).get(
+        'index.md',
+      ) ?? '';
+    expect(index).toContain('## Changed');
+    expect(index).toContain('## Expected red');
+  });
+
+  it('heads a marked case page with expected red, not changed', () => {
+    const page =
+      buildSite([marked('explain-why')], [], null).get('explain-why.md') ?? '';
+    expect(page).toContain('_expected red_');
+    expect(page).toContain("**Expected red** — this baseline is v3's intended");
+    expect(page).toContain('Goes green with #105.');
+  });
+
+  it('tells the dossier reader that --update will not overwrite it', () => {
+    const doc = caseDoc(
+      fixtureCase({ name: 'explain-why', v3Expected: 'Goes green with #105.' }),
+    );
+    expect(doc).toContain('## Expected red');
+    expect(doc).toContain('will not overwrite it');
+    expect(doc).toContain('Goes green with #105.');
+    expect(doc).toContain('v3-expected-cases-are-still-red');
+  });
+
+  it('leaves an unmarked dossier untouched, so nothing regenerates today', () => {
+    expect(caseDoc(fixtureCase({ name: 'plain' }))).not.toContain(
+      'Expected red',
+    );
   });
 });

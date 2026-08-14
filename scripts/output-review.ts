@@ -67,6 +67,34 @@ export interface FixtureCase {
    * `fixtures/cases/<name>.md` is generated from the fields above.
    */
   notes?: string;
+  /**
+   * Marks this case's baseline as **v3's intended output, written before the
+   * code that produces it** — what hermex should print, not what it does.
+   * The value says what v3 change makes it go green; name the issue in it,
+   * because that is the burndown.
+   *
+   * v3 is a big-bang release, so its baselines land on `main` red and stay
+   * red until the code catches up. Without a marker that is one permanently
+   * failing check, which nobody reads and which hides the regression someone
+   * caused this morning. With it the review reports "N expected red, 0
+   * unexpected", the run passes on the expected ones, and the marked count is
+   * the burndown.
+   *
+   * Three behaviours follow, and all three are the point:
+   *
+   * - **`--update` never rewrites a marked baseline.** It is hand-written
+   *   intent, not a recording; refreshing some other case would otherwise
+   *   overwrite it with today's v2 output and erase the whole claim.
+   * - **A red marked case does not fail the run**, including on exit code.
+   *   The case is declaring its entire captured behaviour as not-yet-true.
+   * - **A marked case that goes green fails the run.** Promotion is an edit
+   *   to `fixtures/cases.ts`, not a silent pass — see the
+   *   `v3-expected-cases-are-still-red` invariant.
+   *
+   * Temporary scaffolding: at 3.0.0 GA the marked set is empty and this
+   * field, its invariant and its reporting all come out together.
+   */
+  v3Expected?: string;
 }
 
 interface FixtureRelease {
@@ -471,6 +499,19 @@ export function caseDoc(fixture: FixtureCase): string {
     '',
   ];
 
+  if (fixture.v3Expected) {
+    lines.push(
+      '## Expected red',
+      '',
+      "This case's baseline is **v3's intended output, written before the code that produces it** — what hermex should print, not what it does. `pnpm run test:output` reports it as expected red rather than a failure, and `--update` will not overwrite it.",
+      '',
+      fixture.v3Expected,
+      '',
+      'When hermex produces this output the case goes green, and the marker has to come off: drop `v3Expected` from its entry in `fixtures/cases.ts`. The `v3-expected-cases-are-still-red` invariant fails the run until someone does, so a landed change cannot leave a stale marker behind.',
+      '',
+    );
+  }
+
   if (fixture.absent && fixture.absent.length > 0) {
     lines.push(
       '## Must not appear in stdout',
@@ -725,6 +766,38 @@ function isClean(result: CaseResult): boolean {
   );
 }
 
+// ── The three states a marked case can be in ─────────────────────────────────
+//
+// Every case is exactly one of: clean, expected red, unexpected red, or ready
+// to promote. Only the last two are anyone's problem — see `v3Expected`.
+
+/** Marked, and still red: the v3 burndown. Reported, does not fail the run. */
+function isExpectedRed(result: CaseResult): boolean {
+  return result.fixture.v3Expected !== undefined && !isClean(result);
+}
+
+/** Red with nothing declaring it so — the failure the review exists to catch. */
+function isUnexpectedRed(result: CaseResult): boolean {
+  return result.fixture.v3Expected === undefined && !isClean(result);
+}
+
+/**
+ * Marked, but hermex produces the baseline today. The code landed, so the
+ * marker is a lie and has to come off.
+ */
+function isReadyToPromote(result: CaseResult): boolean {
+  return result.fixture.v3Expected !== undefined && isClean(result);
+}
+
+/**
+ * Whether a human has to do something about this case. Expected red is
+ * deliberately not attention-worthy — it is tracked by count, and shouting
+ * about it every run is how a marker stops meaning anything.
+ */
+function needsAttention(result: CaseResult): boolean {
+  return isUnexpectedRed(result) || isReadyToPromote(result);
+}
+
 // ── Invariants ───────────────────────────────────────────────────────────────
 //
 // Claims about the *relationship between* cases, or about properties every
@@ -757,7 +830,7 @@ interface InvariantContext {
   full: boolean;
 }
 
-interface Breach {
+export interface Breach {
   invariant: Invariant;
   detail: string;
 }
@@ -992,6 +1065,24 @@ export const INVARIANTS: Invariant[] = [
         );
     },
   },
+  {
+    name: 'v3-expected-cases-are-still-red',
+    guarantees:
+      'a case marked v3Expected is still failing, so a baseline hermex has caught up with demands promotion instead of quietly going green',
+    // Blocking, and it has to be: a marked case is exempted from failing the
+    // run, so nothing else would ever notice it had come good. An invariant
+    // is also the only place this can live — `--update` cannot silence one,
+    // and the fix is an edit to fixtures/cases.ts, not a refreshed baseline.
+    blocking: true,
+    check({ results }) {
+      return results
+        .filter(isReadyToPromote)
+        .map(
+          (result) =>
+            `${result.fixture.name}: hermex produces this baseline today, so it is no longer v3-expected — drop \`v3Expected\` from its entry in fixtures/cases.ts`,
+        );
+    },
+  },
 ];
 
 function checkInvariants(results: CaseResult[], full: boolean): Breach[] {
@@ -1072,15 +1163,19 @@ function renderBreaches(
  * not reliably render — the status would read literally, asterisks and all.
  */
 function statusOf(result: CaseResult): string {
+  if (isReadyToPromote(result)) {
+    return 'ready to promote: hermex produces this baseline today';
+  }
   if (result.exitMismatch) {
-    return `exit ${result.exitMismatch.actual}, expected ${result.exitMismatch.expected}`;
+    const detail = `exit ${result.exitMismatch.actual}, expected ${result.exitMismatch.expected}`;
+    return isExpectedRed(result) ? `expected red: ${detail}` : detail;
   }
   if (isClean(result)) return 'unchanged';
   const parts: string[] = [];
   if (result.changed.length > 0) parts.push(`${result.changed.join(', ')}`);
   if (result.added.length > 0) parts.push(`+${result.added.join(', +')}`);
   if (result.removed.length > 0) parts.push(`-${result.removed.join(', -')}`);
-  return `changed: ${parts.join('; ')}`;
+  return `${isExpectedRed(result) ? 'expected red' : 'changed'}: ${parts.join('; ')}`;
 }
 
 /**
@@ -1091,16 +1186,25 @@ function statusOf(result: CaseResult): string {
  * describes.
  */
 function shortStatus(result: CaseResult): string {
+  if (isReadyToPromote(result)) return 'ready to promote';
   if (result.exitMismatch) {
-    return `exit ${result.exitMismatch.actual}, expected ${result.exitMismatch.expected}`;
+    const detail = `exit ${result.exitMismatch.actual}, expected ${result.exitMismatch.expected}`;
+    return isExpectedRed(result) ? `expected red — ${detail}` : detail;
   }
-  return isClean(result) ? 'unchanged' : 'changed';
+  if (isClean(result)) return 'unchanged';
+  return isExpectedRed(result) ? 'expected red' : 'changed';
 }
 
-/** The same status, emphasized for a table cell that renders markdown. */
+/**
+ * The same status, emphasized for a table cell that renders markdown.
+ *
+ * Bold is reserved for the rows a human has to act on. An expected red is
+ * already accounted for in the tally, so bolding it too would put the
+ * burndown and the regressions in the same typeface.
+ */
 function emphasizedStatus(result: CaseResult): string {
   const status = statusOf(result);
-  if (isClean(result)) return status;
+  if (!needsAttention(result)) return status;
   const [head, ...rest] = status.split(':');
   return rest.length > 0 ? `**${head}**:${rest.join(':')}` : `**${status}**`;
 }
@@ -1214,6 +1318,14 @@ function caseContext(result: CaseResult, base: string | null): string[] {
     '',
   ];
 
+  // High on the page, because it changes how every line below it reads: the
+  // diff is not a regression, it is the distance left to travel.
+  if (fixture.v3Expected) {
+    lines.push(
+      `**Expected red** — this baseline is v3's intended output, written before the code that produces it. ${fixture.v3Expected}`,
+      '',
+    );
+  }
   if (fixture.env) {
     const overrides = Object.entries(fixture.env).map(([key, value]) =>
       value === null ? `\`${key}\` unset` : `\`${key}=${value}\``,
@@ -1280,6 +1392,31 @@ function forSummary(content: string): string {
 }
 
 /**
+ * The one-line tally every surface leads with.
+ *
+ * The expected-red split appears only while something is marked. That is not
+ * tidiness: the marker is scaffolding with a removal date, and a permanent
+ * "0 expected red" on a report nobody has marked anything in is exactly the
+ * noise that makes scaffolding outlive its purpose. With nothing marked this
+ * reads as it always did.
+ */
+function tally(results: CaseResult[], breaches: Breach[]): string {
+  const unexpected = results.filter(isUnexpectedRed).length;
+  const expected = results.filter(isExpectedRed).length;
+  const promote = results.filter(isReadyToPromote).length;
+
+  const parts = [`${results.length} cases`];
+  if (expected + promote === 0) {
+    parts.push(`${unexpected} changed`);
+  } else {
+    parts.push(`${expected} expected red`, `${unexpected} unexpected`);
+    if (promote > 0) parts.push(`${promote} ready to promote`);
+  }
+  parts.push(`${breaches.length} invariant breach(es)`);
+  return parts.join(' · ');
+}
+
+/**
  * The full matrix: every case, changed or not, with its output inline and
  * no download step.
  *
@@ -1291,21 +1428,42 @@ function forSummary(content: string): string {
  */
 function buildJobSummary(results: CaseResult[], breaches: Breach[]): string {
   const base = blobBase();
-  const differing = results.filter((result) => !isClean(result));
-  const clean = results.filter(isClean);
+  const unexpected = results.filter(isUnexpectedRed);
+  const expectedRed = results.filter(isExpectedRed);
+  const promote = results.filter(isReadyToPromote);
+  // A case ready for promotion is clean, and burying it among the cases
+  // nobody needs to read is the one place it must not go.
+  const clean = results.filter(
+    (result) => isClean(result) && !isReadyToPromote(result),
+  );
 
-  const lines: string[] = [
-    '# Output review',
-    '',
-    `${results.length} cases · ${differing.length} changed · ${breaches.length} invariant breach(es)`,
-    '',
-  ];
+  const lines: string[] = ['# Output review', '', tally(results, breaches), ''];
   lines.push(...renderBreaches(breaches));
   lines.push(buildTable(results), '', DIFF_LEGEND, '');
 
-  if (differing.length > 0) {
+  if (unexpected.length > 0) {
     lines.push('## Changed', '');
-    for (const result of differing) lines.push(...renderCase(result, base));
+    for (const result of unexpected) lines.push(...renderCase(result, base));
+  }
+
+  if (promote.length > 0) {
+    lines.push(
+      `## Ready to promote (${promote.length})`,
+      '',
+      'hermex now produces these baselines, so they are no longer v3-expected. Drop `v3Expected` from each case in `fixtures/cases.ts`.',
+      '',
+    );
+    for (const result of promote) lines.push(...renderCase(result, base));
+  }
+
+  if (expectedRed.length > 0) {
+    lines.push(
+      `## Expected red (${expectedRed.length})`,
+      '',
+      "These baselines are v3's intended output, written before the code that produces it. They are the burndown, not regressions — and `--update` leaves them alone.",
+      '',
+    );
+    for (const result of expectedRed) lines.push(...renderCase(result, base));
   }
 
   // Below the changed ones, and not wrapped in an enclosing `<details>`:
@@ -1390,10 +1548,14 @@ function caseLink(name: string, site: string | null, summary: string | null) {
  * which is the case where a reviewer can tell from a glance whether the
  * change is the intended one and never needs to click at all.
  */
-function buildComment(results: CaseResult[], breaches: Breach[]): string {
+export function buildComment(
+  results: CaseResult[],
+  breaches: Breach[],
+): string {
   const site = siteUrl();
   const summary = runUrl();
-  const differing = results.filter((result) => !isClean(result));
+  const unexpected = results.filter(isUnexpectedRed);
+  const expectedRed = results.filter(isExpectedRed);
 
   const index = site
     ? `[all ${results.length} cases](${site}/index.html)`
@@ -1401,18 +1563,26 @@ function buildComment(results: CaseResult[], breaches: Breach[]): string {
       ? `[all ${results.length} cases](${summary})`
       : `all ${results.length} cases in \`.output-review/\``;
 
+  // Two headlines rather than one general form, so that with nothing marked
+  // the comment is byte-for-byte what it was before v3 — and deleting the
+  // scaffolding at GA is a deletion, not a rewrite.
+  const headline =
+    expectedRed.length === 0
+      ? `**${unexpected.length} of ${results.length} case(s) changed** · ${breaches.length} invariant breach(es)`
+      : `**${expectedRed.length} expected red · ${unexpected.length} unexpected** · ${results.length} cases · ${breaches.length} invariant breach(es)`;
+
   const lines = [
     '<!-- hermex-output-review -->',
     '### Output review',
     '',
-    `**${differing.length} of ${results.length} case(s) changed** · ${breaches.length} invariant breach(es) · ${index}`,
+    `${headline} · ${index}`,
     '',
     ...renderBreaches(breaches),
   ];
 
-  if (differing.length > 0) {
+  if (unexpected.length > 0) {
     lines.push('| Case | Change | |', '| --- | --- | --- |');
-    for (const result of differing) {
+    for (const result of unexpected) {
       lines.push(
         `| \`${result.fixture.name}\` | ${caseTotals(result)} | ${caseLink(result.fixture.name, site, summary)} |`,
       );
@@ -1420,13 +1590,38 @@ function buildComment(results: CaseResult[], breaches: Breach[]): string {
     lines.push('');
   }
 
+  // Below the unexpected ones and in its own table: this is the v3 burndown,
+  // read for "is it shrinking?", not for "did I break something?". Mixing the
+  // two into one table is how an expected red gets read as a regression, and
+  // a regression gets waved through as expected.
+  if (expectedRed.length > 0) {
+    lines.push(
+      `**${expectedRed.length} expected red** — v3 baselines, waiting on the code. Not regressions, and \`--update\` does not touch them.`,
+      '',
+      '| Case | Waiting on | |',
+      '| --- | --- | --- |',
+    );
+    for (const result of expectedRed) {
+      lines.push(
+        `| \`${result.fixture.name}\` | ${result.fixture.v3Expected ?? ''} | ${caseLink(result.fixture.name, site, summary)} |`,
+      );
+    }
+    lines.push('');
+  }
+
   // This job is a required check, so the closing line has to say what it
   // takes to go green — a red run with no instructions is just an obstacle.
+  // Breaches lead, and that covers promotion too: a marked case that has gone
+  // green is reported as a broken invariant, not as a row in either table.
   if (breaches.length > 0) {
     lines.push(
       'An invariant above is broken. That is not something a baseline refresh fixes — it describes what must never happen, so the check stays red until the behaviour changes.',
     );
-  } else if (differing.length === 0) {
+  } else if (unexpected.length === 0 && expectedRed.length > 0) {
+    lines.push(
+      `Nothing changed unexpectedly. ${expectedRed.length} case(s) are still waiting on v3 — that count is the burndown, and it goes to zero as the code lands.`,
+    );
+  } else if (unexpected.length === 0) {
     lines.push('Output is unchanged. Nothing to review.');
   } else {
     lines.push(
@@ -1553,9 +1748,10 @@ function caseBody(result: CaseResult, base: string | null): string[] {
 function statusTable(results: CaseResult[]): string[] {
   const rows = results.map((result) => {
     const name = `[\`${result.fixture.name}\`](./${encodeURIComponent(result.fixture.name)}.html)`;
-    const status = isClean(result)
-      ? shortStatus(result)
-      : `**${shortStatus(result)}** ${caseTotals(result)}`;
+    const label = needsAttention(result)
+      ? `**${shortStatus(result)}**`
+      : shortStatus(result);
+    const status = isClean(result) ? label : `${label} ${caseTotals(result)}`;
     return `| ${name} | ${status} | ${result.fixture.proves} |`;
   });
   return ['| Case | Status | Proves |', '| --- | --- | --- |', ...rows, ''];
@@ -1568,19 +1764,41 @@ export function buildSite(
   base: string | null = blobBase(),
 ): Map<string, string> {
   const pages = new Map<string, string>();
-  const differing = results.filter((result) => !isClean(result));
+  const unexpected = results.filter(isUnexpectedRed);
+  const expectedRed = results.filter(isExpectedRed);
+  const promote = results.filter(isReadyToPromote);
 
   const index = [
     ...frontMatter('Output review'),
     RAW_OPEN,
     '# Output review',
     '',
-    `${results.length} cases · ${differing.length} changed · ${breaches.length} invariant breach(es)`,
+    tally(results, breaches),
     '',
     ...renderBreaches(breaches, 'jekyll'),
-    ...(differing.length > 0
-      ? ['## Changed', '', ...statusTable(differing)]
-      : ['Every case matches its baseline.', '']),
+    ...(unexpected.length > 0
+      ? ['## Changed', '', ...statusTable(unexpected)]
+      : expectedRed.length > 0
+        ? ['Nothing changed unexpectedly.', '']
+        : ['Every case matches its baseline.', '']),
+    ...(promote.length > 0
+      ? [
+          '## Ready to promote',
+          '',
+          'hermex now produces these baselines. Drop `v3Expected` from each case in `fixtures/cases.ts`.',
+          '',
+          ...statusTable(promote),
+        ]
+      : []),
+    ...(expectedRed.length > 0
+      ? [
+          '## Expected red',
+          '',
+          "v3's intended output, written before the code that produces it. The burndown, not regressions.",
+          '',
+          ...statusTable(expectedRed),
+        ]
+      : []),
     '## All cases',
     '',
     ...statusTable(results),
@@ -1620,6 +1838,14 @@ function siteUrl(): string | null {
 }
 
 // ── Entry point ──────────────────────────────────────────────────────────────
+
+/** The six-column verdict the runner prints per case, as it goes. */
+function progressLabel(result: CaseResult, update: boolean): string {
+  if (isReadyToPromote(result)) return 'ready ';
+  if (isExpectedRed(result)) return ' red  ';
+  if (isClean(result)) return '  ok  ';
+  return update ? 'update' : ' diff ';
+}
 
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
@@ -1661,6 +1887,7 @@ async function main(): Promise<void> {
     : null;
 
   const results: CaseResult[] = [];
+  let written = 0;
   try {
     for (const fixture of selected) {
       const { artifacts, status, raw } = await runCase(
@@ -1673,10 +1900,17 @@ async function main(): Promise<void> {
       }
       results.push(result);
 
-      if (update && !result.exitMismatch)
+      // A v3-expected baseline is hand-written intent, not a recording, so
+      // --update must leave it alone. Refreshing an unrelated case would
+      // otherwise overwrite it with today's v2 output and quietly erase the
+      // claim the marker exists to make.
+      const refresh = update && !result.exitMismatch && !fixture.v3Expected;
+      if (refresh) {
         writeBaseline(fixture.name, artifacts);
+        written++;
+      }
       process.stdout.write(
-        `${isClean(result) ? '  ok  ' : update ? 'update' : ' diff '}  ${fixture.name}\n`,
+        `${progressLabel(result, update)}  ${fixture.name}\n`,
       );
     }
   } finally {
@@ -1717,8 +1951,12 @@ async function main(): Promise<void> {
 
   // An exit-code mismatch is never absorbed by --update: the manifest says
   // what the case is asserting, so a changed exit code has to be an edit to
-  // fixtures/cases.ts, where a reviewer will see it.
-  const mismatched = results.filter((r) => r.exitMismatch);
+  // fixtures/cases.ts, where a reviewer will see it. The exception is a
+  // v3-expected case, which is asserting v3's exit code — not today's — and
+  // is declaring the whole of its captured behaviour as not yet true.
+  const mismatched = results.filter(
+    (r) => r.exitMismatch && !r.fixture.v3Expected,
+  );
   for (const result of mismatched) {
     process.stderr.write(
       `\n${result.fixture.name}: expected exit ${result.exitMismatch?.expected}, got ${result.exitMismatch?.actual}. Update expectExit in fixtures/cases.ts if this is intended.\n`,
@@ -1730,28 +1968,40 @@ async function main(): Promise<void> {
     );
   }
 
-  const differing = results.filter((r) => !isClean(r));
+  const unexpected = results.filter(isUnexpectedRed);
+  const expectedRed = results.filter(isExpectedRed);
   if (update) {
     process.stdout.write(
-      `\n${results.length - mismatched.length} baseline(s) written to tests/__output_baselines__/\n`,
+      `\n${written} baseline(s) written to tests/__output_baselines__/\n`,
     );
-  } else if (differing.length > 0) {
+  } else if (unexpected.length > 0) {
     process.stdout.write(
-      `\n${differing.length} of ${results.length} case(s) differ from their baseline. Read .output-review/summary.md, then run\n  pnpm run test:output -- --update\nif the change is intended.\n`,
+      `\n${unexpected.length} of ${results.length} case(s) differ from their baseline. Read .output-review/summary.md, then run\n  pnpm run test:output -- --update\nif the change is intended.\n`,
+    );
+  } else if (expectedRed.length === 0) {
+    process.stdout.write(
+      `\nAll ${results.length} case(s) match their baseline.\n`,
     );
   } else {
     process.stdout.write(
-      `\nAll ${results.length} case(s) match their baseline.\n`,
+      `\nNo unexpected changes across ${results.length} case(s).\n`,
+    );
+  }
+
+  if (expectedRed.length > 0) {
+    process.stdout.write(
+      `${expectedRed.length} case(s) are v3-expected: their baselines are v3's intended output, and --update leaves them alone. That count is the burndown.\n`,
     );
   }
 
   // A blocking invariant fails the run even under --update, for the same
   // reason an exit-code mismatch does: it describes something no baseline
-  // should ever be allowed to record.
+  // should ever be allowed to record. `v3-expected-cases-are-still-red` is
+  // one of them, which is what stops a marked case going green in silence.
   const failed =
     mismatched.length > 0 ||
     breaches.some(({ invariant }) => invariant.blocking) ||
-    (!update && differing.length > 0);
+    (!update && unexpected.length > 0);
   process.exitCode = failed ? 1 : 0;
 }
 

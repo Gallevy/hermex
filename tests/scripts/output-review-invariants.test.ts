@@ -260,3 +260,51 @@ describe('no-orphaned-baselines', () => {
     expect(breaches).toEqual([]);
   });
 });
+
+/**
+ * A v3-expected case is exempted from failing the run, so this invariant is
+ * the only thing left watching it. Without it, the day hermex starts
+ * producing a marked baseline the case goes green, stays marked, and the
+ * burndown stops counting down while still claiming to.
+ */
+describe('v3-expected-cases-are-still-red', () => {
+  const red = (result: CaseResult): CaseResult => ({
+    ...result,
+    changed: ['stdout.txt'],
+  });
+
+  it('demands promotion once hermex produces the marked baseline', () => {
+    const breaches = run('v3-expected-cases-are-still-red', [
+      caseResult({ name: 'explain-why', v3Expected: 'Lands with #105.' }, {}),
+    ]);
+    expect(breaches).toHaveLength(1);
+    expect(breaches[0]).toContain('explain-why');
+    expect(breaches[0]).toContain('v3Expected');
+  });
+
+  it('stays quiet while the marked case is still red', () => {
+    const breaches = run('v3-expected-cases-are-still-red', [
+      red(caseResult({ name: 'explain-why', v3Expected: 'Lands with #105.' }, {})),
+    ]);
+    expect(breaches).toEqual([]);
+  });
+
+  it('counts an exit-code mismatch as still red, not as a pass', () => {
+    // A marked case asserts v3's exit code too, so a mismatch is part of the
+    // expected red — reading it as "clean" would demand promotion of a case
+    // that has not landed at all.
+    const result = caseResult({ name: 'explain-why', v3Expected: '#105.' }, {});
+    const breaches = run('v3-expected-cases-are-still-red', [
+      { ...result, exitMismatch: { expected: 0, actual: 1 } },
+    ]);
+    expect(breaches).toEqual([]);
+  });
+
+  it('ignores every case that was never marked', () => {
+    const breaches = run('v3-expected-cases-are-still-red', [
+      caseResult({ name: 'scan-json' }, {}),
+      red(caseResult({ name: 'comply-human-fail' }, {})),
+    ]);
+    expect(breaches).toEqual([]);
+  });
+});
