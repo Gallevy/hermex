@@ -1,61 +1,107 @@
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>scan-json — output review</title>
-<style>:root { color-scheme: light dark;
-  --bg:#fff; --fg:#1f2328; --muted:#59636e; --line:#d1d9e0; --card:#f6f8fa;
-  --add:#1a7f37; --addbg:#e6ffec; --del:#cf222e; --delbg:#ffebe9; --meta:#8250df; }
-@media (prefers-color-scheme: dark) { :root {
-  --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1; --line:#3d444d; --card:#151b23;
-  --add:#3fb950; --addbg:#12261e; --del:#f85149; --delbg:#25171c; --meta:#ab7df8; } }
-* { box-sizing: border-box; }
-body { margin:0 auto; padding:2rem 1.25rem 4rem; max-width:64rem; background:var(--bg);
-  color:var(--fg); font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; }
-h1 { font-size:1.6rem; margin:0 0 .25rem; }
-h2 { font-size:1.15rem; margin:2rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--line); }
-a { color:inherit; }
-code, pre { font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace; font-size:13px; }
-code { background:var(--card); padding:.15em .35em; border-radius:4px; }
-pre { background:var(--card); border:1px solid var(--line); border-radius:6px;
-  padding:.75rem 1rem; overflow-x:auto; margin:0; }
-pre code { background:none; padding:0; }
-table { border-collapse:collapse; width:100%; margin:.5rem 0 1rem; display:block; overflow-x:auto; }
-th, td { border:1px solid var(--line); padding:.4rem .6rem; text-align:left; vertical-align:top; }
-th { background:var(--card); font-size:.85rem; }
-.muted { color:var(--muted); }
-.sub { color:var(--muted); font-size:.85rem; }
-.pill { display:inline-block; padding:.05rem .5rem; border-radius:999px; font-size:.8rem;
-  border:1px solid var(--line); background:var(--card); }
-.pill.changed { color:var(--del); border-color:var(--del); }
-.pill.clean { color:var(--add); border-color:var(--add); }
-.warn { border-left:4px solid var(--del); background:var(--delbg); padding:.75rem 1rem;
-  border-radius:0 6px 6px 0; margin:1rem 0; }
-.diff .a { color:var(--add); background:var(--addbg); display:block; }
-.diff .d { color:var(--del); background:var(--delbg); display:block; }
-.diff .h { color:var(--meta); display:block; margin-top:.4rem; }
-.diff .f { color:var(--muted); display:block; }
-details { border:1px solid var(--line); border-radius:6px; padding:.5rem .75rem; margin:.5rem 0; }
-summary { cursor:pointer; font-weight:600; }
-details[open] summary { margin-bottom:.5rem; }
-nav { margin-bottom:1.5rem; font-size:.9rem; }</style>
-</head><body>
-<nav><a href="./index.html">← all cases</a></nav>
-<h1><code>scan-json</code></h1>
-<p><span class="pill clean">unchanged</span></p>
-<p>The full JSON contract: summary.patternCounts (#80), every owned package in packages[], de-duplicated components (#78, #79), and the compliance block (#55).</p>
+---
+layout: default
+title: "comply-json — output review"
+---
 
-<table><tbody>
-<tr><th>Command</th><td><code>hermex scan --format json</code></td></tr>
-<tr><th>Working directory</th><td><code>fixtures/</code></td></tr>
-<tr><th>Config</th><td><code>fixtures/hermex.config.ts</code></td></tr>
-<tr><th>Fixture</th><td><code>fixtures</code></td></tr>
-<tr><th>Exit code</th><td><code>0</code> <span class="muted">as asserted</span></td></tr>
-</tbody></table>
-<p class="sub">Reproduce locally: <code>pnpm run test:output -- --filter scan-json</code></p>
+{% raw %}
+[← all cases](./index.html)
 
-<h2>Full output</h2>
-<details><summary>stdout.json</summary><pre><code>{
-  "version": "&lt;version&gt;",
+# `comply-json`
+
+**unchanged**
+
+**Asserts** — The compliance block as machine-readable output on a failing repo.
+
+**Ran** `hermex comply --format json` in `fixtures/` → exit 1, as asserted
+
+**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/8ee70b5ab91187f54976f1274c2479e5f8b1a78a/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/8ee70b5ab91187f54976f1274c2479e5f8b1a78a/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/8ee70b5ab91187f54976f1274c2479e5f8b1a78a/fixtures/README.md)) · **Case** [`comply-json`](https://github.com/Gallevy/hermex/blob/8ee70b5ab91187f54976f1274c2479e5f8b1a78a/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/8ee70b5ab91187f54976f1274c2479e5f8b1a78a/fixtures/cases/comply-json.md))
+
+<sub>Reproduce locally: `pnpm run test:output -- --filter comply-json`</sub>
+
+## Config
+
+[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/8ee70b5ab91187f54976f1274c2479e5f8b1a78a/fixtures/hermex.config.ts)
+
+```ts
+import type { HermexConfigInput } from '../src/config/types.ts';
+
+/**
+ * The primary fixture repo's config: a deliberately non-compliant policy
+ * over a deliberately messy repo, so `scan` and `comply` both have
+ * something to say. Variants that change one thing at a time live in
+ * `./configs/` and spread this object — see `fixtures/README.md`.
+ */
+export default {
+  // Spelled out rather than left to the schema defaults because this repo
+  // now contains fixture *machinery* alongside the code under analysis:
+  // the case manifest, the alternate configs, the recorded registry
+  // timelines, and the secondary repos that cases scan with their own cwd.
+  // None of it is code this repo "uses", and without these entries the
+  // primary output would grow rows every time a case is added.
+  excludes: [
+    '**/node_modules/**',
+    '**/dist/**',
+    '**/build/**',
+    'cases.ts',
+    'configs/**',
+    'registry/**',
+    'repos/**',
+  ],
+  packages: {
+    internal: ['@design-system/*'],
+  },
+  versus: [
+    {
+      name: 'Design System Migration',
+      packages: ['@design-system/foundation', '@new-system/arc'],
+    },
+  ],
+  rules: {
+    detect_files: [
+      {
+        severity: 'error',
+        patterns: ['jest.config.*', '.babelrc'],
+        message: 'Use vitest + Vite',
+      },
+    ],
+    forbid_packages: [
+      { severity: 'error', patterns: ['moment'], message: 'Use date-fns or dayjs' },
+    ],
+    require_files: [
+      { severity: 'error', patterns: ['.nvmrc'] },
+      { severity: 'warn', patterns: ['.editorconfig'] },
+    ],
+    require_packages: [
+      {
+        severity: 'error',
+        patterns: ['typescript'],
+        message: 'TypeScript is required',
+      },
+    ],
+    require_scripts: [
+      {
+        severity: 'error',
+        patterns: ['build', 'test'],
+        message: 'Required npm scripts',
+      },
+    ],
+    require_package_fields: [{ severity: 'warn', patterns: ['engines', 'license'] }],
+    engine_version: { severity: 'warn', range: '>=20', message: 'Minimum Node 20 required' },
+  },
+  output: {
+    details: false,
+    patterns: false,
+  },
+} satisfies HermexConfigInput;
+```
+
+## Full output
+
+<details><summary><code>stdout.json</code></summary>
+
+```json
+{
+  "version": "<version>",
   "summary": {
     "filesAnalyzed": 17,
     "totalImports": 80,
@@ -454,153 +500,15 @@ nav { margin-bottom:1.5rem; font-size:.9rem; }</style>
       "name": "CaseMap",
       "source": "@design-system/foundation",
       "count": 1,
-      "files": [
-        "patterns/09-jsx-in-attributes.tsx"
-      ]
-    },
-    {
-      "name": "CaseVar",
-      "source": "@design-system/foundation",
-      "count": 1,
-      "files": [
-        "patterns/09-jsx-in-attributes.tsx"
-      ]
-    },
-    {
-      "name": "CaseReturn",
-      "source": "@design-system/foundation",
-      "count": 1,
-      "files": [
-        "patterns/09-jsx-in-attributes.tsx"
-      ]
-    },
-    {
-      "name": "Child",
-      "source": "@design-system/foundation",
-      "count": 1,
-      "files": [
-        "patterns/09-jsx-in-attributes.tsx"
-      ]
-    },
-    {
-      "name": "CaseAttr",
-      "source": "@design-system/foundation",
-      "count": 1,
-      "files": [
-        "patterns/09-jsx-in-attributes.tsx"
-      ]
-    },
-    {
-      "name": "CaseAttrSelfClosing",
-      "source": "@design-system/foundation",
-      "count": 1,
-      "files": [
-        "patterns/09-jsx-in-attributes.tsx"
-      ]
-    },
-    {
-      "name": "CaseAttrCond",
-      "source": "@design-system/foundation",
-      "count": 1,
-      "files": [
-        "patterns/09-jsx-in-attributes.tsx"
-      ]
-    },
-    {
-      "name": "CaseAttrHost",
-      "source": "@design-system/foundation",
-      "count": 1,
-      "files": [
-        "patterns/09-jsx-in-attributes.tsx"
-      ]
-    },
-    {
-      "name": "CaseAttrFragment",
-      "source": "@design-system/foundation",
-      "count": 1,
-      "files": [
-        "patterns/09-jsx-in-attributes.tsx"
-      ]
-    },
-    {
-      "name": "CaseBoth",
-      "source": "@design-system/foundation",
-      "count": 1,
-      "files": [
-        "patterns/09-jsx-in-attributes.tsx"
-      ]
-    }
-  ],
-  "versus": [
-    {
-      "name": "Design System Migration",
-      "packages": [
-        "@design-system/foundation",
-        "@new-system/arc"
-      ],
-      "entries": [
-        {
-          "packageName": "@design-system/foundation",
-          "count": 33,
-          "percentage": 100
-        },
-        {
-          "packageName": "@new-system/arc",
-          "count": 0,
-          "percentage": 0
-        }
-      ],
-      "totalCount": 33
-    }
-  ],
-  "ruleViolations": [
-    {
-      "type": "forbid_packages",
-      "severity": "error",
-      "patterns": [
-        "moment"
-      ],
-      "message": "Use date-fns or dayjs",
-      "matchedFiles": [],
-      "packageName": "moment"
-    },
-    {
-      "type": "require_packages",
-      "severity": "error",
-      "patterns": [
-        "typescript"
-      ],
-      "message": "TypeScript is required",
-      "matchedFiles": []
-    },
-    {
-      "type": "require_files",
-      "severity": "error",
-      "patterns": [
-        ".nvmrc"
-      ],
-      "matchedFiles": []
-    },
-    {
-      "type": "require_files",
-      "severity": "warn",
-      "patterns": [
-        ".editorconfig"
-      ],
-      "matchedFiles": []
-    }
-  ],
-  "compliance": {
-    "status": "non-compliant",
-    "compliant": false,
-    "counts": {
-      "errorRuleViolations": 3,
-      "releaseAgeViolations": 0,
-      "warningRuleViolations": 1
-    }
-  }
-}</code></pre></details>
-<details><summary>stderr.txt</summary><pre><code>hermex v&lt;version&gt;
+… 146 more line(s) — full text in tests/__output_baselines__/
+```
+
+</details>
+
+<details><summary><code>stderr.txt</code></summary>
+
+```text
+hermex v<version>
 - Parsing lockfile...
 ✔ Found pnpm lockfile (supports: v5, v6, v9) - 5 packages
 ✔ Found 18 files
@@ -616,5 +524,9 @@ nav { margin-bottom:1.5rem; font-size:.9rem; }</style>
 
 
 Caused by:
-    Syntax Error</code></pre></details>
-</body></html>
+    Syntax Error
+```
+
+</details>
+
+{% endraw %}

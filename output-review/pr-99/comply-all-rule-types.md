@@ -1,60 +1,104 @@
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>comply-all-rule-types — output review</title>
-<style>:root { color-scheme: light dark;
-  --bg:#fff; --fg:#1f2328; --muted:#59636e; --line:#d1d9e0; --card:#f6f8fa;
-  --add:#1a7f37; --addbg:#e6ffec; --del:#cf222e; --delbg:#ffebe9; --meta:#8250df; }
-@media (prefers-color-scheme: dark) { :root {
-  --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1; --line:#3d444d; --card:#151b23;
-  --add:#3fb950; --addbg:#12261e; --del:#f85149; --delbg:#25171c; --meta:#ab7df8; } }
-* { box-sizing: border-box; }
-body { margin:0 auto; padding:2rem 1.25rem 4rem; max-width:64rem; background:var(--bg);
-  color:var(--fg); font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; }
-h1 { font-size:1.6rem; margin:0 0 .25rem; }
-h2 { font-size:1.15rem; margin:2rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--line); }
-a { color:inherit; }
-code, pre { font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace; font-size:13px; }
-code { background:var(--card); padding:.15em .35em; border-radius:4px; }
-pre { background:var(--card); border:1px solid var(--line); border-radius:6px;
-  padding:.75rem 1rem; overflow-x:auto; margin:0; }
-pre code { background:none; padding:0; }
-table { border-collapse:collapse; width:100%; margin:.5rem 0 1rem; display:block; overflow-x:auto; }
-th, td { border:1px solid var(--line); padding:.4rem .6rem; text-align:left; vertical-align:top; }
-th { background:var(--card); font-size:.85rem; }
-.muted { color:var(--muted); }
-.sub { color:var(--muted); font-size:.85rem; }
-.pill { display:inline-block; padding:.05rem .5rem; border-radius:999px; font-size:.8rem;
-  border:1px solid var(--line); background:var(--card); }
-.pill.changed { color:var(--del); border-color:var(--del); }
-.pill.clean { color:var(--add); border-color:var(--add); }
-.warn { border-left:4px solid var(--del); background:var(--delbg); padding:.75rem 1rem;
-  border-radius:0 6px 6px 0; margin:1rem 0; }
-.diff .a { color:var(--add); background:var(--addbg); display:block; }
-.diff .d { color:var(--del); background:var(--delbg); display:block; }
-.diff .h { color:var(--meta); display:block; margin-top:.4rem; }
-.diff .f { color:var(--muted); display:block; }
-details { border:1px solid var(--line); border-radius:6px; padding:.5rem .75rem; margin:.5rem 0; }
-summary { cursor:pointer; font-weight:600; }
-details[open] summary { margin-bottom:.5rem; }
-nav { margin-bottom:1.5rem; font-size:.9rem; }</style>
-</head><body>
-<nav><a href="./index.html">← all cases</a></nav>
-<h1><code>comply-all-rule-types</code></h1>
-<p><span class="pill clean">unchanged</span></p>
-<p>Every one of the nine rule types in one table, at three severities — the only case that renders engine_version, codeowners and both package-field shapes.</p>
+---
+layout: default
+title: "comply-all-rule-types — output review"
+---
 
-<table><tbody>
-<tr><th>Command</th><td><code>hermex comply</code></td></tr>
-<tr><th>Working directory</th><td><code>fixtures/repos/all-rule-types</code></td></tr>
-<tr><th>Config</th><td><code>fixtures/repos/all-rule-types/hermex.config.ts</code></td></tr>
-<tr><th>Fixture</th><td><code>fixtures/repos/all-rule-types</code></td></tr>
-<tr><th>Exit code</th><td><code>1</code> <span class="muted">as asserted</span></td></tr>
-</tbody></table>
-<p class="sub">Reproduce locally: <code>pnpm run test:output -- --filter comply-all-rule-types</code></p>
+{% raw %}
+[← all cases](./index.html)
 
-<h2>Full output</h2>
-<details><summary>stdout.txt</summary><pre><code>hermex v&lt;version&gt;
+# `comply-all-rule-types`
+
+**unchanged**
+
+**Asserts** — Every one of the nine rule types in one table, at three severities — the only case that renders engine_version, codeowners and both package-field shapes.
+
+**Ran** `hermex comply` in `fixtures/repos/all-rule-types` → exit 1, as asserted
+
+**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/8ee70b5ab91187f54976f1274c2479e5f8b1a78a/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/8ee70b5ab91187f54976f1274c2479e5f8b1a78a/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/8ee70b5ab91187f54976f1274c2479e5f8b1a78a/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types`](https://github.com/Gallevy/hermex/blob/8ee70b5ab91187f54976f1274c2479e5f8b1a78a/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/8ee70b5ab91187f54976f1274c2479e5f8b1a78a/fixtures/cases/comply-all-rule-types.md))
+
+<sub>Reproduce locally: `pnpm run test:output -- --filter comply-all-rule-types`</sub>
+
+## Config
+
+[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/8ee70b5ab91187f54976f1274c2479e5f8b1a78a/fixtures/repos/all-rule-types/hermex.config.ts)
+
+```ts
+import type { HermexConfigInput } from '../../../src/config/types.ts';
+
+/**
+ * Every rule type hermex has, all firing at once, at three different
+ * severities. The primary fixture repo only ever trips three of the nine —
+ * so without this repo the rules table has never been reviewed with an
+ * `engine_version` row, a `codeowners` row, or either of the
+ * package-field shapes in it, and nothing would catch a renderer that
+ * mishandles `fieldPath` / `installedRange` / a long `matchedFiles` list.
+ *
+ * Scoped to `src/` so `jest.config.js` is found by `detect_files` without
+ * also being parsed as source.
+ */
+export default {
+  includes: ['src/**/*.{tsx,jsx,ts,js}'],
+  rules: {
+    detect_files: [
+      {
+        severity: 'error',
+        patterns: ['jest.config.*', '.babelrc'],
+        message: 'Use vitest + Vite',
+      },
+    ],
+    require_files: [{ severity: 'error', patterns: ['.nvmrc'] }],
+    forbid_packages: [
+      { severity: 'error', patterns: ['moment'], message: 'Use date-fns or dayjs' },
+    ],
+    require_packages: [
+      { severity: 'error', patterns: ['typescript'], message: 'TypeScript is required' },
+    ],
+    require_scripts: [
+      { severity: 'error', patterns: ['build', 'test'], message: 'Required npm scripts' },
+    ],
+    // Missing outright, so the violation reports the absence.
+    require_package_fields: [{ severity: 'warn', patterns: ['license'] }],
+    // Present, so the violation reports the offending value — the other
+    // half of the package-field renderer.
+    forbid_package_fields: [
+      {
+        severity: 'warn',
+        patterns: ['publishConfig.registry'],
+        message: 'Publish to the public registry',
+      },
+    ],
+    // engines.node is ">=16", so this reports both ranges rather than the
+    // "not specified" shape.
+    engine_version: { severity: 'error', range: '>=20', message: 'Minimum Node 20 required' },
+    // CODEOWNERS covers two of the three scanned files, and one of those
+    // belongs to a team outside `requiredOwners` — so this produces both
+    // codeowners violations, unowned and wrong-owner.
+    //
+    // The baseline currently describes both as "have no owner", which is
+    // wrong for src/legacy.tsx: it has an owner, just not a required one.
+    // That is #95, left unfixed on purpose — the recorded output is the
+    // evidence, and refreshing this baseline is how the fix gets reviewed.
+    codeowners: {
+      severity: 'info',
+      requiredOwners: ['@org/platform'],
+      message: 'Every file needs a platform owner',
+    },
+  },
+  output: {
+    packages: false,
+    components: false,
+    patterns: false,
+    versus: false,
+  },
+} satisfies HermexConfigInput;
+```
+
+## Full output
+
+<details><summary><code>stdout.txt</code></summary>
+
+```text
+hermex v<version>
 - Parsing lockfile...
 ✔ Found pnpm lockfile (supports: v5, v6, v9) - 2 packages
 ✔ Found 3 files
@@ -79,7 +123,7 @@ nav { margin-bottom:1.5rem; font-size:.9rem; }</style>
 ├──────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
 │ package_fields   │ 🟡 field publishConfig.registry is forbidden in package.json — Publish to the public registry │
 ├──────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
-│ engine_version   │ 🔴 engines.node is &gt;=16, required &gt;=20 — Minimum Node 20 required                             │
+│ engine_version   │ 🔴 engines.node is >=16, required >=20 — Minimum Node 20 required                             │
 ├──────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
 │ codeowners       │ 🔵 1 scanned file(s) have no owner: src/orphan.tsx — Every file needs a platform owner        │
 ├──────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
@@ -89,6 +133,17 @@ nav { margin-bottom:1.5rem; font-size:.9rem; }</style>
 6 errors, 2 warnings
 
 🔴 NOT COMPLIANT
-  6 mandatory violations found</code></pre></details>
-<details><summary>stderr.txt</summary><pre><code></code></pre></details>
-</body></html>
+  6 mandatory violations found
+```
+
+</details>
+
+<details><summary><code>stderr.txt</code></summary>
+
+```text
+
+```
+
+</details>
+
+{% endraw %}

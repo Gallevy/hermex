@@ -1,61 +1,71 @@
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>comply-release-age — output review</title>
-<style>:root { color-scheme: light dark;
-  --bg:#fff; --fg:#1f2328; --muted:#59636e; --line:#d1d9e0; --card:#f6f8fa;
-  --add:#1a7f37; --addbg:#e6ffec; --del:#cf222e; --delbg:#ffebe9; --meta:#8250df; }
-@media (prefers-color-scheme: dark) { :root {
-  --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1; --line:#3d444d; --card:#151b23;
-  --add:#3fb950; --addbg:#12261e; --del:#f85149; --delbg:#25171c; --meta:#ab7df8; } }
-* { box-sizing: border-box; }
-body { margin:0 auto; padding:2rem 1.25rem 4rem; max-width:64rem; background:var(--bg);
-  color:var(--fg); font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; }
-h1 { font-size:1.6rem; margin:0 0 .25rem; }
-h2 { font-size:1.15rem; margin:2rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--line); }
-a { color:inherit; }
-code, pre { font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace; font-size:13px; }
-code { background:var(--card); padding:.15em .35em; border-radius:4px; }
-pre { background:var(--card); border:1px solid var(--line); border-radius:6px;
-  padding:.75rem 1rem; overflow-x:auto; margin:0; }
-pre code { background:none; padding:0; }
-table { border-collapse:collapse; width:100%; margin:.5rem 0 1rem; display:block; overflow-x:auto; }
-th, td { border:1px solid var(--line); padding:.4rem .6rem; text-align:left; vertical-align:top; }
-th { background:var(--card); font-size:.85rem; }
-.muted { color:var(--muted); }
-.sub { color:var(--muted); font-size:.85rem; }
-.pill { display:inline-block; padding:.05rem .5rem; border-radius:999px; font-size:.8rem;
-  border:1px solid var(--line); background:var(--card); }
-.pill.changed { color:var(--del); border-color:var(--del); }
-.pill.clean { color:var(--add); border-color:var(--add); }
-.warn { border-left:4px solid var(--del); background:var(--delbg); padding:.75rem 1rem;
-  border-radius:0 6px 6px 0; margin:1rem 0; }
-.diff .a { color:var(--add); background:var(--addbg); display:block; }
-.diff .d { color:var(--del); background:var(--delbg); display:block; }
-.diff .h { color:var(--meta); display:block; margin-top:.4rem; }
-.diff .f { color:var(--muted); display:block; }
-details { border:1px solid var(--line); border-radius:6px; padding:.5rem .75rem; margin:.5rem 0; }
-summary { cursor:pointer; font-weight:600; }
-details[open] summary { margin-bottom:.5rem; }
-nav { margin-bottom:1.5rem; font-size:.9rem; }</style>
-</head><body>
-<nav><a href="./index.html">← all cases</a></nav>
-<h1><code>comply-release-age</code></h1>
-<p><span class="pill clean">unchanged</span></p>
-<p>The flagged-packages table, against a recorded registry: an overdue package with no in-window target (#26), one with a real target, and one merely coming due.</p>
+---
+layout: default
+title: "comply-release-age — output review"
+---
 
-<table><tbody>
-<tr><th>Command</th><td><code>hermex comply --config configs/release-age.config.ts</code></td></tr>
-<tr><th>Working directory</th><td><code>fixtures/</code></td></tr>
-<tr><th>Config</th><td><code>fixtures/configs/release-age.config.ts</code></td></tr>
-<tr><th>Fixture</th><td><code>fixtures</code></td></tr>
-<tr><th>Exit code</th><td><code>1</code> <span class="muted">as asserted</span></td></tr>
-<tr><th>Registry</th><td>offline fixture registry — never the network</td></tr>
-</tbody></table>
-<p class="sub">Reproduce locally: <code>pnpm run test:output -- --filter comply-release-age</code></p>
+{% raw %}
+[← all cases](./index.html)
 
-<h2>Full output</h2>
-<details><summary>stdout.txt</summary><pre><code>hermex v&lt;version&gt;
+# `comply-release-age`
+
+**unchanged**
+
+**Asserts** — The flagged-packages table, against a recorded registry: an overdue package with no in-window target (#26), one with a real target, and one merely coming due.
+
+**Ran** `hermex comply --config configs/release-age.config.ts` in `fixtures/` → exit 1, as asserted
+
+**Config** [`fixtures/configs/release-age.config.ts`](https://github.com/Gallevy/hermex/blob/8ee70b5ab91187f54976f1274c2479e5f8b1a78a/fixtures/configs/release-age.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/8ee70b5ab91187f54976f1274c2479e5f8b1a78a/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/8ee70b5ab91187f54976f1274c2479e5f8b1a78a/fixtures/README.md)) · **Case** [`comply-release-age`](https://github.com/Gallevy/hermex/blob/8ee70b5ab91187f54976f1274c2479e5f8b1a78a/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/8ee70b5ab91187f54976f1274c2479e5f8b1a78a/fixtures/cases/comply-release-age.md))
+
+**Registry** offline, served from `fixtures/registry/timelines.ts` — no network
+
+<sub>Reproduce locally: `pnpm run test:output -- --filter comply-release-age`</sub>
+
+## Config
+
+[`fixtures/configs/release-age.config.ts`](https://github.com/Gallevy/hermex/blob/8ee70b5ab91187f54976f1274c2479e5f8b1a78a/fixtures/configs/release-age.config.ts)
+
+```ts
+import type { HermexConfigInput } from '../../src/config/types.ts';
+import base from '../hermex.config.ts';
+
+/**
+ * Turns on the release-age policy, which is the only part of hermex that
+ * reaches the network. `HERMEX_FIXTURE_REGISTRY` points it at the offline
+ * registry `scripts/output-review.ts` serves from
+ * `fixtures/registry/timelines.ts`; without the env var it falls back to
+ * the real registry so the config is still runnable by hand.
+ *
+ * The cache is disabled deliberately: a warm `~/.hermex` entry from an
+ * earlier run against the real registry would otherwise decide the output.
+ */
+export default {
+  ...base,
+  releaseAge: {
+    enabled: true,
+    registry:
+      process.env['HERMEX_FIXTURE_REGISTRY'] ?? 'https://registry.npmjs.org',
+    cacheDisabled: true,
+    thresholds: { patch: 30, minor: 45, major: 60 },
+    // Without `enforceOn`, only packages with measured usage are looked up
+    // at all, which in this repo is `react` alone — `moment` and
+    // `react-dom` are installed but never imported. Naming them here makes
+    // all three targets *and* splits them across both severity tiers, since
+    // a looked-up package that does not match `enforceOn` is advisory:
+    //
+    //   moment     enforced, overdue          → mandatory failure
+    //   react-dom  enforced, coming due       → advisory "N days remaining"
+    //   react      not enforced, overdue      → warning, does not fail comply
+    enforceOn: ['moment', 'react-dom'],
+  },
+} satisfies HermexConfigInput;
+```
+
+## Full output
+
+<details><summary><code>stdout.txt</code></summary>
+
+```text
+hermex v<version>
 - Parsing lockfile...
 ✔ Found pnpm lockfile (supports: v5, v6, v9) - 5 packages
 ✔ Found 18 files
@@ -118,6 +128,17 @@ Total: 5 packages
 
 
 🔴 NOT COMPLIANT
-  4 mandatory violations found</code></pre></details>
-<details><summary>stderr.txt</summary><pre><code></code></pre></details>
-</body></html>
+  4 mandatory violations found
+```
+
+</details>
+
+<details><summary><code>stderr.txt</code></summary>
+
+```text
+
+```
+
+</details>
+
+{% endraw %}

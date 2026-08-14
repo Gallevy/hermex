@@ -1,61 +1,34 @@
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>lockfile-yarn — output review</title>
-<style>:root { color-scheme: light dark;
-  --bg:#fff; --fg:#1f2328; --muted:#59636e; --line:#d1d9e0; --card:#f6f8fa;
-  --add:#1a7f37; --addbg:#e6ffec; --del:#cf222e; --delbg:#ffebe9; --meta:#8250df; }
-@media (prefers-color-scheme: dark) { :root {
-  --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1; --line:#3d444d; --card:#151b23;
-  --add:#3fb950; --addbg:#12261e; --del:#f85149; --delbg:#25171c; --meta:#ab7df8; } }
-* { box-sizing: border-box; }
-body { margin:0 auto; padding:2rem 1.25rem 4rem; max-width:64rem; background:var(--bg);
-  color:var(--fg); font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; }
-h1 { font-size:1.6rem; margin:0 0 .25rem; }
-h2 { font-size:1.15rem; margin:2rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--line); }
-a { color:inherit; }
-code, pre { font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace; font-size:13px; }
-code { background:var(--card); padding:.15em .35em; border-radius:4px; }
-pre { background:var(--card); border:1px solid var(--line); border-radius:6px;
-  padding:.75rem 1rem; overflow-x:auto; margin:0; }
-pre code { background:none; padding:0; }
-table { border-collapse:collapse; width:100%; margin:.5rem 0 1rem; display:block; overflow-x:auto; }
-th, td { border:1px solid var(--line); padding:.4rem .6rem; text-align:left; vertical-align:top; }
-th { background:var(--card); font-size:.85rem; }
-.muted { color:var(--muted); }
-.sub { color:var(--muted); font-size:.85rem; }
-.pill { display:inline-block; padding:.05rem .5rem; border-radius:999px; font-size:.8rem;
-  border:1px solid var(--line); background:var(--card); }
-.pill.changed { color:var(--del); border-color:var(--del); }
-.pill.clean { color:var(--add); border-color:var(--add); }
-.warn { border-left:4px solid var(--del); background:var(--delbg); padding:.75rem 1rem;
-  border-radius:0 6px 6px 0; margin:1rem 0; }
-.diff .a { color:var(--add); background:var(--addbg); display:block; }
-.diff .d { color:var(--del); background:var(--delbg); display:block; }
-.diff .h { color:var(--meta); display:block; margin-top:.4rem; }
-.diff .f { color:var(--muted); display:block; }
-details { border:1px solid var(--line); border-radius:6px; padding:.5rem .75rem; margin:.5rem 0; }
-summary { cursor:pointer; font-weight:600; }
-details[open] summary { margin-bottom:.5rem; }
-nav { margin-bottom:1.5rem; font-size:.9rem; }</style>
-</head><body>
-<nav><a href="./index.html">← all cases</a></nav>
-<h1><code>lockfile-yarn</code></h1>
-<p><span class="pill clean">unchanged</span></p>
-<p>yarn.lock produces the same inventory as its siblings.</p>
+---
+layout: default
+title: "lockfile-yarn — output review"
+---
 
-<table><tbody>
-<tr><th>Command</th><td><code>hermex scan --format json</code></td></tr>
-<tr><th>Working directory</th><td><code>fixtures/repos/lockfile-yarn</code></td></tr>
-<tr><th>Config</th><td><span class="muted">none — schema defaults</span></td></tr>
-<tr><th>Fixture</th><td><code>fixtures/repos/lockfile-yarn</code></td></tr>
-<tr><th>Exit code</th><td><code>0</code> <span class="muted">as asserted</span></td></tr>
-</tbody></table>
-<p class="sub">Reproduce locally: <code>pnpm run test:output -- --filter lockfile-yarn</code></p>
+{% raw %}
+[← all cases](./index.html)
 
-<h2>Full output</h2>
-<details><summary>stdout.json</summary><pre><code>{
-  "version": "&lt;version&gt;",
+# `lockfile-yarn`
+
+**unchanged**
+
+**Asserts** — yarn.lock produces the same inventory as its siblings.
+
+**Ran** `hermex scan --format json` in `fixtures/repos/lockfile-yarn` → exit 0, as asserted
+
+**Config** _none — the loader found no `hermex.config.ts` in the cwd, so this ran on schema defaults_ · **Fixture** [`fixtures/repos/lockfile-yarn`](https://github.com/Gallevy/hermex/blob/8ee70b5ab91187f54976f1274c2479e5f8b1a78a/fixtures/repos/lockfile-yarn) ([overview](https://github.com/Gallevy/hermex/blob/8ee70b5ab91187f54976f1274c2479e5f8b1a78a/fixtures/repos/lockfile-yarn/README.md)) · **Case** [`lockfile-yarn`](https://github.com/Gallevy/hermex/blob/8ee70b5ab91187f54976f1274c2479e5f8b1a78a/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/8ee70b5ab91187f54976f1274c2479e5f8b1a78a/fixtures/cases/lockfile-yarn.md))
+
+<sub>Reproduce locally: `pnpm run test:output -- --filter lockfile-yarn`</sub>
+
+## Config
+
+None. `src/config/loader.ts` looks for `hermex.config.ts` in the working directory and does not walk up, so this case runs on the built-in schema defaults.
+
+## Full output
+
+<details><summary><code>stdout.json</code></summary>
+
+```json
+{
+  "version": "<version>",
   "summary": {
     "filesAnalyzed": 1,
     "totalImports": 4,
@@ -247,10 +220,21 @@ nav { margin-bottom:1.5rem; font-size:.9rem; }</style>
       "warningRuleViolations": 0
     }
   }
-}</code></pre></details>
-<details><summary>stderr.txt</summary><pre><code>hermex v&lt;version&gt;
+}
+```
+
+</details>
+
+<details><summary><code>stderr.txt</code></summary>
+
+```text
+hermex v<version>
 - Parsing lockfile...
 ✔ Found yarn lockfile (supports: v1, v2+) - 7 packages
 ✔ Found 1 files
-✔ Analysis complete! Analyzed 1/1 files</code></pre></details>
-</body></html>
+✔ Analysis complete! Analyzed 1/1 files
+```
+
+</details>
+
+{% endraw %}
