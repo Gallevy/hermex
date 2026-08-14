@@ -8,13 +8,13 @@ title: "release-age-root-scope — output review"
 
 # `release-age-root-scope`
 
-**unchanged**
+_unchanged_
 
 **Asserts** — scope: root enforces only the direct copy, and still surfaces the overdue nested copy as an advisory breach rather than hiding it.
 
 **Ran** `hermex comply` in `fixtures/repos/version-conflict` → exit 1, as asserted
 
-**Config** [`fixtures/repos/version-conflict/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/7aa059ebc2162d3ae190943fab129948e0d7bdfb/fixtures/repos/version-conflict/hermex.config.ts) · **Fixture** [`fixtures/repos/version-conflict`](https://github.com/Gallevy/hermex/blob/7aa059ebc2162d3ae190943fab129948e0d7bdfb/fixtures/repos/version-conflict) ([overview](https://github.com/Gallevy/hermex/blob/7aa059ebc2162d3ae190943fab129948e0d7bdfb/fixtures/repos/version-conflict/README.md)) · **Case** [`release-age-root-scope`](https://github.com/Gallevy/hermex/blob/7aa059ebc2162d3ae190943fab129948e0d7bdfb/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/7aa059ebc2162d3ae190943fab129948e0d7bdfb/fixtures/cases/release-age-root-scope.md))
+**Config** [`fixtures/repos/version-conflict/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/c304bd2a3ce58f52f2a38ce49a358f2325ff3395/fixtures/repos/version-conflict/hermex.config.ts) · **Fixture** [`fixtures/repos/version-conflict`](https://github.com/Gallevy/hermex/blob/c304bd2a3ce58f52f2a38ce49a358f2325ff3395/fixtures/repos/version-conflict) ([overview](https://github.com/Gallevy/hermex/blob/c304bd2a3ce58f52f2a38ce49a358f2325ff3395/fixtures/repos/version-conflict/README.md)) · **Case** [`release-age-root-scope`](https://github.com/Gallevy/hermex/blob/c304bd2a3ce58f52f2a38ce49a358f2325ff3395/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/c304bd2a3ce58f52f2a38ce49a358f2325ff3395/fixtures/cases/release-age-root-scope.md))
 
 **Registry** offline, served from `fixtures/registry/timelines.ts` — no network
 
@@ -22,7 +22,7 @@ title: "release-age-root-scope — output review"
 
 ## Config
 
-[`fixtures/repos/version-conflict/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/7aa059ebc2162d3ae190943fab129948e0d7bdfb/fixtures/repos/version-conflict/hermex.config.ts)
+[`fixtures/repos/version-conflict/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/c304bd2a3ce58f52f2a38ce49a358f2325ff3395/fixtures/repos/version-conflict/hermex.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../../../src/config/types.ts';
@@ -60,7 +60,7 @@ export default {
 
 ## Full output
 
-<details><summary><code>stdout.txt</code></summary>
+<details markdown="1"><summary><code>stdout.txt</code></summary>
 
 ```text
 hermex v<version>
@@ -91,7 +91,7 @@ Total: 2 packages
 
 </details>
 
-<details><summary><code>stderr.txt</code></summary>
+<details markdown="1"><summary><code>stderr.txt</code></summary>
 
 ```text
 

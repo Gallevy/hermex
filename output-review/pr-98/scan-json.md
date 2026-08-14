@@ -8,19 +8,19 @@ title: "scan-json — output review"
 
 # `scan-json`
 
-**unchanged**
+_unchanged_
 
 **Asserts** — The full JSON contract: summary.patternCounts (#80), every owned package in packages[], de-duplicated components (#78, #79), and the compliance block (#55).
 
 **Ran** `hermex scan --format json` in `fixtures/` → exit 0, as asserted
 
-**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/7aa059ebc2162d3ae190943fab129948e0d7bdfb/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/7aa059ebc2162d3ae190943fab129948e0d7bdfb/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/7aa059ebc2162d3ae190943fab129948e0d7bdfb/fixtures/README.md)) · **Case** [`scan-json`](https://github.com/Gallevy/hermex/blob/7aa059ebc2162d3ae190943fab129948e0d7bdfb/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/7aa059ebc2162d3ae190943fab129948e0d7bdfb/fixtures/cases/scan-json.md))
+**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/c304bd2a3ce58f52f2a38ce49a358f2325ff3395/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/c304bd2a3ce58f52f2a38ce49a358f2325ff3395/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/c304bd2a3ce58f52f2a38ce49a358f2325ff3395/fixtures/README.md)) · **Case** [`scan-json`](https://github.com/Gallevy/hermex/blob/c304bd2a3ce58f52f2a38ce49a358f2325ff3395/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/c304bd2a3ce58f52f2a38ce49a358f2325ff3395/fixtures/cases/scan-json.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter scan-json`</sub>
 
 ## Config
 
-[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/7aa059ebc2162d3ae190943fab129948e0d7bdfb/fixtures/hermex.config.ts)
+[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/c304bd2a3ce58f52f2a38ce49a358f2325ff3395/fixtures/hermex.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../src/config/types.ts';
@@ -97,7 +97,7 @@ export default {
 
 ## Full output
 
-<details><summary><code>stdout.json</code></summary>
+<details markdown="1"><summary><code>stdout.json</code></summary>
 
 ```json
 {
@@ -505,7 +505,7 @@ export default {
 
 </details>
 
-<details><summary><code>stderr.txt</code></summary>
+<details markdown="1"><summary><code>stderr.txt</code></summary>
 
 ```text
 hermex v<version>

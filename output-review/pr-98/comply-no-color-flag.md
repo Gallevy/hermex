@@ -8,13 +8,13 @@ title: "comply-no-color-flag — output review"
 
 # `comply-no-color-flag`
 
-**unchanged**
+_unchanged_
 
 **Asserts** — --no-color wins over FORCE_COLOR, so the CI-facing output carries no escape sequences even on a colour-capable runner.
 
 **Ran** `hermex comply --no-color` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/7aa059ebc2162d3ae190943fab129948e0d7bdfb/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/7aa059ebc2162d3ae190943fab129948e0d7bdfb/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/7aa059ebc2162d3ae190943fab129948e0d7bdfb/fixtures/README.md)) · **Case** [`comply-no-color-flag`](https://github.com/Gallevy/hermex/blob/7aa059ebc2162d3ae190943fab129948e0d7bdfb/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/7aa059ebc2162d3ae190943fab129948e0d7bdfb/fixtures/cases/comply-no-color-flag.md))
+**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/c304bd2a3ce58f52f2a38ce49a358f2325ff3395/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/c304bd2a3ce58f52f2a38ce49a358f2325ff3395/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/c304bd2a3ce58f52f2a38ce49a358f2325ff3395/fixtures/README.md)) · **Case** [`comply-no-color-flag`](https://github.com/Gallevy/hermex/blob/c304bd2a3ce58f52f2a38ce49a358f2325ff3395/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/c304bd2a3ce58f52f2a38ce49a358f2325ff3395/fixtures/cases/comply-no-color-flag.md))
 
 **Environment** `NO_COLOR` unset, `FORCE_COLOR=3`
 
@@ -22,7 +22,7 @@ title: "comply-no-color-flag — output review"
 
 ## Config
 
-[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/7aa059ebc2162d3ae190943fab129948e0d7bdfb/fixtures/hermex.config.ts)
+[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/c304bd2a3ce58f52f2a38ce49a358f2325ff3395/fixtures/hermex.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../src/config/types.ts';
@@ -99,7 +99,7 @@ export default {
 
 ## Full output
 
-<details><summary><code>stdout.txt</code></summary>
+<details markdown="1"><summary><code>stdout.txt</code></summary>
 
 ```text
 hermex v<version>
@@ -151,7 +151,7 @@ Caused by:
 
 </details>
 
-<details><summary><code>stderr.txt</code></summary>
+<details markdown="1"><summary><code>stderr.txt</code></summary>
 
 ```text
 
@@ -159,7 +159,7 @@ Caused by:
 
 </details>
 
-<details><summary><code>stdout.ansi.txt</code></summary>
+<details markdown="1"><summary><code>stdout.ansi.txt</code></summary>
 
 ```text
 hermex v<version>

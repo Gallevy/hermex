@@ -8,13 +8,13 @@ title: "scan-human-minimal — output review"
 
 # `scan-human-minimal`
 
-**unchanged**
+_unchanged_
 
 **Asserts** — Section toggles actually suppress output — every section off except the summary (#63).
 
 **Ran** `hermex scan --config configs/minimal.config.ts` in `fixtures/` → exit 0, as asserted
 
-**Config** [`fixtures/configs/minimal.config.ts`](https://github.com/Gallevy/hermex/blob/7aa059ebc2162d3ae190943fab129948e0d7bdfb/fixtures/configs/minimal.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/7aa059ebc2162d3ae190943fab129948e0d7bdfb/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/7aa059ebc2162d3ae190943fab129948e0d7bdfb/fixtures/README.md)) · **Case** [`scan-human-minimal`](https://github.com/Gallevy/hermex/blob/7aa059ebc2162d3ae190943fab129948e0d7bdfb/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/7aa059ebc2162d3ae190943fab129948e0d7bdfb/fixtures/cases/scan-human-minimal.md))
+**Config** [`fixtures/configs/minimal.config.ts`](https://github.com/Gallevy/hermex/blob/c304bd2a3ce58f52f2a38ce49a358f2325ff3395/fixtures/configs/minimal.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/c304bd2a3ce58f52f2a38ce49a358f2325ff3395/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/c304bd2a3ce58f52f2a38ce49a358f2325ff3395/fixtures/README.md)) · **Case** [`scan-human-minimal`](https://github.com/Gallevy/hermex/blob/c304bd2a3ce58f52f2a38ce49a358f2325ff3395/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/c304bd2a3ce58f52f2a38ce49a358f2325ff3395/fixtures/cases/scan-human-minimal.md))
 
 **Must not appear anywhere in stdout** `📦 Packages`, `⚛️ Components`, `🔍 Rules`, `⚖️ Versus`
 
@@ -22,7 +22,7 @@ title: "scan-human-minimal — output review"
 
 ## Config
 
-[`fixtures/configs/minimal.config.ts`](https://github.com/Gallevy/hermex/blob/7aa059ebc2162d3ae190943fab129948e0d7bdfb/fixtures/configs/minimal.config.ts)
+[`fixtures/configs/minimal.config.ts`](https://github.com/Gallevy/hermex/blob/c304bd2a3ce58f52f2a38ce49a358f2325ff3395/fixtures/configs/minimal.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../../src/config/types.ts';
@@ -50,7 +50,7 @@ export default {
 
 ## Full output
 
-<details><summary><code>stdout.txt</code></summary>
+<details markdown="1"><summary><code>stdout.txt</code></summary>
 
 ```text
 hermex v<version>
@@ -89,7 +89,7 @@ Caused by:
 
 </details>
 
-<details><summary><code>stderr.txt</code></summary>
+<details markdown="1"><summary><code>stderr.txt</code></summary>
 
 ```text
 
