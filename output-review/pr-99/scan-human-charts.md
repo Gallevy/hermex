@@ -8,19 +8,19 @@ title: "scan-human-charts — output review"
 
 # `scan-human-charts`
 
-**unchanged**
+_unchanged_
 
 **Asserts** — The bar-chart renderer: bar scaling and label alignment for packages, components and patterns.
 
 **Ran** `hermex scan --config configs/charts.config.ts` in `fixtures/` → exit 0, as asserted
 
-**Config** [`fixtures/configs/charts.config.ts`](https://github.com/Gallevy/hermex/blob/8ee70b5ab91187f54976f1274c2479e5f8b1a78a/fixtures/configs/charts.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/8ee70b5ab91187f54976f1274c2479e5f8b1a78a/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/8ee70b5ab91187f54976f1274c2479e5f8b1a78a/fixtures/README.md)) · **Case** [`scan-human-charts`](https://github.com/Gallevy/hermex/blob/8ee70b5ab91187f54976f1274c2479e5f8b1a78a/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/8ee70b5ab91187f54976f1274c2479e5f8b1a78a/fixtures/cases/scan-human-charts.md))
+**Config** [`fixtures/configs/charts.config.ts`](https://github.com/Gallevy/hermex/blob/c28ae141f365a8d89b1272f9a9b75f779e5ffe50/fixtures/configs/charts.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/c28ae141f365a8d89b1272f9a9b75f779e5ffe50/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/c28ae141f365a8d89b1272f9a9b75f779e5ffe50/fixtures/README.md)) · **Case** [`scan-human-charts`](https://github.com/Gallevy/hermex/blob/c28ae141f365a8d89b1272f9a9b75f779e5ffe50/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/c28ae141f365a8d89b1272f9a9b75f779e5ffe50/fixtures/cases/scan-human-charts.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter scan-human-charts`</sub>
 
 ## Config
 
-[`fixtures/configs/charts.config.ts`](https://github.com/Gallevy/hermex/blob/8ee70b5ab91187f54976f1274c2479e5f8b1a78a/fixtures/configs/charts.config.ts)
+[`fixtures/configs/charts.config.ts`](https://github.com/Gallevy/hermex/blob/c28ae141f365a8d89b1272f9a9b75f779e5ffe50/fixtures/configs/charts.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../../src/config/types.ts';
@@ -48,7 +48,7 @@ export default {
 
 ## Full output
 
-<details><summary><code>stdout.txt</code></summary>
+<details markdown="1"><summary><code>stdout.txt</code></summary>
 
 ```text
 hermex v<version>
@@ -188,7 +188,7 @@ Portal Usage            █░░░░░░░░░░░░░░░░░�
 
 </details>
 
-<details><summary><code>stderr.txt</code></summary>
+<details markdown="1"><summary><code>stderr.txt</code></summary>
 
 ```text
 

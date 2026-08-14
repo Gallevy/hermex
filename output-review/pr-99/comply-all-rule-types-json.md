@@ -8,19 +8,19 @@ title: "comply-all-rule-types-json — output review"
 
 # `comply-all-rule-types-json`
 
-**unchanged**
+_unchanged_
 
 **Asserts** — The machine-readable shape of every rule type: fieldPath and actualValue on package-field hits, installedRange/requiredRange on engine_version, matchedFiles on codeowners. Also where #95 is visible — the two codeowners entries are byte-identical apart from matchedFiles.
 
 **Ran** `hermex comply --format json` in `fixtures/repos/all-rule-types` → exit 1, as asserted
 
-**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/8ee70b5ab91187f54976f1274c2479e5f8b1a78a/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/8ee70b5ab91187f54976f1274c2479e5f8b1a78a/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/8ee70b5ab91187f54976f1274c2479e5f8b1a78a/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types-json`](https://github.com/Gallevy/hermex/blob/8ee70b5ab91187f54976f1274c2479e5f8b1a78a/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/8ee70b5ab91187f54976f1274c2479e5f8b1a78a/fixtures/cases/comply-all-rule-types-json.md))
+**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/c28ae141f365a8d89b1272f9a9b75f779e5ffe50/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/c28ae141f365a8d89b1272f9a9b75f779e5ffe50/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/c28ae141f365a8d89b1272f9a9b75f779e5ffe50/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types-json`](https://github.com/Gallevy/hermex/blob/c28ae141f365a8d89b1272f9a9b75f779e5ffe50/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/c28ae141f365a8d89b1272f9a9b75f779e5ffe50/fixtures/cases/comply-all-rule-types-json.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-all-rule-types-json`</sub>
 
 ## Config
 
-[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/8ee70b5ab91187f54976f1274c2479e5f8b1a78a/fixtures/repos/all-rule-types/hermex.config.ts)
+[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/c28ae141f365a8d89b1272f9a9b75f779e5ffe50/fixtures/repos/all-rule-types/hermex.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../../../src/config/types.ts';
@@ -95,7 +95,7 @@ export default {
 
 ## Full output
 
-<details><summary><code>stdout.json</code></summary>
+<details markdown="1"><summary><code>stdout.json</code></summary>
 
 ```json
 {
@@ -349,7 +349,7 @@ export default {
 
 </details>
 
-<details><summary><code>stderr.txt</code></summary>
+<details markdown="1"><summary><code>stderr.txt</code></summary>
 
 ```text
 hermex v<version>

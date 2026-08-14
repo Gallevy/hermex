@@ -8,17 +8,17 @@ title: "Output review"
 
 26 cases · 2 changed · 1 invariant breach(es)
 
-> [!WARNING]
-> **Invariants**
-> - `suppressed-sections-stay-absent` — a section switched off in config leaves no trace in the output at all (#63).
->   - scan-human-minimal: "📦 Packages" is still present in stdout
+<div style="border-left:4px solid #cf222e;background:#ffebe9;color:#1f2328;padding:0.75rem 1rem;border-radius:0 6px 6px 0;margin:1rem 0">
+<strong>⚠ Invariants broken</strong>
+<ul><li><code>suppressed-sections-stay-absent</code> — a section switched off in config leaves no trace in the output at all (#63).<ul><li>scan-human-minimal: "📦 Packages" is still present in stdout</li></ul></li></ul>
+</div>
 
 ## Changed
 
 | Case | Status | Proves |
 | --- | --- | --- |
-| [`scan-human-minimal`](./scan-human-minimal.html) | **changed**: stdout.txt | Section toggles actually suppress output — every section off except the summary (#63). |
-| [`parse-errors`](./parse-errors.html) | **changed**: stdout.txt | The parse-error report, scoped to a repo of nothing but an unparseable file so the block is not buried (#13). |
+| [`scan-human-minimal`](./scan-human-minimal.html) | **changed** +18 −0 | Section toggles actually suppress output — every section off except the summary (#63). |
+| [`parse-errors`](./parse-errors.html) | **changed** +18 −0 | The parse-error report, scoped to a repo of nothing but an unparseable file so the block is not buried (#13). |
 
 ## All cases
 
@@ -27,7 +27,7 @@ title: "Output review"
 | [`scan-human-default`](./scan-human-default.html) | unchanged | Baseline human output: the sections a repo gets with no output config of its own. |
 | [`scan-human-all-sections`](./scan-human-all-sections.html) | unchanged | Every human section rendered at once, including details and patterns, which the default config leaves off. |
 | [`scan-human-charts`](./scan-human-charts.html) | unchanged | The bar-chart renderer: bar scaling and label alignment for packages, components and patterns. |
-| [`scan-human-minimal`](./scan-human-minimal.html) | **changed**: stdout.txt | Section toggles actually suppress output — every section off except the summary (#63). |
+| [`scan-human-minimal`](./scan-human-minimal.html) | **changed** +18 −0 | Section toggles actually suppress output — every section off except the summary (#63). |
 | [`scan-json`](./scan-json.html) | unchanged | The full JSON contract: summary.patternCounts (#80), every owned package in packages[], de-duplicated components (#78, #79), and the compliance block (#55). |
 | [`scan-json-toggles`](./scan-json-toggles.html) | unchanged | What output.* toggles do to --format json: today, nothing (#91). The payload below is emitted with every section switched off, yet still carries packages, components, versus and ruleViolations in full. Pair it with scan-human-minimal to see the two formats diverge; when #91 lands, this baseline shrinking is the proof. |
 | [`comply-human-pass`](./comply-human-pass.html) | unchanged | A repo that satisfies every rule: the clean verdict wording and exit 0. |
@@ -47,7 +47,7 @@ title: "Output review"
 | [`lockfile-npm`](./lockfile-npm.html) | unchanged | package-lock.json produces the same inventory as its siblings. |
 | [`lockfile-yarn`](./lockfile-yarn.html) | unchanged | yarn.lock produces the same inventory as its siblings. |
 | [`lockfile-pnpm`](./lockfile-pnpm.html) | unchanged | pnpm-lock.yaml produces the same inventory as its siblings. |
-| [`parse-errors`](./parse-errors.html) | **changed**: stdout.txt | The parse-error report, scoped to a repo of nothing but an unparseable file so the block is not buried (#13). |
+| [`parse-errors`](./parse-errors.html) | **changed** +18 −0 | The parse-error report, scoped to a repo of nothing but an unparseable file so the block is not buried (#13). |
 | [`comply-color`](./comply-color.html) | unchanged | The coloured path a developer actually sees in a terminal. Captured raw, so escape sequences are part of the diff. |
 | [`comply-no-color-flag`](./comply-no-color-flag.html) | unchanged | --no-color wins over FORCE_COLOR, so the CI-facing output carries no escape sequences even on a colour-capable runner. |
 
