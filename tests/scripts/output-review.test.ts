@@ -4,6 +4,7 @@ import {
   buildSite,
   caseDoc,
   diffHunks,
+  INVARIANTS,
   scrub,
   unifiedDiff,
 } from '../../scripts/output-review';
@@ -396,6 +397,50 @@ describe('buildSite', () => {
       ).get('configured.md') ?? '';
     expect(page).toContain('## Config');
     expect(page).toContain('HermexConfigInput');
+  });
+
+  /**
+   * `> [!WARNING]` is a github.com extension, not Markdown. Jekyll prints it
+   * as literal text, which is how a broken invariant — the loudest thing
+   * this tool has to say — came out as a grey blockquote reading "[!WARNING]".
+   */
+  it('renders breaches as an HTML callout rather than a GitHub alert', () => {
+    const breach = {
+      invariant: INVARIANTS[0],
+      detail: 'alpha disagrees with beta',
+    };
+    const index = buildSite(results, [breach], null).get('index.md') ?? '';
+    expect(index).not.toContain('[!WARNING]');
+    expect(index).toContain('#cf222e');
+    expect(index).toContain('alpha disagrees with beta');
+  });
+
+  it('escapes breach text so a case name cannot break the callout', () => {
+    const breach = {
+      invariant: INVARIANTS[0],
+      detail: 'saw <script>alert(1)</script>',
+    };
+    const index = buildSite(results, [breach], null).get('index.md') ?? '';
+    expect(index).not.toContain('<script>');
+    expect(index).toContain('&lt;script&gt;');
+  });
+
+  it('heads a case page with the verdict alone, in italics', () => {
+    // Which artifact moved is answered by the diff below it; naming it in
+    // the headline is a detail competing with the thing it describes.
+    const beta = buildSite(results, [], null).get('beta.md') ?? '';
+    expect(beta).toContain('_changed_');
+    expect(beta).not.toContain('_changed: stdout.txt_');
+  });
+
+  /**
+   * kramdown treats the contents of a block-level HTML element as literal
+   * HTML unless told otherwise, so without `markdown="1"` every artifact
+   * rendered as one run-on line of backticks instead of a code block.
+   */
+  it('marks the artifact blocks so kramdown renders the fences inside', () => {
+    const alpha = buildSite(results, [], null).get('alpha.md') ?? '';
+    expect(alpha).toContain('<details markdown="1">');
   });
 
   it('says so plainly when a case runs on schema defaults', () => {

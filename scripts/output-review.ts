@@ -1004,20 +1004,64 @@ function checkInvariants(results: CaseResult[], full: boolean): Breach[] {
   return breaches;
 }
 
-/** The Warnings block shared by the job summary and the PR comment. */
-function renderBreaches(breaches: Breach[]): string[] {
-  if (breaches.length === 0) return [];
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
 
-  const lines = ['> [!WARNING]', '> **Invariants**'];
-  for (const invariant of INVARIANTS) {
-    const mine = breaches.filter((b) => b.invariant === invariant);
-    if (mine.length === 0) continue;
-    lines.push(
-      `> - \`${invariant.name}\`${invariant.blocking ? '' : ' _(advisory)_'} — ${invariant.guarantees}.`,
-    );
-    for (const breach of mine) lines.push(`>   - ${breach.detail}`);
+/** Which renderer will read this — they do not agree about callouts. */
+type Audience = 'github' | 'jekyll';
+
+/**
+ * The broken-invariants block.
+ *
+ * `> [!WARNING]` is a github.com extension, not Markdown: GitHub renders it
+ * as a red callout, and every other renderer prints the literal text. The
+ * pages are built by Jekyll, so they get an HTML callout with inline styles
+ * instead — inline rather than a stylesheet, because a stylesheet is the
+ * thing the Markdown rewrite existed to delete.
+ */
+function renderBreaches(
+  breaches: Breach[],
+  audience: Audience = 'github',
+): string[] {
+  if (breaches.length === 0) return [];
+  const grouped = INVARIANTS.map((invariant) => ({
+    invariant,
+    mine: breaches.filter((breach) => breach.invariant === invariant),
+  })).filter((entry) => entry.mine.length > 0);
+
+  if (audience === 'github') {
+    const lines = ['> [!WARNING]', '> **Invariants**'];
+    for (const { invariant, mine } of grouped) {
+      lines.push(
+        `> - \`${invariant.name}\`${invariant.blocking ? '' : ' _(advisory)_'} — ${invariant.guarantees}.`,
+      );
+      for (const breach of mine) lines.push(`>   - ${breach.detail}`);
+    }
+    return [...lines, ''];
   }
-  return [...lines, ''];
+
+  const items = grouped.map(({ invariant, mine }) => {
+    const details = mine
+      .map((breach) => `<li>${escapeHtml(breach.detail)}</li>`)
+      .join('');
+    return (
+      `<li><code>${escapeHtml(invariant.name)}</code>` +
+      `${invariant.blocking ? '' : ' <em>(advisory)</em>'} — ` +
+      `${escapeHtml(invariant.guarantees)}.<ul>${details}</ul></li>`
+    );
+  });
+  return [
+    '<div style="border-left:4px solid #cf222e;background:#ffebe9;color:#1f2328;' +
+      'padding:0.75rem 1rem;border-radius:0 6px 6px 0;margin:1rem 0">',
+    '<strong>⚠ Invariants broken</strong>',
+    `<ul>${items.join('')}</ul>`,
+    '</div>',
+    '',
+  ];
 }
 
 // ── Reporting ────────────────────────────────────────────────────────────────
@@ -1037,6 +1081,20 @@ function statusOf(result: CaseResult): string {
   if (result.added.length > 0) parts.push(`+${result.added.join(', +')}`);
   if (result.removed.length > 0) parts.push(`-${result.removed.join(', -')}`);
   return `changed: ${parts.join('; ')}`;
+}
+
+/**
+ * The verdict alone — `changed`, not `changed: stdout.txt`.
+ *
+ * Which artifact moved is answered by the diff two inches below it, so
+ * naming it in the headline is a detail competing with the thing it
+ * describes.
+ */
+function shortStatus(result: CaseResult): string {
+  if (result.exitMismatch) {
+    return `exit ${result.exitMismatch.actual}, expected ${result.exitMismatch.expected}`;
+  }
+  return isClean(result) ? 'unchanged' : 'changed';
 }
 
 /** The same status, emphasized for a table cell that renders markdown. */
@@ -1404,7 +1462,12 @@ const RAW_CLOSE = '{% endraw %}';
  * layout to pick it up. `jekyll-theme-primer` is GitHub's own — so a case
  * page looks like the rest of GitHub without a line of CSS here.
  */
-export const SITE_CONFIG = ['theme: jekyll-theme-primer', ''].join('\n');
+export const SITE_CONFIG = [
+  'theme: jekyll-theme-primer',
+  'title: hermex output review',
+  'description: What the CLI actually printed, one page per case.',
+  '',
+].join('\n');
 
 function frontMatter(title: string): string[] {
   // Quoted and escaped: a case name is safe, but `proves` text is not, and a
@@ -1467,8 +1530,14 @@ function caseBody(result: CaseResult, base: string | null): string[] {
   lines.push('## Full output', '');
   for (const [file, content] of Object.entries(result.artifacts)) {
     if (file === 'exit-code.txt') continue;
+    // `markdown="1"` is what makes the fenced block inside actually render.
+    // kramdown — which is what GitHub Pages runs — treats the contents of a
+    // block-level HTML element as literal HTML unless told otherwise, so
+    // without it every artifact came out as one run-on line of backticks.
+    // GitHub's own renderer processes the inner Markdown regardless and
+    // drops the attribute, so the same string works in the job summary.
     lines.push(
-      `<details><summary><code>${file}</code></summary>`,
+      `<details markdown="1"><summary><code>${file}</code></summary>`,
       '',
       '```' + fence(file),
       forSummary(content),
@@ -1481,12 +1550,13 @@ function caseBody(result: CaseResult, base: string | null): string[] {
   return lines;
 }
 
-function statusTable(results: CaseResult[], link: boolean): string[] {
+function statusTable(results: CaseResult[]): string[] {
   const rows = results.map((result) => {
-    const name = link
-      ? `[\`${result.fixture.name}\`](./${encodeURIComponent(result.fixture.name)}.html)`
-      : `\`${result.fixture.name}\``;
-    return `| ${name} | ${emphasizedStatus(result)} | ${result.fixture.proves} |`;
+    const name = `[\`${result.fixture.name}\`](./${encodeURIComponent(result.fixture.name)}.html)`;
+    const status = isClean(result)
+      ? shortStatus(result)
+      : `**${shortStatus(result)}** ${caseTotals(result)}`;
+    return `| ${name} | ${status} | ${result.fixture.proves} |`;
   });
   return ['| Case | Status | Proves |', '| --- | --- | --- |', ...rows, ''];
 }
@@ -1507,13 +1577,13 @@ export function buildSite(
     '',
     `${results.length} cases · ${differing.length} changed · ${breaches.length} invariant breach(es)`,
     '',
-    ...renderBreaches(breaches),
+    ...renderBreaches(breaches, 'jekyll'),
     ...(differing.length > 0
-      ? ['## Changed', '', ...statusTable(differing, true)]
+      ? ['## Changed', '', ...statusTable(differing)]
       : ['Every case matches its baseline.', '']),
     '## All cases',
     '',
-    ...statusTable(results, true),
+    ...statusTable(results),
     RAW_CLOSE,
   ];
   pages.set('index.md', index.join('\n'));
@@ -1526,7 +1596,7 @@ export function buildSite(
       '',
       `# \`${result.fixture.name}\``,
       '',
-      `**${statusOf(result)}**`,
+      `_${shortStatus(result)}_`,
       '',
       ...caseBody(result, base),
       RAW_CLOSE,

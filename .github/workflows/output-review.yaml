@@ -134,6 +134,28 @@ jobs:
           cp -R "$site/." "$pages/$TARGET/"
 
           cd "$pages"
+
+          # A landing page at the site root. The theme's header title links
+          # there, so without it every case page has a 404 in its corner.
+          # Rebuilt from what is actually on the branch rather than appended
+          # to, so a removed directory does not leave a dead row behind.
+          shopt -s nullglob
+          {
+            echo '---'
+            echo 'layout: default'
+            echo 'title: "hermex output review"'
+            echo '---'
+            echo
+            echo '# hermex output review'
+            echo
+            echo 'What the hermex CLI actually printed, one page per case, published per pull request by `.github/workflows/output-review.yaml`.'
+            echo
+            for dir in output-review/pr-*/; do
+              number="${dir#output-review/pr-}"
+              number="${number%/}"
+              echo "- [Pull request #${number}](./output-review/pr-${number}/index.html)"
+            done
+          } > index.md
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
