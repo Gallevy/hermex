@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>comply-human-fail — output review</title>
+<style>:root { color-scheme: light dark;
+  --bg:#fff; --fg:#1f2328; --muted:#59636e; --line:#d1d9e0; --card:#f6f8fa;
+  --add:#1a7f37; --addbg:#e6ffec; --del:#cf222e; --delbg:#ffebe9; --meta:#8250df; }
+@media (prefers-color-scheme: dark) { :root {
+  --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1; --line:#3d444d; --card:#151b23;
+  --add:#3fb950; --addbg:#12261e; --del:#f85149; --delbg:#25171c; --meta:#ab7df8; } }
+* { box-sizing: border-box; }
+body { margin:0 auto; padding:2rem 1.25rem 4rem; max-width:64rem; background:var(--bg);
+  color:var(--fg); font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; }
+h1 { font-size:1.6rem; margin:0 0 .25rem; }
+h2 { font-size:1.15rem; margin:2rem 0 .75rem; padding-bottom:.3rem; border-bottom:1px solid var(--line); }
+a { color:inherit; }
+code, pre { font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace; font-size:13px; }
+code { background:var(--card); padding:.15em .35em; border-radius:4px; }
+pre { background:var(--card); border:1px solid var(--line); border-radius:6px;
+  padding:.75rem 1rem; overflow-x:auto; margin:0; }
+pre code { background:none; padding:0; }
+table { border-collapse:collapse; width:100%; margin:.5rem 0 1rem; display:block; overflow-x:auto; }
+th, td { border:1px solid var(--line); padding:.4rem .6rem; text-align:left; vertical-align:top; }
+th { background:var(--card); font-size:.85rem; }
+.muted { color:var(--muted); }
+.sub { color:var(--muted); font-size:.85rem; }
+.pill { display:inline-block; padding:.05rem .5rem; border-radius:999px; font-size:.8rem;
+  border:1px solid var(--line); background:var(--card); }
+.pill.changed { color:var(--del); border-color:var(--del); }
+.pill.clean { color:var(--add); border-color:var(--add); }
+.warn { border-left:4px solid var(--del); background:var(--delbg); padding:.75rem 1rem;
+  border-radius:0 6px 6px 0; margin:1rem 0; }
+.diff .a { color:var(--add); background:var(--addbg); display:block; }
+.diff .d { color:var(--del); background:var(--delbg); display:block; }
+.diff .h { color:var(--meta); display:block; margin-top:.4rem; }
+.diff .f { color:var(--muted); display:block; }
+details { border:1px solid var(--line); border-radius:6px; padding:.5rem .75rem; margin:.5rem 0; }
+summary { cursor:pointer; font-weight:600; }
+details[open] summary { margin-bottom:.5rem; }
+nav { margin-bottom:1.5rem; font-size:.9rem; }</style>
+</head><body>
+<nav><a href="./index.html">← all cases</a></nav>
+<h1><code>comply-human-fail</code></h1>
+<p><span class="pill clean">unchanged</span></p>
+<p>The rules table on a failing repo: row ordering, severity badges, the error/warning tally, and exit 1.</p>
+
+<table><tbody>
+<tr><th>Command</th><td><code>hermex comply</code></td></tr>
+<tr><th>Working directory</th><td><code>fixtures/</code></td></tr>
+<tr><th>Config</th><td><code>fixtures/hermex.config.ts</code></td></tr>
+<tr><th>Fixture</th><td><code>fixtures</code></td></tr>
+<tr><th>Exit code</th><td><code>1</code> <span class="muted">as asserted</span></td></tr>
+</tbody></table>
+<p class="sub">Reproduce locally: <code>pnpm run test:output -- --filter comply-human-fail</code></p>
+
+<h2>Full output</h2>
+<details><summary>stdout.txt</summary><pre><code>hermex v&lt;version&gt;
+- Parsing lockfile...
+✔ Found pnpm lockfile (supports: v5, v6, v9) - 5 packages
+✔ Found 18 files
+✔ Analysis complete! Analyzed 17/18 files
+
+⚠ 1 file(s) failed to parse:
+  broken/unparseable.tsx
+      x Expression expected
+   ,----
+ 1 | export const Broken = ( : : :;
+   :                         ^
+   `----
+
+
+Caused by:
+    Syntax Error
+
+
+🔍 Rules
+
+┌──────────────────┬──────────────────────────────────────────────────────┐
+│ Rule             │ Description                                          │
+├──────────────────┼──────────────────────────────────────────────────────┤
+│ forbid_packages  │ 🔴 moment is forbidden — Use date-fns or dayjs       │
+├──────────────────┼──────────────────────────────────────────────────────┤
+│ require_packages │ 🔴 typescript not installed — TypeScript is required │
+├──────────────────┼──────────────────────────────────────────────────────┤
+│ require_files    │ 🔴 .nvmrc not found                                  │
+├──────────────────┼──────────────────────────────────────────────────────┤
+│ require_files    │ 🟡 .editorconfig not found                           │
+└──────────────────┴──────────────────────────────────────────────────────┘
+
+3 errors, 1 warning
+
+⚖️ Versus
+
+  Design System Migration
+  ──────────────────────────────────────────────────
+  @design-system/foundation  ██████████████████████████████ 100.0% (33 usages)
+  @new-system/arc            ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0.0% (0 usages)
+
+
+🔴 NOT COMPLIANT
+  3 mandatory violations found</code></pre></details>
+<details><summary>stderr.txt</summary><pre><code></code></pre></details>
+</body></html>
