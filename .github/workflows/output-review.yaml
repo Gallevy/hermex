@@ -89,11 +89,18 @@ jobs:
       # One directory per PR, overwritten on each run rather than one per
       # run: a reviewer wants the current state of this PR, and a directory
       # per run would grow the branch without bound.
+      #
+      # TARGET has to be the path *under the Pages root* that
+      # OUTPUT_REVIEW_SITE resolves to, or every link in the comment 404s.
+      # With OUTPUT_REVIEW_SITE = https://<user>.github.io/hermex/output-review
+      # and Pages serving gh-pages at /, that path is output-review/pr-<n>.
+      # The `output-review/` prefix keeps the rest of the branch free for
+      # anything else the project may want to publish later.
       - name: Publish the case pages
         if: always() && vars.OUTPUT_REVIEW_SITE != '' && github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TARGET: pr-${{ github.event.pull_request.number }}
+          TARGET: output-review/pr-${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
           site="$PWD/.output-review/site"
