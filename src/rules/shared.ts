@@ -21,6 +21,23 @@ export interface RuleViolation {
   patterns: string[];
   message?: string;
   matchedFiles: string[];
+  /**
+   * How many distinct things this one violation is about — files to delete,
+   * packages to remove, files to assign an owner. Almost always 1; the
+   * exceptions are `detect_files` and `codeowners`, which fold every match
+   * into a single violation.
+   *
+   * Exists because violation *count* and problem count are different numbers
+   * and only one of them was ever visible (#83). Nine offending files report
+   * as one `detect_files` violation while four forbidden packages report as
+   * four, so `ruleViolations.length` compares policy breaches, not workload.
+   * Summing `subjectCount` compares workload.
+   *
+   * Not derivable by a consumer: the subject list lives in a different field
+   * per rule type (`matchedFiles`, `patterns`, `packageName`, `fieldPath`,
+   * or `requiredRange`), so counting it requires knowing all nine.
+   */
+  subjectCount: number;
   // engine_version only
   installedRange?: string;
   requiredRange?: string;

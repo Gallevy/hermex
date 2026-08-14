@@ -320,6 +320,7 @@ describe('aggregateReports — forbidden packages', () => {
       patterns: ['moment'],
       message: 'Use dayjs',
       matchedFiles: [],
+      subjectCount: 1,
       packageName: 'moment',
     });
   });
@@ -380,6 +381,7 @@ describe('aggregateReports — forbidden packages', () => {
         patterns: ['jest'],
         message: 'Use vitest',
         matchedFiles: [],
+        subjectCount: 1,
         packageName: 'jest',
       },
     ]);

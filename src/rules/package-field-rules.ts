@@ -61,6 +61,8 @@ export function evaluatePackageFieldRules(
         patterns: rule.patterns,
         message: rule.message,
         matchedFiles: [],
+        // Patterns are OR-ed — one unmet field requirement.
+        subjectCount: 1,
         fieldPath: mismatch?.path,
         actualValue:
           mismatch && typeof mismatch.value !== 'object'
@@ -83,6 +85,8 @@ export function evaluatePackageFieldRules(
           patterns: rule.patterns,
           message: rule.message,
           matchedFiles: [],
+          // This branch already fans out one violation per matching field.
+          subjectCount: 1,
           fieldPath: pattern,
           actualValue:
             lookup.value !== null && typeof lookup.value !== 'object'

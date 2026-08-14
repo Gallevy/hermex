@@ -54,6 +54,7 @@ describe('detectForbiddenPackages', () => {
         patterns: ['moment'],
         message: 'Use dayjs',
         matchedFiles: [],
+        subjectCount: 1,
         packageName: 'moment',
       },
     ]);
@@ -180,6 +181,7 @@ describe('detectForbiddenPackages', () => {
         patterns: ['@acme/coverager'],
         message: 'Remove deprecated internal package',
         matchedFiles: [],
+        subjectCount: 1,
         packageName: '@acme/coverager',
       },
     ]);
@@ -368,6 +370,7 @@ describe('detectRequiredPackages', () => {
         patterns: ['react'],
         message: 'Need react',
         matchedFiles: [],
+        subjectCount: 1,
       },
     ]);
   });
