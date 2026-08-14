@@ -137,14 +137,15 @@ Three surfaces, split by what stays put and what changes every run:
 | Where | Shows | For |
 | --- | --- | --- |
 | [`cases/<name>.md`](./cases/) | The **case dossier** — what it asserts, its command, config, fixture, asserted exit code, and how to run it. Committed, and generated from `cases.ts`. | Answering "what is this case?" at any time, in git, without a CI run. |
-| **The sticky PR comment** | One row per **changed** case: name, `+N −M`, and a single link. Plus a preview of the first change when three or fewer moved. | Triage — which cases moved, by how much, is that the set you expected? |
-| **A page per case** (`.output-review/site/`) | One HTML page per case with its context, full diff, and complete stdout, stderr and written files. | Reading one case, without any chance of confusing it with another. |
+| **The sticky PR comment** | One row per **changed** case: name, `+N −M`, and a single link. | Triage — which cases moved, by how much, is that the set you expected? |
+| **A page per case** (`.output-review/site/`) | One Markdown page per case with its context, **the config it ran under, inlined**, the full diff, and complete stdout, stderr and written files. | Reading one case, without any chance of confusing it with another. |
 
-The comment carries **no diffs** beyond that preview. An output change is
-rarely one line in one case — swapping a table border character rewrites
-every row of sixteen cases at once, which measured 60 KB against GitHub's
+The comment carries **no diffs at all**. An output change is rarely one line
+in one case — swapping a table border character rewrites every row of
+sixteen cases at once, which measured 60 KB against GitHub's
 65,536-character limit and was unreadable long before it would be rejected.
-So the comment is bounded by construction: one row per case, one link each.
+The comment is bounded by construction: one row per case, one link each, and
+the case page is where the reading happens.
 
 Diffs are unified format. `-` is the committed baseline, `+` is this run,
 and `@@ -12,7 +12,9 @@` is a hunk header: unchanged lines were skipped, and
@@ -170,6 +171,18 @@ The workflow then publishes each PR's pages to `gh-pages` under
 grow without bound. Leave the variable unset and nothing publishes — the
 comment links the job summary instead. Hosting is a repository setting, not
 a code change.
+
+The pages are **Markdown**, rendered by Pages' own Jekyll build with
+`jekyll-theme-primer` — GitHub's own theme, written to `_config.yml` at the
+branch root by the publish step. That is deliberate: it is the same language
+the job summary and the dossiers are written in, so all three come out of
+one renderer, and there is no stylesheet for anyone to own. Diff colouring
+comes from the ` ```diff ` fence rather than from CSS.
+
+The one Jekyll sharp edge worth knowing: **Liquid runs before Markdown**, so
+a stray `{{` in captured CLI output would fail the build for every PR at
+once. Every page body is wrapped in `{% raw %}` for exactly that reason, and
+there is a test that stops someone removing the wrapper as noise.
 
 ### Adding or changing a case
 
