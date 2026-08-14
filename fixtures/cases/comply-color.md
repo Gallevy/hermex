@@ -19,7 +19,7 @@ The coloured path a developer actually sees in a terminal. Captured raw, so esca
 
 ## Recorded output
 
-The committed baseline is [`tests/__output_baselines__/comply-color/`](../../tests/__output_baselines__/comply-color), which holds this case's stdout, stderr, exit code and any file it wrote. A change to hermex's output shows up as a diff there, once a reviewer applies `baseline:approved` and the bot regenerates it — see `.github/workflows/baseline-approve.yaml`.
+The committed baseline is [`tests/__output_baselines__/comply-color/`](../../tests/__output_baselines__/comply-color), which holds this case's stdout, stderr, exit code and any file it wrote. A change to hermex's output shows up as a diff there, in the same PR that causes it.
 
 ## Run it locally
 

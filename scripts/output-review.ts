@@ -491,7 +491,7 @@ export function caseDoc(fixture: FixtureCase): string {
   lines.push(
     '## Recorded output',
     '',
-    `The committed baseline is [\`tests/__output_baselines__/${fixture.name}/\`](${fromCaseDoc(`tests/__output_baselines__/${fixture.name}`)}), which holds this case's stdout, stderr, exit code and any file it wrote. A change to hermex's output shows up as a diff there, once a reviewer applies \`baseline:approved\` and the bot regenerates it — see \`.github/workflows/baseline-approve.yaml\`.`,
+    `The committed baseline is [\`tests/__output_baselines__/${fixture.name}/\`](${fromCaseDoc(`tests/__output_baselines__/${fixture.name}`)}), which holds this case's stdout, stderr, exit code and any file it wrote. A change to hermex's output shows up as a diff there, in the same PR that causes it.`,
     '',
     '## Run it locally',
     '',
@@ -1444,7 +1444,7 @@ function buildComment(results: CaseResult[], breaches: Breach[]): string {
     lines.push('Output is unchanged. Nothing to review.');
   } else {
     lines.push(
-      "Open a case to read its diff, its config and its full output. If every change is intended, ask a reviewer to apply the `baseline:approved` label — that regenerates and commits the baselines from this PR's own code, and this check goes green once it matches. Do not run `--update` and commit the result yourself: `tests/__output_baselines__/` only accepts bot-authored commits (see `.github/workflows/baseline-guard.yaml`).",
+      'Open a case to read its diff, its config and its full output. If every change is intended, run `pnpm run test:output -- --update` and commit the refreshed baselines — that diff is the record of what you approved, and this check goes green once it matches.',
     );
   }
   return lines.join('\n');

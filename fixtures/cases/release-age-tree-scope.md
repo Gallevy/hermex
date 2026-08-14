@@ -18,7 +18,7 @@ scope: tree enforces every resolved copy, so the nested version becomes the mand
 
 ## Recorded output
 
-The committed baseline is [`tests/__output_baselines__/release-age-tree-scope/`](../../tests/__output_baselines__/release-age-tree-scope), which holds this case's stdout, stderr, exit code and any file it wrote. A change to hermex's output shows up as a diff there, once a reviewer applies `baseline:approved` and the bot regenerates it — see `.github/workflows/baseline-approve.yaml`.
+The committed baseline is [`tests/__output_baselines__/release-age-tree-scope/`](../../tests/__output_baselines__/release-age-tree-scope), which holds this case's stdout, stderr, exit code and any file it wrote. A change to hermex's output shows up as a diff there, in the same PR that causes it.
 
 ## Run it locally
 

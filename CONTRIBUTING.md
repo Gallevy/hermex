@@ -68,32 +68,35 @@ a committed baseline.
 
 ```bash
 pnpm run test:output                  # compare against the baselines
-pnpm run test:output -- --update      # preview a refresh locally — do not commit the result
+pnpm run test:output -- --update      # refresh them after an intended change
 pnpm run test:output -- --filter comply
 ```
 
-Baselines live in `tests/__output_baselines__/<case>/`. Use `--update`
-locally to see what would change, but **do not commit that yourself** —
-`tests/__output_baselines__/` only accepts commits from the approval bot
-(enforced by `.github/workflows/baseline-guard.yaml`), so a hand-committed
-refresh fails that check regardless of whether the output is correct.
+Baselines live in `tests/__output_baselines__/<case>/`. They are committed
+on purpose: **refreshing a baseline is part of your PR diff**, which is what
+makes "is this change intended?" answerable in review.
+
+The check never trusts the committed file on its own — it re-runs the real
+CLI and diffs live output against whatever is checked in, so a stale
+baseline and a hand-typed, incorrect one are caught the same way: neither
+can pass unless it's byte-identical to what the code actually prints.
+What review adds on top is the one thing CI can't check mechanically —
+whether the new output is the output you actually want.
 
 ### It runs on every PR, and it has to pass
 
-The job runs on every pull request, posts a sticky comment with a row and a
-link per case, and is a **required check**, alongside the baseline
-authorship guard.
+There is no opt-in and no label. The job runs on every pull request, posts a
+sticky comment with a row and a link per case, and is a **required check**.
+Merging also requires one approving review — from someone other than the
+author, since GitHub doesn't let a PR approve itself — so a baseline change
+always gets read by a second person before it lands.
 
-If either is red, one of two things happened:
+If it is red, one of two things happened:
 
-1. **The output changed and the baselines have not caught up.** Read the
-   comment or the job summary and confirm every diff is what you meant.
-   Then ask a reviewer to apply the `baseline:approved` label — reviewers
-   only, deliberately, so approving an output change is a distinct act from
-   approving the code (see `.github/workflows/baseline-approve.yaml`). That
-   triggers a bot commit that regenerates the baselines from your PR's own
-   code and pushes it to the branch; both checks re-run and go green once it
-   lands.
+1. **The output changed and the baselines did not.** Read the comment or the
+   job summary, confirm every diff is what you meant, then run
+   `pnpm run test:output -- --update` and commit the result. The refreshed
+   baselines are the record of what you approved.
 2. **An invariant broke.** No baseline refresh fixes that — an invariant
    describes what must never happen, so the check stays red until the
    behaviour changes.
