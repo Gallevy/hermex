@@ -42,6 +42,8 @@ jobs:
 
       - name: Setup pnpm CLI
         uses: pnpm/action-setup@v6
+        with:
+          version: 10
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -86,6 +88,8 @@ jobs:
 
       - name: Setup pnpm CLI
         uses: pnpm/action-setup@v6
+        with:
+          version: 10
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -125,6 +129,8 @@ jobs:
 
       - name: Setup pnpm CLI
         uses: pnpm/action-setup@v6
+        with:
+          version: 10
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -174,6 +180,8 @@ jobs:
 
       - name: Setup pnpm CLI
         uses: pnpm/action-setup@v6
+        with:
+          version: 10
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
