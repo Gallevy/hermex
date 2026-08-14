@@ -2,3 +2,4 @@ hermex v<version>
 - Parsing lockfile...
 ✔ Found pnpm lockfile (supports: v5, v6, v9) - 5 packages
 ✖ No files found matching includes: no-such-directory/**/*.{tsx,jsx,ts,js}
+test line for gate verification
