@@ -85,11 +85,8 @@ whether the new output is the output you actually want.
 
 ### It runs on every PR, and it has to pass
 
-There is no opt-in and no label. The job runs on every pull request, posts a
-sticky comment with a row and a link per case, and is a **required check**.
-Merging also requires one approving review — from someone other than the
-author, since GitHub doesn't let a PR approve itself — so a baseline change
-always gets read by a second person before it lands.
+The job runs on every pull request, posts a sticky comment with a row and a
+link per case, and is a **required check**.
 
 If it is red, one of two things happened:
 
@@ -100,6 +97,27 @@ If it is red, one of two things happened:
 2. **An invariant broke.** No baseline refresh fixes that — an invariant
    describes what must never happen, so the check stays red until the
    behaviour changes.
+
+### Getting a baseline change past the `output:approved` gate
+
+`review` (above) proves the committed baseline is *true* — it can't tell you
+whether anyone actually looked at it. A required approving review doesn't
+either: a reviewer can approve a PR on the code alone without ever opening
+the output-review comment. `.github/workflows/output-approval.yaml` is the
+gate for that specifically:
+
+- It diffs `tests/__output_baselines__/` against `main`. No difference, no
+  gate — the check passes on its own.
+- A difference requires the `output:approved` label, applied by someone
+  **other than the PR author** (GitHub doesn't block self-labeling the way
+  it blocks self-approving a review, so this is enforced in the workflow).
+- A later push that touches the baselines again removes the label — an old
+  approval can't silently cover a different diff than the one it was given
+  for.
+
+So: open the PR with your refreshed baselines already committed, point a
+reviewer at the output-review comment, and ask them to apply
+`output:approved` once they've read it.
 
 ### Adding a case
 
