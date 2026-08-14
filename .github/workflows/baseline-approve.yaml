@@ -1,0 +1,100 @@
+# .github/workflows/baseline-approve.yaml
+#
+# The only path by which tests/__output_baselines__/** may change (enforced
+# by baseline-guard.yaml). The flow:
+#
+#   1. A dev's change affects hermex's output. They open a PR without
+#      touching tests/__output_baselines__/ at all.
+#   2. output-review.yaml runs, finds the PR's output no longer matches the
+#      committed baseline, and posts the diff (comment + per-case pages).
+#      Both required checks (output-review, baseline authorship guard) are
+#      red — the PR cannot merge yet.
+#   3. A reviewer reads the diff. If it's the intended change, they apply
+#      the `baseline:approved` label — which needs triage/write access, so
+#      the PR author can't self-approve their own output change by relabeling
+#      it. Applying the label is a deliberate, separate act from approving
+#      the code review.
+#   4. This workflow fires on that label, regenerates the baselines from the
+#      PR's own code (not hand-authored), pushes them as a bot commit, and
+#      removes the label. output-review.yaml re-runs on the new commit and
+#      is now green; baseline-guard.yaml is green because the only commit
+#      touching that path is the bot's.
+#
+# Same-repo branches only: GITHUB_TOKEN can push directly to a PR branch
+# from this repo, but not to a fork's branch. A fork PR falls back to
+# asking the author to run `pnpm run test:output -- --update` locally and
+# push it themselves — baseline-guard.yaml will then flag that commit for a
+# maintainer to consciously wave through by re-running this workflow
+# manually against their own checkout, same as before this existed.
+name: Baseline approve
+
+on:
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  approve:
+    if: >-
+      github.event.label.name == 'baseline:approved' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Setup pnpm CLI
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Exits non-zero on a mismatch even with --update whenever a blocking
+      # invariant fails (see scripts/output-review.ts) — that can't be
+      # absorbed by regenerating baselines, so `|| true` lets the commit
+      # step below run regardless and record whatever *did* refresh; the
+      # required checks stay red afterward if an invariant is still broken.
+      - name: Refresh baselines
+        run: pnpm run test:output -- --update || true
+
+      - name: Commit and push updated baselines
+        env:
+          APPROVER: ${{ github.event.sender.login }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/__output_baselines__
+          if git diff --quiet --cached; then
+            echo "Baselines already match; nothing to commit."
+          else
+            git commit -m "output review: refresh baselines (approved by @${APPROVER} on #${PR})"
+            git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
+          fi
+
+      - name: Remove the approval label
+        uses: actions/github-script@v8
+        with:
+          script: |
+            await github.rest.issues
+              .removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                name: 'baseline:approved',
+              })
+              .catch(() => {});

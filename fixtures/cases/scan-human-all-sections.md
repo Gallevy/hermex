@@ -17,7 +17,7 @@ Every human section rendered at once, including details and patterns, which the 
 
 ## Recorded output
 
-The committed baseline is [`tests/__output_baselines__/scan-human-all-sections/`](../../tests/__output_baselines__/scan-human-all-sections), which holds this case's stdout, stderr, exit code and any file it wrote. A change to hermex's output shows up as a diff there, in the same PR that causes it.
+The committed baseline is [`tests/__output_baselines__/scan-human-all-sections/`](../../tests/__output_baselines__/scan-human-all-sections), which holds this case's stdout, stderr, exit code and any file it wrote. A change to hermex's output shows up as a diff there, once a reviewer applies `baseline:approved` and the bot regenerates it — see `.github/workflows/baseline-approve.yaml`.
 
 ## Run it locally
 

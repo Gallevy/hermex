@@ -17,7 +17,7 @@ A pipeline failure (nothing matched `includes`) exits 2, not 1 — a consumer mu
 
 ## Recorded output
 
-The committed baseline is [`tests/__output_baselines__/comply-exit-2/`](../../tests/__output_baselines__/comply-exit-2), which holds this case's stdout, stderr, exit code and any file it wrote. A change to hermex's output shows up as a diff there, in the same PR that causes it.
+The committed baseline is [`tests/__output_baselines__/comply-exit-2/`](../../tests/__output_baselines__/comply-exit-2), which holds this case's stdout, stderr, exit code and any file it wrote. A change to hermex's output shows up as a diff there, once a reviewer applies `baseline:approved` and the bot regenerates it — see `.github/workflows/baseline-approve.yaml`.
 
 ## Run it locally
 

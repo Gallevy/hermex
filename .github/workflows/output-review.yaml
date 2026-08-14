@@ -21,10 +21,15 @@
 # did, and a wall is what people stop reading.
 #
 # This is a required check, not an advisory one. A failure means either the
-# output changed and the baselines were not refreshed in the same PR, or an
+# output changed and the baselines have not been refreshed yet, or an
 # invariant that no baseline can express has been broken. Both are things a
 # reviewer has to see before merge, so the job goes red and stays red until
-# `pnpm run test:output -- --update` is run and the diff reviewed.
+# a reviewer applies the `baseline:approved` label — see
+# baseline-approve.yaml, which regenerates and commits the baselines from
+# this PR's own code — or the invariant is fixed. baseline-guard.yaml is
+# what stops a PR from getting there any other way, e.g. by hand-editing
+# tests/__output_baselines__/ to match whatever the new code happens to
+# print.
 name: Output review
 
 on:

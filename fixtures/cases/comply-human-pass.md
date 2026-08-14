@@ -17,7 +17,7 @@ A repo that satisfies every rule: the clean verdict wording and exit 0.
 
 ## Recorded output
 
-The committed baseline is [`tests/__output_baselines__/comply-human-pass/`](../../tests/__output_baselines__/comply-human-pass), which holds this case's stdout, stderr, exit code and any file it wrote. A change to hermex's output shows up as a diff there, in the same PR that causes it.
+The committed baseline is [`tests/__output_baselines__/comply-human-pass/`](../../tests/__output_baselines__/comply-human-pass), which holds this case's stdout, stderr, exit code and any file it wrote. A change to hermex's output shows up as a diff there, once a reviewer applies `baseline:approved` and the bot regenerates it — see `.github/workflows/baseline-approve.yaml`.
 
 ## Run it locally
 
