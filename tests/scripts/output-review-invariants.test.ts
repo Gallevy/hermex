@@ -22,6 +22,7 @@ function caseResult(
     changed: [],
     added: [],
     removed: [],
+    fileDiffs: [],
     diff: '',
   };
 }
