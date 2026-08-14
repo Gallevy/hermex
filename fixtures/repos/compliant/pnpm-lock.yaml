@@ -1,0 +1,27 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      react:
+        specifier: ^18.3.0
+        version: 18.3.1
+    devDependencies:
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.2
+
+packages:
+
+  react@18.3.1:
+    resolution: {integrity: sha512-mock}
+    engines: {node: '>=0.10.0'}
+
+  typescript@5.9.2:
+    resolution: {integrity: sha512-mock}
+    engines: {node: '>=14.17'}

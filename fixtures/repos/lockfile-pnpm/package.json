@@ -1,0 +1,13 @@
+{
+  "name": "hermex-fixture-lockfile-pnpm",
+  "version": "1.0.0",
+  "private": true,
+  "description": "The pnpm arm of the lock-file parity trio. Same manifest, same source, same resolved tree as its npm and yarn siblings — only the lock format differs, so `scan --format json` must produce byte-identical stdout across all three.",
+  "license": "MIT",
+  "dependencies": {
+    "@design-system/foundation": "^2.5.0",
+    "@old-system/ui": "^1.2.3",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  }
+}

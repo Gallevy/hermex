@@ -1,0 +1,32 @@
+hermex v<version>
+- Parsing lockfile...
+✔ Found pnpm lockfile (supports: v5, v6, v9) - 5 packages
+✔ Found 18 files
+✔ Analysis complete! Analyzed 17/18 files
+
+⚠ 1 file(s) failed to parse:
+  broken/unparseable.tsx
+      x Expression expected
+   ,----
+ 1 | export const Broken = ( : : :;
+   :                         ^
+   `----
+
+
+Caused by:
+    Syntax Error
+
+
+📊 Summary
+
+┌─────────────────────┬───────┐
+│ Metric              │ Count │
+├─────────────────────┼───────┤
+│ Files Analyzed      │ 17    │
+├─────────────────────┼───────┤
+│ Packages            │ 5     │
+├─────────────────────┼───────┤
+│ External Components │ 19    │
+├─────────────────────┼───────┤
+│ Total Usages        │ 36    │
+└─────────────────────┴───────┘

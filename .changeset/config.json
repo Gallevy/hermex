@@ -1,0 +1,9 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@4.0.0/schema.json",
+  "baseBranch": "main",
+  "access": "public",
+  "changelog": ["@changesets/changelog-github", { "repo": "Gallevy/hermex" }],
+  "commit": false,
+  "updateInternalDependencies": "patch",
+  "ignore": []
+}

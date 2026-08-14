@@ -1,0 +1,62 @@
+# .github/workflows/changeset-status.yaml
+#
+# Leaves one sticky comment on every PR saying whether it carries a changeset
+# and what it would release.
+#
+# This is advisory, not a required check. Not every change needs a release —
+# docs, CI and test-only PRs legitimately carry no changeset — so a missing
+# changeset never fails CI. The comment exists so neither the author nor the
+# reviewer has to notice the absence of a file.
+#
+# Runs on pull_request_target so PRs from forks get the comment too. It only
+# checks out and reads the head ref; it never executes code from the fork, and
+# no build or test step may be added here.
+name: Changeset status
+
+on:
+  pull_request_target:
+
+# Reset permissions; every job grants only what it needs.
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+
+jobs:
+  pr-status:
+    # The Version Packages PR consumes changesets rather than adding one, so
+    # commenting on it would always report a false negative.
+    if: ${{ !startsWith(github.head_ref, 'changeset-release/') }}
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    outputs:
+      comment-body: ${{ steps.pr-status.outputs.comment-body }}
+
+    steps:
+      # Deliberately a plain checkout: on pull_request_target this lands on the
+      # base ref, and pr-status fetches the PR head into a detached worktree
+      # itself, which needs the credentials checkout persists. Do not add
+      # `persist-credentials: false` here, and do not install dependencies —
+      # this job must never execute code from the PR.
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Generate changeset status
+        id: pr-status
+        uses: changesets/action/pr-status@v2
+
+  pr-comment:
+    needs: pr-status
+    runs-on: ubuntu-latest
+
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Comment on PR
+        uses: changesets/action/pr-comment@v2
+        with:
+          body: ${{ needs.pr-status.outputs.comment-body }}

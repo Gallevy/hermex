@@ -1,0 +1,20 @@
+{
+  "name": "hermex-fixture-all-rule-types",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A repo engineered so every one of the nine rule types fires at once, which no other fixture does: `license` is missing (require_package_fields), `publishConfig.registry` is present (forbid_package_fields), engines.node is below the required range (engine_version), `build` and `test` scripts are absent (require_scripts), moment is declared (forbid_packages), typescript is not (require_packages), jest.config.js and .babelrc exist (detect_files), .nvmrc does not (require_files), and CODEOWNERS leaves one file unowned and another owned by the wrong team (codeowners, twice).",
+  "type": "module",
+  "engines": {
+    "node": ">=16"
+  },
+  "scripts": {
+    "lint": "echo fixture-lint"
+  },
+  "publishConfig": {
+    "registry": "https://npm.internal.example.com"
+  },
+  "dependencies": {
+    "moment": "^2.29.4",
+    "react": "^18.3.0"
+  }
+}

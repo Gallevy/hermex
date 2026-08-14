@@ -1,0 +1,21 @@
+{
+  "name": "hermex-fixture-compliant",
+  "version": "1.0.0",
+  "private": true,
+  "description": "The mirror image of the primary fixture repo: the same rule set from fixtures/hermex.config.ts, but every rule satisfied. Required files exist (.nvmrc, .editorconfig), required scripts exist (build, test), required package fields exist (engines, license), the required package is installed (typescript), no forbidden package is declared, and engines.node clears the >=20 range — so `comply` prints a clean verdict and exits 0.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "echo fixture-build",
+    "test": "echo fixture-test"
+  },
+  "dependencies": {
+    "react": "^18.3.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0"
+  }
+}

@@ -10,5 +10,10 @@
   "arrowParens": "always",
   "bracketSameLine": false,
   "bracketSpacing": true,
-  "ignorePatterns": ["fixtures/**", "**/*.md"]
+  "ignorePatterns": [
+    "fixtures/**",
+    "**/*.md",
+    "tests/__output_baselines__/**",
+    ".output-review/**"
+  ]
 }
