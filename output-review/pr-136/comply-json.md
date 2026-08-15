@@ -14,13 +14,13 @@ _unchanged_
 
 **Ran** `hermex comply --format json` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/ec7433dec6c9a0e272e9a087d0fc4199ce07780e/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/ec7433dec6c9a0e272e9a087d0fc4199ce07780e/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/ec7433dec6c9a0e272e9a087d0fc4199ce07780e/fixtures/README.md)) · **Case** [`comply-json`](https://github.com/Gallevy/hermex/blob/ec7433dec6c9a0e272e9a087d0fc4199ce07780e/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/ec7433dec6c9a0e272e9a087d0fc4199ce07780e/fixtures/cases/comply-json.md))
+**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/fad88ba74212aec2d7b8889c54c157ab687a2d67/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/fad88ba74212aec2d7b8889c54c157ab687a2d67/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/fad88ba74212aec2d7b8889c54c157ab687a2d67/fixtures/README.md)) · **Case** [`comply-json`](https://github.com/Gallevy/hermex/blob/fad88ba74212aec2d7b8889c54c157ab687a2d67/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/fad88ba74212aec2d7b8889c54c157ab687a2d67/fixtures/cases/comply-json.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-json`</sub>
 
 ## Config
 
-[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/ec7433dec6c9a0e272e9a087d0fc4199ce07780e/fixtures/hermex.config.ts)
+[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/fad88ba74212aec2d7b8889c54c157ab687a2d67/fixtures/hermex.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../src/config/types.ts';
@@ -106,89 +106,7 @@ export default {
     "filesAnalyzed": 17,
     "totalImports": 80,
     "totalComponents": 35,
-    "totalUsagePatterns": 284,
-    "patternCounts": [
-      {
-        "patternType": "usage.jsx",
-        "displayName": "JSX Usage",
-        "count": 64
-      },
-      {
-        "patternType": "imports.default",
-        "displayName": "Default Imports",
-        "count": 39
-      },
-      {
-        "patternType": "imports.named",
-        "displayName": "Named Imports",
-        "count": 37
-      },
-      {
-        "patternType": "usage.objects",
-        "displayName": "Object Mappings",
-        "count": 19
-      },
-      {
-        "patternType": "advanced.dynamic",
-        "displayName": "Dynamic Imports",
-        "count": 19
-      },
-      {
-        "patternType": "usage.variables",
-        "displayName": "Variable Assignments",
-        "count": 9
-      },
-      {
-        "patternType": "usage.conditional",
-        "displayName": "Conditional Usage",
-        "count": 7
-      },
-      {
-        "patternType": "imports.aliased",
-        "displayName": "Aliased Imports",
-        "count": 6
-      },
-      {
-        "patternType": "advanced.lazy",
-        "displayName": "Lazy Loading",
-        "count": 6
-      },
-      {
-        "patternType": "advanced.hoc",
-        "displayName": "Higher-Order Components",
-        "count": 5
-      },
-      {
-        "patternType": "imports.namespace",
-        "displayName": "Namespace Imports",
-        "count": 4
-      },
-      {
-        "patternType": "usage.destructuring",
-        "displayName": "Destructuring",
-        "count": 2
-      },
-      {
-        "patternType": "usage.arrays",
-        "displayName": "Array Mappings",
-        "count": 2
-      },
-      {
-        "patternType": "advanced.portal",
-        "displayName": "Portal Usage",
-        "count": 1
-      },
-      {
-        "patternType": "advanced.memo",
-        "displayName": "Memoized Components",
-        "count": 0
-      },
-      {
-        "patternType": "advanced.forwardRef",
-        "displayName": "Forward Refs",
-        "count": 0
-      }
-    ]
+    "totalUsagePatterns": 284
   },
   "packages": [
     {
@@ -500,7 +418,89 @@ export default {
       "name": "CaseMap",
       "source": "@design-system/foundation",
       "count": 1,
-… 146 more line(s) — re-run locally for the full text.
+      "files": [
+        "patterns/09-jsx-in-attributes.tsx"
+      ]
+    },
+    {
+      "name": "CaseVar",
+      "source": "@design-system/foundation",
+      "count": 1,
+      "files": [
+        "patterns/09-jsx-in-attributes.tsx"
+      ]
+    },
+    {
+      "name": "CaseReturn",
+      "source": "@design-system/foundation",
+      "count": 1,
+      "files": [
+        "patterns/09-jsx-in-attributes.tsx"
+      ]
+    },
+    {
+      "name": "Child",
+      "source": "@design-system/foundation",
+      "count": 1,
+      "files": [
+        "patterns/09-jsx-in-attributes.tsx"
+      ]
+    },
+    {
+      "name": "CaseAttr",
+      "source": "@design-system/foundation",
+      "count": 1,
+      "files": [
+        "patterns/09-jsx-in-attributes.tsx"
+      ]
+    },
+    {
+      "name": "CaseAttrSelfClosing",
+      "source": "@design-system/foundation",
+      "count": 1,
+      "files": [
+        "patterns/09-jsx-in-attributes.tsx"
+      ]
+    },
+    {
+      "name": "CaseAttrCond",
+      "source": "@design-system/foundation",
+      "count": 1,
+      "files": [
+        "patterns/09-jsx-in-attributes.tsx"
+      ]
+    },
+    {
+      "name": "CaseAttrHost",
+      "source": "@design-system/foundation",
+      "count": 1,
+      "files": [
+        "patterns/09-jsx-in-attributes.tsx"
+      ]
+    },
+    {
+      "name": "CaseAttrFragment",
+      "source": "@design-system/foundation",
+      "count": 1,
+      "files": [
+        "patterns/09-jsx-in-attributes.tsx"
+      ]
+    },
+    {
+      "name": "CaseBoth",
+      "source": "@design-system/foundation",
+      "count": 1,
+      "files": [
+        "patterns/09-jsx-in-attributes.tsx"
+      ]
+    }
+  ],
+  "versus": [
+    {
+      "name": "Design System Migration",
+      "packages": [
+        "@design-system/foundation",
+… 64 more line(s) — re-run locally for the full text.
 ```
 
 </details>
