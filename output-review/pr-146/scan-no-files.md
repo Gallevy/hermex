@@ -14,13 +14,13 @@ _unchanged_
 
 **Ran** `hermex scan --config configs/no-files.config.ts` in `fixtures/` → exit 0, as asserted
 
-**Config** [`fixtures/configs/no-files.config.ts`](https://github.com/Gallevy/hermex/blob/c4158dbfe815952becdc52a8f4a7df4e756b462f/fixtures/configs/no-files.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/c4158dbfe815952becdc52a8f4a7df4e756b462f/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/c4158dbfe815952becdc52a8f4a7df4e756b462f/fixtures/README.md)) · **Case** [`scan-no-files`](https://github.com/Gallevy/hermex/blob/c4158dbfe815952becdc52a8f4a7df4e756b462f/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/c4158dbfe815952becdc52a8f4a7df4e756b462f/fixtures/cases/scan-no-files.md))
+**Config** [`fixtures/configs/no-files.config.ts`](https://github.com/Gallevy/hermex/blob/a40fb03445d9b580c9c2d8807e0a1bea02281d9a/fixtures/configs/no-files.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/a40fb03445d9b580c9c2d8807e0a1bea02281d9a/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/a40fb03445d9b580c9c2d8807e0a1bea02281d9a/fixtures/README.md)) · **Case** [`scan-no-files`](https://github.com/Gallevy/hermex/blob/a40fb03445d9b580c9c2d8807e0a1bea02281d9a/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/a40fb03445d9b580c9c2d8807e0a1bea02281d9a/fixtures/cases/scan-no-files.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter scan-no-files`</sub>
 
 ## Config
 
-[`fixtures/configs/no-files.config.ts`](https://github.com/Gallevy/hermex/blob/c4158dbfe815952becdc52a8f4a7df4e756b462f/fixtures/configs/no-files.config.ts)
+[`fixtures/configs/no-files.config.ts`](https://github.com/Gallevy/hermex/blob/a40fb03445d9b580c9c2d8807e0a1bea02281d9a/fixtures/configs/no-files.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../../src/config/types.ts';
