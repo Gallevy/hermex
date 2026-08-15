@@ -259,8 +259,9 @@ Purely transitive dependencies are never flagged: they arrive through another pa
 isn't something your repo can do. Packages excluded by `packages.ignore` are never flagged either.
 
 Every banned package appears in the Rules and Compliance sections. Those with measured usage also get a
-`[BANNED]` or `[RESTRICTED]` badge in the packages table, which since #78 lists every package the repo
-owns — so a declared-but-unimported banned package now has a row there too.
+`[FORBIDDEN]` badge in the packages table, which since #78 lists every package the repo owns — so a
+declared-but-unimported banned package now has a row there too. The badge itself is severity-neutral; the
+leading icon (🔴/🟡/🔵) carries how hard the rule is enforced, matching every other surface (#86).
 
 In the JSON output, each hit is an ordinary entry in `ruleViolations` with `ruleId: "no-packages"` —
 `patterns` carries the rule's globs, `packageName` the package that matched, and `matchedFiles` is empty
