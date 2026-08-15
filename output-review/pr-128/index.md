@@ -8,7 +8,7 @@ title: "Output Review"
 
 26 cases · 0 changed · 0 invariant breach(es)
 
-Every case matches its baseline.
+Every case matches the target branch.
 
 ## All cases
 
