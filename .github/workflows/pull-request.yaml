@@ -15,7 +15,6 @@ jobs:
       - name: Setup pnpm CLI
         uses: pnpm/setup@v2
         with:
-          version: 12.0.0-rc.5
           runtime: node@26
           cache: true
           install: false
@@ -56,6 +55,9 @@ jobs:
       - name: Setup pnpm CLI
         uses: pnpm/setup@v2
         with:
+          # Pinned explicitly: the "main" matrix leg checks out main, which
+          # won't carry packageManager (the version pnpm/setup reads by
+          # default) until this workflow's own PR merges.
           version: 12.0.0-rc.5
           runtime: node@26
           cache: true
