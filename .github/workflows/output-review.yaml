@@ -1,8 +1,13 @@
 # .github/workflows/output-review.yaml
 #
 # Puts hermex's real output in front of a human on every PR. Runs the case
-# matrix in fixtures/cases.ts and diffs it against the committed baselines,
-# then reports it twice, deliberately differently:
+# matrix in fixtures/cases.ts twice — once against this checkout, once
+# against a fresh build of the target branch (`scripts/output-review.ts`
+# manages that second build itself, via a git worktree) — and diffs what
+# the two actually printed. Nothing is committed for this to work against:
+# both sides are always real output of real code, so there is no baseline
+# file to refresh, forget to refresh, or hand-edit. Reported twice,
+# deliberately differently:
 #
 #   - The sticky PR comment carries one row per **changed** case — name,
 #     +N -M, and a single link. No diffs: a renderer tweak moves every row
@@ -20,24 +25,18 @@
 # A comment listing two dozen `unchanged` rows is what the first version
 # did, and a wall is what people stop reading.
 #
-# This is a required check, not an advisory one. A failure means either the
-# output changed and the baselines were not refreshed in the same PR, or an
-# invariant that no baseline can express has been broken. Both are things a
-# reviewer has to see before merge, so the job goes red and stays red until
-# `pnpm run test:output -- --update` is run and the diff reviewed.
-#
-# This check never trusts the committed baseline — it re-runs the real CLI
-# and diffs live output against whatever bytes are checked in, so a stale
-# baseline and a hand-typed, incorrect one fail identically. Landing a
-# passing baseline always means it is the tool's actual current output.
-# `required_approving_review_count: 1` on this branch's ruleset is what
-# then makes a human look at that diff before it can merge — GitHub already
-# refuses to let a PR's own author approve it, so the baseline change in
-# any PR always gets a second pair of eyes.
+# This is a required check, but an output diff alone never fails it — a
+# changed output isn't necessarily a bug, and whether it's an *approved*
+# change is a separate, human question handled by
+# `.github/workflows/output-approval.yaml`. What does fail this one is a
+# genuine defect: an exit code that doesn't match what a case asserts, or a
+# broken invariant (ANSI leaking onto stdout, JSON with chrome mixed in,
+# …) — see the blocking-invariants section of `scripts/output-review.ts`.
 name: Output review
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
     branches: ['main', 'beta']
   workflow_dispatch:
 
@@ -53,9 +52,24 @@ jobs:
       # OUTPUT_REVIEW_SITE variable is set.
       contents: write
       pull-requests: write
+    outputs:
+      # Whether any case's output differs from `--against` — read by
+      # output-approval below. Re-derived on every run of this job,
+      # including a bare label toggle, rather than cached anywhere: nothing
+      # here is trusted from a previous run, matching how the comparison
+      # itself never trusts anything but freshly executed code.
+      changed: ${{ steps.matrix.outputs.changed }}
     steps:
+      # Full history, not the default shallow clone: scripts/output-review.ts
+      # resolves and builds `--against` (the target branch, GITHUB_BASE_REF
+      # on a pull_request event) itself via `git rev-parse`/`git fetch` and
+      # a worktree — a shallow checkout would make the first resolve attempt
+      # fail every time, falling back to a fetch that then has to do the
+      # same work anyway.
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Setup pnpm CLI
         uses: pnpm/action-setup@v6
@@ -79,12 +93,23 @@ jobs:
       # falls back to linking the job summary. Hosting is therefore a
       # repository setting, not a code change.
       - name: Run the output matrix
+        id: matrix
         env:
           OUTPUT_REVIEW_SITE_URL: >-
             ${{ vars.OUTPUT_REVIEW_SITE != '' && github.event_name == 'pull_request'
             && format('{0}/pr-{1}', vars.OUTPUT_REVIEW_SITE, github.event.pull_request.number)
             || '' }}
-        run: pnpm run test:output
+        # `set +e`: this step's own exit code still has to reflect a real
+        # failure (an exit-code mismatch or a blocking invariant — never an
+        # output diff on its own, see the module doc comment), but the
+        # `changed` output has to be captured either way for the
+        # output-approval job below to read.
+        run: |
+          set +e
+          pnpm run test:output
+          status=$?
+          echo "changed=$(cat .output-review/changed 2>/dev/null || echo false)" >> "$GITHUB_OUTPUT"
+          exit $status
 
       # Uploaded whether or not Pages is configured — it is the fallback way
       # to read a case page, and it costs nothing when nobody downloads it.
@@ -222,3 +247,51 @@ jobs:
                 body,
               });
             }
+
+  # The second required check: `review` only proves an output diff is
+  # *true* — the label gate is what proves a human looked at it. A reviewer
+  # can approve a PR on the code alone without ever opening the
+  # output-review comment; applying `output:approved` is a distinct,
+  # deliberate act instead. See CONTRIBUTING.md for the reviewer-facing
+  # version of this.
+  #
+  # No checkout here at all — everything this needs comes from the `gh` CLI
+  # against the PR directly, and `needs.review.outputs.changed` for whether
+  # the label even applies.
+  output-approval:
+    needs: review
+    if: always() && github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      # Unconditional, the same way GitHub's own "dismiss stale reviews on
+      # push" is unconditional — there's no committed file left to check
+      # "did this push actually touch the output", so a label surviving an
+      # unrelated push is the safer failure mode to avoid, not a stale
+      # review covering a diff nobody re-read.
+      - name: Remove output:approved on a new push
+        if: github.event.action == 'synchronize'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh pr edit "${{ github.event.pull_request.number }}"
+          --repo "${{ github.repository }}"
+          --remove-label output:approved || true
+
+      - name: Require the output:approved label when output changed
+        if: needs.review.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          labels="$(gh pr view "${{ github.event.pull_request.number }}" --repo "${{ github.repository }}" --json labels -q '.labels[].name')"
+          if ! grep -qxF 'output:approved' <<< "$labels"; then
+            echo "::error::Output changed vs the target branch in this PR. Read the output-review diff, then apply the output:approved label."
+            exit 1
+          fi
+          echo "output:approved present — satisfied."
+
+      - name: Nothing to approve
+        if: needs.review.outputs.changed == 'false'
+        run: echo "Output matches the target branch — no approval needed."

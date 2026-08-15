@@ -254,9 +254,9 @@ describe('lockfile-parity', () => {
   });
 });
 
-describe('no-orphaned-baselines', () => {
+describe('no-orphaned-case-docs', () => {
   it('does not judge the whole matrix from a filtered run', () => {
-    const breaches = run('no-orphaned-baselines', [], false);
+    const breaches = run('no-orphaned-case-docs', [], false);
     expect(breaches).toEqual([]);
   });
 });
