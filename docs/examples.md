@@ -37,20 +37,17 @@ export default defineConfig({
 });
 ```
 
-## Internal Package Marking
+## Ignoring Packages
 
-Mark your own packages so they're visually separated in the packages table and skipped during release age checks:
+Exclude packages from the packages table entirely:
 
 ```ts
 export default defineConfig({
   packages: {
-    internal: ['@myorg/*', '@company/design-system'],
     ignore: ['react', 'react-dom'], // exclude from output entirely
   },
 });
 ```
-
-Internal packages show an `[int]` badge in the packages table.
 
 `ignore` is a *reporting* filter, not an uninstall: an ignored package is left out of the packages
 table and is never flagged by `no-packages`, but it still counts as installed for
@@ -526,7 +523,6 @@ Every package the repo **owns**: declared in `package.json` (any dependency buck
   "usageCount": 0,                    // component usage — see the caveat below
   "componentCount": 0,
   "percentage": 0,
-  "internal": false,
   "hasVersionConflict": false,
   "allVersions": ["2.29.4"]
 }
@@ -595,7 +591,6 @@ export default defineConfig({
   excludes: ['**/node_modules/**', '**/dist/**', '**/*.test.*'],
 
   packages: {
-    internal: ['@myorg/*'],
     ignore: [],
   },
 

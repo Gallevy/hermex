@@ -31,8 +31,6 @@ export function formatPackageName(
       banned.severity === 'error'
         ? severityColor('error')('[BANNED] ')
         : severityColor('warn')('[RESTRICTED] ');
-  } else if (pkg.internal) {
-    prefix += severityColor('warn')('[int] ');
   }
   return prefix + pkg.packageName;
 }
@@ -297,9 +295,7 @@ function printPackagesChart(
 
   const maxBarWidth = 40;
   const maxPercentage = Math.max(...charted.map((p) => p.percentage));
-  const maxLabelLength = Math.max(
-    ...charted.map((p) => p.packageName.length + (p.internal ? 6 : 0)),
-  );
+  const maxLabelLength = Math.max(...charted.map((p) => p.packageName.length));
 
   charted.forEach((pkg) => {
     const barLength = Math.round(

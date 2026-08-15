@@ -232,7 +232,6 @@ describe('aggregateReports — package distribution', () => {
     expect(dist.componentCount).toBe(1);
     expect(dist.usageCount).toBe(1);
     expect(dist.percentage).toBe(100);
-    expect(dist.internal).toBe(false);
   });
 
   it('resolves subpath imports to the base package', () => {
@@ -256,23 +255,6 @@ describe('aggregateReports — package distribution', () => {
     expect(result.packageDistribution).toEqual([]);
     // Components are still counted even when their source is local/unknown
     expect(result.totalComponents).toBe(2);
-  });
-
-  it('marks packages matching internal patterns as internal', () => {
-    const report = reportWithNamedImport('Card', '@company/ui');
-    const config = createConfig({ packages: { internal: ['@company/*'] } });
-
-    const result = aggregateReports(
-      [report],
-      { '@company/ui': '2.0.0' },
-      config,
-    );
-
-    expect(result.packageDistribution).toHaveLength(1);
-    const dist = result.packageDistribution[0];
-    expect(dist.packageName).toBe('@company/ui');
-    expect(dist.version).toBe('2.0.0');
-    expect(dist.internal).toBe(true);
   });
 
   it('surfaces a lockfile-only, side-effect-imported package that matches releaseAge.enforceOn', () => {

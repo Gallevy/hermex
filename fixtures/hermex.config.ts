@@ -22,9 +22,6 @@ export default {
     'registry/**',
     'repos/**',
   ],
-  packages: {
-    internal: ['@design-system/*'],
-  },
   versus: [
     {
       name: 'Design System Migration',
