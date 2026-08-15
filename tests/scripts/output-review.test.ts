@@ -68,10 +68,10 @@ describe('unifiedDiff', () => {
     expect(unifiedDiff('stdout.txt', text, text)).toBe('');
   });
 
-  it('labels the two sides baseline and current rather than a and b', () => {
+  it('labels the two sides target and current rather than a and b', () => {
     const diff = unifiedDiff('stdout.txt', 'a', 'b');
     expect(diff.split('\n').slice(0, 2)).toEqual([
-      '--- baseline/stdout.txt',
+      '--- target/stdout.txt',
       '+++ current/stdout.txt',
     ]);
   });
@@ -349,7 +349,7 @@ describe('buildSite', () => {
       buildSite([caseResult(fixtureCase({ name: 'has"quote' }))], [], null).get(
         'has"quote.md',
       ) ?? '';
-    expect(page).toContain('title: "has\\"quote — output review"');
+    expect(page).toContain('title: "has\\"quote — Output Review"');
   });
 
   /**
@@ -411,7 +411,7 @@ describe('buildSite', () => {
     };
     const index = buildSite(results, [breach], null).get('index.md') ?? '';
     expect(index).not.toContain('[!WARNING]');
-    expect(index).toContain('#cf222e');
+    expect(index).toContain('class="or-callout"');
     expect(index).toContain('alpha disagrees with beta');
   });
 

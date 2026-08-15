@@ -1,15 +1,24 @@
 #!/usr/bin/env node
 /**
- * Output review: run the real CLI over `fixtures/`, capture everything each
- * case emits, and diff it against a committed baseline.
+ * Output review: run the real CLI over `fixtures/` twice — once built from
+ * this working tree, once from a reference build of the target branch —
+ * and diff what the two actually printed.
  *
  * Hermex's value is its output and its verdict, and unit tests do not look
  * at either. This runner does the loop a human was doing by hand — run the
  * command, read what came out, decide whether it is right — and turns the
  * "decide" half into a reviewable diff.
  *
- *   pnpm run test:output              compare against the baselines
- *   pnpm run test:output -- --update  refresh them (a reviewable diff)
+ * Nothing is committed for this to work against: there is no baseline file
+ * to remember to refresh, and nothing to hand-edit, because both sides of
+ * every comparison are always freshly executed code (see `buildReference`).
+ * A real diff is just informational here — `pnpm run test:output` reports
+ * it but does not fail because of it, since a changed output isn't
+ * necessarily a bug. Whether it's an *approved* change is a separate,
+ * human question — see `.github/workflows/output-approval.yaml`.
+ *
+ *   pnpm run test:output                    compare against origin/main
+ *   pnpm run test:output -- --against beta  compare against another branch
  *   pnpm run test:output -- --filter comply
  *
  * The matrix lives in `fixtures/cases.ts`. Nothing here knows the case
@@ -58,7 +67,7 @@ export interface FixtureCase {
    * `suppressed-sections-stay-absent` invariant enforces it.
    */
   absent?: string[];
-  /** The exit code this case is asserting. A mismatch fails even with --update. */
+  /** The exit code this case is asserting. A mismatch always fails the run. */
   expectExit: number;
   /**
    * Prose for the case dossier that nothing here can derive — what a
@@ -108,8 +117,8 @@ export interface CaseResult {
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const CLI = join(ROOT, 'dist', 'cli.mjs');
 const FIXTURES = join(ROOT, 'fixtures');
-const BASELINES = join(ROOT, 'tests', '__output_baselines__');
 const REPORT_DIR = join(ROOT, '.output-review');
+const REFERENCE_DIR = join(REPORT_DIR, 'reference');
 
 // ── Determinism ──────────────────────────────────────────────────────────────
 
@@ -288,9 +297,17 @@ function spawnCapture(
   });
 }
 
+/**
+ * Runs one fixture against a specific CLI build. `cliPath` is the only
+ * thing that varies between a "current tree" run and a "reference branch"
+ * run — the fixtures directory is always this working tree's, so the two
+ * runs isolate exactly one variable: what the tool itself does with the
+ * same input.
+ */
 async function runCase(
   fixture: FixtureCase,
   registryUrl: string | null,
+  cliPath: string,
 ): Promise<{ artifacts: Artifacts; status: number; raw: RawCapture }> {
   const scratch = mkdtempSync(join(tmpdir(), `hermex-output-${fixture.name}-`));
   try {
@@ -302,7 +319,7 @@ async function runCase(
       else env[key] = value;
     }
 
-    const result = await spawnCapture([CLI, ...args], {
+    const result = await spawnCapture([cliPath, ...args], {
       cwd: join(FIXTURES, fixture.cwd),
       env,
     });
@@ -348,25 +365,87 @@ function isJson(text: string): boolean {
   }
 }
 
-// ── Baselines ────────────────────────────────────────────────────────────────
+// ── The reference build ──────────────────────────────────────────────────────
+//
+// What a case's output is compared against — a second hermex, built from
+// `--against` (the target branch, `main` by default) rather than this
+// working tree. Replaces a committed baseline entirely: nothing here is
+// ever read from or written to disk as "the expected output," so there is
+// nothing for a PR to refresh, forget to refresh, or hand-edit. Both sides
+// of every diff are always the real, current output of real, current code.
 
-function readBaseline(name: string): Artifacts {
-  const directory = join(BASELINES, name);
-  if (!existsSync(directory)) return {};
-  const artifacts: Artifacts = {};
-  for (const file of readdirSync(directory).sort()) {
-    artifacts[file] = readFileSync(join(directory, file), 'utf8');
+function run(command: string, args: string[], cwd: string): void {
+  // One command string rather than an argv array, same reasoning as the
+  // `pnpm run build` call below: with `shell: true` the array form is
+  // concatenated unescaped, which Node deprecates, and `shell: true` is
+  // what lets this resolve `pnpm`/`git` shims on Windows.
+  const result = spawnSync(`${command} ${args.join(' ')}`, {
+    cwd,
+    encoding: 'utf8',
+    shell: true,
+  });
+  if (result.status !== 0) {
+    process.stderr.write(`${result.stdout ?? ''}${result.stderr ?? ''}`);
+    throw new Error(`\`${command} ${args.join(' ')}\` failed in ${cwd}`);
   }
-  return artifacts;
 }
 
-function writeBaseline(name: string, artifacts: Artifacts): void {
-  const directory = join(BASELINES, name);
-  rmSync(directory, { recursive: true, force: true });
-  mkdirSync(directory, { recursive: true });
-  for (const [file, content] of Object.entries(artifacts)) {
-    writeFileSync(join(directory, file), content);
+/**
+ * A ref to a commit SHA. Tries the already-fetched `origin/<ref>` first —
+ * the common case, since CI checks out a branch — and falls back to
+ * fetching it directly, which covers both a shallow CI checkout (the
+ * default `actions/checkout` depth) that never fetched it and a local
+ * clone whose remote-tracking branches are stale.
+ */
+function resolveRef(ref: string): string {
+  const direct = spawnSync('git', ['rev-parse', `origin/${ref}`], {
+    cwd: ROOT,
+    encoding: 'utf8',
+  });
+  if (direct.status === 0) return direct.stdout.trim();
+
+  const fetch = spawnSync('git', ['fetch', '--depth=1', 'origin', ref], {
+    cwd: ROOT,
+    encoding: 'utf8',
+  });
+  if (fetch.status !== 0) {
+    throw new Error(
+      `Could not resolve "${ref}" to a commit, and fetching it from origin failed:\n${fetch.stderr}`,
+    );
   }
+  const afterFetch = spawnSync('git', ['rev-parse', 'FETCH_HEAD'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+  });
+  if (afterFetch.status !== 0) {
+    throw new Error(`Fetched "${ref}" but could not resolve it afterward.`);
+  }
+  return afterFetch.stdout.trim();
+}
+
+/**
+ * Builds `ref` in an isolated git worktree and returns its `dist/cli.mjs`.
+ * Cached by resolved commit SHA under `.output-review/reference/` — a
+ * worktree, an install and a build are not cheap, and `--filter` runs
+ * against the same `--against` commit far more often than that commit
+ * changes.
+ */
+function buildReference(ref: string): string {
+  const sha = resolveRef(ref);
+  const worktree = join(REFERENCE_DIR, sha);
+  const cli = join(worktree, 'dist', 'cli.mjs');
+  if (existsSync(cli)) return cli;
+
+  rmSync(worktree, { recursive: true, force: true });
+  mkdirSync(REFERENCE_DIR, { recursive: true });
+
+  // `--detach`: a branch name would collide if that same branch happens to
+  // be checked out in the primary worktree already (running this on `main`
+  // itself, for instance). A bare SHA has no such conflict.
+  run('git', ['worktree', 'add', '--detach', worktree, sha], ROOT);
+  run('pnpm', ['install', '--frozen-lockfile'], worktree);
+  run('pnpm', ['run', 'build'], worktree);
+  return cli;
 }
 
 // ── Case dossiers ────────────────────────────────────────────────────────────
@@ -382,8 +461,10 @@ function writeBaseline(name: string, artifacts: Artifacts): void {
 // Generated rather than hand-written: twenty-six hand-maintained pages rot,
 // and a rotted dossier is worse than none because it is believed. The only
 // hand-written part is `notes` on the case itself, which travels with the
-// definition it describes. `case-docs-are-current` fails the run if a
-// dossier drifts from the case that generates it.
+// definition it describes. Regenerated at the start of every run — cheap,
+// pure string generation with no CLI execution involved — so there is
+// nothing to remember to refresh and nothing that can drift stale;
+// `no-orphaned-case-docs` only has to catch a page whose case disappeared.
 
 const CASE_DOCS = join(FIXTURES, 'cases');
 
@@ -456,7 +537,7 @@ export function caseDoc(fixture: FixtureCase): string {
   }
 
   const lines = [
-    '<!-- Generated by `pnpm run test:output -- --update`. Edit the case in',
+    '<!-- Generated by `pnpm run test:output`, every run. Edit the case in',
     '     fixtures/cases.ts, not this file. -->',
     '',
     `# \`${fixture.name}\``,
@@ -491,7 +572,7 @@ export function caseDoc(fixture: FixtureCase): string {
   lines.push(
     '## Recorded output',
     '',
-    `The committed baseline is [\`tests/__output_baselines__/${fixture.name}/\`](${fromCaseDoc(`tests/__output_baselines__/${fixture.name}`)}), which holds this case's stdout, stderr, exit code and any file it wrote. A change to hermex's output shows up as a diff there, in the same PR that causes it.`,
+    "Nothing is committed for this case's output — every run compares this tree's real output against a fresh build of the target branch (`--against`, `main` by default). A change to hermex's output shows up as a diff in that run's output-review report, never as a file in this repo.",
     '',
     '## Run it locally',
     '',
@@ -581,9 +662,8 @@ export interface FileDiff {
  * The change regions between two texts, each with `CONTEXT` lines around it.
  *
  * Structured rather than pre-rendered, because the line numbers are worth
- * more than the text: they are what lets the PR comment link straight at the
- * changed lines of the committed baseline instead of asking a reviewer to go
- * and find them.
+ * more than the text: they are what lets a reader jump straight to the
+ * changed lines instead of scanning the whole artifact for them.
  */
 export function diffHunks(before: string, after: string): Hunk[] {
   const rows = diffLines(
@@ -647,11 +727,12 @@ function fileDiffOf(file: string, before: string, after: string): FileDiff {
 /**
  * A unified diff. Real hunk headers — `@@ -12,7 +12,9 @@` — rather than the
  * bare `@@` this used to emit. The numbers are what make an elision
- * readable: they say the hunk covers 7 lines from line 12 of the baseline
- * and 9 from line 12 of the current output, so a reviewer can find the
- * changed line in the artifact instead of counting from the top. The header
- * lines are labelled `baseline/` and `current/` rather than the conventional
- * `a/` and `b/`, since which side is which is the first thing anyone asks.
+ * readable: they say the hunk covers 7 lines from line 12 of the target
+ * branch's output and 9 from line 12 of this tree's, so a reviewer can find
+ * the changed line in the artifact instead of counting from the top. The
+ * header lines are labelled `target/` and `current/` rather than the
+ * conventional `a/` and `b/`, since which side is which is the first thing
+ * anyone asks.
  */
 export function unifiedDiff(
   file: string,
@@ -665,7 +746,7 @@ function renderHunks(file: string, hunks: Hunk[]): string {
   // No changes at all means no hunks, and a header with nothing under it
   // reads as "something changed here" — which is exactly wrong.
   if (hunks.length === 0) return '';
-  const lines = [`--- baseline/${file}`, `+++ current/${file}`];
+  const lines = [`--- target/${file}`, `+++ current/${file}`];
   for (const hunk of hunks) {
     lines.push(
       `@@ -${hunk.oldStart},${hunk.oldCount} +${hunk.newStart},${hunk.newCount} @@`,
@@ -679,8 +760,8 @@ function compare(
   fixture: FixtureCase,
   artifacts: Artifacts,
   raw: RawCapture,
+  baseline: Artifacts,
 ): CaseResult {
-  const baseline = readBaseline(fixture.name);
   const changed: string[] = [];
   const added: string[] = [];
   const removed: string[] = [];
@@ -728,15 +809,14 @@ function isClean(result: CaseResult): boolean {
 // ── Invariants ───────────────────────────────────────────────────────────────
 //
 // Claims about the *relationship between* cases, or about properties every
-// case must hold, that no single baseline can express.
+// case must hold, that a diff against the target branch cannot express.
 //
-// A baseline records what happened; it cannot record what must never
-// happen. Worse, `--update` rewrites every baseline at once, so a rule
-// encoded only in the recorded bytes is absorbed silently the moment the
-// bytes change together — three lock formats drifting apart in the same
-// commit, or a scrubber gap that gets faithfully re-recorded. These checks
-// sit outside the baselines for exactly that reason, and are reported
-// separately in the job summary and the PR comment.
+// A diff records what changed; it cannot record what must never happen —
+// three lock formats drifting apart in the same commit, or a scrubber gap
+// that gets faithfully carried through unnoticed because both sides of the
+// comparison share the same bug. These checks are reported separately in
+// the job summary and the PR comment, and — unlike an output diff, which is
+// only ever informational — a blocking one always fails the run.
 
 interface Invariant {
   name: string;
@@ -894,7 +974,7 @@ export const INVARIANTS: Invariant[] = [
   {
     name: 'no-unscrubbed-volatiles',
     guarantees:
-      'no baseline records an absolute path, a process id or a released version — any of which would make the next run differ for reasons that are not code changes',
+      'no case records an absolute path, a process id or a released version — any of which would make the next run differ for reasons that are not code changes',
     blocking: true,
     check({ results }) {
       // Each pattern requires a non-letter before the path so a URL scheme
@@ -941,54 +1021,18 @@ export const INVARIANTS: Invariant[] = [
     },
   },
   {
-    name: 'case-docs-are-current',
+    name: 'no-orphaned-case-docs',
     guarantees:
-      'every case has a dossier at fixtures/cases/<name>.md that still describes it, so the page a reviewer is sent to cannot quietly stop matching the case it documents',
-    // Blocking, and deliberately so. A stale dossier is worse than a missing
-    // one: it is believed. `pnpm run test:output -- --update` regenerates
-    // them, and the regenerated page lands in the same PR as the case change.
+      'every dossier at fixtures/cases/<name>.md belongs to a live case, so a renamed or deleted case cannot leave a page nobody reads behind',
     blocking: true,
     check({ results, full }) {
-      const breaches: string[] = [];
-      for (const { fixture } of results) {
-        const path = caseDocPath(fixture.name);
-        if (!existsSync(path)) {
-          breaches.push(
-            `fixtures/cases/${fixture.name}.md does not exist — run \`pnpm run test:output -- --update\``,
-          );
-        } else if (readFileSync(path, 'utf8') !== caseDoc(fixture)) {
-          breaches.push(
-            `fixtures/cases/${fixture.name}.md no longer matches its case in fixtures/cases.ts — run \`pnpm run test:output -- --update\``,
-          );
-        }
-      }
-      // Orphans are a whole-matrix claim, so --filter cannot judge them.
-      if (full && existsSync(CASE_DOCS)) {
-        const live = new Set(results.map((r) => `${r.fixture.name}.md`));
-        for (const entry of readdirSync(CASE_DOCS)) {
-          if (entry.endsWith('.md') && !live.has(entry)) {
-            breaches.push(
-              `fixtures/cases/${entry} has no case in fixtures/cases.ts`,
-            );
-          }
-        }
-      }
-      return breaches;
-    },
-  },
-  {
-    name: 'no-orphaned-baselines',
-    guarantees:
-      'every committed baseline belongs to a live case, so a renamed or deleted case cannot leave a directory nobody reads behind',
-    blocking: true,
-    check({ results, full }) {
-      if (!full || !existsSync(BASELINES)) return [];
-      const live = new Set(results.map((r) => r.fixture.name));
-      return readdirSync(BASELINES, { withFileTypes: true })
-        .filter((entry) => entry.isDirectory() && !live.has(entry.name))
+      // A whole-matrix claim, so --filter cannot judge it.
+      if (!full || !existsSync(CASE_DOCS)) return [];
+      const live = new Set(results.map((r) => `${r.fixture.name}.md`));
+      return readdirSync(CASE_DOCS)
+        .filter((entry) => entry.endsWith('.md') && !live.has(entry))
         .map(
-          (entry) =>
-            `tests/__output_baselines__/${entry.name}/ has no case in fixtures/cases.ts`,
+          (entry) => `fixtures/cases/${entry} has no case in fixtures/cases.ts`,
         );
     },
   },
@@ -1055,8 +1099,10 @@ function renderBreaches(
     );
   });
   return [
-    '<div style="border-left:4px solid #cf222e;background:#ffebe9;color:#1f2328;' +
-      'padding:0.75rem 1rem;border-radius:0 6px 6px 0;margin:1rem 0">',
+    // Styled by `.or-callout` in the site stylesheet, not inline: an inline
+    // `style=` attribute hardcodes light-mode colours that no stylesheet
+    // (and no dark-mode media query) can then override.
+    '<div class="or-callout">',
     '<strong>⚠ Invariants broken</strong>',
     `<ul>${items.join('')}</ul>`,
     '</div>',
@@ -1251,11 +1297,10 @@ function caseContext(result: CaseResult, base: string | null): string[] {
  * else — and why nobody who has not read `diff(1)` can use it.
  */
 const DIFF_LEGEND =
-  '<sub>Diffs are unified format: `-` is the committed baseline, `+` is this ' +
+  '<sub>Diffs are unified format: `-` is the target branch, `+` is this ' +
   'run. `@@ -12,7 +12,9 @@` is a hunk header — unchanged lines were skipped, ' +
-  'and the hunk below covers 7 lines from line 12 of the baseline and 9 lines ' +
-  'from line 12 of this run — which is where to look in ' +
-  '`tests/__output_baselines__/`.</sub>';
+  'and the hunk below covers 7 lines from line 12 of the target branch and 9 ' +
+  'lines from line 12 of this run.</sub>';
 
 function fence(file: string): string {
   if (file.endsWith('.json')) return 'json';
@@ -1264,9 +1309,9 @@ function fence(file: string): string {
 }
 
 /**
- * A job summary is capped at 1 MB, and the baselines are the complete
- * record anyway — so long artifacts are trimmed for reading rather than
- * dropped. Diffs are never trimmed: they are the part being reviewed.
+ * A job summary is capped at 1 MB, so long artifacts are trimmed for
+ * reading rather than dropped. Diffs are never trimmed: they are the part
+ * being reviewed.
  */
 const MAX_SUMMARY_LINES = 400;
 
@@ -1275,7 +1320,7 @@ function forSummary(content: string): string {
   if (lines.length <= MAX_SUMMARY_LINES) return lines.join('\n');
   return [
     ...lines.slice(0, MAX_SUMMARY_LINES),
-    `… ${lines.length - MAX_SUMMARY_LINES} more line(s) — full text in tests/__output_baselines__/`,
+    `… ${lines.length - MAX_SUMMARY_LINES} more line(s) — re-run locally for the full text.`,
   ].join('\n');
 }
 
@@ -1295,7 +1340,7 @@ function buildJobSummary(results: CaseResult[], breaches: Breach[]): string {
   const clean = results.filter(isClean);
 
   const lines: string[] = [
-    '# Output review',
+    '# Output Review',
     '',
     `${results.length} cases · ${differing.length} changed · ${breaches.length} invariant breach(es)`,
     '',
@@ -1317,7 +1362,7 @@ function buildJobSummary(results: CaseResult[], breaches: Breach[]): string {
     lines.push(
       `## Unchanged (${clean.length})`,
       '',
-      'These match their baseline. They are here to be read, not reviewed.',
+      'These match the target branch. They are here to be read, not reviewed.',
       '',
     );
     for (const result of clean) lines.push(...renderCase(result, base));
@@ -1351,14 +1396,26 @@ function buildTable(results: CaseResult[]): string {
   return lines.join('\n');
 }
 
-/** Total change across every artifact a case touched. */
-function caseTotals(result: CaseResult): string {
+/**
+ * Total change across every artifact a case touched.
+ *
+ * `colored` emits `+N`/`−M` as HTML spans styled by `.or-add`/`.or-del` in
+ * the site stylesheet — used on the site pages, where that stylesheet is
+ * loaded. It stays off in the PR comment: GitHub strips `style`/`class`
+ * attributes from comment bodies, so the spans would render as bare,
+ * unstyled text there anyway.
+ */
+function caseTotals(result: CaseResult, colored = false): string {
   const additions = result.fileDiffs.reduce((sum, e) => sum + e.additions, 0);
   const deletions = result.fileDiffs.reduce((sum, e) => sum + e.deletions, 0);
   if (result.exitMismatch) {
     return `exit ${result.exitMismatch.actual}, expected ${result.exitMismatch.expected}`;
   }
-  return `+${additions} −${deletions}`;
+  if (!colored) return `+${additions} −${deletions}`;
+  return (
+    `<span class="or-add">+${additions}</span> ` +
+    `<span class="or-del">−${deletions}</span>`
+  );
 }
 
 /**
@@ -1403,7 +1460,7 @@ function buildComment(results: CaseResult[], breaches: Breach[]): string {
 
   const lines = [
     '<!-- hermex-output-review -->',
-    '### Output review',
+    '### Output Review',
     '',
     `**${differing.length} of ${results.length} case(s) changed** · ${breaches.length} invariant breach(es) · ${index}`,
     '',
@@ -1422,15 +1479,17 @@ function buildComment(results: CaseResult[], breaches: Breach[]): string {
 
   // This job is a required check, so the closing line has to say what it
   // takes to go green — a red run with no instructions is just an obstacle.
+  // An output diff alone never fails it (see the module doc comment) — only
+  // an invariant breach does, and no diff can fix one of those.
   if (breaches.length > 0) {
     lines.push(
-      'An invariant above is broken. That is not something a baseline refresh fixes — it describes what must never happen, so the check stays red until the behaviour changes.',
+      'An invariant above is broken. It describes what must never happen, so the check stays red until the behaviour changes — not something any output diff can fix.',
     );
   } else if (differing.length === 0) {
     lines.push('Output is unchanged. Nothing to review.');
   } else {
     lines.push(
-      'Open a case to read its diff, its config and its full output. If every change is intended, run `pnpm run test:output -- --update` and commit the refreshed baselines — that diff is the record of what you approved, and this check goes green once it matches.',
+      'Open a case to read its diff, its config and its full output. If this is the change you meant, apply the `output:approved` label — see CONTRIBUTING.md.',
     );
   }
   return lines.join('\n');
@@ -1464,8 +1523,167 @@ const RAW_CLOSE = '{% endraw %}';
  */
 export const SITE_CONFIG = [
   'theme: jekyll-theme-primer',
-  'title: hermex output review',
+  'title: Hermex Output Review',
   'description: What the CLI actually printed, one page per case.',
+  '',
+].join('\n');
+
+/**
+ * The one stylesheet this site owns, layered on top of the theme via
+ * Jekyll's documented `assets/css/style.scss` override point — the standard
+ * way to touch a GitHub Pages theme without forking its layout.
+ *
+ * Primer's default layout renders the site title (the "hermex output
+ * review" logo link back to the site root) as a bare `<h1>`, immediately
+ * followed by each page's own `<h1>` — "Output Review", or a case name.
+ * Both come out the same size, so the page's actual title reads as a
+ * second, redundant copy of the one above it rather than the thing the
+ * page is about. This demotes the logo link to a small caption so the
+ * page's own heading is unambiguously the title.
+ */
+export const SITE_STYLE = [
+  '---',
+  '---',
+  '@import "{{ site.theme }}";',
+  '',
+  '.markdown-body > h1:first-child {',
+  '  font-size: 14px;',
+  '  font-weight: 600;',
+  '  color: #57606a;',
+  '  text-transform: uppercase;',
+  '  letter-spacing: 0.02em;',
+  '  margin-bottom: 4px;',
+  '}',
+  '',
+  '.markdown-body > h1:first-child a {',
+  '  color: inherit;',
+  '}',
+  '',
+  '/* Case names in the "All cases" table are the short, structured column —',
+  '   let them stay on one line and leave wrapping to the "Proves" prose. */',
+  '.markdown-body table td:first-child,',
+  '.markdown-body table th:first-child {',
+  '  white-space: nowrap;',
+  '}',
+  '',
+  '/* The +N/-M change badge next to a changed case, coloured the way a diff',
+  '   is everywhere else: additions green, deletions red. */',
+  '.or-add {',
+  '  color: #1a7f37;',
+  '  font-weight: 600;',
+  '}',
+  '',
+  '.or-del {',
+  '  color: #cf222e;',
+  '  font-weight: 600;',
+  '}',
+  '',
+  '/* The broken-invariants callout. A class rather than an inline style, so',
+  '   it — and only it — needs overriding below for dark mode; nothing here',
+  '   duplicates colours the theme already sets. */',
+  '.or-callout {',
+  '  border-left: 4px solid #cf222e;',
+  '  background: #ffebe9;',
+  '  color: #1f2328;',
+  '  padding: 0.75rem 1rem;',
+  '  border-radius: 0 6px 6px 0;',
+  '  margin: 1rem 0;',
+  '}',
+  '',
+  '/* jekyll-theme-primer is a light-only theme with every colour hardcoded,',
+  '   so a reader on a dark system gets a stark white page next to every',
+  "   other tab. This mirrors GitHub's own dark palette rather than",
+  '   introducing a new one, and only touches what the theme does not',
+  '   already key off `prefers-color-scheme` (nothing — it keys off nothing). */',
+  '@media (prefers-color-scheme: dark) {',
+  '  body {',
+  '    background-color: #0d1117;',
+  '  }',
+  '',
+  '  .markdown-body {',
+  '    color: #c9d1d9;',
+  '  }',
+  '',
+  '  .markdown-body > h1:first-child {',
+  '    color: #8b949e;',
+  '  }',
+  '',
+  '  .markdown-body h1,',
+  '  .markdown-body h2,',
+  '  .markdown-body h3,',
+  '  .markdown-body h4 {',
+  '    color: #e6edf3;',
+  '    border-bottom-color: #21262d;',
+  '  }',
+  '',
+  '  .markdown-body a {',
+  '    color: #58a6ff;',
+  '  }',
+  '',
+  '  .markdown-body hr {',
+  '    background-color: #21262d;',
+  '  }',
+  '',
+  '  .markdown-body blockquote {',
+  '    color: #8b949e;',
+  '    border-left-color: #3b434b;',
+  '  }',
+  '',
+  '  .markdown-body table th,',
+  '  .markdown-body table td {',
+  '    border-color: #30363d;',
+  '  }',
+  '',
+  '  .markdown-body table tr {',
+  '    background-color: #0d1117;',
+  '    border-top-color: #21262d;',
+  '  }',
+  '',
+  '  .markdown-body table tr:nth-child(2n) {',
+  '    background-color: #161b22;',
+  '  }',
+  '',
+  '  .markdown-body code,',
+  '  .markdown-body pre,',
+  '  .markdown-body .highlight {',
+  '    background-color: #161b22;',
+  '    color: #c9d1d9;',
+  '  }',
+  '',
+  '  .markdown-body pre {',
+  '    border-color: #30363d;',
+  '  }',
+  '',
+  '  .markdown-body details summary {',
+  '    color: #c9d1d9;',
+  '  }',
+  '',
+  "  /* Rouge's diff-fence colours (`.gd` deletion, `.gi` addition) are also",
+  '     hardcoded light, so a ```diff block would otherwise be the one',
+  '     unreadable corner of an otherwise-dark page. */',
+  '  .markdown-body .gd {',
+  '    background-color: rgba(248, 81, 73, 0.15);',
+  '    color: #ffdcd7;',
+  '  }',
+  '',
+  '  .markdown-body .gi {',
+  '    background-color: rgba(63, 185, 80, 0.15);',
+  '    color: #d2f6da;',
+  '  }',
+  '',
+  '  .or-add {',
+  '    color: #3fb950;',
+  '  }',
+  '',
+  '  .or-del {',
+  '    color: #f85149;',
+  '  }',
+  '',
+  '  .or-callout {',
+  '    background: rgba(248, 81, 73, 0.1);',
+  '    color: #c9d1d9;',
+  '  }',
+  '}',
   '',
 ].join('\n');
 
@@ -1516,7 +1734,7 @@ function caseBody(result: CaseResult, base: string | null): string[] {
 
   if (result.diff) {
     lines.push(
-      '## Diff against the committed baseline',
+      '## Diff against the target branch',
       '',
       DIFF_LEGEND,
       '',
@@ -1555,7 +1773,7 @@ function statusTable(results: CaseResult[]): string[] {
     const name = `[\`${result.fixture.name}\`](./${encodeURIComponent(result.fixture.name)}.html)`;
     const status = isClean(result)
       ? shortStatus(result)
-      : `**${shortStatus(result)}** ${caseTotals(result)}`;
+      : `**${shortStatus(result)}** ${caseTotals(result, true)}`;
     return `| ${name} | ${status} | ${result.fixture.proves} |`;
   });
   return ['| Case | Status | Proves |', '| --- | --- | --- |', ...rows, ''];
@@ -1571,16 +1789,16 @@ export function buildSite(
   const differing = results.filter((result) => !isClean(result));
 
   const index = [
-    ...frontMatter('Output review'),
+    ...frontMatter('Output Review'),
     RAW_OPEN,
-    '# Output review',
+    '# Output Review',
     '',
     `${results.length} cases · ${differing.length} changed · ${breaches.length} invariant breach(es)`,
     '',
     ...renderBreaches(breaches, 'jekyll'),
     ...(differing.length > 0
       ? ['## Changed', '', ...statusTable(differing)]
-      : ['Every case matches its baseline.', '']),
+      : ['Every case matches the target branch.', '']),
     '## All cases',
     '',
     ...statusTable(results),
@@ -1590,7 +1808,7 @@ export function buildSite(
 
   for (const result of results) {
     const body = [
-      ...frontMatter(`${result.fixture.name} — output review`),
+      ...frontMatter(`${result.fixture.name} — Output Review`),
       RAW_OPEN,
       '[← all cases](./index.html)',
       '',
@@ -1623,9 +1841,13 @@ function siteUrl(): string | null {
 
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
-  const update = argv.includes('--update');
   const filterIndex = argv.indexOf('--filter');
   const filter = filterIndex === -1 ? null : argv[filterIndex + 1];
+  const againstIndex = argv.indexOf('--against');
+  const against =
+    againstIndex === -1
+      ? (process.env['GITHUB_BASE_REF'] ?? 'main')
+      : argv[againstIndex + 1];
 
   if (!argv.includes('--no-build')) {
     // One command string rather than an argv array: with `shell: true` the
@@ -1651,10 +1873,13 @@ async function main(): Promise<void> {
     throw new Error(`No cases matched --filter ${String(filter)}`);
   }
 
-  // Before the run, not after: the dossiers describe the cases, not the
-  // results, so regenerating them first means `--update` leaves a tree the
-  // `case-docs-are-current` invariant already agrees with.
-  if (update) writeCaseDocs(module.cases);
+  // Regenerated on every run, not gated behind a flag: this is pure string
+  // generation from `fixtures/cases.ts`, no CLI execution involved, so
+  // there is no cost to always leaving the tree in a state
+  // `no-orphaned-case-docs` already agrees with.
+  writeCaseDocs(module.cases);
+
+  const referenceCli = buildReference(against);
 
   const registry = selected.some((fixture) => fixture.registry)
     ? await startRegistry()
@@ -1663,20 +1888,28 @@ async function main(): Promise<void> {
   const results: CaseResult[] = [];
   try {
     for (const fixture of selected) {
-      const { artifacts, status, raw } = await runCase(
+      const registryUrl = fixture.registry && registry ? registry.url : null;
+      const current = await runCase(fixture, registryUrl, CLI);
+      // Same fixture, same registry, the only variable is which build of
+      // hermex is running it — see `runCase`'s doc comment.
+      const reference = await runCase(fixture, registryUrl, referenceCli);
+
+      const result = compare(
         fixture,
-        fixture.registry && registry ? registry.url : null,
+        current.artifacts,
+        current.raw,
+        reference.artifacts,
       );
-      const result = compare(fixture, artifacts, raw);
-      if (status !== fixture.expectExit) {
-        result.exitMismatch = { expected: fixture.expectExit, actual: status };
+      if (current.status !== fixture.expectExit) {
+        result.exitMismatch = {
+          expected: fixture.expectExit,
+          actual: current.status,
+        };
       }
       results.push(result);
 
-      if (update && !result.exitMismatch)
-        writeBaseline(fixture.name, artifacts);
       process.stdout.write(
-        `${isClean(result) ? '  ok  ' : update ? 'update' : ' diff '}  ${fixture.name}\n`,
+        `${isClean(result) ? '  ok  ' : ' diff '}  ${fixture.name}\n`,
       );
     }
   } finally {
@@ -1707,6 +1940,10 @@ async function main(): Promise<void> {
   // from the root of what it builds, which is the branch root, not this
   // PR's directory. The publish step copies it there.
   writeFileSync(join(REPORT_DIR, 'jekyll-config.yml'), SITE_CONFIG);
+  // Same reasoning as jekyll-config.yml: Jekyll only reads
+  // `assets/css/style.scss` from the root of what it builds, so this rides
+  // alongside the config for the publish step to place at the branch root.
+  writeFileSync(join(REPORT_DIR, 'jekyll-style.scss'), SITE_STYLE);
 
   const stepSummary = process.env['GITHUB_STEP_SUMMARY'];
   if (stepSummary) {
@@ -1715,9 +1952,10 @@ async function main(): Promise<void> {
     });
   }
 
-  // An exit-code mismatch is never absorbed by --update: the manifest says
-  // what the case is asserting, so a changed exit code has to be an edit to
-  // fixtures/cases.ts, where a reviewer will see it.
+  // An exit-code mismatch always fails: the manifest states what the case
+  // is asserting, so a changed exit code has to be a conscious edit to
+  // fixtures/cases.ts, where a reviewer will see it — unlike stdout, it was
+  // never derived from a comparison, so there's nothing to approve it into.
   const mismatched = results.filter((r) => r.exitMismatch);
   for (const result of mismatched) {
     process.stderr.write(
@@ -1731,27 +1969,27 @@ async function main(): Promise<void> {
   }
 
   const differing = results.filter((r) => !isClean(r));
-  if (update) {
+  // Read by output-approval.yaml (a separate job in the same workflow) to
+  // decide whether the output:approved label gate applies — cheaper than
+  // re-running the whole matrix a second time just to ask that question.
+  writeFileSync(
+    join(REPORT_DIR, 'changed'),
+    differing.length > 0 ? 'true' : 'false',
+  );
+  if (differing.length > 0) {
     process.stdout.write(
-      `\n${results.length - mismatched.length} baseline(s) written to tests/__output_baselines__/\n`,
-    );
-  } else if (differing.length > 0) {
-    process.stdout.write(
-      `\n${differing.length} of ${results.length} case(s) differ from their baseline. Read .output-review/summary.md, then run\n  pnpm run test:output -- --update\nif the change is intended.\n`,
+      `\n${differing.length} of ${results.length} case(s) differ from ${against}. Read .output-review/summary.md for the diff — this is informational, not a failure, unless it needs the output:approved label to merge.\n`,
     );
   } else {
-    process.stdout.write(
-      `\nAll ${results.length} case(s) match their baseline.\n`,
-    );
+    process.stdout.write(`\nAll ${results.length} case(s) match ${against}.\n`);
   }
 
-  // A blocking invariant fails the run even under --update, for the same
-  // reason an exit-code mismatch does: it describes something no baseline
-  // should ever be allowed to record.
+  // An output diff never fails this on its own — see the module doc
+  // comment. Only a genuine defect does: an exit-code mismatch, or a
+  // blocking invariant.
   const failed =
     mismatched.length > 0 ||
-    breaches.some(({ invariant }) => invariant.blocking) ||
-    (!update && differing.length > 0);
+    breaches.some(({ invariant }) => invariant.blocking);
   process.exitCode = failed ? 1 : 0;
 }
 

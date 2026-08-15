@@ -24,6 +24,6 @@ build/
 # Test coverage
 coverage/
 
-# Output review report (the baselines under tests/__output_baselines__/ are
-# committed; this is just the rendered summary and PR comment for one run)
+# Output review report and its reference-branch builds — nothing under
+# .output-review/ is a source of truth; both are rebuilt fresh every run.
 .output-review/
