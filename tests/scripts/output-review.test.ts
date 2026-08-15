@@ -6,6 +6,7 @@ import {
   diffHunks,
   INVARIANTS,
   scrub,
+  SITE_STYLE,
   unifiedDiff,
 } from '../../scripts/output-review';
 import type { CaseResult, FixtureCase } from '../../scripts/output-review';
@@ -451,5 +452,37 @@ describe('buildSite', () => {
         null,
       ).get('bare.md') ?? '';
     expect(page).toContain('schema defaults');
+  });
+});
+
+/**
+ * Rouge (the syntax highlighter jekyll-theme-primer's Markdown renders
+ * fenced code through) wraps every block as `.highlight > pre.highlight`,
+ * and Primer's own stylesheet styles the *inner* pre via the selector
+ * `.markdown-body .highlight pre` (two classes + a tag). A dark-mode
+ * override written as `.markdown-body pre { background-color: ... }` (one
+ * class + a tag) is less specific and silently loses regardless of source
+ * order, leaving every code, diff and config block on the site — the
+ * entire comparison a reviewer opens the page to read — with light text on
+ * Primer's light background. This pins the selector that fixes it so the
+ * mismatch can't come back unnoticed.
+ */
+describe('SITE_STYLE dark mode', () => {
+  it('overrides the pre background at the same specificity Primer\'s own "highlight pre" selector uses', () => {
+    expect(SITE_STYLE).toContain('.markdown-body .highlight pre {');
+  });
+
+  it('sets a dark background and light text together on that selector', () => {
+    const start = SITE_STYLE.indexOf('.markdown-body .highlight pre {');
+    const block = SITE_STYLE.slice(start, SITE_STYLE.indexOf('}', start));
+    expect(block).toContain('background-color: #161b22');
+    expect(block).toContain('color: #c9d1d9');
+  });
+
+  it('places the override inside the prefers-color-scheme: dark block, not globally', () => {
+    const darkStart = SITE_STYLE.indexOf('prefers-color-scheme: dark');
+    const selectorIndex = SITE_STYLE.indexOf('.markdown-body .highlight pre {');
+    expect(darkStart).toBeGreaterThan(-1);
+    expect(selectorIndex).toBeGreaterThan(darkStart);
   });
 });

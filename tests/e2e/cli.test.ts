@@ -102,6 +102,49 @@ describe('CLI smoke tests', () => {
     );
   });
 
+  // #63/#91: output.* used to gate only the human printers, so `components:
+  // false` still shipped a full components[] — the largest part of a stored
+  // scan file — and consumers had to strip it downstream.
+  it('output.* section toggles omit the matching fields from --format json', () => {
+    const configPath = join(
+      ROOT,
+      'tests',
+      'e2e',
+      'hermex-json-trimmed.config.ts',
+    );
+    const result = run(['scan', '--config', configPath]);
+    expect(result.status).toBe(0);
+
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed).not.toHaveProperty('components');
+    expect(parsed).not.toHaveProperty('packages');
+    expect(parsed).not.toHaveProperty('versus');
+    expect(parsed.summary).not.toHaveProperty('patternCounts');
+    // The counters and the verdict are never gated — CI reads those.
+    expect(parsed.summary).toHaveProperty('filesAnalyzed');
+    expect(parsed).toHaveProperty('ruleViolations');
+    expect(parsed).toHaveProperty('compliance');
+  });
+
+  it('keeps ruleViolations in comply --format json even with output.rules false', () => {
+    const configPath = join(
+      ROOT,
+      'tests',
+      'e2e',
+      'hermex-json-trimmed.config.ts',
+    );
+    const result = run(['comply', '--config', configPath]);
+    expect(result.status).toBe(1);
+
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.compliance.status).toBe('non-compliant');
+    expect(
+      parsed.ruleViolations.some(
+        (v: { ruleId: string }) => v.ruleId === 'require-files',
+      ),
+    ).toBe(true);
+  });
+
   it('skips .d.ts files instead of reporting them as parse errors (#22)', () => {
     const configPath = join(ROOT, 'tests', 'e2e', 'hermex-dts.config.ts');
     const result = run(['scan', '--config', configPath]);

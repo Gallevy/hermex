@@ -48,7 +48,14 @@ export interface HermexScanComponent extends Omit<
   files: string[];
 }
 
-/** Shape of the JSON emitted by `hermex scan --format json` (see `printJson`) */
+/**
+ * Shape of the JSON emitted by `hermex scan --format json` (see `printJson`).
+ *
+ * The optional fields are the ones `output.*` can switch off (#63, #91): a
+ * disabled section is omitted from the payload entirely rather than emitted
+ * empty, so narrow the field before reading it. They are all present under
+ * the default config — only an explicit `output.<section>: false` removes one.
+ */
 export interface HermexScanResult {
   version: string;
   summary: {
@@ -56,24 +63,35 @@ export interface HermexScanResult {
     totalImports: number;
     totalComponents: number;
     totalUsagePatterns: number;
-    /** `totalUsagePatterns` broken down by pattern type — aggregate counts, not per-item records (#80). */
-    patternCounts: import('./utils/pattern-counter').PatternCount[];
+    /**
+     * `totalUsagePatterns` broken down by pattern type — aggregate counts,
+     * not per-item records (#80). Omitted only when `output.patterns` **and**
+     * `output.details` are both false: the Patterns and Details sections
+     * render this same array, so either one being on keeps it.
+     */
+    patternCounts?: import('./utils/pattern-counter').PatternCount[];
   };
   /**
    * Every package this repo owns — declared in `package.json`, a direct
    * dependency in the lockfile, and/or imported by scanned source (#78).
    * Purely transitive dependencies are excluded. `usageCount` is component
    * usage, so a package used only as a function reads 0 while still being a
-   * real dependency.
+   * real dependency. Omitted when `output.packages: false`.
    */
-  packages: import('./utils/package-distribution').PackageDistribution[];
+  packages?: import('./utils/package-distribution').PackageDistribution[];
   /**
    * Every component found, with the package it came from. The one place
    * component names live — `packages[]` carries only `componentCount` (#79).
+   * Omitted when `output.components: false`.
    */
-  components: HermexScanComponent[];
-  versus: import('./utils/versus').VersusResult[];
-  /** Every rule hit, in one list — filter on `type` to single out a rule. */
+  components?: HermexScanComponent[];
+  /** Omitted when `output.versus: false`. */
+  versus?: import('./utils/versus').VersusResult[];
+  /**
+   * Every rule hit, in one list — filter on `type` to single out a rule.
+   * Always present: it is part of the compliance verdict, so no `output.*`
+   * toggle (`output.rules` included) removes it.
+   */
   ruleViolations: import('./rules/evaluator').RuleViolation[];
   /**
    * The official compliance verdict — read `status` instead of re-deriving
