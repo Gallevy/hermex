@@ -10,11 +10,13 @@ import { z } from 'zod';
 // way an override cancels an org-wide rule for specific repos today.
 const RuleSeveritySchema = z.enum(['error', 'warn', 'info', 'off']);
 
-const RuleConfigSchema = z.object({
-  severity: RuleSeveritySchema,
-  patterns: z.array(z.string()),
-  message: z.string().optional(),
-});
+const RuleConfigSchema = z
+  .object({
+    severity: RuleSeveritySchema,
+    patterns: z.array(z.string()),
+    message: z.string().optional(),
+  })
+  .strict();
 
 const RuleConfigOrArraySchema = z.union([
   RuleConfigSchema,
@@ -24,25 +26,29 @@ const RuleConfigOrArraySchema = z.union([
 const PackageFieldRuleSchema = RuleConfigSchema.extend({
   /** Optional micromatch patterns the field's stringified value must match */
   values: z.array(z.string()).optional(),
-});
+}).strict();
 
 const PackageFieldRuleOrArraySchema = z.union([
   PackageFieldRuleSchema,
   z.array(PackageFieldRuleSchema),
 ]);
 
-const EngineVersionRuleSchema = z.object({
-  severity: RuleSeveritySchema,
-  range: z.string(),
-  message: z.string().optional(),
-});
+const EngineVersionRuleSchema = z
+  .object({
+    severity: RuleSeveritySchema,
+    range: z.string(),
+    message: z.string().optional(),
+  })
+  .strict();
 
-const CodeownersRuleSchema = z.object({
-  severity: RuleSeveritySchema,
-  message: z.string().optional(),
-  /** If set, matched files must be owned by at least one of these owner strings (exact match against CODEOWNERS entries, e.g. "@org/team"). */
-  requiredOwners: z.array(z.string()).optional(),
-});
+const CodeownersRuleSchema = z
+  .object({
+    severity: RuleSeveritySchema,
+    message: z.string().optional(),
+    /** If set, matched files must be owned by at least one of these owner strings (exact match against CODEOWNERS entries, e.g. "@org/team"). */
+    requiredOwners: z.array(z.string()).optional(),
+  })
+  .strict();
 
 const ThresholdSchema = z.union([z.number(), z.literal(false)]);
 
@@ -63,132 +69,146 @@ const OverrideRulesSchema = z
       .optional(),
     'require-codeowners': CodeownersRuleSchema.optional(),
   })
+  .strict()
   .default(() => ({}));
 
-const OverrideSchema = z.object({
-  /** Micromatch patterns checked against the current repo's package.json "name" */
-  match: z.array(z.string()).min(1),
-  rules: OverrideRulesSchema,
-});
+const OverrideSchema = z
+  .object({
+    /** Micromatch patterns checked against the current repo's package.json "name" */
+    match: z.array(z.string()).min(1),
+    rules: OverrideRulesSchema,
+  })
+  .strict();
 
 // ── Main schema with defaults ──────────────────────────────────────────────────
 
-export const HermexConfigSchema = z.object({
-  includes: z.array(z.string()).default(['**/*.{tsx,jsx,ts,js}']),
-  excludes: z
-    .array(z.string())
-    .default(['**/node_modules/**', '**/dist/**', '**/build/**']),
+export const HermexConfigSchema = z
+  .object({
+    includes: z.array(z.string()).default(['**/*.{tsx,jsx,ts,js}']),
+    excludes: z
+      .array(z.string())
+      .default(['**/node_modules/**', '**/dist/**', '**/build/**']),
 
-  packages: z
-    .object({
-      ignore: z.array(z.string()).default([]),
-    })
-    .default(() => ({ ignore: [] })),
+    packages: z
+      .object({
+        ignore: z.array(z.string()).default([]),
+      })
+      .strict()
+      .default(() => ({ ignore: [] })),
 
-  versus: z
-    .array(z.object({ name: z.string(), packages: z.array(z.string()).min(2) }))
-    .default([]),
+    versus: z
+      .array(
+        z
+          .object({ name: z.string(), packages: z.array(z.string()).min(2) })
+          .strict(),
+      )
+      .default([]),
 
-  /**
-   * Repo-scoped rule adjustments: when the current repo's package.json "name"
-   * matches an entry's `match` patterns, its `rules` are upserted into the
-   * base `rules` below, keyed by identity (a rule's `patterns`, or `range`
-   * for require-engine-version) — a rule with new patterns is added, one
-   * whose patterns match an existing base rule replaces it, and severity
-   * 'off' replaces it with nothing (like ESLint's per-rule 'off'). Lets one
-   * shared config both add rules to a subset of repos (a mandatory
-   * dependency for 30 of 150 apps) and loosen/cancel an org-wide rule for
-   * specific repos.
-   */
-  overrides: z.array(OverrideSchema).default([]),
+    /**
+     * Repo-scoped rule adjustments: when the current repo's package.json "name"
+     * matches an entry's `match` patterns, its `rules` are upserted into the
+     * base `rules` below, keyed by identity (a rule's `patterns`, or `range`
+     * for require-engine-version) — a rule with new patterns is added, one
+     * whose patterns match an existing base rule replaces it, and severity
+     * 'off' replaces it with nothing (like ESLint's per-rule 'off'). Lets one
+     * shared config both add rules to a subset of repos (a mandatory
+     * dependency for 30 of 150 apps) and loosen/cancel an org-wide rule for
+     * specific repos.
+     */
+    overrides: z.array(OverrideSchema).default([]),
 
-  rules: z
-    .object({
-      'no-files': RuleConfigOrArraySchema.default([]),
-      'require-files': RuleConfigOrArraySchema.default([]),
-      'no-packages': RuleConfigOrArraySchema.default([]),
-      'require-packages': RuleConfigOrArraySchema.default([]),
-      'require-scripts': RuleConfigOrArraySchema.default([]),
-      'require-package-fields': PackageFieldRuleOrArraySchema.default([]),
-      'no-package-fields': PackageFieldRuleOrArraySchema.default([]),
-      'require-engine-version': z
-        .union([EngineVersionRuleSchema, z.array(EngineVersionRuleSchema)])
-        .optional(),
-      'require-codeowners': CodeownersRuleSchema.optional(),
-    })
-    .default(() => ({
-      'no-files': [] as RuleConfig[],
-      'require-files': [] as RuleConfig[],
-      'no-packages': [] as RuleConfig[],
-      'require-packages': [] as RuleConfig[],
-      'require-scripts': [] as RuleConfig[],
-      'require-package-fields': [] as PackageFieldRule[],
-      'no-package-fields': [] as PackageFieldRule[],
-    })),
+    rules: z
+      .object({
+        'no-files': RuleConfigOrArraySchema.default([]),
+        'require-files': RuleConfigOrArraySchema.default([]),
+        'no-packages': RuleConfigOrArraySchema.default([]),
+        'require-packages': RuleConfigOrArraySchema.default([]),
+        'require-scripts': RuleConfigOrArraySchema.default([]),
+        'require-package-fields': PackageFieldRuleOrArraySchema.default([]),
+        'no-package-fields': PackageFieldRuleOrArraySchema.default([]),
+        'require-engine-version': z
+          .union([EngineVersionRuleSchema, z.array(EngineVersionRuleSchema)])
+          .optional(),
+        'require-codeowners': CodeownersRuleSchema.optional(),
+      })
+      .strict()
+      .default(() => ({
+        'no-files': [] as RuleConfig[],
+        'require-files': [] as RuleConfig[],
+        'no-packages': [] as RuleConfig[],
+        'require-packages': [] as RuleConfig[],
+        'require-scripts': [] as RuleConfig[],
+        'require-package-fields': [] as PackageFieldRule[],
+        'no-package-fields': [] as PackageFieldRule[],
+      })),
 
-  output: z
-    .object({
-      summary: z.union([z.literal('log'), z.literal(false)]).default('log'),
-      components: z
-        .union([z.enum(['table', 'chart']), z.literal(false)])
-        .default('table'),
-      packages: z
-        .union([z.enum(['table', 'chart']), z.literal(false)])
-        .default('table'),
-      patterns: z
-        .union([z.enum(['table', 'chart']), z.literal(false)])
-        .default('table'),
-      details: z.boolean().default(false),
-      versus: z.boolean().default(true),
-      rules: z.boolean().default(true),
-      format: z.enum(['human', 'json']).default('human'),
-    })
-    .default(() => ({
-      summary: 'log' as const,
-      components: 'table' as const,
-      packages: 'table' as const,
-      patterns: 'table' as const,
-      details: false,
-      versus: true,
-      rules: true,
-      format: 'human' as const,
-    })),
+    output: z
+      .object({
+        summary: z.union([z.literal('log'), z.literal(false)]).default('log'),
+        components: z
+          .union([z.enum(['table', 'chart']), z.literal(false)])
+          .default('table'),
+        packages: z
+          .union([z.enum(['table', 'chart']), z.literal(false)])
+          .default('table'),
+        patterns: z
+          .union([z.enum(['table', 'chart']), z.literal(false)])
+          .default('table'),
+        details: z.boolean().default(false),
+        versus: z.boolean().default(true),
+        rules: z.boolean().default(true),
+        format: z.enum(['human', 'json']).default('human'),
+      })
+      .strict()
+      .default(() => ({
+        summary: 'log' as const,
+        components: 'table' as const,
+        packages: 'table' as const,
+        patterns: 'table' as const,
+        details: false,
+        versus: true,
+        rules: true,
+        format: 'human' as const,
+      })),
 
-  releaseAge: z
-    .object({
-      enabled: z.boolean().default(false),
-      registry: z.string().default('https://registry.npmjs.org'),
-      authToken: z.string().optional(),
-      thresholds: z
-        .object({
-          patch: ThresholdSchema.default(30),
-          minor: ThresholdSchema.default(45),
-          major: ThresholdSchema.default(60),
-        })
-        .default(() => ({ patch: 30, minor: 45, major: 60 })),
-      enforceOn: z.array(z.string()).default([]),
-      cacheTtlMs: z.number().int().positive().optional(),
-      cacheDisabled: z.boolean().default(false),
-      // 'root' checks only each package's direct/root-installed version;
-      // 'tree' checks every resolved copy in the lockfile, failing if any
-      // is overdue. Nested duplicates are always visible as advisory data
-      // regardless of scope — this only decides what's mandatory (#57).
-      scope: z.enum(['root', 'tree']).default('root'),
-      // Glob-matched (like enforceOn): packages matching here use the
-      // OPPOSITE of `scope`, letting one global policy carve out
-      // exceptions for specific packages.
-      scopeExceptions: z.array(z.string()).default([]),
-    })
-    .default(() => ({
-      enabled: false,
-      registry: 'https://registry.npmjs.org',
-      thresholds: { patch: 30, minor: 45, major: 60 },
-      enforceOn: [],
-      cacheDisabled: false,
-      scope: 'root' as const,
-      scopeExceptions: [],
-    })),
-});
+    releaseAge: z
+      .object({
+        enabled: z.boolean().default(false),
+        registry: z.string().default('https://registry.npmjs.org'),
+        authToken: z.string().optional(),
+        thresholds: z
+          .object({
+            patch: ThresholdSchema.default(30),
+            minor: ThresholdSchema.default(45),
+            major: ThresholdSchema.default(60),
+          })
+          .strict()
+          .default(() => ({ patch: 30, minor: 45, major: 60 })),
+        enforceOn: z.array(z.string()).default([]),
+        cacheTtlMs: z.number().int().positive().optional(),
+        cacheDisabled: z.boolean().default(false),
+        // 'root' checks only each package's direct/root-installed version;
+        // 'tree' checks every resolved copy in the lockfile, failing if any
+        // is overdue. Nested duplicates are always visible as advisory data
+        // regardless of scope — this only decides what's mandatory (#57).
+        scope: z.enum(['root', 'tree']).default('root'),
+        // Glob-matched (like enforceOn): packages matching here use the
+        // OPPOSITE of `scope`, letting one global policy carve out
+        // exceptions for specific packages.
+        scopeExceptions: z.array(z.string()).default([]),
+      })
+      .strict()
+      .default(() => ({
+        enabled: false,
+        registry: 'https://registry.npmjs.org',
+        thresholds: { patch: 30, minor: 45, major: 60 },
+        enforceOn: [],
+        cacheDisabled: false,
+        scope: 'root' as const,
+        scopeExceptions: [],
+      })),
+  })
+  .strict();
 
 // ── Derived types ──────────────────────────────────────────────────────────────
 
