@@ -14,7 +14,7 @@ _unchanged_
 
 **Ran** `hermex comply --config configs/release-age.config.ts` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/configs/release-age.config.ts`](https://github.com/Gallevy/hermex/blob/6be6e720b9bb500f74d9a541aad8385986ae3738/fixtures/configs/release-age.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/6be6e720b9bb500f74d9a541aad8385986ae3738/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/6be6e720b9bb500f74d9a541aad8385986ae3738/fixtures/README.md)) · **Case** [`comply-release-age`](https://github.com/Gallevy/hermex/blob/6be6e720b9bb500f74d9a541aad8385986ae3738/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/6be6e720b9bb500f74d9a541aad8385986ae3738/fixtures/cases/comply-release-age.md))
+**Config** [`fixtures/configs/release-age.config.ts`](https://github.com/Gallevy/hermex/blob/4c3d0bbe2b5c76d3d41e15603c9b9eee90e9b616/fixtures/configs/release-age.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/4c3d0bbe2b5c76d3d41e15603c9b9eee90e9b616/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/4c3d0bbe2b5c76d3d41e15603c9b9eee90e9b616/fixtures/README.md)) · **Case** [`comply-release-age`](https://github.com/Gallevy/hermex/blob/4c3d0bbe2b5c76d3d41e15603c9b9eee90e9b616/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/4c3d0bbe2b5c76d3d41e15603c9b9eee90e9b616/fixtures/cases/comply-release-age.md))
 
 **Registry** offline, served from `fixtures/registry/timelines.ts` — no network
 
@@ -22,7 +22,7 @@ _unchanged_
 
 ## Config
 
-[`fixtures/configs/release-age.config.ts`](https://github.com/Gallevy/hermex/blob/6be6e720b9bb500f74d9a541aad8385986ae3738/fixtures/configs/release-age.config.ts)
+[`fixtures/configs/release-age.config.ts`](https://github.com/Gallevy/hermex/blob/4c3d0bbe2b5c76d3d41e15603c9b9eee90e9b616/fixtures/configs/release-age.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../../src/config/types.ts';
@@ -83,7 +83,7 @@ hermex v<version>
 Caused by:
     Syntax Error
 
-✔ Release age fetched
+✔ Release age fetched (1 packages skipped — registry unreachable or not found)
 
 🔍 Rules
 
@@ -103,19 +103,19 @@ Caused by:
 
 📦 Packages
 
-┌─────────────────────────────────┬───────────┬───────────────────────────────────────────────────┐
-│ Package                         │ Installed │ Target                                            │
-├─────────────────────────────────┼───────────┼───────────────────────────────────────────────────┤
-│ [int] @design-system/foundation │ 2.5.3     │                                                   │
-├─────────────────────────────────┼───────────┼───────────────────────────────────────────────────┤
-│ react                           │ 18.3.1    │ 🟡 major 19.1.0 (340 days overdue) [not enforced] │
-├─────────────────────────────────┼───────────┼───────────────────────────────────────────────────┤
-│ eslint                          │ N/A       │                                                   │
-├─────────────────────────────────┼───────────┼───────────────────────────────────────────────────┤
-│ [DEPRECATED] [BANNED] moment    │ 2.29.4    │ 🔴 minor 2.30.1 (no compliant release available)  │
-├─────────────────────────────────┼───────────┼───────────────────────────────────────────────────┤
-│ react-dom                       │ 18.3.1    │ 🔵 patch 18.3.2 (20 days remaining)               │
-└─────────────────────────────────┴───────────┴───────────────────────────────────────────────────┘
+┌──────────────────────────────┬───────────┬───────────────────────────────────────────────────┐
+│ Package                      │ Installed │ Target                                            │
+├──────────────────────────────┼───────────┼───────────────────────────────────────────────────┤
+│ @design-system/foundation    │ 2.5.3     │                                                   │
+├──────────────────────────────┼───────────┼───────────────────────────────────────────────────┤
+│ react                        │ 18.3.1    │ 🟡 major 19.1.0 (340 days overdue) [not enforced] │
+├──────────────────────────────┼───────────┼───────────────────────────────────────────────────┤
+│ eslint                       │ N/A       │                                                   │
+├──────────────────────────────┼───────────┼───────────────────────────────────────────────────┤
+│ [DEPRECATED] [BANNED] moment │ 2.29.4    │ 🔴 minor 2.30.1 (no compliant release available)  │
+├──────────────────────────────┼───────────┼───────────────────────────────────────────────────┤
+│ react-dom                    │ 18.3.1    │ 🔵 patch 18.3.2 (20 days remaining)               │
+└──────────────────────────────┴───────────┴───────────────────────────────────────────────────┘
 
 Total: 5 packages
 

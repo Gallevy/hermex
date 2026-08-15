@@ -14,13 +14,13 @@ _unchanged_
 
 **Ran** `hermex comply --format json` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/6be6e720b9bb500f74d9a541aad8385986ae3738/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/6be6e720b9bb500f74d9a541aad8385986ae3738/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/6be6e720b9bb500f74d9a541aad8385986ae3738/fixtures/README.md)) · **Case** [`comply-json`](https://github.com/Gallevy/hermex/blob/6be6e720b9bb500f74d9a541aad8385986ae3738/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/6be6e720b9bb500f74d9a541aad8385986ae3738/fixtures/cases/comply-json.md))
+**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/4c3d0bbe2b5c76d3d41e15603c9b9eee90e9b616/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/4c3d0bbe2b5c76d3d41e15603c9b9eee90e9b616/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/4c3d0bbe2b5c76d3d41e15603c9b9eee90e9b616/fixtures/README.md)) · **Case** [`comply-json`](https://github.com/Gallevy/hermex/blob/4c3d0bbe2b5c76d3d41e15603c9b9eee90e9b616/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/4c3d0bbe2b5c76d3d41e15603c9b9eee90e9b616/fixtures/cases/comply-json.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-json`</sub>
 
 ## Config
 
-[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/6be6e720b9bb500f74d9a541aad8385986ae3738/fixtures/hermex.config.ts)
+[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/4c3d0bbe2b5c76d3d41e15603c9b9eee90e9b616/fixtures/hermex.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../src/config/types.ts';
@@ -47,9 +47,6 @@ export default {
     'registry/**',
     'repos/**',
   ],
-  packages: {
-    internal: ['@design-system/*'],
-  },
   versus: [
     {
       name: 'Design System Migration',
@@ -119,7 +116,6 @@ export default {
       "componentCount": 18,
       "usageCount": 33,
       "percentage": 91.66666666666666,
-      "internal": true,
       "hasVersionConflict": false,
       "allVersions": [
         "2.5.3"
@@ -135,7 +131,6 @@ export default {
       "componentCount": 1,
       "usageCount": 3,
       "percentage": 8.333333333333332,
-      "internal": false,
       "hasVersionConflict": false,
       "allVersions": [
         "18.3.1"
@@ -151,7 +146,6 @@ export default {
       "componentCount": 0,
       "usageCount": 0,
       "percentage": 0,
-      "internal": false,
       "hasVersionConflict": false,
       "allVersions": []
     },
@@ -165,7 +159,6 @@ export default {
       "componentCount": 0,
       "usageCount": 0,
       "percentage": 0,
-      "internal": false,
       "hasVersionConflict": false,
       "allVersions": [
         "2.29.4"
@@ -179,7 +172,6 @@ export default {
       "componentCount": 0,
       "usageCount": 0,
       "percentage": 0,
-      "internal": false,
       "hasVersionConflict": false,
       "allVersions": [
         "18.3.1"
@@ -500,7 +492,12 @@ export default {
       "name": "Design System Migration",
       "packages": [
         "@design-system/foundation",
-… 64 more line(s) — re-run locally for the full text.
+        "@new-system/arc"
+      ],
+      "entries": [
+        {
+          "packageName": "@design-system/foundation",
+… 59 more line(s) — re-run locally for the full text.
 ```
 
 </details>

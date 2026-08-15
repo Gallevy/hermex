@@ -14,13 +14,13 @@ _unchanged_
 
 **Ran** `hermex scan --config configs/all-sections.config.ts` in `fixtures/` → exit 0, as asserted
 
-**Config** [`fixtures/configs/all-sections.config.ts`](https://github.com/Gallevy/hermex/blob/6be6e720b9bb500f74d9a541aad8385986ae3738/fixtures/configs/all-sections.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/6be6e720b9bb500f74d9a541aad8385986ae3738/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/6be6e720b9bb500f74d9a541aad8385986ae3738/fixtures/README.md)) · **Case** [`scan-human-all-sections`](https://github.com/Gallevy/hermex/blob/6be6e720b9bb500f74d9a541aad8385986ae3738/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/6be6e720b9bb500f74d9a541aad8385986ae3738/fixtures/cases/scan-human-all-sections.md))
+**Config** [`fixtures/configs/all-sections.config.ts`](https://github.com/Gallevy/hermex/blob/4c3d0bbe2b5c76d3d41e15603c9b9eee90e9b616/fixtures/configs/all-sections.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/4c3d0bbe2b5c76d3d41e15603c9b9eee90e9b616/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/4c3d0bbe2b5c76d3d41e15603c9b9eee90e9b616/fixtures/README.md)) · **Case** [`scan-human-all-sections`](https://github.com/Gallevy/hermex/blob/4c3d0bbe2b5c76d3d41e15603c9b9eee90e9b616/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/4c3d0bbe2b5c76d3d41e15603c9b9eee90e9b616/fixtures/cases/scan-human-all-sections.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter scan-human-all-sections`</sub>
 
 ## Config
 
-[`fixtures/configs/all-sections.config.ts`](https://github.com/Gallevy/hermex/blob/6be6e720b9bb500f74d9a541aad8385986ae3738/fixtures/configs/all-sections.config.ts)
+[`fixtures/configs/all-sections.config.ts`](https://github.com/Gallevy/hermex/blob/4c3d0bbe2b5c76d3d41e15603c9b9eee90e9b616/fixtures/configs/all-sections.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../../src/config/types.ts';
@@ -71,19 +71,19 @@ Caused by:
 
 📦 Packages
 
-┌─────────────────────────────────┬─────────┐
-│ Package                         │ Version │
-├─────────────────────────────────┼─────────┤
-│ [int] @design-system/foundation │ 2.5.3   │
-├─────────────────────────────────┼─────────┤
-│ react                           │ 18.3.1  │
-├─────────────────────────────────┼─────────┤
-│ eslint                          │ N/A     │
-├─────────────────────────────────┼─────────┤
-│ [BANNED] moment                 │ 2.29.4  │
-├─────────────────────────────────┼─────────┤
-│ react-dom                       │ 18.3.1  │
-└─────────────────────────────────┴─────────┘
+┌───────────────────────────┬─────────┐
+│ Package                   │ Version │
+├───────────────────────────┼─────────┤
+│ @design-system/foundation │ 2.5.3   │
+├───────────────────────────┼─────────┤
+│ react                     │ 18.3.1  │
+├───────────────────────────┼─────────┤
+│ eslint                    │ N/A     │
+├───────────────────────────┼─────────┤
+│ [BANNED] moment           │ 2.29.4  │
+├───────────────────────────┼─────────┤
+│ react-dom                 │ 18.3.1  │
+└───────────────────────────┴─────────┘
 
 Total: 5 packages
 

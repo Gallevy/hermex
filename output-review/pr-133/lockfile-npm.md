@@ -14,7 +14,7 @@ _unchanged_
 
 **Ran** `hermex scan --format json` in `fixtures/repos/lockfile-npm` → exit 0, as asserted
 
-**Config** _none — the loader found no `hermex.config.ts` in the cwd, so this ran on schema defaults_ · **Fixture** [`fixtures/repos/lockfile-npm`](https://github.com/Gallevy/hermex/blob/6be6e720b9bb500f74d9a541aad8385986ae3738/fixtures/repos/lockfile-npm) ([overview](https://github.com/Gallevy/hermex/blob/6be6e720b9bb500f74d9a541aad8385986ae3738/fixtures/repos/lockfile-npm/README.md)) · **Case** [`lockfile-npm`](https://github.com/Gallevy/hermex/blob/6be6e720b9bb500f74d9a541aad8385986ae3738/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/6be6e720b9bb500f74d9a541aad8385986ae3738/fixtures/cases/lockfile-npm.md))
+**Config** _none — the loader found no `hermex.config.ts` in the cwd, so this ran on schema defaults_ · **Fixture** [`fixtures/repos/lockfile-npm`](https://github.com/Gallevy/hermex/blob/4c3d0bbe2b5c76d3d41e15603c9b9eee90e9b616/fixtures/repos/lockfile-npm) ([overview](https://github.com/Gallevy/hermex/blob/4c3d0bbe2b5c76d3d41e15603c9b9eee90e9b616/fixtures/repos/lockfile-npm/README.md)) · **Case** [`lockfile-npm`](https://github.com/Gallevy/hermex/blob/4c3d0bbe2b5c76d3d41e15603c9b9eee90e9b616/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/4c3d0bbe2b5c76d3d41e15603c9b9eee90e9b616/fixtures/cases/lockfile-npm.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter lockfile-npm`</sub>
 
@@ -128,7 +128,6 @@ None. `src/config/loader.ts` looks for `hermex.config.ts` in the working directo
       "componentCount": 2,
       "usageCount": 2,
       "percentage": 66.66666666666666,
-      "internal": false,
       "hasVersionConflict": false,
       "allVersions": [
         "2.5.0"
@@ -144,7 +143,6 @@ None. `src/config/loader.ts` looks for `hermex.config.ts` in the working directo
       "componentCount": 1,
       "usageCount": 1,
       "percentage": 33.33333333333333,
-      "internal": false,
       "hasVersionConflict": false,
       "allVersions": [
         "1.2.3"
@@ -160,7 +158,6 @@ None. `src/config/loader.ts` looks for `hermex.config.ts` in the working directo
       "componentCount": 0,
       "usageCount": 0,
       "percentage": 0,
-      "internal": false,
       "hasVersionConflict": false,
       "allVersions": [
         "18.2.0"
@@ -176,7 +173,6 @@ None. `src/config/loader.ts` looks for `hermex.config.ts` in the working directo
       "componentCount": 0,
       "usageCount": 0,
       "percentage": 0,
-      "internal": false,
       "hasVersionConflict": false,
       "allVersions": [
         "18.2.0"
