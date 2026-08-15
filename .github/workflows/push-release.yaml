@@ -92,12 +92,22 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Version packages
+        id: version
         uses: changesets/action/version@v2
         with:
           github-token: ${{ steps.app-token.outputs.token }}
         env:
           # @changesets/changelog-github resolves PR numbers and authors.
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      # changesets/action/version has no label input, so label the PR it
+      # opened (or updated) as a separate step. Flags it as a release-gate PR:
+      # merging it is what ships the pending changesets to npm.
+      - name: Label Version Packages PR
+        if: steps.version.outputs.pr-number
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: gh pr edit "${{ steps.version.outputs.pr-number }}" --repo "${{ github.repository }}" --add-label "release:pending"
 
   # Runs the full quality gate, builds, then packs tarballs for `publish`.
   # Nothing reaches npm unless every check here passes.
