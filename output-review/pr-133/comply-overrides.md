@@ -14,13 +14,13 @@ _unchanged_
 
 **Ran** `hermex comply --config configs/overrides.config.ts` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/configs/overrides.config.ts`](https://github.com/Gallevy/hermex/blob/a9df614b4deca14cd7ee8a746fe5c0dbd868ffe0/fixtures/configs/overrides.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/a9df614b4deca14cd7ee8a746fe5c0dbd868ffe0/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/a9df614b4deca14cd7ee8a746fe5c0dbd868ffe0/fixtures/README.md)) · **Case** [`comply-overrides`](https://github.com/Gallevy/hermex/blob/a9df614b4deca14cd7ee8a746fe5c0dbd868ffe0/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/a9df614b4deca14cd7ee8a746fe5c0dbd868ffe0/fixtures/cases/comply-overrides.md))
+**Config** [`fixtures/configs/overrides.config.ts`](https://github.com/Gallevy/hermex/blob/6be6e720b9bb500f74d9a541aad8385986ae3738/fixtures/configs/overrides.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/6be6e720b9bb500f74d9a541aad8385986ae3738/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/6be6e720b9bb500f74d9a541aad8385986ae3738/fixtures/README.md)) · **Case** [`comply-overrides`](https://github.com/Gallevy/hermex/blob/6be6e720b9bb500f74d9a541aad8385986ae3738/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/6be6e720b9bb500f74d9a541aad8385986ae3738/fixtures/cases/comply-overrides.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-overrides`</sub>
 
 ## Config
 
-[`fixtures/configs/overrides.config.ts`](https://github.com/Gallevy/hermex/blob/a9df614b4deca14cd7ee8a746fe5c0dbd868ffe0/fixtures/configs/overrides.config.ts)
+[`fixtures/configs/overrides.config.ts`](https://github.com/Gallevy/hermex/blob/6be6e720b9bb500f74d9a541aad8385986ae3738/fixtures/configs/overrides.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../../src/config/types.ts';
@@ -88,11 +88,11 @@ Caused by:
 ┌──────────────────┬────────────────────────────────────────────────────────────────────────┐
 │ Rule             │ Description                                                            │
 ├──────────────────┼────────────────────────────────────────────────────────────────────────┤
-│ no-packages      │ 🟡 moment is forbidden — Use date-fns or dayjs (scheduled for removal) │
-├──────────────────┼────────────────────────────────────────────────────────────────────────┤
 │ require-packages │ 🔴 typescript not installed — TypeScript is required                   │
 ├──────────────────┼────────────────────────────────────────────────────────────────────────┤
 │ require-files    │ 🔴 .nvmrc not found                                                    │
+├──────────────────┼────────────────────────────────────────────────────────────────────────┤
+│ no-packages      │ 🟡 moment is forbidden — Use date-fns or dayjs (scheduled for removal) │
 └──────────────────┴────────────────────────────────────────────────────────────────────────┘
 
 2 errors, 1 warning

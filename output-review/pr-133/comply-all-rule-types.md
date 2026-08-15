@@ -14,13 +14,13 @@ _unchanged_
 
 **Ran** `hermex comply` in `fixtures/repos/all-rule-types` → exit 1, as asserted
 
-**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/a9df614b4deca14cd7ee8a746fe5c0dbd868ffe0/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/a9df614b4deca14cd7ee8a746fe5c0dbd868ffe0/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/a9df614b4deca14cd7ee8a746fe5c0dbd868ffe0/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types`](https://github.com/Gallevy/hermex/blob/a9df614b4deca14cd7ee8a746fe5c0dbd868ffe0/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/a9df614b4deca14cd7ee8a746fe5c0dbd868ffe0/fixtures/cases/comply-all-rule-types.md))
+**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/6be6e720b9bb500f74d9a541aad8385986ae3738/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/6be6e720b9bb500f74d9a541aad8385986ae3738/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/6be6e720b9bb500f74d9a541aad8385986ae3738/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types`](https://github.com/Gallevy/hermex/blob/6be6e720b9bb500f74d9a541aad8385986ae3738/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/6be6e720b9bb500f74d9a541aad8385986ae3738/fixtures/cases/comply-all-rule-types.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-all-rule-types`</sub>
 
 ## Config
 
-[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/a9df614b4deca14cd7ee8a746fe5c0dbd868ffe0/fixtures/repos/all-rule-types/hermex.config.ts)
+[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/6be6e720b9bb500f74d9a541aad8385986ae3738/fixtures/repos/all-rule-types/hermex.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../../../src/config/types.ts';
@@ -119,11 +119,11 @@ hermex v<version>
 ├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
 │ require-scripts        │ 🔴 script build, test missing in package.json — Required npm scripts                          │
 ├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ require-engine-version │ 🔴 engines.node is >=16, required >=20 — Minimum Node 20 required                             │
+├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
 │ package-fields         │ 🟡 field license missing in package.json                                                      │
 ├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
 │ package-fields         │ 🟡 field publishConfig.registry is forbidden in package.json — Publish to the public registry │
-├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
-│ require-engine-version │ 🔴 engines.node is >=16, required >=20 — Minimum Node 20 required                             │
 ├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
 │ require-codeowners     │ 🔵 1 scanned file(s) have no owner: src/orphan.tsx — Every file needs a platform owner        │
 ├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
