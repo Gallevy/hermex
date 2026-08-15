@@ -14,13 +14,13 @@ _unchanged_
 
 **Ran** `hermex comply --format json` in `fixtures/repos/all-rule-types` → exit 1, as asserted
 
-**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/cc5de874b6912859fa1eed2baa77d421648f2639/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/cc5de874b6912859fa1eed2baa77d421648f2639/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/cc5de874b6912859fa1eed2baa77d421648f2639/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types-json`](https://github.com/Gallevy/hermex/blob/cc5de874b6912859fa1eed2baa77d421648f2639/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/cc5de874b6912859fa1eed2baa77d421648f2639/fixtures/cases/comply-all-rule-types-json.md))
+**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/7c41872fead511379b3da5239390344db885dfc5/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/7c41872fead511379b3da5239390344db885dfc5/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/7c41872fead511379b3da5239390344db885dfc5/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types-json`](https://github.com/Gallevy/hermex/blob/7c41872fead511379b3da5239390344db885dfc5/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/7c41872fead511379b3da5239390344db885dfc5/fixtures/cases/comply-all-rule-types-json.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-all-rule-types-json`</sub>
 
 ## Config
 
-[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/cc5de874b6912859fa1eed2baa77d421648f2639/fixtures/repos/all-rule-types/hermex.config.ts)
+[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/7c41872fead511379b3da5239390344db885dfc5/fixtures/repos/all-rule-types/hermex.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../../../src/config/types.ts';
@@ -104,135 +104,8 @@ export default {
     "filesAnalyzed": 3,
     "totalImports": 3,
     "totalComponents": 1,
-    "totalUsagePatterns": 5,
-    "patternCounts": [
-      {
-        "patternType": "imports.named",
-        "displayName": "Named Imports",
-        "count": 3
-      },
-      {
-        "patternType": "usage.jsx",
-        "displayName": "JSX Usage",
-        "count": 1
-      },
-      {
-        "patternType": "imports.default",
-        "displayName": "Default Imports",
-        "count": 0
-      },
-      {
-        "patternType": "imports.namespace",
-        "displayName": "Namespace Imports",
-        "count": 0
-      },
-      {
-        "patternType": "imports.aliased",
-        "displayName": "Aliased Imports",
-        "count": 0
-      },
-      {
-        "patternType": "usage.variables",
-        "displayName": "Variable Assignments",
-        "count": 0
-      },
-      {
-        "patternType": "usage.destructuring",
-        "displayName": "Destructuring",
-        "count": 0
-      },
-      {
-        "patternType": "usage.conditional",
-        "displayName": "Conditional Usage",
-        "count": 0
-      },
-      {
-        "patternType": "usage.arrays",
-        "displayName": "Array Mappings",
-        "count": 0
-      },
-      {
-        "patternType": "usage.objects",
-        "displayName": "Object Mappings",
-        "count": 0
-      },
-      {
-        "patternType": "advanced.lazy",
-        "displayName": "Lazy Loading",
-        "count": 0
-      },
-      {
-        "patternType": "advanced.dynamic",
-        "displayName": "Dynamic Imports",
-        "count": 0
-      },
-      {
-        "patternType": "advanced.hoc",
-        "displayName": "Higher-Order Components",
-        "count": 0
-      },
-      {
-        "patternType": "advanced.memo",
-        "displayName": "Memoized Components",
-        "count": 0
-      },
-      {
-        "patternType": "advanced.forwardRef",
-        "displayName": "Forward Refs",
-        "count": 0
-      },
-      {
-        "patternType": "advanced.portal",
-        "displayName": "Portal Usage",
-        "count": 0
-      }
-    ]
+    "totalUsagePatterns": 5
   },
-  "packages": [
-    {
-      "packageName": "react",
-      "version": "18.3.1",
-      "rootVersion": "18.3.1",
-      "declaredIn": [
-        "dependencies"
-      ],
-      "componentCount": 1,
-      "usageCount": 1,
-      "percentage": 100,
-      "internal": false,
-      "hasVersionConflict": false,
-      "allVersions": [
-        "18.3.1"
-      ]
-    },
-    {
-      "packageName": "moment",
-      "version": "2.29.4",
-      "rootVersion": "2.29.4",
-      "declaredIn": [
-        "dependencies"
-      ],
-      "componentCount": 0,
-      "usageCount": 0,
-      "percentage": 0,
-      "internal": false,
-      "hasVersionConflict": false,
-      "allVersions": [
-        "2.29.4"
-      ]
-    }
-  ],
-  "components": [
-    {
-      "name": "Fragment",
-      "source": "react",
-      "count": 1,
-      "files": [
-        "src/orphan.tsx"
-      ]
-    }
-  ],
-  "versus": [],
   "ruleViolations": [
     {
       "ruleId": "no-packages",

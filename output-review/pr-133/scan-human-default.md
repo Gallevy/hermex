@@ -14,13 +14,13 @@ _unchanged_
 
 **Ran** `hermex scan` in `fixtures/` → exit 0, as asserted
 
-**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/cc5de874b6912859fa1eed2baa77d421648f2639/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/cc5de874b6912859fa1eed2baa77d421648f2639/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/cc5de874b6912859fa1eed2baa77d421648f2639/fixtures/README.md)) · **Case** [`scan-human-default`](https://github.com/Gallevy/hermex/blob/cc5de874b6912859fa1eed2baa77d421648f2639/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/cc5de874b6912859fa1eed2baa77d421648f2639/fixtures/cases/scan-human-default.md))
+**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/7c41872fead511379b3da5239390344db885dfc5/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/7c41872fead511379b3da5239390344db885dfc5/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/7c41872fead511379b3da5239390344db885dfc5/fixtures/README.md)) · **Case** [`scan-human-default`](https://github.com/Gallevy/hermex/blob/7c41872fead511379b3da5239390344db885dfc5/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/7c41872fead511379b3da5239390344db885dfc5/fixtures/cases/scan-human-default.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter scan-human-default`</sub>
 
 ## Config
 
-[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/cc5de874b6912859fa1eed2baa77d421648f2639/fixtures/hermex.config.ts)
+[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/7c41872fead511379b3da5239390344db885dfc5/fixtures/hermex.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../src/config/types.ts';
