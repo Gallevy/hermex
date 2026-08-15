@@ -175,17 +175,6 @@ describe('buildPackageInventory — config flags', () => {
     expect(entry?.ignored).toBe(true);
     expect(isOwnedByRepo(entry!)).toBe(false);
   });
-
-  it('flags packages matching packages.internal', () => {
-    const config = createConfig({ packages: { internal: ['@my-org/*'] } });
-    const inventory = buildPackageInventory({
-      versions: { '@my-org/ui': '2.0.0', react: '18.0.0' },
-      config,
-    });
-
-    expect(find(inventory, '@my-org/ui')?.internal).toBe(true);
-    expect(find(inventory, 'react')?.internal).toBe(false);
-  });
 });
 
 describe('inventory predicates', () => {

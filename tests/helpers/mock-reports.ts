@@ -61,7 +61,6 @@ export function createMockPackage(
     usageCount: 1,
     percentage: 100,
     declaredIn: ['dependencies'],
-    internal: false,
     hasVersionConflict: false,
     // Defaults to a single-entry array matching `version` (not a fixed
     // '1.0.0') so overriding just `version` doesn't silently produce a
@@ -91,7 +90,6 @@ export function createMockInventoryEntry(
     rootVersion: version,
     allVersions: version ? [version] : [],
     hasVersionConflict: false,
-    internal: false,
     ignored: false,
     usageCount: 1,
     componentCount: 1,

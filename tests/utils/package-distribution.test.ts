@@ -336,17 +336,6 @@ describe('calculatePackageDistribution', () => {
     expect(distribution[0].allVersions).toEqual(['5.0.0']);
   });
 
-  it('marks a package as internal when it matches a configured internal pattern', () => {
-    const componentUsageMap = new Map<string, ComponentUsage>([
-      ['Widget', makeComponent('Widget', '@my-org/ui', 1)],
-    ]);
-    const config = createConfig({ packages: { internal: ['@my-org/*'] } });
-
-    const distribution = buildDistribution(componentUsageMap, {}, config);
-
-    expect(distribution[0].internal).toBe(true);
-  });
-
   it('excludes a package matched by a configured ignore pattern', () => {
     const componentUsageMap = new Map<string, ComponentUsage>([
       ['Button', makeComponent('Button', 'antd', 1)],
@@ -379,7 +368,6 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
       componentCount: 0,
       usageCount: 0,
       percentage: 0,
-      internal: false,
     });
   });
 
@@ -473,22 +461,6 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
     );
 
     expect(distribution).toEqual([]);
-  });
-
-  it('marks a lockfile-only enforceOn match as internal when it matches an internal pattern', () => {
-    const componentUsageMap = new Map<string, ComponentUsage>();
-    const config = createConfig({
-      packages: { internal: ['@acme-ui/*'] },
-      releaseAge: { enabled: true, enforceOn: ['@acme-ui/pulse-styles'] },
-    });
-
-    const distribution = buildDistribution(
-      componentUsageMap,
-      { '@acme-ui/pulse-styles': '2.1.0' },
-      config,
-    );
-
-    expect(distribution[0].internal).toBe(true);
   });
 
   it('flags hasVersionConflict/allVersions for a lockfile-only enforceOn match', () => {

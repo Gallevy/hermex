@@ -347,19 +347,6 @@ describe('printPackages', () => {
     expect(consoleSpy).not.toHaveBeenCalled();
   });
 
-  it('chart mode pads an internal package label wider to make room for the [int] tag', () => {
-    const aggregated = makeAggregated({
-      packageDistribution: [
-        createMockPackage('@my-org/ui', { internal: true, percentage: 100 }),
-      ],
-    });
-    expect(() => printPackages(aggregated, 'chart')).not.toThrow();
-    const output = consoleSpy.mock.calls
-      .map((call) => call.join(' '))
-      .join('\n');
-    expect(output).toContain('[int]');
-  });
-
   it('marks a package with multiple resolved versions as a version conflict', () => {
     const aggregated = makeAggregated({
       packageDistribution: [
@@ -437,18 +424,6 @@ describe('formatPackageName', () => {
     expect(formatPackageName(pkg, forbidViolation('moment', 'warn'))).toContain(
       '[RESTRICTED]',
     );
-  });
-
-  it('prefixes an internal package as [int] when not banned', () => {
-    const pkg = createMockPackage('@my-org/utils', { internal: true });
-    expect(formatPackageName(pkg)).toContain('[int]');
-  });
-
-  it('prefers [BANNED]/[RESTRICTED] over [int] when a package is both internal and banned', () => {
-    const pkg = createMockPackage('@my-org/utils', { internal: true });
-    const name = formatPackageName(pkg, forbidViolation('@my-org/utils'));
-    expect(name).toContain('[BANNED]');
-    expect(name).not.toContain('[int]');
   });
 
   it('combines [DEPRECATED] with [BANNED] when both apply', () => {

@@ -81,10 +81,9 @@ export const HermexConfigSchema = z.object({
 
   packages: z
     .object({
-      internal: z.array(z.string()).default([]),
       ignore: z.array(z.string()).default([]),
     })
-    .default(() => ({ internal: [], ignore: [] })),
+    .default(() => ({ ignore: [] })),
 
   versus: z
     .array(z.object({ name: z.string(), packages: z.array(z.string()).min(2) }))

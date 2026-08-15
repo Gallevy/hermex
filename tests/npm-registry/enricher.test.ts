@@ -41,15 +41,6 @@ describe('enrichWithReleaseAge â€” skipped packages', () => {
     expect(enriched[0].releaseAge).toBeUndefined();
   });
 
-  it('skips internal packages', async () => {
-    const pkg = createMockPackage('@company/ui', {
-      internal: true,
-      version: '1.0.0',
-    });
-    await enrichWithReleaseAge([pkg], BASE_CONFIG);
-    expect(mockFetch).not.toHaveBeenCalled();
-  });
-
   // #78 made `packages[]` every package the repo owns rather than only the
   // used ones. Enrichment must NOT follow it there: one registry request per
   // declared dependency is a large traffic increase, and — because an empty

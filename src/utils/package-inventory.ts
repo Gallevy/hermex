@@ -45,8 +45,6 @@ export interface PackageInventoryEntry {
   /** Every resolved copy in the lockfile — the `tree` axis. */
   allVersions: string[];
   hasVersionConflict: boolean;
-  /** Matches `packages.internal`. */
-  internal: boolean;
   /** Matches `packages.ignore`. Kept in the inventory rather than filtered out at construction so each consumer can decide — the packages table and forbid rules skip these, `require-packages` deliberately does not. */
   ignored: boolean;
   usageCount: number;
@@ -160,7 +158,6 @@ export function buildPackageInventory(
   } = input;
 
   const isIgnored = createGlobMatcher(config?.packages.ignore ?? []);
-  const isInternal = createGlobMatcher(config?.packages.internal ?? []);
 
   // Fold component usage up to one record per package first — several
   // components can come from the same source.
@@ -204,7 +201,6 @@ export function buildPackageInventory(
       rootVersion: getRootVersion(packageName, resolutions),
       allVersions,
       hasVersionConflict: allVersions.length > 1,
-      internal: isInternal(packageName),
       ignored: isIgnored(packageName),
       usageCount: packageUsage?.usageCount ?? 0,
       componentCount: packageUsage?.componentCount ?? 0,

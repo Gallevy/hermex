@@ -361,7 +361,7 @@ export async function enrichWithReleaseAge(
   // depends on while leaving registry traffic and the compliance verdict
   // exactly where they were.
   const targets = packages.filter(
-    (p) => !p.internal && p.version && isReleaseAgeTarget(p, config.enforceOn),
+    (p) => p.version && isReleaseAgeTarget(p, config.enforceOn),
   );
   const enriched = [...packages];
   let skipped = 0;

@@ -23,7 +23,6 @@ export interface PackageDistribution {
   usageCount: number;
   /** Share of total measured component usage. 0 for a package that is never rendered as a component — which includes every package used only as a function. */
   percentage: number;
-  internal: boolean;
   hasVersionConflict: boolean;
   allVersions: string[];
   /**
@@ -149,7 +148,6 @@ export function calculatePackageDistribution(
       componentCount: entry.componentCount,
       usageCount: entry.usageCount,
       percentage: 0,
-      internal: entry.internal,
       hasVersionConflict: entry.hasVersionConflict,
       allVersions: entry.allVersions,
     }));
