@@ -444,21 +444,6 @@ function buildReference(ref: string): string {
   // itself, for instance). A bare SHA has no such conflict.
   run('git', ['worktree', 'add', '--detach', worktree, sha], ROOT);
 
-  // pnpm resolves its workspace root by walking up from `worktree` looking
-  // for pnpm-workspace.yaml, and does not stop at the nested worktree's own
-  // `.git` file — so without one here it keeps going, lands on ROOT's, and
-  // then fails `--frozen-lockfile` because ROOT's lockfile has no importer
-  // entry for this path. `ref` predates pnpm-workspace.yaml on older
-  // commits; on newer ones the checkout already has its own copy (with its
-  // own allowBuilds) and this is a no-op.
-  const worktreeWorkspaceFile = join(worktree, 'pnpm-workspace.yaml');
-  if (!existsSync(worktreeWorkspaceFile)) {
-    writeFileSync(
-      worktreeWorkspaceFile,
-      "allowBuilds:\n  '@swc/core': true\n  esbuild: true\n",
-    );
-  }
-
   run('pnpm', ['install', '--frozen-lockfile'], worktree);
   run('pnpm', ['run', 'build'], worktree);
   return cli;
