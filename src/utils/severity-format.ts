@@ -1,4 +1,5 @@
 import chalk from 'chalk';
+import type { RuleViolation } from '../rules/evaluator';
 
 export type DisplaySeverity = 'error' | 'warn' | 'info' | 'success';
 
@@ -77,4 +78,33 @@ export function applyColorLevel(level: 0 | 1 | undefined): void {
     stripAnsiWrites(process.stdout);
     stripAnsiWrites(process.stderr);
   }
+}
+
+const SEVERITY_RANK: Record<RuleViolation['severity'], number> = {
+  error: 0,
+  warn: 1,
+  info: 2,
+};
+
+/**
+ * Sorts rule violations by severity descending (error → warn → info), with
+ * detection order as the tiebreak so runs stay deterministic and diffable
+ * (#87). Render-time only — `ruleViolations` on `AggregatedReport` itself
+ * stays in detection order, so nothing upstream (compliance counting,
+ * further aggregation) has to account for a sort. Every rendered surface —
+ * the terminal table (`printRules`), `--summary-file`, and `--format json` —
+ * routes through this one helper, so none of them can drift from each other
+ * or from a second, differently-ordered notion of "the" rule violations.
+ */
+export function sortViolationsBySeverity<T extends RuleViolation>(
+  violations: T[],
+): T[] {
+  return violations
+    .map((v, index) => ({ v, index }))
+    .sort((a, b) => {
+      const rankDiff =
+        SEVERITY_RANK[a.v.severity] - SEVERITY_RANK[b.v.severity];
+      return rankDiff !== 0 ? rankDiff : a.index - b.index;
+    })
+    .map(({ v }) => v);
 }

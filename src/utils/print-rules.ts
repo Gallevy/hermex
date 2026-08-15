@@ -3,7 +3,7 @@ import Table from 'cli-table3';
 import type { AggregatedReport } from './aggregator';
 import type { RuleViolation } from '../rules/evaluator';
 import { formatTruncatedList } from './format-utils';
-import { severityIcon } from './severity-format';
+import { severityIcon, sortViolationsBySeverity } from './severity-format';
 
 export function formatRuleType(ruleId: RuleViolation['ruleId']): string {
   switch (ruleId) {
@@ -89,7 +89,7 @@ export function printRules(aggregated: AggregatedReport): void {
     style: { head: ['cyan'], border: ['gray'] },
   });
 
-  for (const v of ruleViolations) {
+  for (const v of sortViolationsBySeverity(ruleViolations)) {
     table.push([
       formatRuleType(v.ruleId),
       `${severityIcon(v.severity)} ${describeViolation(v)}`,
