@@ -18,13 +18,13 @@ satisfy it, or the pass/fail pair stops proving anything.
 
 | Rule | Satisfied by |
 | --- | --- |
-| `detect_files` (`jest.config.*`, `.babelrc`) | Neither file exists. |
-| `require_files` (`.nvmrc`, `.editorconfig`) | Both present. |
-| `forbid_packages` (`moment`) | Not declared. |
-| `require_packages` (`typescript`) | In `devDependencies`. |
-| `require_scripts` (`build`, `test`) | Both in `scripts`. |
-| `require_package_fields` (`engines`, `license`) | Both set. |
-| `engine_version` (`>=20`) | `engines.node` is `>=20`. |
+| `no-files` (`jest.config.*`, `.babelrc`) | Neither file exists. |
+| `require-files` (`.nvmrc`, `.editorconfig`) | Both present. |
+| `no-packages` (`moment`) | Not declared. |
+| `require-packages` (`typescript`) | In `devDependencies`. |
+| `require-scripts` (`build`, `test`) | Both in `scripts`. |
+| `require-package-fields` (`engines`, `license`) | Both set. |
+| `require-engine-version` (`>=20`) | `engines.node` is `>=20`. |
 
 ## Cases that use it
 

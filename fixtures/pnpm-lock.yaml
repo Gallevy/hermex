@@ -44,6 +44,6 @@ packages:
 
   # Present only under `packages` and never in `importers`, i.e. pulled in by
   # another dependency. Purely transitive: nothing this repo declares, so
-  # forbid_packages must not flag it.
+  # no-packages must not flag it.
   js-tokens@4.0.0:
     resolution: {integrity: sha512-mock}

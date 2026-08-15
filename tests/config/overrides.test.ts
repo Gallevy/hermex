@@ -37,13 +37,13 @@ describe('applyOverrides', () => {
   it('merges an override into base rules when the repo name matches', () => {
     const config = createConfig({
       rules: {
-        require_packages: [{ severity: 'error', patterns: ['typescript'] }],
+        'require-packages': [{ severity: 'error', patterns: ['typescript'] }],
       },
       overrides: [
         {
           match: ['@acme/checkout'],
           rules: {
-            require_packages: [
+            'require-packages': [
               { severity: 'error', patterns: ['@acme/shell'] },
             ],
           },
@@ -53,7 +53,7 @@ describe('applyOverrides', () => {
 
     const result = applyOverrides(config, repo('@acme/checkout'));
 
-    expect(result.rules.require_packages).toEqual([
+    expect(result.rules['require-packages']).toEqual([
       { severity: 'error', patterns: ['typescript'] },
       { severity: 'error', patterns: ['@acme/shell'] },
     ]);
@@ -62,13 +62,13 @@ describe('applyOverrides', () => {
   it('leaves rules untouched when the repo name does not match', () => {
     const config = createConfig({
       rules: {
-        require_packages: [{ severity: 'error', patterns: ['typescript'] }],
+        'require-packages': [{ severity: 'error', patterns: ['typescript'] }],
       },
       overrides: [
         {
           match: ['@acme/checkout'],
           rules: {
-            require_packages: [
+            'require-packages': [
               { severity: 'error', patterns: ['@acme/shell'] },
             ],
           },
@@ -78,7 +78,7 @@ describe('applyOverrides', () => {
 
     const result = applyOverrides(config, repo('@acme/marketing-site'));
 
-    expect(result.rules.require_packages).toEqual([
+    expect(result.rules['require-packages']).toEqual([
       { severity: 'error', patterns: ['typescript'] },
     ]);
   });
@@ -89,13 +89,13 @@ describe('applyOverrides', () => {
         {
           match: ['@acme/*'],
           rules: {
-            require_packages: [{ severity: 'warn', patterns: ['eslint'] }],
+            'require-packages': [{ severity: 'warn', patterns: ['eslint'] }],
           },
         },
         {
           match: ['@acme/checkout'],
           rules: {
-            require_packages: [
+            'require-packages': [
               { severity: 'error', patterns: ['@acme/shell'] },
             ],
           },
@@ -105,7 +105,7 @@ describe('applyOverrides', () => {
 
     const result = applyOverrides(config, repo('@acme/checkout'));
 
-    expect(result.rules.require_packages).toEqual([
+    expect(result.rules['require-packages']).toEqual([
       { severity: 'warn', patterns: ['eslint'] },
       { severity: 'error', patterns: ['@acme/shell'] },
     ]);
@@ -117,7 +117,7 @@ describe('applyOverrides', () => {
         {
           match: ['@acme/shell-consumer-*'],
           rules: {
-            require_packages: [
+            'require-packages': [
               { severity: 'error', patterns: ['@acme/shell'] },
             ],
           },
@@ -127,7 +127,7 @@ describe('applyOverrides', () => {
 
     const result = applyOverrides(config, repo('@acme/shell-consumer-web'));
 
-    expect(result.rules.require_packages).toEqual([
+    expect(result.rules['require-packages']).toEqual([
       { severity: 'error', patterns: ['@acme/shell'] },
     ]);
   });
@@ -135,7 +135,7 @@ describe('applyOverrides', () => {
   it('leaves rule contents unchanged when there are no overrides configured and nothing to resolve', () => {
     const config = createConfig({
       rules: {
-        require_packages: [{ severity: 'error', patterns: ['typescript'] }],
+        'require-packages': [{ severity: 'error', patterns: ['typescript'] }],
       },
     });
 
@@ -146,7 +146,7 @@ describe('applyOverrides', () => {
     // even with zero overrides (see the describe block below) — this also
     // normalizes empty/singleton containers to arrays, which is why we
     // assert the rule contents rather than the raw pre-resolution shape.
-    expect(result.rules.require_packages).toEqual([
+    expect(result.rules['require-packages']).toEqual([
       { severity: 'error', patterns: ['typescript'] },
     ]);
   });
@@ -156,13 +156,13 @@ describe('applyOverrides', () => {
     dirs.push(dir);
     const config = createConfig({
       rules: {
-        require_packages: [{ severity: 'error', patterns: ['typescript'] }],
+        'require-packages': [{ severity: 'error', patterns: ['typescript'] }],
       },
       overrides: [
         {
           match: ['*'],
           rules: {
-            require_packages: [
+            'require-packages': [
               { severity: 'error', patterns: ['@acme/shell'] },
             ],
           },
@@ -172,7 +172,7 @@ describe('applyOverrides', () => {
 
     const result = applyOverrides(config, dir);
 
-    expect(result.rules.require_packages).toEqual([
+    expect(result.rules['require-packages']).toEqual([
       { severity: 'error', patterns: ['typescript'] },
     ]);
   });
@@ -186,13 +186,13 @@ describe('applyOverrides', () => {
     dirs.push(dir);
     const config = createConfig({
       rules: {
-        require_packages: [{ severity: 'error', patterns: ['typescript'] }],
+        'require-packages': [{ severity: 'error', patterns: ['typescript'] }],
       },
       overrides: [
         {
           match: ['*'],
           rules: {
-            require_packages: [
+            'require-packages': [
               { severity: 'error', patterns: ['@acme/shell'] },
             ],
           },
@@ -202,7 +202,7 @@ describe('applyOverrides', () => {
 
     const result = applyOverrides(config, dir);
 
-    expect(result.rules.require_packages).toEqual([
+    expect(result.rules['require-packages']).toEqual([
       { severity: 'error', patterns: ['typescript'] },
     ]);
   });
@@ -210,13 +210,13 @@ describe('applyOverrides', () => {
   it('merges onto a base rule authored as a single object, not an array', () => {
     const config = createConfig({
       rules: {
-        require_packages: { severity: 'error', patterns: ['typescript'] },
+        'require-packages': { severity: 'error', patterns: ['typescript'] },
       },
       overrides: [
         {
           match: ['@acme/checkout'],
           rules: {
-            require_packages: [
+            'require-packages': [
               { severity: 'error', patterns: ['@acme/shell'] },
             ],
           },
@@ -226,7 +226,7 @@ describe('applyOverrides', () => {
 
     const result = applyOverrides(config, repo('@acme/checkout'));
 
-    expect(result.rules.require_packages).toEqual([
+    expect(result.rules['require-packages']).toEqual([
       { severity: 'error', patterns: ['typescript'] },
       { severity: 'error', patterns: ['@acme/shell'] },
     ]);
@@ -235,13 +235,13 @@ describe('applyOverrides', () => {
   it('merges an override rule authored as an array of multiple rules', () => {
     const config = createConfig({
       rules: {
-        require_packages: [{ severity: 'error', patterns: ['typescript'] }],
+        'require-packages': [{ severity: 'error', patterns: ['typescript'] }],
       },
       overrides: [
         {
           match: ['@acme/checkout'],
           rules: {
-            require_packages: [
+            'require-packages': [
               { severity: 'error', patterns: ['@acme/shell'] },
               { severity: 'warn', patterns: ['@acme/telemetry'] },
             ],
@@ -252,23 +252,23 @@ describe('applyOverrides', () => {
 
     const result = applyOverrides(config, repo('@acme/checkout'));
 
-    expect(result.rules.require_packages).toEqual([
+    expect(result.rules['require-packages']).toEqual([
       { severity: 'error', patterns: ['typescript'] },
       { severity: 'error', patterns: ['@acme/shell'] },
       { severity: 'warn', patterns: ['@acme/telemetry'] },
     ]);
   });
 
-  it('merges detect_files', () => {
+  it('merges no-files', () => {
     const config = createConfig({
       rules: {
-        detect_files: [{ severity: 'error', patterns: ['jest.config.*'] }],
+        'no-files': [{ severity: 'error', patterns: ['jest.config.*'] }],
       },
       overrides: [
         {
           match: ['@acme/checkout'],
           rules: {
-            detect_files: [{ severity: 'warn', patterns: ['.babelrc'] }],
+            'no-files': [{ severity: 'warn', patterns: ['.babelrc'] }],
           },
         },
       ],
@@ -276,20 +276,22 @@ describe('applyOverrides', () => {
 
     const result = applyOverrides(config, repo('@acme/checkout'));
 
-    expect(result.rules.detect_files).toEqual([
+    expect(result.rules['no-files']).toEqual([
       { severity: 'error', patterns: ['jest.config.*'] },
       { severity: 'warn', patterns: ['.babelrc'] },
     ]);
   });
 
-  it('merges require_files', () => {
+  it('merges require-files', () => {
     const config = createConfig({
-      rules: { require_files: [{ severity: 'error', patterns: ['.nvmrc'] }] },
+      rules: { 'require-files': [{ severity: 'error', patterns: ['.nvmrc'] }] },
       overrides: [
         {
           match: ['@acme/checkout'],
           rules: {
-            require_files: [{ severity: 'warn', patterns: ['.editorconfig'] }],
+            'require-files': [
+              { severity: 'warn', patterns: ['.editorconfig'] },
+            ],
           },
         },
       ],
@@ -297,20 +299,20 @@ describe('applyOverrides', () => {
 
     const result = applyOverrides(config, repo('@acme/checkout'));
 
-    expect(result.rules.require_files).toEqual([
+    expect(result.rules['require-files']).toEqual([
       { severity: 'error', patterns: ['.nvmrc'] },
       { severity: 'warn', patterns: ['.editorconfig'] },
     ]);
   });
 
-  it('merges forbid_packages', () => {
+  it('merges no-packages', () => {
     const config = createConfig({
-      rules: { forbid_packages: [{ severity: 'error', patterns: ['moment'] }] },
+      rules: { 'no-packages': [{ severity: 'error', patterns: ['moment'] }] },
       overrides: [
         {
           match: ['@acme/checkout'],
           rules: {
-            forbid_packages: [{ severity: 'warn', patterns: ['lodash'] }],
+            'no-packages': [{ severity: 'warn', patterns: ['lodash'] }],
           },
         },
       ],
@@ -318,20 +320,22 @@ describe('applyOverrides', () => {
 
     const result = applyOverrides(config, repo('@acme/checkout'));
 
-    expect(result.rules.forbid_packages).toEqual([
+    expect(result.rules['no-packages']).toEqual([
       { severity: 'error', patterns: ['moment'] },
       { severity: 'warn', patterns: ['lodash'] },
     ]);
   });
 
-  it('merges require_scripts', () => {
+  it('merges require-scripts', () => {
     const config = createConfig({
-      rules: { require_scripts: [{ severity: 'error', patterns: ['build'] }] },
+      rules: {
+        'require-scripts': [{ severity: 'error', patterns: ['build'] }],
+      },
       overrides: [
         {
           match: ['@acme/checkout'],
           rules: {
-            require_scripts: [{ severity: 'warn', patterns: ['test'] }],
+            'require-scripts': [{ severity: 'warn', patterns: ['test'] }],
           },
         },
       ],
@@ -339,22 +343,24 @@ describe('applyOverrides', () => {
 
     const result = applyOverrides(config, repo('@acme/checkout'));
 
-    expect(result.rules.require_scripts).toEqual([
+    expect(result.rules['require-scripts']).toEqual([
       { severity: 'error', patterns: ['build'] },
       { severity: 'warn', patterns: ['test'] },
     ]);
   });
 
-  it('merges require_package_fields', () => {
+  it('merges require-package-fields', () => {
     const config = createConfig({
       rules: {
-        require_package_fields: [{ severity: 'error', patterns: ['license'] }],
+        'require-package-fields': [
+          { severity: 'error', patterns: ['license'] },
+        ],
       },
       overrides: [
         {
           match: ['@acme/checkout'],
           rules: {
-            require_package_fields: [
+            'require-package-fields': [
               { severity: 'warn', patterns: ['repository'] },
             ],
           },
@@ -364,16 +370,16 @@ describe('applyOverrides', () => {
 
     const result = applyOverrides(config, repo('@acme/checkout'));
 
-    expect(result.rules.require_package_fields).toEqual([
+    expect(result.rules['require-package-fields']).toEqual([
       { severity: 'error', patterns: ['license'] },
       { severity: 'warn', patterns: ['repository'] },
     ]);
   });
 
-  it('merges forbid_package_fields', () => {
+  it('merges no-package-fields', () => {
     const config = createConfig({
       rules: {
-        forbid_package_fields: [
+        'no-package-fields': [
           { severity: 'error', patterns: ['scripts.preinstall'] },
         ],
       },
@@ -381,7 +387,7 @@ describe('applyOverrides', () => {
         {
           match: ['@acme/checkout'],
           rules: {
-            forbid_package_fields: [
+            'no-package-fields': [
               { severity: 'warn', patterns: ['scripts.postinstall'] },
             ],
           },
@@ -391,20 +397,20 @@ describe('applyOverrides', () => {
 
     const result = applyOverrides(config, repo('@acme/checkout'));
 
-    expect(result.rules.forbid_package_fields).toEqual([
+    expect(result.rules['no-package-fields']).toEqual([
       { severity: 'error', patterns: ['scripts.preinstall'] },
       { severity: 'warn', patterns: ['scripts.postinstall'] },
     ]);
   });
 
-  it('merges engine_version', () => {
+  it('merges require-engine-version', () => {
     const config = createConfig({
-      rules: { engine_version: { severity: 'error', range: '>=18' } },
+      rules: { 'require-engine-version': { severity: 'error', range: '>=18' } },
       overrides: [
         {
           match: ['@acme/checkout'],
           rules: {
-            engine_version: { severity: 'warn', range: '>=20' },
+            'require-engine-version': { severity: 'warn', range: '>=20' },
           },
         },
       ],
@@ -412,7 +418,7 @@ describe('applyOverrides', () => {
 
     const result = applyOverrides(config, repo('@acme/checkout'));
 
-    expect(result.rules.engine_version).toEqual([
+    expect(result.rules['require-engine-version']).toEqual([
       { severity: 'error', range: '>=18' },
       { severity: 'warn', range: '>=20' },
     ]);
@@ -421,13 +427,13 @@ describe('applyOverrides', () => {
   it('replaces (not merges) the single-value codeowners rule', () => {
     const config = createConfig({
       rules: {
-        codeowners: { severity: 'warn' },
+        'require-codeowners': { severity: 'warn' },
       },
       overrides: [
         {
           match: ['@acme/checkout'],
           rules: {
-            codeowners: {
+            'require-codeowners': {
               severity: 'error',
               requiredOwners: ['@acme/platform-team'],
             },
@@ -438,7 +444,7 @@ describe('applyOverrides', () => {
 
     const result = applyOverrides(config, repo('@acme/checkout'));
 
-    expect(result.rules.codeowners).toEqual({
+    expect(result.rules['require-codeowners']).toEqual({
       severity: 'error',
       requiredOwners: ['@acme/platform-team'],
     });
@@ -465,7 +471,7 @@ describe('applyOverrides — severity "off" and upsert-by-identity (ESLint-like)
   it('cancels a base rule with matching patterns when severity is "off"', () => {
     const config = createConfig({
       rules: {
-        require_packages: [
+        'require-packages': [
           { severity: 'error', patterns: ['typescript'] },
           { severity: 'error', patterns: ['@acme/shell'] },
         ],
@@ -474,7 +480,9 @@ describe('applyOverrides — severity "off" and upsert-by-identity (ESLint-like)
         {
           match: ['@acme/legacy-app'],
           rules: {
-            require_packages: [{ severity: 'off', patterns: ['@acme/shell'] }],
+            'require-packages': [
+              { severity: 'off', patterns: ['@acme/shell'] },
+            ],
           },
         },
       ],
@@ -482,7 +490,7 @@ describe('applyOverrides — severity "off" and upsert-by-identity (ESLint-like)
 
     const result = applyOverrides(config, repo('@acme/legacy-app'));
 
-    expect(result.rules.require_packages).toEqual([
+    expect(result.rules['require-packages']).toEqual([
       { severity: 'error', patterns: ['typescript'] },
     ]);
   });
@@ -490,13 +498,15 @@ describe('applyOverrides — severity "off" and upsert-by-identity (ESLint-like)
   it('downgrades a base rule by upserting a rule with the same patterns and a different severity', () => {
     const config = createConfig({
       rules: {
-        require_packages: [{ severity: 'error', patterns: ['@acme/shell'] }],
+        'require-packages': [{ severity: 'error', patterns: ['@acme/shell'] }],
       },
       overrides: [
         {
           match: ['@acme/legacy-app'],
           rules: {
-            require_packages: [{ severity: 'warn', patterns: ['@acme/shell'] }],
+            'require-packages': [
+              { severity: 'warn', patterns: ['@acme/shell'] },
+            ],
           },
         },
       ],
@@ -504,7 +514,7 @@ describe('applyOverrides — severity "off" and upsert-by-identity (ESLint-like)
 
     const result = applyOverrides(config, repo('@acme/legacy-app'));
 
-    expect(result.rules.require_packages).toEqual([
+    expect(result.rules['require-packages']).toEqual([
       { severity: 'warn', patterns: ['@acme/shell'] },
     ]);
   });
@@ -512,15 +522,13 @@ describe('applyOverrides — severity "off" and upsert-by-identity (ESLint-like)
   it('matches patterns regardless of array order', () => {
     const config = createConfig({
       rules: {
-        forbid_packages: [
-          { severity: 'error', patterns: ['moment', 'lodash'] },
-        ],
+        'no-packages': [{ severity: 'error', patterns: ['moment', 'lodash'] }],
       },
       overrides: [
         {
           match: ['@acme/legacy-app'],
           rules: {
-            forbid_packages: [
+            'no-packages': [
               { severity: 'off', patterns: ['lodash', 'moment'] },
             ],
           },
@@ -530,19 +538,21 @@ describe('applyOverrides — severity "off" and upsert-by-identity (ESLint-like)
 
     const result = applyOverrides(config, repo('@acme/legacy-app'));
 
-    expect(result.rules.forbid_packages).toEqual([]);
+    expect(result.rules['no-packages']).toEqual([]);
   });
 
   it('an "off" rule with patterns that match nothing is a no-op (nothing to cancel, nothing added)', () => {
     const config = createConfig({
       rules: {
-        require_packages: [{ severity: 'error', patterns: ['typescript'] }],
+        'require-packages': [{ severity: 'error', patterns: ['typescript'] }],
       },
       overrides: [
         {
           match: ['@acme/legacy-app'],
           rules: {
-            require_packages: [{ severity: 'off', patterns: ['@acme/shell'] }],
+            'require-packages': [
+              { severity: 'off', patterns: ['@acme/shell'] },
+            ],
           },
         },
       ],
@@ -550,7 +560,7 @@ describe('applyOverrides — severity "off" and upsert-by-identity (ESLint-like)
 
     const result = applyOverrides(config, repo('@acme/legacy-app'));
 
-    expect(result.rules.require_packages).toEqual([
+    expect(result.rules['require-packages']).toEqual([
       { severity: 'error', patterns: ['typescript'] },
     ]);
   });
@@ -558,13 +568,15 @@ describe('applyOverrides — severity "off" and upsert-by-identity (ESLint-like)
   it('a repo not matching the override keeps the org-wide error-severity rule', () => {
     const config = createConfig({
       rules: {
-        require_packages: [{ severity: 'error', patterns: ['@acme/shell'] }],
+        'require-packages': [{ severity: 'error', patterns: ['@acme/shell'] }],
       },
       overrides: [
         {
           match: ['@acme/legacy-app'],
           rules: {
-            require_packages: [{ severity: 'off', patterns: ['@acme/shell'] }],
+            'require-packages': [
+              { severity: 'off', patterns: ['@acme/shell'] },
+            ],
           },
         },
       ],
@@ -572,21 +584,21 @@ describe('applyOverrides — severity "off" and upsert-by-identity (ESLint-like)
 
     const result = applyOverrides(config, repo('@acme/other-app'));
 
-    expect(result.rules.require_packages).toEqual([
+    expect(result.rules['require-packages']).toEqual([
       { severity: 'error', patterns: ['@acme/shell'] },
     ]);
   });
 
-  it('cancels a base engine_version rule with a matching range via "off"', () => {
+  it('cancels a base require-engine-version rule with a matching range via "off"', () => {
     const config = createConfig({
       rules: {
-        engine_version: { severity: 'error', range: '>=20' },
+        'require-engine-version': { severity: 'error', range: '>=20' },
       },
       overrides: [
         {
           match: ['@acme/legacy-app'],
           rules: {
-            engine_version: { severity: 'off', range: '>=20' },
+            'require-engine-version': { severity: 'off', range: '>=20' },
           },
         },
       ],
@@ -594,19 +606,19 @@ describe('applyOverrides — severity "off" and upsert-by-identity (ESLint-like)
 
     const result = applyOverrides(config, repo('@acme/legacy-app'));
 
-    expect(result.rules.engine_version).toEqual([]);
+    expect(result.rules['require-engine-version']).toEqual([]);
   });
 
-  it('downgrades a base engine_version rule via a matching-range upsert', () => {
+  it('downgrades a base require-engine-version rule via a matching-range upsert', () => {
     const config = createConfig({
       rules: {
-        engine_version: { severity: 'error', range: '>=20' },
+        'require-engine-version': { severity: 'error', range: '>=20' },
       },
       overrides: [
         {
           match: ['@acme/legacy-app'],
           rules: {
-            engine_version: { severity: 'warn', range: '>=20' },
+            'require-engine-version': { severity: 'warn', range: '>=20' },
           },
         },
       ],
@@ -614,7 +626,7 @@ describe('applyOverrides — severity "off" and upsert-by-identity (ESLint-like)
 
     const result = applyOverrides(config, repo('@acme/legacy-app'));
 
-    expect(result.rules.engine_version).toEqual([
+    expect(result.rules['require-engine-version']).toEqual([
       { severity: 'warn', range: '>=20' },
     ]);
   });
@@ -622,13 +634,13 @@ describe('applyOverrides — severity "off" and upsert-by-identity (ESLint-like)
   it('clears the base codeowners rule when the override severity is "off"', () => {
     const config = createConfig({
       rules: {
-        codeowners: { severity: 'error' },
+        'require-codeowners': { severity: 'error' },
       },
       overrides: [
         {
           match: ['@acme/legacy-app'],
           rules: {
-            codeowners: { severity: 'off' },
+            'require-codeowners': { severity: 'off' },
           },
         },
       ],
@@ -636,7 +648,7 @@ describe('applyOverrides — severity "off" and upsert-by-identity (ESLint-like)
 
     const result = applyOverrides(config, repo('@acme/legacy-app'));
 
-    expect(result.rules.codeowners).toBeUndefined();
+    expect(result.rules['require-codeowners']).toBeUndefined();
   });
 });
 
@@ -657,10 +669,10 @@ describe('applyOverrides — resolves severity "off" in the base config, with ze
     return dir;
   }
 
-  it('drops a base require_packages rule authored with severity "off" — no overrides involved', () => {
+  it('drops a base require-packages rule authored with severity "off" — no overrides involved', () => {
     const config = createConfig({
       rules: {
-        require_packages: [
+        'require-packages': [
           { severity: 'error', patterns: ['typescript'] },
           { severity: 'off', patterns: ['@acme/shell'] },
         ],
@@ -669,7 +681,7 @@ describe('applyOverrides — resolves severity "off" in the base config, with ze
 
     const result = applyOverrides(config, repo('@acme/anything'));
 
-    expect(result.rules.require_packages).toEqual([
+    expect(result.rules['require-packages']).toEqual([
       { severity: 'error', patterns: ['typescript'] },
     ]);
   });
@@ -679,19 +691,19 @@ describe('applyOverrides — resolves severity "off" in the base config, with ze
     dirs.push(dir);
     const config = createConfig({
       rules: {
-        require_packages: [{ severity: 'off', patterns: ['@acme/shell'] }],
+        'require-packages': [{ severity: 'off', patterns: ['@acme/shell'] }],
       },
     });
 
     const result = applyOverrides(config, dir);
 
-    expect(result.rules.require_packages).toEqual([]);
+    expect(result.rules['require-packages']).toEqual([]);
   });
 
   it('collapses duplicate base rules sharing identical patterns to the last one (last write wins)', () => {
     const config = createConfig({
       rules: {
-        require_packages: [
+        'require-packages': [
           { severity: 'error', patterns: ['@acme/shell'] },
           {
             severity: 'warn',
@@ -704,7 +716,7 @@ describe('applyOverrides — resolves severity "off" in the base config, with ze
 
     const result = applyOverrides(config, repo('@acme/anything'));
 
-    expect(result.rules.require_packages).toEqual([
+    expect(result.rules['require-packages']).toEqual([
       {
         severity: 'warn',
         patterns: ['@acme/shell'],
@@ -713,50 +725,50 @@ describe('applyOverrides — resolves severity "off" in the base config, with ze
     ]);
   });
 
-  it('drops a base engine_version rule authored with severity "off"', () => {
+  it('drops a base require-engine-version rule authored with severity "off"', () => {
     const config = createConfig({
-      rules: { engine_version: { severity: 'off', range: '>=20' } },
+      rules: { 'require-engine-version': { severity: 'off', range: '>=20' } },
     });
 
     const result = applyOverrides(config, repo('@acme/anything'));
 
-    expect(result.rules.engine_version).toEqual([]);
+    expect(result.rules['require-engine-version']).toEqual([]);
   });
 
   it('drops a base codeowners rule authored with severity "off"', () => {
     const config = createConfig({
-      rules: { codeowners: { severity: 'off' } },
+      rules: { 'require-codeowners': { severity: 'off' } },
     });
 
     const result = applyOverrides(config, repo('@acme/anything'));
 
-    expect(result.rules.codeowners).toBeUndefined();
+    expect(result.rules['require-codeowners']).toBeUndefined();
   });
 
   it('a base rule with an active severity keeps its contents — resolution only normalizes the container, never drops or alters an active rule', () => {
     const config = createConfig({
       rules: {
-        require_packages: [{ severity: 'error', patterns: ['typescript'] }],
-        forbid_packages: [{ severity: 'warn', patterns: ['moment'] }],
-        engine_version: { severity: 'error', range: '>=20' },
-        codeowners: { severity: 'error' },
+        'require-packages': [{ severity: 'error', patterns: ['typescript'] }],
+        'no-packages': [{ severity: 'warn', patterns: ['moment'] }],
+        'require-engine-version': { severity: 'error', range: '>=20' },
+        'require-codeowners': { severity: 'error' },
       },
     });
 
     const result = applyOverrides(config, repo('@acme/anything'));
 
-    expect(result.rules.require_packages).toEqual([
+    expect(result.rules['require-packages']).toEqual([
       { severity: 'error', patterns: ['typescript'] },
     ]);
-    expect(result.rules.forbid_packages).toEqual([
+    expect(result.rules['no-packages']).toEqual([
       { severity: 'warn', patterns: ['moment'] },
     ]);
-    // engine_version normalizes from a bare object to a singleton array —
+    // require-engine-version normalizes from a bare object to a singleton array —
     // same rule, same fields, just always list-shaped after resolution.
-    expect(result.rules.engine_version).toEqual([
+    expect(result.rules['require-engine-version']).toEqual([
       { severity: 'error', range: '>=20' },
     ]);
-    expect(result.rules.codeowners).toEqual({ severity: 'error' });
+    expect(result.rules['require-codeowners']).toEqual({ severity: 'error' });
   });
 });
 
@@ -786,7 +798,7 @@ describe('overrides schema validation', () => {
           {
             match: ['@acme/checkout'],
             rules: {
-              require_packages: [
+              'require-packages': [
                 { severity: 'off', patterns: ['@acme/shell'] },
               ],
             },
@@ -800,7 +812,7 @@ describe('overrides schema validation', () => {
     expect(() =>
       HermexConfigSchema.parse({
         rules: {
-          require_packages: [{ severity: 'off', patterns: ['@acme/shell'] }],
+          'require-packages': [{ severity: 'off', patterns: ['@acme/shell'] }],
         },
       }),
     ).not.toThrow();

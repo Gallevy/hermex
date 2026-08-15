@@ -6,36 +6,56 @@ import type {
   DependencyBucket,
 } from '../utils/package-inventory';
 
-export interface RuleViolation {
-  type:
-    | 'detect_files'
-    | 'require_files'
-    | 'require_packages'
-    | 'forbid_packages'
-    | 'require_scripts'
-    | 'require_package_fields'
-    | 'forbid_package_fields'
-    | 'engine_version'
-    | 'codeowners';
+interface BaseViolation<T extends string> {
+  ruleId: T;
   severity: 'error' | 'warn' | 'info';
   patterns: string[];
   message?: string;
   matchedFiles: string[];
-  // engine_version only
-  installedRange?: string;
-  requiredRange?: string;
-  // package-field rules only
-  fieldPath?: string;
-  actualValue?: string;
-  /**
-   * forbid_packages only — the package that matched `patterns`. Kept as a
-   * scalar rather than folded into `matchedFiles` because that field is read
-   * as file paths everywhere (`describeViolation` takes basenames off it, the
-   * codeowners branch counts files with it), and because a package's identity
-   * is what the packages table joins on.
-   */
+}
+
+export type NoFilesViolation = BaseViolation<'no-files'>;
+export type RequireFilesViolation = BaseViolation<'require-files'>;
+export type RequirePackagesViolation = BaseViolation<'require-packages'>;
+export type RequireScriptsViolation = BaseViolation<'require-scripts'>;
+export type RequireCodeownersViolation = BaseViolation<'require-codeowners'>;
+
+/**
+ * The package that matched `patterns`. Kept as a scalar rather than folded
+ * into `matchedFiles` because that field is read as file paths everywhere
+ * (`describeViolation` takes basenames off it, the codeowners branch counts
+ * files with it), and because a package's identity is what the packages
+ * table joins on.
+ */
+export interface NoPackagesViolation extends BaseViolation<'no-packages'> {
   packageName?: string;
 }
+
+export interface RequirePackageFieldsViolation extends BaseViolation<'require-package-fields'> {
+  fieldPath?: string;
+  actualValue?: string;
+}
+
+export interface NoPackageFieldsViolation extends BaseViolation<'no-package-fields'> {
+  fieldPath?: string;
+  actualValue?: string;
+}
+
+export interface RequireEngineVersionViolation extends BaseViolation<'require-engine-version'> {
+  installedRange?: string;
+  requiredRange?: string;
+}
+
+export type RuleViolation =
+  | NoFilesViolation
+  | RequireFilesViolation
+  | RequirePackagesViolation
+  | NoPackagesViolation
+  | RequireScriptsViolation
+  | RequirePackageFieldsViolation
+  | NoPackageFieldsViolation
+  | RequireEngineVersionViolation
+  | RequireCodeownersViolation;
 
 export function toArray<T>(val: T | T[] | undefined): T[] {
   if (!val) return [];

@@ -1,6 +1,6 @@
 export default {
   rules: {
-    require_packages: [
+    'require-packages': [
       {
         severity: 'off',
         patterns: ['@acme/shell'],

@@ -1,6 +1,6 @@
 export default {
   rules: {
-    require_packages: [
+    'require-packages': [
       {
         severity: 'error',
         patterns: ['some-base-required-pkg'],
@@ -12,7 +12,7 @@ export default {
     {
       match: ['@acme/checkout'],
       rules: {
-        require_packages: [
+        'require-packages': [
           {
             severity: 'error',
             patterns: ['@acme/shell'],

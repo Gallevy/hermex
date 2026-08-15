@@ -10,35 +10,35 @@ import base from '../hermex.config.ts';
 export default {
   ...base,
   rules: {
-    detect_files: [
+    'no-files': [
       {
         severity: 'warn',
         patterns: ['jest.config.*', '.babelrc'],
         message: 'Use vitest + Vite',
       },
     ],
-    forbid_packages: [
+    'no-packages': [
       { severity: 'warn', patterns: ['moment'], message: 'Use date-fns or dayjs' },
     ],
-    require_files: [
+    'require-files': [
       { severity: 'warn', patterns: ['.nvmrc'] },
       { severity: 'info', patterns: ['.editorconfig'] },
     ],
-    require_packages: [
+    'require-packages': [
       {
         severity: 'info',
         patterns: ['typescript'],
         message: 'TypeScript is required',
       },
     ],
-    require_scripts: [
+    'require-scripts': [
       {
         severity: 'warn',
         patterns: ['build', 'test'],
         message: 'Required npm scripts',
       },
     ],
-    require_package_fields: [{ severity: 'warn', patterns: ['engines', 'license'] }],
-    engine_version: { severity: 'info', range: '>=20', message: 'Minimum Node 20 required' },
+    'require-package-fields': [{ severity: 'warn', patterns: ['engines', 'license'] }],
+    'require-engine-version': { severity: 'info', range: '>=20', message: 'Minimum Node 20 required' },
   },
 } satisfies HermexConfigInput;

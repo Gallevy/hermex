@@ -166,7 +166,7 @@ Pick the bump type, then write the summary. Two things to get right:
   small — people parse that output.
 - **Write the summary for someone upgrading, not for a reviewer.** It goes
   straight into the changelog and the GitHub Release, so say what changed for
-  them and what they need to do about it. "Report `forbid_packages` hits under
+  them and what they need to do about it. "Report `no-packages` hits under
   `ruleViolations`" is useful; "refactor rule plumbing" is not.
 
 This writes a Markdown file to `.changeset/`. Commit it with your change — a

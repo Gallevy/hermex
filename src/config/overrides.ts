@@ -26,15 +26,15 @@ export type ResolvedCodeownersRule = Resolved<CodeownersRule>;
 
 /** The shape `RulesConfig` resolves to after `applyOverrides` — see `ResolvedRuleConfig`. */
 export interface ResolvedRulesConfig {
-  detect_files: ResolvedRuleConfig[];
-  require_files: ResolvedRuleConfig[];
-  forbid_packages: ResolvedRuleConfig[];
-  require_packages: ResolvedRuleConfig[];
-  require_scripts: ResolvedRuleConfig[];
-  require_package_fields: ResolvedPackageFieldRule[];
-  forbid_package_fields: ResolvedPackageFieldRule[];
-  engine_version: ResolvedEngineVersionRule[];
-  codeowners: ResolvedCodeownersRule | undefined;
+  'no-files': ResolvedRuleConfig[];
+  'require-files': ResolvedRuleConfig[];
+  'no-packages': ResolvedRuleConfig[];
+  'require-packages': ResolvedRuleConfig[];
+  'require-scripts': ResolvedRuleConfig[];
+  'require-package-fields': ResolvedPackageFieldRule[];
+  'no-package-fields': ResolvedPackageFieldRule[];
+  'require-engine-version': ResolvedEngineVersionRule[];
+  'require-codeowners': ResolvedCodeownersRule | undefined;
 }
 
 /** What `applyOverrides` returns: `HermexConfig` with `rules` resolved. */
@@ -72,7 +72,7 @@ function upsertPatternRules<T extends { severity: string; patterns: string[] }>(
   return result;
 }
 
-/** Same upsert semantics as {@link upsertPatternRules}, keyed by `range` instead of `patterns` (engine_version has no patterns). */
+/** Same upsert semantics as {@link upsertPatternRules}, keyed by `range` instead of `patterns` (require-engine-version has no patterns). */
 function upsertEngineVersionRules<
   T extends { severity: string; range: string },
 >(base: Resolved<T>[], overrides: T[]): Resolved<T>[] {
@@ -86,7 +86,7 @@ function upsertEngineVersionRules<
   return result;
 }
 
-/** `codeowners` only ever holds one rule, so 'off' simply clears it. */
+/** `require-codeowners` only ever holds one rule, so 'off' simply clears it. */
 function resolveCodeowners<T extends { severity: string }>(
   rule: T | undefined,
 ): Resolved<T> | undefined {
@@ -99,7 +99,7 @@ function resolveCodeowners<T extends { severity: string }>(
  * Resolves `rules` to its final, evaluator-ready form by upserting each
  * list against itself: a rule authored with severity 'off' — directly in
  * the base config, not only via `overrides` — is dropped, and rules
- * sharing an identity (patterns, or range for engine_version) collapse to
+ * sharing an identity (patterns, or range for require-engine-version) collapse to
  * the last one. This is the same upsert primitive `applyOverrides` uses
  * for `overrides`, just seeded from an empty base — so a rule authored
  * once in `rules` and a rule layered in via `overrides` behave
@@ -109,21 +109,30 @@ function resolveCodeowners<T extends { severity: string }>(
  */
 function resolveRules(rules: RulesConfig): ResolvedRulesConfig {
   return {
-    detect_files: upsertPatternRules([], toArray(rules.detect_files)),
-    require_files: upsertPatternRules([], toArray(rules.require_files)),
-    forbid_packages: upsertPatternRules([], toArray(rules.forbid_packages)),
-    require_packages: upsertPatternRules([], toArray(rules.require_packages)),
-    require_scripts: upsertPatternRules([], toArray(rules.require_scripts)),
-    require_package_fields: upsertPatternRules(
+    'no-files': upsertPatternRules([], toArray(rules['no-files'])),
+    'require-files': upsertPatternRules([], toArray(rules['require-files'])),
+    'no-packages': upsertPatternRules([], toArray(rules['no-packages'])),
+    'require-packages': upsertPatternRules(
       [],
-      toArray(rules.require_package_fields),
+      toArray(rules['require-packages']),
     ),
-    forbid_package_fields: upsertPatternRules(
+    'require-scripts': upsertPatternRules(
       [],
-      toArray(rules.forbid_package_fields),
+      toArray(rules['require-scripts']),
     ),
-    engine_version: upsertEngineVersionRules([], toArray(rules.engine_version)),
-    codeowners: resolveCodeowners(rules.codeowners),
+    'require-package-fields': upsertPatternRules(
+      [],
+      toArray(rules['require-package-fields']),
+    ),
+    'no-package-fields': upsertPatternRules(
+      [],
+      toArray(rules['no-package-fields']),
+    ),
+    'require-engine-version': upsertEngineVersionRules(
+      [],
+      toArray(rules['require-engine-version']),
+    ),
+    'require-codeowners': resolveCodeowners(rules['require-codeowners']),
   };
 }
 
@@ -156,56 +165,58 @@ export function applyOverrides(
 
       for (const override of matching) {
         const o = override.rules;
-        if (o.detect_files !== undefined) {
-          rules.detect_files = upsertPatternRules(
-            rules.detect_files,
-            toArray(o.detect_files),
+        if (o['no-files'] !== undefined) {
+          rules['no-files'] = upsertPatternRules(
+            rules['no-files'],
+            toArray(o['no-files']),
           );
         }
-        if (o.require_files !== undefined) {
-          rules.require_files = upsertPatternRules(
-            rules.require_files,
-            toArray(o.require_files),
+        if (o['require-files'] !== undefined) {
+          rules['require-files'] = upsertPatternRules(
+            rules['require-files'],
+            toArray(o['require-files']),
           );
         }
-        if (o.forbid_packages !== undefined) {
-          rules.forbid_packages = upsertPatternRules(
-            rules.forbid_packages,
-            toArray(o.forbid_packages),
+        if (o['no-packages'] !== undefined) {
+          rules['no-packages'] = upsertPatternRules(
+            rules['no-packages'],
+            toArray(o['no-packages']),
           );
         }
-        if (o.require_packages !== undefined) {
-          rules.require_packages = upsertPatternRules(
-            rules.require_packages,
-            toArray(o.require_packages),
+        if (o['require-packages'] !== undefined) {
+          rules['require-packages'] = upsertPatternRules(
+            rules['require-packages'],
+            toArray(o['require-packages']),
           );
         }
-        if (o.require_scripts !== undefined) {
-          rules.require_scripts = upsertPatternRules(
-            rules.require_scripts,
-            toArray(o.require_scripts),
+        if (o['require-scripts'] !== undefined) {
+          rules['require-scripts'] = upsertPatternRules(
+            rules['require-scripts'],
+            toArray(o['require-scripts']),
           );
         }
-        if (o.require_package_fields !== undefined) {
-          rules.require_package_fields = upsertPatternRules(
-            rules.require_package_fields,
-            toArray(o.require_package_fields),
+        if (o['require-package-fields'] !== undefined) {
+          rules['require-package-fields'] = upsertPatternRules(
+            rules['require-package-fields'],
+            toArray(o['require-package-fields']),
           );
         }
-        if (o.forbid_package_fields !== undefined) {
-          rules.forbid_package_fields = upsertPatternRules(
-            rules.forbid_package_fields,
-            toArray(o.forbid_package_fields),
+        if (o['no-package-fields'] !== undefined) {
+          rules['no-package-fields'] = upsertPatternRules(
+            rules['no-package-fields'],
+            toArray(o['no-package-fields']),
           );
         }
-        if (o.engine_version !== undefined) {
-          rules.engine_version = upsertEngineVersionRules(
-            rules.engine_version,
-            toArray(o.engine_version),
+        if (o['require-engine-version'] !== undefined) {
+          rules['require-engine-version'] = upsertEngineVersionRules(
+            rules['require-engine-version'],
+            toArray(o['require-engine-version']),
           );
         }
-        if (o.codeowners !== undefined) {
-          rules.codeowners = resolveCodeowners(o.codeowners);
+        if (o['require-codeowners'] !== undefined) {
+          rules['require-codeowners'] = resolveCodeowners(
+            o['require-codeowners'],
+          );
         }
       }
     }

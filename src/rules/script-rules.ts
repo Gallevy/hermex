@@ -7,7 +7,7 @@ export function evaluateScriptRules(
   repoPath: string,
   rulesConfig: ResolvedRulesConfig,
 ): RuleViolation[] {
-  const rules = rulesConfig.require_scripts;
+  const rules = rulesConfig['require-scripts'];
   if (rules.length === 0) {
     return [];
   }
@@ -25,7 +25,7 @@ export function evaluateScriptRules(
         ),
     )
     .map((rule) => ({
-      type: 'require_scripts' as const,
+      ruleId: 'require-scripts' as const,
       severity: rule.severity,
       patterns: rule.patterns,
       message: rule.message,

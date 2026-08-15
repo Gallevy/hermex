@@ -3,7 +3,7 @@
 
 # `comply-all-rule-types`
 
-Every one of the nine rule types in one table, at three severities — the only case that renders engine_version, codeowners and both package-field shapes.
+Every one of the nine rule types in one table, at three severities — the only case that renders require-engine-version, codeowners and both package-field shapes.
 
 ## What runs
 

@@ -37,8 +37,8 @@ export function evaluatePackageFieldRules(
   repoPath: string,
   rulesConfig: ResolvedRulesConfig,
 ): RuleViolation[] {
-  const requireRules = rulesConfig.require_package_fields;
-  const forbidRules = rulesConfig.forbid_package_fields;
+  const requireRules = rulesConfig['require-package-fields'];
+  const forbidRules = rulesConfig['no-package-fields'];
   if (requireRules.length === 0 && forbidRules.length === 0) return [];
 
   const pkg = readPackageJson(repoPath);
@@ -56,7 +56,7 @@ export function evaluatePackageFieldRules(
       // Prefer reporting a present-but-mismatched field over a missing one
       const mismatch = rule.values ? lookups.find((l) => l.exists) : undefined;
       violations.push({
-        type: 'require_package_fields',
+        ruleId: 'require-package-fields',
         severity: rule.severity,
         patterns: rule.patterns,
         message: rule.message,
@@ -78,7 +78,7 @@ export function evaluatePackageFieldRules(
         (!rule.values || valueMatches(lookup.value, rule.values));
       if (hit) {
         violations.push({
-          type: 'forbid_package_fields',
+          ruleId: 'no-package-fields',
           severity: rule.severity,
           patterns: rule.patterns,
           message: rule.message,

@@ -271,7 +271,7 @@ describe('comply command', () => {
   });
 
   it("json output reports status 'compliant' when the only signals are info/advisory, not 'warning' (#55)", () => {
-    // hermex-comply-pass has only an info detect_files rule (matches
+    // hermex-comply-pass has only an info no-files rule (matches
     // fixtures/hermex.config.ts), so nothing is at error or warn severity.
     const configPath = join(
       ROOT,
@@ -547,7 +547,7 @@ describe('package inventory axes (end to end)', () => {
     const parsed = JSON.parse(result.stdout);
     expect(parsed.ruleViolations).toEqual([
       {
-        type: 'forbid_packages',
+        ruleId: 'no-packages',
         severity: 'error',
         patterns: ['moment'],
         message: 'Use date-fns',
@@ -559,7 +559,7 @@ describe('package inventory axes (end to end)', () => {
   });
 
   // #77: the whole point of the merge — a consumer reading only
-  // `ruleViolations` used to miss every forbid_packages hit.
+  // `ruleViolations` used to miss every no-packages hit.
   it('emits no separate bannedPackageViolations field', () => {
     const result = run(['comply', '--config', inventoryConfig('declared')]);
     const parsed = JSON.parse(result.stdout);
@@ -607,7 +607,7 @@ describe('package inventory axes (end to end)', () => {
   it('names the forbidden package in the human-readable Rules table', () => {
     const result = run(['comply']); // fixtures/hermex.config.ts forbids moment
     expect(result.status).toBe(1);
-    expect(result.stdout).toMatch(/forbid_packages/);
+    expect(result.stdout).toMatch(/no-packages/);
     expect(result.stdout).toMatch(/moment is forbidden/);
   });
 
@@ -624,34 +624,33 @@ describe('package inventory axes (end to end)', () => {
     expect(result.status).toBe(1);
     const parsed = JSON.parse(result.stdout);
     expect(parsed.ruleViolations).toHaveLength(1);
-    expect(parsed.ruleViolations[0].type).toBe('forbid_packages');
+    expect(parsed.ruleViolations[0].ruleId).toBe('no-packages');
     expect(parsed.ruleViolations[0].packageName).toBe('react-dom');
   });
 
-  it('packages.ignore drops a package from forbid_packages while it still satisfies require_packages', () => {
+  it('packages.ignore drops a package from no-packages while it still satisfies require-packages', () => {
     const result = run(['comply', '--config', inventoryConfig('ignored')]);
     expect(result.status).toBe(0);
     const parsed = JSON.parse(result.stdout);
     expect(parsed.ruleViolations).toEqual([]);
   });
 
-  it('a declared but uninstalled package is forbiddable yet does not satisfy require_packages', () => {
+  it('a declared but uninstalled package is forbiddable yet does not satisfy require-packages', () => {
     const result = run(['comply', '--config', inventoryConfig('uninstalled')]);
     expect(result.status).toBe(1);
     const parsed = JSON.parse(result.stdout);
     // Both rules fire on the same package, from different axes, into the
-    // same list — forbid_packages reads the declared axis (eslint is in
-    // package.json), require_packages the installed axis (it is not in the
+    // same list — no-packages reads the declared axis (eslint is in
+    // package.json), require-packages the installed axis (it is not in the
     // lockfile, so the requirement is genuinely unsatisfied).
-    expect(parsed.ruleViolations.map((v: { type: string }) => v.type)).toEqual([
-      'forbid_packages',
-      'require_packages',
-    ]);
+    expect(
+      parsed.ruleViolations.map((v: { ruleId: string }) => v.ruleId),
+    ).toEqual(['no-packages', 'require-packages']);
     expect(parsed.ruleViolations[0].packageName).toBe('eslint');
   });
 
   // #77 regression guard, end to end: the `uninstalled` fixture is the only
-  // one producing an error forbid_packages hit AND another error rule
+  // one producing an error no-packages hit AND another error rule
   // violation at once — the shape that double-reported while the verdict
   // still added a separate banned-package bucket on top of the rule bucket.
   it('counts a coinciding forbidden package and failing rule once each', () => {

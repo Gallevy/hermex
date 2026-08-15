@@ -305,7 +305,7 @@ describe('aggregateReports — forbidden packages', () => {
     const report = reportWithNamedImport('Moment', 'moment');
     const config = createConfig({
       rules: {
-        forbid_packages: [
+        'no-packages': [
           { severity: 'error', patterns: ['moment'], message: 'Use dayjs' },
         ],
       },
@@ -315,7 +315,7 @@ describe('aggregateReports — forbidden packages', () => {
 
     expect(result.ruleViolations).toHaveLength(1);
     expect(result.ruleViolations[0]).toEqual({
-      type: 'forbid_packages',
+      ruleId: 'no-packages',
       severity: 'error',
       patterns: ['moment'],
       message: 'Use dayjs',
@@ -325,28 +325,28 @@ describe('aggregateReports — forbidden packages', () => {
   });
 
   // #77: one list, so a consumer iterating ruleViolations can't miss a
-  // forbid_packages hit the way it could when they lived in their own field.
-  it('puts forbid_packages and require_packages hits in one list, in detection order', () => {
+  // no-packages hit the way it could when they lived in their own field.
+  it('puts no-packages and require-packages hits in one list, in detection order', () => {
     const report = reportWithNamedImport('Moment', 'moment');
     const config = createConfig({
       rules: {
-        forbid_packages: [{ severity: 'error', patterns: ['moment'] }],
-        require_packages: [{ severity: 'error', patterns: ['dayjs'] }],
+        'no-packages': [{ severity: 'error', patterns: ['moment'] }],
+        'require-packages': [{ severity: 'error', patterns: ['dayjs'] }],
       },
     });
 
     const result = aggregateReports([report], { moment: '2.29.0' }, config);
 
-    expect(result.ruleViolations.map((v) => v.type)).toEqual([
-      'forbid_packages',
-      'require_packages',
+    expect(result.ruleViolations.map((v) => v.ruleId)).toEqual([
+      'no-packages',
+      'require-packages',
     ]);
   });
 
   it('reports no violations when no package matches', () => {
     const report = reportWithNamedImport('Button', 'react');
     const config = createConfig({
-      rules: { forbid_packages: [{ severity: 'warn', patterns: ['moment'] }] },
+      rules: { 'no-packages': [{ severity: 'warn', patterns: ['moment'] }] },
     });
 
     const result = aggregateReports([report], { react: '18.0.0' }, config);
@@ -358,7 +358,7 @@ describe('aggregateReports — forbidden packages', () => {
     const report = reportWithNamedImport('Button', 'react');
     const config = createConfig({
       rules: {
-        forbid_packages: [
+        'no-packages': [
           { severity: 'error', patterns: ['jest'], message: 'Use vitest' },
         ],
       },
@@ -375,7 +375,7 @@ describe('aggregateReports — forbidden packages', () => {
 
     expect(result.ruleViolations).toEqual([
       {
-        type: 'forbid_packages',
+        ruleId: 'no-packages',
         severity: 'error',
         patterns: ['jest'],
         message: 'Use vitest',

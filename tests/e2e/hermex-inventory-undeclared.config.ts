@@ -5,7 +5,7 @@
 // repo's to remove, so it stays forbiddable.
 export default {
   rules: {
-    forbid_packages: [{ severity: 'error', patterns: ['react-dom'] }],
+    'no-packages': [{ severity: 'error', patterns: ['react-dom'] }],
   },
   output: {
     format: 'json',
