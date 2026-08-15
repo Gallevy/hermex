@@ -85,6 +85,20 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # scripts/output-review.ts builds `--against` itself (git worktree,
+      # install, build) into .output-review/reference/<sha>/ and reuses that
+      # path if it already exists — this just gives it something to find
+      # already there. Keyed on the target branch's exact commit, so it hits
+      # on every PR run until that branch moves, and misses (falling back to
+      # the script doing the real build once, which the post-job save step
+      # then caches) the first run after it does.
+      - name: Cache the target branch's reference build
+        if: github.event_name == 'pull_request'
+        uses: actions/cache@v4
+        with:
+          path: .output-review/reference/${{ github.event.pull_request.base.sha }}
+          key: output-review-reference-${{ github.event.pull_request.base.sha }}
+
       # OUTPUT_REVIEW_SITE is the Pages base URL, e.g.
       # https://gallevy.github.io/hermex/output-review. Setting it is what
       # switches the per-case pages on: the comment then links a page per
