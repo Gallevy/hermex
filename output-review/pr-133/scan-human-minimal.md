@@ -14,7 +14,7 @@ _unchanged_
 
 **Ran** `hermex scan --config configs/minimal.config.ts` in `fixtures/` → exit 0, as asserted
 
-**Config** [`fixtures/configs/minimal.config.ts`](https://github.com/Gallevy/hermex/blob/4c3d0bbe2b5c76d3d41e15603c9b9eee90e9b616/fixtures/configs/minimal.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/4c3d0bbe2b5c76d3d41e15603c9b9eee90e9b616/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/4c3d0bbe2b5c76d3d41e15603c9b9eee90e9b616/fixtures/README.md)) · **Case** [`scan-human-minimal`](https://github.com/Gallevy/hermex/blob/4c3d0bbe2b5c76d3d41e15603c9b9eee90e9b616/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/4c3d0bbe2b5c76d3d41e15603c9b9eee90e9b616/fixtures/cases/scan-human-minimal.md))
+**Config** [`fixtures/configs/minimal.config.ts`](https://github.com/Gallevy/hermex/blob/fa7de43b83766a3c655859f140aca4d9fb76da51/fixtures/configs/minimal.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/fa7de43b83766a3c655859f140aca4d9fb76da51/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/fa7de43b83766a3c655859f140aca4d9fb76da51/fixtures/README.md)) · **Case** [`scan-human-minimal`](https://github.com/Gallevy/hermex/blob/fa7de43b83766a3c655859f140aca4d9fb76da51/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/fa7de43b83766a3c655859f140aca4d9fb76da51/fixtures/cases/scan-human-minimal.md))
 
 **Must not appear anywhere in stdout** `📦 Packages`, `⚛️ Components`, `🔍 Rules`, `⚖️ Versus`
 
@@ -22,7 +22,7 @@ _unchanged_
 
 ## Config
 
-[`fixtures/configs/minimal.config.ts`](https://github.com/Gallevy/hermex/blob/4c3d0bbe2b5c76d3d41e15603c9b9eee90e9b616/fixtures/configs/minimal.config.ts)
+[`fixtures/configs/minimal.config.ts`](https://github.com/Gallevy/hermex/blob/fa7de43b83766a3c655859f140aca4d9fb76da51/fixtures/configs/minimal.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../../src/config/types.ts';
