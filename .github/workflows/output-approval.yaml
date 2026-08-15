@@ -68,13 +68,22 @@ jobs:
           fi
         id: baseline
 
+      # Queries live label state via the API rather than trusting
+      # github.event.pull_request.labels — that's a snapshot from when this
+      # run was triggered, so it wouldn't reflect a removal the step above
+      # just made in this same run.
       - name: Require the output:approved label
-        if: >-
-          steps.baseline.outputs.changed == 'true' &&
-          !contains(github.event.pull_request.labels.*.name, 'output:approved')
+        if: steps.baseline.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          echo "::error::tests/__output_baselines__/ changed in this PR. Read the output-review diff, then apply the output:approved label."
-          exit 1
+          set -euo pipefail
+          labels="$(gh pr view "${{ github.event.pull_request.number }}" --json labels -q '.labels[].name')"
+          if ! grep -qxF 'output:approved' <<< "$labels"; then
+            echo "::error::tests/__output_baselines__/ changed in this PR. Read the output-review diff, then apply the output:approved label."
+            exit 1
+          fi
+          echo "output:approved present — satisfied."
 
       - name: Nothing to approve
         if: steps.baseline.outputs.changed == 'false'
