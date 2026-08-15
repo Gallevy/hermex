@@ -14,13 +14,13 @@ _changed_
 
 **Ran** `hermex scan --config configs/no-files.config.ts` in `fixtures/` → exit 0, as asserted
 
-**Config** [`fixtures/configs/no-files.config.ts`](https://github.com/Gallevy/hermex/blob/9bdbe3414659db5d420b46f61f33e3338c541225/fixtures/configs/no-files.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/9bdbe3414659db5d420b46f61f33e3338c541225/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/9bdbe3414659db5d420b46f61f33e3338c541225/fixtures/README.md)) · **Case** [`scan-no-files`](https://github.com/Gallevy/hermex/blob/9bdbe3414659db5d420b46f61f33e3338c541225/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/9bdbe3414659db5d420b46f61f33e3338c541225/fixtures/cases/scan-no-files.md))
+**Config** [`fixtures/configs/no-files.config.ts`](https://github.com/Gallevy/hermex/blob/87f87aa56bbc9274b142737d001961e4bda7309f/fixtures/configs/no-files.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/87f87aa56bbc9274b142737d001961e4bda7309f/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/87f87aa56bbc9274b142737d001961e4bda7309f/fixtures/README.md)) · **Case** [`scan-no-files`](https://github.com/Gallevy/hermex/blob/87f87aa56bbc9274b142737d001961e4bda7309f/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/87f87aa56bbc9274b142737d001961e4bda7309f/fixtures/cases/scan-no-files.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter scan-no-files`</sub>
 
 ## Config
 
-[`fixtures/configs/no-files.config.ts`](https://github.com/Gallevy/hermex/blob/9bdbe3414659db5d420b46f61f33e3338c541225/fixtures/configs/no-files.config.ts)
+[`fixtures/configs/no-files.config.ts`](https://github.com/Gallevy/hermex/blob/87f87aa56bbc9274b142737d001961e4bda7309f/fixtures/configs/no-files.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../../src/config/types.ts';
@@ -49,11 +49,12 @@ export default {
 ```diff
 --- baseline/stdout.txt
 +++ current/stdout.txt
-@@ -2,5 +2,4 @@
+@@ -2,6 +2,4 @@
  - Parsing lockfile...
  ✔ Found pnpm lockfile (supports: v5, v6, v9) - 5 packages
  ✖ No files found matching includes: no-such-directory/**/*.{tsx,jsx,ts,js}
 -test line for gate verification 2
+-another line
  
 ```
 
