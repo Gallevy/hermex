@@ -33,6 +33,7 @@ import {
   readdirSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -439,11 +440,41 @@ function buildReference(ref: string): string {
   rmSync(worktree, { recursive: true, force: true });
   mkdirSync(REFERENCE_DIR, { recursive: true });
 
+  // git tracks a worktree's registration separately from its directory —
+  // deleting `worktree` above (or the whole of .output-review/, which
+  // isn't a git operation) leaves that registration behind, and `add`
+  // refuses to reuse the path until it's pruned.
+  run('git', ['worktree', 'prune'], ROOT);
+
   // `--detach`: a branch name would collide if that same branch happens to
   // be checked out in the primary worktree already (running this on `main`
   // itself, for instance). A bare SHA has no such conflict.
   run('git', ['worktree', 'add', '--detach', worktree, sha], ROOT);
-  run('pnpm', ['install', '--frozen-lockfile'], worktree);
+
+  // A full `pnpm install` is most of this function's cost — network,
+  // dependency resolution, thousands of files. It's also almost always
+  // unnecessary: this tree's own `node_modules` already satisfies the
+  // reference commit's dependencies whenever its lockfile is byte-identical
+  // to this tree's, which the vast majority of PRs never touch. Reuse it
+  // via a symlink in that case; only fall back to a real install when the
+  // lockfile actually differs, or this tree has no node_modules to reuse
+  // (a first run with no prior `pnpm install` at all).
+  const sameLockfile =
+    existsSync(join(ROOT, 'node_modules')) &&
+    existsSync(join(worktree, 'pnpm-lock.yaml')) &&
+    readFileSync(join(ROOT, 'pnpm-lock.yaml'), 'utf8') ===
+      readFileSync(join(worktree, 'pnpm-lock.yaml'), 'utf8');
+
+  if (sameLockfile) {
+    symlinkSync(
+      join(ROOT, 'node_modules'),
+      join(worktree, 'node_modules'),
+      process.platform === 'win32' ? 'junction' : 'dir',
+    );
+  } else {
+    run('pnpm', ['install', '--frozen-lockfile'], worktree);
+  }
+
   run('pnpm', ['run', 'build'], worktree);
   return cli;
 }
