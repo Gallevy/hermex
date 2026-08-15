@@ -8,7 +8,11 @@ import {
   resolveCompliantTarget,
   resolveInstalledVersion,
 } from './print-packages';
-import { severityIcon, stripAnsi } from './severity-format';
+import {
+  severityIcon,
+  sortViolationsBySeverity,
+  stripAnsi,
+} from './severity-format';
 
 // A table, mirroring the Packages section below it, rather than a bullet
 // list — same shape, same scanability, in both output surfaces.
@@ -16,8 +20,8 @@ function buildRulesSection(aggregated: AggregatedReport): string {
   // Info-severity rows are excluded here (unlike the terminal `printRules`,
   // which shows everything) — a summary meant for a PR comment or job
   // summary should only surface what's actually enforceable (#31).
-  const ruleViolations = aggregated.ruleViolations.filter(
-    (v) => v.severity !== 'info',
+  const ruleViolations = sortViolationsBySeverity(
+    aggregated.ruleViolations.filter((v) => v.severity !== 'info'),
   );
 
   // Nothing to report — omit the section entirely, matching

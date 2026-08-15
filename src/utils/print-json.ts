@@ -2,6 +2,7 @@ import type { AggregatedReport } from './aggregator';
 import type { ComplianceResult } from './compliance';
 import type { OutputConfig } from '../config/types';
 import { computeCompliance } from './compliance';
+import { sortViolationsBySeverity } from './severity-format';
 import { getVersion } from './version';
 
 /**
@@ -74,7 +75,7 @@ export function printJson(
         }
       : {}),
     ...(output.versus ? { versus: aggregated.versusResults } : {}),
-    ruleViolations: aggregated.ruleViolations,
+    ruleViolations: sortViolationsBySeverity(aggregated.ruleViolations),
     compliance: {
       status: compliance.status,
       compliant: compliance.compliant,
