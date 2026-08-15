@@ -90,7 +90,7 @@ jobs:
       # then caches) the first run after it does.
       - name: Cache the target branch's reference build
         if: github.event_name == 'pull_request'
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .output-review/reference/${{ github.event.pull_request.base.sha }}
           key: output-review-reference-${{ github.event.pull_request.base.sha }}
@@ -125,7 +125,7 @@ jobs:
       # to read a case page, and it costs nothing when nobody downloads it.
       - name: Upload the case pages
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: output-review-site
           path: .output-review/site
@@ -217,7 +217,7 @@ jobs:
       # read them.
       - name: Post the review comment
         if: always() && github.event_name == 'pull_request'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require('node:fs');
