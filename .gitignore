@@ -21,8 +21,10 @@ dist/
 build/
 *.tsbuildinfo
 
-# Test coverage
+# Test coverage, and the target branch's cached summary that a PR run is
+# compared against (.github/workflows/coverage-baseline.yaml)
 coverage/
+.coverage-baseline/
 
 # Output review report and its reference-branch builds — nothing under
 # .output-review/ is a source of truth; both are rebuilt fresh every run.
