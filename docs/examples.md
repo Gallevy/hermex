@@ -486,6 +486,34 @@ Severity is the only thing that decides which bucket a rule violation lands in; 
 
 `ruleViolations` is the single source of truth for rule hits. Entries share a common shape (`ruleId`, `severity`, `patterns`, `message?`, `matchedFiles`) and add per-type fields where they apply: `packageName` for `no-packages`, `fieldPath`/`actualValue` for the package-field rules, `installedRange`/`requiredRange` for `require-engine-version`.
 
+#### Trimming the JSON with `output.*`
+
+The [output section toggles](#output-control) apply to `--format json` exactly as they do to the human printers. A section switched off is **omitted from the payload**, not emitted as an empty array — the point is a smaller file, and on a large repo `components[]` and `packages[]` are the bulk of it:
+
+```ts
+export default defineConfig({
+  output: {
+    format: 'json',
+    components: false, // no `components` key at all
+    packages: false, // no `packages` key at all
+  },
+});
+```
+
+| Config | Effect on the JSON |
+|---|---|
+| `output.packages: false` | omits `packages` |
+| `output.components: false` | omits `components` |
+| `output.versus: false` | omits `versus` |
+| `output.patterns: false` **and** `output.details: false` | omits `summary.patternCounts` |
+| `output.rules`, `output.summary` | **no effect** — see below |
+
+`patternCounts` is the one field that answers to two toggles, because both human sections render that same array — the Patterns section as a table/chart, the Details section as a flat list. It therefore only drops when *both* are off; gating on `output.patterns` alone would strip it from the JSON while the terminal still printed it under Details. (`output.details` has no other effect on JSON — despite the name, that section prints pattern totals, not per-file records.)
+
+`version`, the `summary` counters, `ruleViolations` and `compliance` are always emitted. They are the machine-readable verdict, and `comply` prints rules in human mode regardless of `output.rules`, so gating them here would make the JSON lossier than the terminal output it mirrors — a silent way to blind CI. `output.summary` has no counterpart either: the human Summary table shows derived metrics (package count, external components, total usages) that share only `filesAnalyzed` with the counters serialized here, so there is no JSON field it cleanly owns.
+
+Because a disabled section is absent rather than empty, narrow before reading it — `result.components ?? []` — and note that `TypeScript`'s `HermexScanResult` marks exactly these fields optional.
+
 #### What `packages[]` contains
 
 Every package the repo **owns**: declared in `package.json` (any dependency bucket), recorded as a direct dependency by the lockfile, or imported by scanned source. Purely transitive dependencies are excluded — they arrive through another package, so this stays your own dependency surface rather than the whole lockfile.
@@ -554,6 +582,8 @@ export default defineConfig({
   },
 });
 ```
+
+These are not human-format-only: `packages`, `components`, `patterns` and `versus` also drop the matching field from `--format json` — see [Trimming the JSON with `output.*`](#trimming-the-json-with-output).
 
 ## Full Example
 

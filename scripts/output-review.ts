@@ -1666,6 +1666,21 @@ export const SITE_STYLE = [
   '    color: #c9d1d9;',
   '  }',
   '',
+  // Rouge wraps every fenced block as `.highlight > pre.highlight`, and
+  // Primer styles the *inner* pre via `.markdown-body .highlight pre`
+  // (specificity 0,2,1) — one tag more specific than `.markdown-body pre`
+  // above (0,2,0 with the `.highlight` alternative dropped, since `pre` is
+  // a descendant of `.highlight` here, not `.highlight` itself). That beats
+  // our rule regardless of source order, so every code, diff and config
+  // block — the entire comparison this site exists to show — kept Primer's
+  // light background (#f6f8fa) under our light text, unreadable. Matching
+  // Primer's own selector exactly ties the specificity, and ours wins the
+  // tie by coming later.
+  '  .markdown-body .highlight pre {',
+  '    background-color: #161b22;',
+  '    color: #c9d1d9;',
+  '  }',
+  '',
   '  .markdown-body pre {',
   '    border-color: #30363d;',
   '  }',

@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AggregatedReport } from '../../src/utils/aggregator';
 import type { RuleViolation } from '../../src/rules/evaluator';
+import type { OutputConfig } from '../../src/config/types';
+import { HermexConfigSchema } from '../../src/config/schema';
 import { printSummary } from '../../src/utils/print-summary';
 import { stripAnsi } from '../../src/utils/severity-format';
 import {
@@ -81,6 +83,14 @@ function makeAggregated(
     reports: [],
     ...overrides,
   };
+}
+
+/**
+ * The `output` block a user gets with no config at all — read off the schema
+ * rather than hand-written, so these tests can't drift from the real defaults.
+ */
+function makeOutput(overrides: Partial<OutputConfig> = {}): OutputConfig {
+  return { ...HermexConfigSchema.parse({}).output, ...overrides };
 }
 
 let consoleSpy: ReturnType<typeof vi.spyOn>;
@@ -1476,7 +1486,7 @@ describe('printJson', () => {
   });
 
   it('writes parseable JSON with the expected top-level shape', () => {
-    printJson(makeAggregated());
+    printJson(makeAggregated(), makeOutput());
 
     expect(stdoutSpy).toHaveBeenCalledTimes(1);
     const written = stdoutSpy.mock.calls[0][0] as string;
@@ -1512,6 +1522,7 @@ describe('printJson', () => {
           },
         ],
       }),
+      makeOutput(),
     );
 
     const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
@@ -1523,7 +1534,7 @@ describe('printJson', () => {
   });
 
   it('emits the official compliance verdict (status + counts) so consumers need not re-derive it (#55)', () => {
-    printJson(makeAggregated());
+    printJson(makeAggregated(), makeOutput());
 
     const written = stdoutSpy.mock.calls[0][0] as string;
     const parsed = JSON.parse(written);
@@ -1546,6 +1557,7 @@ describe('printJson', () => {
       makeAggregated({
         ruleViolations: [forbidViolation('moment', 'error', 'Use dayjs')],
       }),
+      makeOutput(),
     );
 
     const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
@@ -1578,6 +1590,7 @@ describe('printJson', () => {
           },
         ],
       }),
+      makeOutput(),
     );
 
     const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
@@ -1595,7 +1608,7 @@ describe('printJson', () => {
         },
       ],
     });
-    printJson(aggregated);
+    printJson(aggregated, makeOutput());
 
     const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
     expect(parsed.compliance.status).toBe('warning');
@@ -1620,7 +1633,7 @@ describe('printJson', () => {
         }),
       ],
     });
-    printJson(aggregated);
+    printJson(aggregated, makeOutput());
 
     const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
     expect(parsed.compliance.status).toBe('compliant');
@@ -1629,7 +1642,7 @@ describe('printJson', () => {
 
   it('passes an explicitly provided compliance result straight through (#55)', () => {
     const aggregated = makeAggregated();
-    printJson(aggregated, {
+    printJson(aggregated, makeOutput(), {
       compliant: false,
       status: 'non-compliant',
       errorRuleViolations: [
@@ -1661,12 +1674,147 @@ describe('printJson', () => {
         },
       ],
     });
-    printJson(aggregated);
+    printJson(aggregated, makeOutput());
 
     const written = stdoutSpy.mock.calls[0][0] as string;
     const parsed = JSON.parse(written);
     expect(parsed.components).toHaveLength(1);
     expect(parsed.components[0].name).toBe('Button');
     expect(parsed.components[0].files).toEqual(['a.tsx', 'b.tsx']);
+  });
+
+  // #63/#91: output.* used to gate only the human printers, so a consumer
+  // asking for a slim report still got the full payload and had to strip it
+  // downstream. components[] and packages[] are the bulk of a stored scan.
+  describe('output.* section toggles', () => {
+    const trimmable = makeAggregated({
+      topComponents: [
+        { name: 'Button', source: 'antd', count: 4, files: new Set(['a.tsx']) },
+      ],
+      packageDistribution: [createMockPackage('antd')],
+      versusResults: [
+        {
+          name: 'Migration',
+          packages: ['antd', '@acme/arc'],
+          entries: [],
+          totalCount: 0,
+        },
+      ],
+    });
+
+    it('omits packages entirely when output.packages is false', () => {
+      printJson(trimmable, makeOutput({ packages: false }));
+
+      const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+      expect(parsed).not.toHaveProperty('packages');
+      expect(parsed.components).toHaveLength(1);
+    });
+
+    it('omits components entirely when output.components is false', () => {
+      printJson(trimmable, makeOutput({ components: false }));
+
+      const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+      expect(parsed).not.toHaveProperty('components');
+      expect(parsed.packages).toHaveLength(1);
+    });
+
+    it('omits versus entirely when output.versus is false', () => {
+      printJson(trimmable, makeOutput({ versus: false }));
+
+      const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+      expect(parsed).not.toHaveProperty('versus');
+    });
+
+    it('omits summary.patternCounts when output.patterns is false, keeping the counters', () => {
+      printJson(trimmable, makeOutput({ patterns: false, details: false }));
+
+      const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+      expect(parsed.summary).not.toHaveProperty('patternCounts');
+      expect(parsed.summary.filesAnalyzed).toBe(5);
+      expect(parsed.summary.totalUsagePatterns).toBe(7);
+    });
+
+    // printDetails renders the same patternCounts array as printPatterns (a
+    // flat list rather than a table), so gating on output.patterns alone
+    // would strip the field while the terminal still printed it under
+    // Details — the JSON must never be lossier than the human output.
+    it('keeps summary.patternCounts when patterns is off but details is on', () => {
+      printJson(trimmable, makeOutput({ patterns: false, details: true }));
+
+      const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+      expect(parsed.summary.patternCounts).toHaveLength(1);
+    });
+
+    it('keeps summary.patternCounts when details is off but patterns is on', () => {
+      printJson(trimmable, makeOutput({ patterns: 'chart', details: false }));
+
+      const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+      expect(parsed.summary.patternCounts).toHaveLength(1);
+    });
+
+    // A disabled section is absent, not `[]` — shrinking the payload is the
+    // whole point, and an empty array still costs a key on every scan file.
+    it('drops the keys rather than emitting empty arrays', () => {
+      printJson(
+        trimmable,
+        makeOutput({
+          packages: false,
+          components: false,
+          patterns: false,
+          details: false,
+          versus: false,
+        }),
+      );
+
+      const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+      expect(Object.keys(parsed)).toEqual([
+        'version',
+        'summary',
+        'ruleViolations',
+        'compliance',
+      ]);
+    });
+
+    // The verdict is what CI reads. `comply` prints rules in human mode
+    // regardless of output.rules, so gating them here would make the JSON
+    // lossier than the terminal output it mirrors.
+    it('keeps ruleViolations and compliance even with every section switched off', () => {
+      printJson(
+        makeAggregated({
+          ruleViolations: [forbidViolation('moment', 'error', 'Use dayjs')],
+        }),
+        makeOutput({
+          summary: false,
+          packages: false,
+          components: false,
+          patterns: false,
+          versus: false,
+          rules: false,
+          details: false,
+        }),
+      );
+
+      const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+      expect(parsed.ruleViolations).toHaveLength(1);
+      expect(parsed.compliance.status).toBe('non-compliant');
+      expect(parsed.compliance.counts.errorRuleViolations).toBe(1);
+      expect(parsed.version).toBeTypeOf('string');
+    });
+
+    it('emits every dataset under the default config', () => {
+      printJson(trimmable, makeOutput());
+
+      const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+      expect(Object.keys(parsed)).toEqual([
+        'version',
+        'summary',
+        'packages',
+        'components',
+        'versus',
+        'ruleViolations',
+        'compliance',
+      ]);
+      expect(parsed.summary.patternCounts).toHaveLength(1);
+    });
   });
 });
