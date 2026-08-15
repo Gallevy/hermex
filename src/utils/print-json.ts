@@ -1,5 +1,6 @@
 import type { AggregatedReport } from './aggregator';
 import type { ComplianceResult } from './compliance';
+import type { OutputConfig } from '../config/types';
 import { computeCompliance } from './compliance';
 import { getVersion } from './version';
 
@@ -19,12 +20,30 @@ import { getVersion } from './version';
  * them (#80) because it is aggregate statistics — the same kind of number as
  * `totalImports` next to it, just broken down by pattern type.
  *
+ * The `output.*` section toggles apply here exactly as they do to the human
+ * printers (#63, #91) — a dataset switched off is *omitted*, not emptied, so
+ * disabling it actually shrinks the payload (`components[]` and `packages[]`
+ * dominate the file size of a stored scan). The split:
+ *
+ * - `output.packages: false` drops `packages`
+ * - `output.components: false` drops `components`
+ * - `output.versus: false` drops `versus`
+ * - `output.patterns: false` drops `summary.patternCounts`
+ *
+ * `version`, the `summary` counters, `ruleViolations` and `compliance` are
+ * never gated: together they are the machine-readable verdict, and `comply`'s
+ * human path prints rules unconditionally too, so honouring `output.rules`
+ * here would make JSON *lossier* than the terminal it mirrors — a silent way
+ * to blind CI. `output.details` and `output.summary` have no JSON counterpart
+ * (per-file details are not serialized; the counters are always present).
+ *
  * `compliance` defaults to `computeCompliance(aggregated)` so `scan --format
  * json` carries the same verdict as `comply`; callers that already computed
  * it (comply) pass it through to avoid recomputing.
  */
 export function printJson(
   aggregated: AggregatedReport,
+  output: OutputConfig,
   compliance: ComplianceResult = computeCompliance(aggregated),
 ): void {
   const result = {
@@ -34,14 +53,18 @@ export function printJson(
       totalImports: aggregated.totalImports,
       totalComponents: aggregated.totalComponents,
       totalUsagePatterns: aggregated.totalUsagePatterns,
-      patternCounts: aggregated.patternCounts,
+      ...(output.patterns ? { patternCounts: aggregated.patternCounts } : {}),
     },
-    packages: aggregated.packageDistribution,
-    components: aggregated.topComponents.map((c) => ({
-      ...c,
-      files: [...c.files],
-    })),
-    versus: aggregated.versusResults,
+    ...(output.packages ? { packages: aggregated.packageDistribution } : {}),
+    ...(output.components
+      ? {
+          components: aggregated.topComponents.map((c) => ({
+            ...c,
+            files: [...c.files],
+          })),
+        }
+      : {}),
+    ...(output.versus ? { versus: aggregated.versusResults } : {}),
     ruleViolations: aggregated.ruleViolations,
     compliance: {
       status: compliance.status,
