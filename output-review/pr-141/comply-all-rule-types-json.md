@@ -14,13 +14,13 @@ _unchanged_
 
 **Ran** `hermex comply --format json` in `fixtures/repos/all-rule-types` → exit 1, as asserted
 
-**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/2cda7237374ae249e6a91ecd7e28c72899a84884/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/2cda7237374ae249e6a91ecd7e28c72899a84884/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/2cda7237374ae249e6a91ecd7e28c72899a84884/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types-json`](https://github.com/Gallevy/hermex/blob/2cda7237374ae249e6a91ecd7e28c72899a84884/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/2cda7237374ae249e6a91ecd7e28c72899a84884/fixtures/cases/comply-all-rule-types-json.md))
+**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/79c9afe48d3e63d1e6b6e3c6ad664248c2347a7b/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/79c9afe48d3e63d1e6b6e3c6ad664248c2347a7b/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/79c9afe48d3e63d1e6b6e3c6ad664248c2347a7b/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types-json`](https://github.com/Gallevy/hermex/blob/79c9afe48d3e63d1e6b6e3c6ad664248c2347a7b/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/79c9afe48d3e63d1e6b6e3c6ad664248c2347a7b/fixtures/cases/comply-all-rule-types-json.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-all-rule-types-json`</sub>
 
 ## Config
 
-[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/2cda7237374ae249e6a91ecd7e28c72899a84884/fixtures/repos/all-rule-types/hermex.config.ts)
+[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/79c9afe48d3e63d1e6b6e3c6ad664248c2347a7b/fixtures/repos/all-rule-types/hermex.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../../../src/config/types.ts';

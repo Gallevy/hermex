@@ -14,13 +14,13 @@ _unchanged_
 
 **Ran** `hermex comply --config configs/no-files.config.ts` in `fixtures/` → exit 2, as asserted
 
-**Config** [`fixtures/configs/no-files.config.ts`](https://github.com/Gallevy/hermex/blob/2cda7237374ae249e6a91ecd7e28c72899a84884/fixtures/configs/no-files.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/2cda7237374ae249e6a91ecd7e28c72899a84884/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/2cda7237374ae249e6a91ecd7e28c72899a84884/fixtures/README.md)) · **Case** [`comply-exit-2`](https://github.com/Gallevy/hermex/blob/2cda7237374ae249e6a91ecd7e28c72899a84884/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/2cda7237374ae249e6a91ecd7e28c72899a84884/fixtures/cases/comply-exit-2.md))
+**Config** [`fixtures/configs/no-files.config.ts`](https://github.com/Gallevy/hermex/blob/79c9afe48d3e63d1e6b6e3c6ad664248c2347a7b/fixtures/configs/no-files.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/79c9afe48d3e63d1e6b6e3c6ad664248c2347a7b/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/79c9afe48d3e63d1e6b6e3c6ad664248c2347a7b/fixtures/README.md)) · **Case** [`comply-exit-2`](https://github.com/Gallevy/hermex/blob/79c9afe48d3e63d1e6b6e3c6ad664248c2347a7b/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/79c9afe48d3e63d1e6b6e3c6ad664248c2347a7b/fixtures/cases/comply-exit-2.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-exit-2`</sub>
 
 ## Config
 
-[`fixtures/configs/no-files.config.ts`](https://github.com/Gallevy/hermex/blob/2cda7237374ae249e6a91ecd7e28c72899a84884/fixtures/configs/no-files.config.ts)
+[`fixtures/configs/no-files.config.ts`](https://github.com/Gallevy/hermex/blob/79c9afe48d3e63d1e6b6e3c6ad664248c2347a7b/fixtures/configs/no-files.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../../src/config/types.ts';

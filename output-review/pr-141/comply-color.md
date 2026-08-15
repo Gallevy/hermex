@@ -14,7 +14,7 @@ _unchanged_
 
 **Ran** `hermex comply` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/2cda7237374ae249e6a91ecd7e28c72899a84884/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/2cda7237374ae249e6a91ecd7e28c72899a84884/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/2cda7237374ae249e6a91ecd7e28c72899a84884/fixtures/README.md)) · **Case** [`comply-color`](https://github.com/Gallevy/hermex/blob/2cda7237374ae249e6a91ecd7e28c72899a84884/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/2cda7237374ae249e6a91ecd7e28c72899a84884/fixtures/cases/comply-color.md))
+**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/79c9afe48d3e63d1e6b6e3c6ad664248c2347a7b/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/79c9afe48d3e63d1e6b6e3c6ad664248c2347a7b/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/79c9afe48d3e63d1e6b6e3c6ad664248c2347a7b/fixtures/README.md)) · **Case** [`comply-color`](https://github.com/Gallevy/hermex/blob/79c9afe48d3e63d1e6b6e3c6ad664248c2347a7b/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/79c9afe48d3e63d1e6b6e3c6ad664248c2347a7b/fixtures/cases/comply-color.md))
 
 **Environment** `NO_COLOR` unset, `FORCE_COLOR=3`
 
@@ -22,7 +22,7 @@ _unchanged_
 
 ## Config
 
-[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/2cda7237374ae249e6a91ecd7e28c72899a84884/fixtures/hermex.config.ts)
+[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/79c9afe48d3e63d1e6b6e3c6ad664248c2347a7b/fixtures/hermex.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../src/config/types.ts';
