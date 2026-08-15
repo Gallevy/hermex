@@ -505,10 +505,12 @@ export default defineConfig({
 | `output.packages: false` | omits `packages` |
 | `output.components: false` | omits `components` |
 | `output.versus: false` | omits `versus` |
-| `output.patterns: false` | omits `summary.patternCounts` |
-| `output.rules`, `output.summary`, `output.details` | **no effect** — see below |
+| `output.patterns: false` **and** `output.details: false` | omits `summary.patternCounts` |
+| `output.rules`, `output.summary` | **no effect** — see below |
 
-`version`, the `summary` counters, `ruleViolations` and `compliance` are always emitted. They are the machine-readable verdict, and `comply` prints rules in human mode regardless of `output.rules`, so gating them here would make the JSON lossier than the terminal output it mirrors — a silent way to blind CI. `output.details` has no JSON counterpart (per-file details are not serialized at all).
+`patternCounts` is the one field that answers to two toggles, because both human sections render that same array — the Patterns section as a table/chart, the Details section as a flat list. It therefore only drops when *both* are off; gating on `output.patterns` alone would strip it from the JSON while the terminal still printed it under Details. (`output.details` has no other effect on JSON — despite the name, that section prints pattern totals, not per-file records.)
+
+`version`, the `summary` counters, `ruleViolations` and `compliance` are always emitted. They are the machine-readable verdict, and `comply` prints rules in human mode regardless of `output.rules`, so gating them here would make the JSON lossier than the terminal output it mirrors — a silent way to blind CI. `output.summary` has no counterpart either: the human Summary table shows derived metrics (package count, external components, total usages) that share only `filesAnalyzed` with the counters serialized here, so there is no JSON field it cleanly owns.
 
 Because a disabled section is absent rather than empty, narrow before reading it — `result.components ?? []` — and note that `TypeScript`'s `HermexScanResult` marks exactly these fields optional.
 

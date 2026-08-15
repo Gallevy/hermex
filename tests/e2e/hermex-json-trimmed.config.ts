@@ -8,7 +8,10 @@ export default {
     format: 'json',
     components: false,
     packages: false,
+    // Both, because the Details section renders the same patternCounts array
+    // the Patterns section does.
     patterns: false,
+    details: false,
     versus: false,
     rules: false,
   },

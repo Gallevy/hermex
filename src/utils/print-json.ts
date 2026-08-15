@@ -28,14 +28,21 @@ import { getVersion } from './version';
  * - `output.packages: false` drops `packages`
  * - `output.components: false` drops `components`
  * - `output.versus: false` drops `versus`
- * - `output.patterns: false` drops `summary.patternCounts`
+ * - `summary.patternCounts` needs *both* `output.patterns` and
+ *   `output.details` off before it drops, because both sections render that
+ *   same array — `printPatterns` as a table/chart, `printDetails` as a flat
+ *   list. Gating on `patterns` alone would drop it from the JSON while the
+ *   terminal still printed it under Details.
  *
  * `version`, the `summary` counters, `ruleViolations` and `compliance` are
  * never gated: together they are the machine-readable verdict, and `comply`'s
  * human path prints rules unconditionally too, so honouring `output.rules`
  * here would make JSON *lossier* than the terminal it mirrors — a silent way
- * to blind CI. `output.details` and `output.summary` have no JSON counterpart
- * (per-file details are not serialized; the counters are always present).
+ * to blind CI. That same rule is what forces the `patterns`/`details` pairing
+ * above. `output.summary` has no counterpart either: the human Summary table
+ * shows derived metrics (package count, external components, total usages)
+ * that share only `filesAnalyzed` with the counters serialized here, so there
+ * is no field it cleanly owns.
  *
  * `compliance` defaults to `computeCompliance(aggregated)` so `scan --format
  * json` carries the same verdict as `comply`; callers that already computed
@@ -53,7 +60,9 @@ export function printJson(
       totalImports: aggregated.totalImports,
       totalComponents: aggregated.totalComponents,
       totalUsagePatterns: aggregated.totalUsagePatterns,
-      ...(output.patterns ? { patternCounts: aggregated.patternCounts } : {}),
+      ...(output.patterns || output.details
+        ? { patternCounts: aggregated.patternCounts }
+        : {}),
     },
     ...(output.packages ? { packages: aggregated.packageDistribution } : {}),
     ...(output.components

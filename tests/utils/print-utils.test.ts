@@ -1726,12 +1726,30 @@ describe('printJson', () => {
     });
 
     it('omits summary.patternCounts when output.patterns is false, keeping the counters', () => {
-      printJson(trimmable, makeOutput({ patterns: false }));
+      printJson(trimmable, makeOutput({ patterns: false, details: false }));
 
       const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
       expect(parsed.summary).not.toHaveProperty('patternCounts');
       expect(parsed.summary.filesAnalyzed).toBe(5);
       expect(parsed.summary.totalUsagePatterns).toBe(7);
+    });
+
+    // printDetails renders the same patternCounts array as printPatterns (a
+    // flat list rather than a table), so gating on output.patterns alone
+    // would strip the field while the terminal still printed it under
+    // Details — the JSON must never be lossier than the human output.
+    it('keeps summary.patternCounts when patterns is off but details is on', () => {
+      printJson(trimmable, makeOutput({ patterns: false, details: true }));
+
+      const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+      expect(parsed.summary.patternCounts).toHaveLength(1);
+    });
+
+    it('keeps summary.patternCounts when details is off but patterns is on', () => {
+      printJson(trimmable, makeOutput({ patterns: 'chart', details: false }));
+
+      const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+      expect(parsed.summary.patternCounts).toHaveLength(1);
     });
 
     // A disabled section is absent, not `[]` — shrinking the payload is the
@@ -1743,6 +1761,7 @@ describe('printJson', () => {
           packages: false,
           components: false,
           patterns: false,
+          details: false,
           versus: false,
         }),
       );

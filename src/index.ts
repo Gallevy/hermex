@@ -63,7 +63,12 @@ export interface HermexScanResult {
     totalImports: number;
     totalComponents: number;
     totalUsagePatterns: number;
-    /** `totalUsagePatterns` broken down by pattern type — aggregate counts, not per-item records (#80). Omitted when `output.patterns: false`. */
+    /**
+     * `totalUsagePatterns` broken down by pattern type — aggregate counts,
+     * not per-item records (#80). Omitted only when `output.patterns` **and**
+     * `output.details` are both false: the Patterns and Details sections
+     * render this same array, so either one being on keeps it.
+     */
     patternCounts?: import('./utils/pattern-counter').PatternCount[];
   };
   /**
