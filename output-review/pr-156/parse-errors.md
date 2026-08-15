@@ -14,13 +14,13 @@ _unchanged_
 
 **Ran** `hermex scan --config configs/parse-errors.config.ts` in `fixtures/` → exit 0, as asserted
 
-**Config** [`fixtures/configs/parse-errors.config.ts`](https://github.com/Gallevy/hermex/blob/b00e786b8709f4e455cdf3b0b27bb75ca754f2cd/fixtures/configs/parse-errors.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/b00e786b8709f4e455cdf3b0b27bb75ca754f2cd/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/b00e786b8709f4e455cdf3b0b27bb75ca754f2cd/fixtures/README.md)) · **Case** [`parse-errors`](https://github.com/Gallevy/hermex/blob/b00e786b8709f4e455cdf3b0b27bb75ca754f2cd/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/b00e786b8709f4e455cdf3b0b27bb75ca754f2cd/fixtures/cases/parse-errors.md))
+**Config** [`fixtures/configs/parse-errors.config.ts`](https://github.com/Gallevy/hermex/blob/da4c71dfab65991c2c8f8da4f9ffb5c421404cad/fixtures/configs/parse-errors.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/da4c71dfab65991c2c8f8da4f9ffb5c421404cad/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/da4c71dfab65991c2c8f8da4f9ffb5c421404cad/fixtures/README.md)) · **Case** [`parse-errors`](https://github.com/Gallevy/hermex/blob/da4c71dfab65991c2c8f8da4f9ffb5c421404cad/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/da4c71dfab65991c2c8f8da4f9ffb5c421404cad/fixtures/cases/parse-errors.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter parse-errors`</sub>
 
 ## Config
 
-[`fixtures/configs/parse-errors.config.ts`](https://github.com/Gallevy/hermex/blob/b00e786b8709f4e455cdf3b0b27bb75ca754f2cd/fixtures/configs/parse-errors.config.ts)
+[`fixtures/configs/parse-errors.config.ts`](https://github.com/Gallevy/hermex/blob/da4c71dfab65991c2c8f8da4f9ffb5c421404cad/fixtures/configs/parse-errors.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../../src/config/types.ts';
