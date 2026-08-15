@@ -1,5 +1,0 @@
-hermex v<version>
-- Parsing lockfile...
-✔ Found npm lockfile (supports: v2, v3) - 7 packages
-✔ Found 1 files
-✔ Analysis complete! Analyzed 1/1 files

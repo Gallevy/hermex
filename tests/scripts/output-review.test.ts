@@ -68,10 +68,10 @@ describe('unifiedDiff', () => {
     expect(unifiedDiff('stdout.txt', text, text)).toBe('');
   });
 
-  it('labels the two sides baseline and current rather than a and b', () => {
+  it('labels the two sides target and current rather than a and b', () => {
     const diff = unifiedDiff('stdout.txt', 'a', 'b');
     expect(diff.split('\n').slice(0, 2)).toEqual([
-      '--- baseline/stdout.txt',
+      '--- target/stdout.txt',
       '+++ current/stdout.txt',
     ]);
   });

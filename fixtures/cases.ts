@@ -2,7 +2,7 @@ import type { FixtureCase } from '../scripts/output-review.ts';
 
 /**
  * The output-review matrix: every case `pnpm run test:output` runs, diffs
- * against `tests/__output_baselines__/`, and lists in the PR comment.
+ * against a fresh build of the target branch, and lists in the PR comment.
  *
  * Adding a case is one entry here plus (usually) one config in
  * `./configs/`. Nothing else knows the list — the runner, the CI matrix and
