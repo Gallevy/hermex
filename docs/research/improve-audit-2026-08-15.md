@@ -13,8 +13,16 @@ worktree, so no build or test run was performed — the two findings that would
 have needed one are marked MED confidence with their verification step stated.
 
 **Triage outcome:** 13 findings — 1 graduated into a new ticket, 12 folded onto
-existing tickets, 5 rejected. Full per-finding disposition in the
+existing tickets, 6 rejected (one of them a retraction of half of finding 9 —
+see the correction there). Full per-finding disposition in the
 [resolution comment](https://github.com/Gallevy/hermex/issues/111#issuecomment-5298721028).
+
+**Plans.** Nine of these findings were subsequently written up as executor plans
+under [`plans/`](../../plans/README.md) — 030 to 038 — at the maintainer's
+request. Six of the nine encode an **assumption** about a decision the owning
+map ticket has not made yet; each states it in an "Assumptions this plan
+encodes" box in its header. Read that box before executing, and treat a merged
+plan as a first draft with tests, not as the owning ticket being resolved.
 
 ---
 
@@ -188,16 +196,26 @@ Each checked for readers, not inferred:
 Deleting `reports` makes props detection provably unreachable rather than merely
 unused — correct, but worth knowing.
 
-### 9 — File rules re-glob per rule, and see a different file set → [#116](https://github.com/Gallevy/hermex/issues/116) / [#112](https://github.com/Gallevy/hermex/issues/112)
+### 9 — File rules re-glob once per pattern → [#112](https://github.com/Gallevy/hermex/issues/112)
 
 `findMatches` (`src/rules/shared.ts:58-69`) runs `globSync` once per pattern per
-rule, while `runPipeline` already holds the resolved `files` list
-(`src/commands/pipeline.ts:49-53`) and passes it only to `evaluateCodeowners`.
+rule against the repo root, while `runPipeline` already holds a resolved file
+list from a single `findFiles` call (`src/commands/pipeline.ts:49-53`). On a
+large repo with a dozen file rules that is a dozen extra directory walks.
 
-The cost half is extra full directory walks. The half that matters:
-`detect_files`/`require_files` evaluate against a glob that ignores `includes`
-and the `.d.ts` filter, so one repo has two different notions of "the files
-hermex looked at".
+Cost only, and modest — file rules typically carry a handful of patterns. Worth
+a number from the perf baseline before anyone optimises it.
+
+> **Correction (2026-08-15, same day).** This finding was first written with a
+> second half claiming the divergence between the file-rule glob and the scan's
+> file list was a bug — "one repo has two different notions of the files hermex
+> looked at". **That was wrong, and it is retracted.** File rules glob the whole
+> repo *by design*: they target `.nvmrc`, `.babelrc`, `.editorconfig`,
+> `jest.config.*` — files the scan deliberately never parses. The fixture's own
+> config says so at `fixtures/repos/all-rule-types/hermex.config.ts:11-12`:
+> *"Scoped to `src/` so `jest.config.js` is found by `detect_files` without also
+> being parsed as source."* Restricting file rules to `includes` would be a
+> capability regression. Only the per-pattern glob cost above stands.
 
 ### 10 — `tsconfig.json` does not type-check tests → [#116](https://github.com/Gallevy/hermex/issues/116)
 
@@ -258,6 +276,9 @@ it is the same data #129 needs for the coverage verdict.
   correct.
 - **`Set<ImportPattern>` never dedupes** (object identity, so two identical
   imports both land) — that is the intended per-site record, not a dedup failure.
+- **"File rules see a different file set than the scan"** — retracted the same
+  day; see the correction in finding 9. File rules glob the whole repo by
+  design, because they target files the scan deliberately never parses.
 
 ### Retired
 
