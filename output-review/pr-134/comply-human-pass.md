@@ -14,13 +14,13 @@ _unchanged_
 
 **Ran** `hermex comply` in `fixtures/repos/compliant` → exit 0, as asserted
 
-**Config** [`fixtures/repos/compliant/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/8f0283cd46947106ec2b7ed0ad25f9ac9808e254/fixtures/repos/compliant/hermex.config.ts) · **Fixture** [`fixtures/repos/compliant`](https://github.com/Gallevy/hermex/blob/8f0283cd46947106ec2b7ed0ad25f9ac9808e254/fixtures/repos/compliant) ([overview](https://github.com/Gallevy/hermex/blob/8f0283cd46947106ec2b7ed0ad25f9ac9808e254/fixtures/repos/compliant/README.md)) · **Case** [`comply-human-pass`](https://github.com/Gallevy/hermex/blob/8f0283cd46947106ec2b7ed0ad25f9ac9808e254/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/8f0283cd46947106ec2b7ed0ad25f9ac9808e254/fixtures/cases/comply-human-pass.md))
+**Config** [`fixtures/repos/compliant/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/64baf1d602da896cac593bd144a6d4620ed95c2d/fixtures/repos/compliant/hermex.config.ts) · **Fixture** [`fixtures/repos/compliant`](https://github.com/Gallevy/hermex/blob/64baf1d602da896cac593bd144a6d4620ed95c2d/fixtures/repos/compliant) ([overview](https://github.com/Gallevy/hermex/blob/64baf1d602da896cac593bd144a6d4620ed95c2d/fixtures/repos/compliant/README.md)) · **Case** [`comply-human-pass`](https://github.com/Gallevy/hermex/blob/64baf1d602da896cac593bd144a6d4620ed95c2d/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/64baf1d602da896cac593bd144a6d4620ed95c2d/fixtures/cases/comply-human-pass.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-human-pass`</sub>
 
 ## Config
 
-[`fixtures/repos/compliant/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/8f0283cd46947106ec2b7ed0ad25f9ac9808e254/fixtures/repos/compliant/hermex.config.ts)
+[`fixtures/repos/compliant/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/64baf1d602da896cac593bd144a6d4620ed95c2d/fixtures/repos/compliant/hermex.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../../../src/config/types.ts';
