@@ -959,6 +959,36 @@ describe('printRules', () => {
     expect(output).not.toContain('🟡');
   });
 
+  // The table always shows every severity, including info — so the tally
+  // below it must count every severity too, or the numbers stop matching
+  // the rows (#88).
+  it('includes an info count in the summary line so it matches the table rows shown', () => {
+    const errorViolation: RuleViolation = {
+      ruleId: 'require-files',
+      severity: 'error',
+      patterns: ['.nvmrc'],
+      matchedFiles: [],
+    };
+    const infoViolation: RuleViolation = {
+      ruleId: 'no-files',
+      severity: 'info',
+      patterns: ['orbis.config.*'],
+      matchedFiles: ['orbis.config.ts'],
+    };
+    const aggregated = makeAggregated({
+      ruleViolations: [
+        errorViolation,
+        forbidViolation('moment', 'warn', 'Use dayjs'),
+        infoViolation,
+      ],
+    });
+    printRules(aggregated);
+    const output = stripAnsi(
+      consoleSpy.mock.calls.map((call) => call.join(' ')).join('\n'),
+    );
+    expect(output).toContain('1 error, 1 warning, 1 info');
+  });
+
   it('renders require-package-fields/no-package-fields violations under the package-fields label', () => {
     const violation: RuleViolation = {
       ruleId: 'require-package-fields',

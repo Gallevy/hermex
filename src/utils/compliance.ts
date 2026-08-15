@@ -1,6 +1,7 @@
 import type { AggregatedReport } from './aggregator';
 import type { RuleViolation } from '../rules/evaluator';
 import type { PackageDistribution } from './package-distribution';
+import { groupBySeverity } from './severity-format';
 
 /**
  * The canonical, three-state compliance verdict hermex publishes so
@@ -44,15 +45,11 @@ export interface ComplianceResult {
 export function computeCompliance(
   aggregated: AggregatedReport,
 ): ComplianceResult {
-  const errorRuleViolations = aggregated.ruleViolations.filter(
-    (v) => v.severity === 'error',
-  );
+  const { error: errorRuleViolations, warn: warningRuleViolations } =
+    groupBySeverity(aggregated.ruleViolations);
   const releaseAgeViolations = aggregated.packageDistribution.filter(
     (p) =>
       p.releaseAge?.severity === 'error' && p.releaseAge?.worstLevel !== null,
-  );
-  const warningRuleViolations = aggregated.ruleViolations.filter(
-    (v) => v.severity === 'warn',
   );
 
   const compliant =
