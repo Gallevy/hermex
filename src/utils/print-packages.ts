@@ -12,7 +12,7 @@ import {
   formatDaysOverdue,
   formatDaysRemaining,
 } from './format-utils';
-import { severityIcon, severityColor } from './severity-format';
+import { severityIcon, severityColor, stripAnsi } from './severity-format';
 
 function printHeader() {
   console.log(chalk.blueBright.bold('\n📦 Packages\n'));
@@ -27,10 +27,13 @@ export function formatPackageName(
     prefix += severityColor('error')('[DEPRECATED] ');
   }
   if (banned) {
-    prefix +=
-      banned.severity === 'error'
-        ? severityColor('error')('[BANNED] ')
-        : severityColor('warn')('[RESTRICTED] ');
+    // Severity-neutral badge — the icon carries *how hard* the rule is
+    // enforced (matching every other surface's icon/description split), so
+    // 'warn' and 'info' no longer collapse into an invented "restricted"
+    // concept that doesn't exist anywhere in the config (#86). There is only
+    // one reason a package lands here — `forbid_packages` — so the badge
+    // names that reason, not the severity.
+    prefix += `${severityIcon(banned.severity)} [FORBIDDEN] `;
   } else if (pkg.internal) {
     prefix += severityColor('warn')('[int] ');
   }
@@ -297,25 +300,33 @@ function printPackagesChart(
 
   const maxBarWidth = 40;
   const maxPercentage = Math.max(...charted.map((p) => p.percentage));
+  // Padding is computed from the rendered label itself (ANSI stripped for
+  // width, since escape codes contribute zero visible columns) rather than
+  // re-derived from which badges apply — that re-derivation is what silently
+  // fell out of sync whenever a badge's text changed (#86: [BANNED]/
+  // [RESTRICTED] were never accounted for here at all).
+  const labels = charted.map((pkg) =>
+    formatPackageName(pkg, findForbidViolation(pkg, violations)),
+  );
   const maxLabelLength = Math.max(
-    ...charted.map((p) => p.packageName.length + (p.internal ? 6 : 0)),
+    ...labels.map((label) => stripAnsi(label).length),
   );
 
-  charted.forEach((pkg) => {
+  charted.forEach((pkg, i) => {
     const barLength = Math.round(
       (pkg.percentage / maxPercentage) * maxBarWidth,
     );
     const emptyLength = maxBarWidth - barLength;
-    const label = formatPackageName(
-      pkg,
-      findForbidViolation(pkg, violations),
-    ).padEnd(maxLabelLength, ' ');
+    const label = labels[i]!;
+    const padding = ' '.repeat(
+      Math.max(0, maxLabelLength - stripAnsi(label).length),
+    );
 
     const bar =
       chalk.green('█'.repeat(barLength)) + chalk.gray('░'.repeat(emptyLength));
 
     console.log(
-      `${label} ${bar} ${chalk.bold(pkg.percentage.toFixed(1) + '%')} (${pkg.usageCount})`,
+      `${label}${padding} ${bar} ${chalk.bold(pkg.percentage.toFixed(1) + '%')} (${pkg.usageCount})`,
     );
   });
 }

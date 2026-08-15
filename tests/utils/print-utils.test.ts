@@ -360,6 +360,31 @@ describe('printPackages', () => {
     expect(output).toContain('[int]');
   });
 
+  // (#86) Padding used to be re-derived from which badges applied, so
+  // [BANNED]/[RESTRICTED] were never accounted for and bars misaligned. It's
+  // now computed from the rendered, ANSI-stripped label itself — this
+  // asserts the bars for a badged and an un-badged row actually line up.
+  it('chart mode aligns bars when a forbidden package label is wider than an unbadged one', () => {
+    const aggregated = makeAggregated({
+      packageDistribution: [
+        createMockPackage('react', { usageCount: 4, percentage: 50 }),
+        createMockPackage('moment', { usageCount: 4, percentage: 50 }),
+      ],
+      ruleViolations: [forbidViolation('moment', 'error')],
+    });
+    printPackages(aggregated, 'chart');
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    const barLines = stripAnsi(output)
+      .split('\n')
+      .filter((l) => l.includes('█') || l.includes('░'));
+    expect(barLines).toHaveLength(2);
+    const barStarts = barLines.map((l) => l.indexOf('█'));
+    expect(barStarts[0]).toBeGreaterThan(0);
+    expect(barStarts[0]).toBe(barStarts[1]);
+  });
+
   it('marks a package with multiple resolved versions as a version conflict', () => {
     const aggregated = makeAggregated({
       packageDistribution: [
@@ -425,18 +450,25 @@ describe('formatPackageName', () => {
     expect(formatPackageName(pkg)).toContain('[DEPRECATED]');
   });
 
-  it('prefixes an error-severity banned package as [BANNED]', () => {
+  it('prefixes an error-severity forbidden package with [FORBIDDEN] and the error icon', () => {
     const pkg = createMockPackage('moment');
-    expect(
-      formatPackageName(pkg, forbidViolation('moment', 'error')),
-    ).toContain('[BANNED]');
+    const name = formatPackageName(pkg, forbidViolation('moment', 'error'));
+    expect(name).toContain('[FORBIDDEN]');
+    expect(name).toContain('🔴');
   });
 
-  it('prefixes a warn-severity banned package as [RESTRICTED]', () => {
+  it('prefixes a warn-severity forbidden package with [FORBIDDEN] and the warn icon', () => {
     const pkg = createMockPackage('moment');
-    expect(formatPackageName(pkg, forbidViolation('moment', 'warn'))).toContain(
-      '[RESTRICTED]',
-    );
+    const name = formatPackageName(pkg, forbidViolation('moment', 'warn'));
+    expect(name).toContain('[FORBIDDEN]');
+    expect(name).toContain('🟡');
+  });
+
+  it('prefixes an info-severity forbidden package with [FORBIDDEN] and the info icon, distinct from warn', () => {
+    const pkg = createMockPackage('moment');
+    const name = formatPackageName(pkg, forbidViolation('moment', 'info'));
+    expect(name).toContain('[FORBIDDEN]');
+    expect(name).toContain('🔵');
   });
 
   it('prefixes an internal package as [int] when not banned', () => {
@@ -444,20 +476,20 @@ describe('formatPackageName', () => {
     expect(formatPackageName(pkg)).toContain('[int]');
   });
 
-  it('prefers [BANNED]/[RESTRICTED] over [int] when a package is both internal and banned', () => {
+  it('prefers [FORBIDDEN] over [int] when a package is both internal and banned', () => {
     const pkg = createMockPackage('@my-org/utils', { internal: true });
     const name = formatPackageName(pkg, forbidViolation('@my-org/utils'));
-    expect(name).toContain('[BANNED]');
+    expect(name).toContain('[FORBIDDEN]');
     expect(name).not.toContain('[int]');
   });
 
-  it('combines [DEPRECATED] with [BANNED] when both apply', () => {
+  it('combines [DEPRECATED] with [FORBIDDEN] when both apply', () => {
     const pkg = createMockPackage('moment', {
       releaseAge: createMockReleaseAge({ deprecated: 'use dayjs' }),
     });
     const name = formatPackageName(pkg, forbidViolation('moment'));
     expect(name).toContain('[DEPRECATED]');
-    expect(name).toContain('[BANNED]');
+    expect(name).toContain('[FORBIDDEN]');
   });
 });
 
