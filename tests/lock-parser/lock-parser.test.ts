@@ -6,7 +6,10 @@ import lockfileLib from '@yarnpkg/lockfile';
 import { PnpmLockfileAdapter } from '../../src/lock-parser/patterns/pnpm';
 import { NpmLockfileAdapter } from '../../src/lock-parser/patterns/npm';
 import { YarnLockfileAdapter } from '../../src/lock-parser/patterns/yarn';
-import { readAndParseLockfile } from '../../src/lock-parser/lock-file-adapter';
+import {
+  readAndParseLockfile,
+  compareVersions,
+} from '../../src/lock-parser/lock-file-adapter';
 import {
   findAndParseLockfile,
   getPackageVersion,
@@ -525,6 +528,39 @@ describe('getPackageVersion / getPackageVersions', () => {
       'does-not-exist-pkg',
     ]);
     expect(versions).toEqual({ chalk: '5.3.0', vitest: '1.6.0' });
+  });
+});
+
+describe('compareVersions', () => {
+  it('sorts versions by semver value, not lexicographically', () => {
+    expect(['1.10.0', '1.9.0'].sort(compareVersions)).toEqual([
+      '1.9.0',
+      '1.10.0',
+    ]);
+  });
+
+  it('sorts valid semver first, non-semver strings last in lexicographic order', () => {
+    expect(['2.0.0', 'workspace:*', '1.0.0'].sort(compareVersions)).toEqual([
+      '1.0.0',
+      '2.0.0',
+      'workspace:*',
+    ]);
+  });
+
+  it('does not throw when all versions are non-semver, and returns a stable order', () => {
+    const versions = ['file:../local-pkg', 'git+https://example.com/pkg.git'];
+    expect(() => versions.sort(compareVersions)).not.toThrow();
+    expect(versions.sort(compareVersions)).toEqual([
+      'file:../local-pkg',
+      'git+https://example.com/pkg.git',
+    ]);
+  });
+
+  it('orders a prerelease before its final release', () => {
+    expect(['1.0.0', '1.0.0-beta.1'].sort(compareVersions)).toEqual([
+      '1.0.0-beta.1',
+      '1.0.0',
+    ]);
   });
 });
 
