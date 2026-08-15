@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "comply-all-rule-types-json — output review"
+title: "comply-all-rule-types-json — Output Review"
 ---
 
 {% raw %}
@@ -14,13 +14,13 @@ _changed_
 
 **Ran** `hermex comply --format json` in `fixtures/repos/all-rule-types` → exit 1, as asserted
 
-**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types-json`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/cases/comply-all-rule-types-json.md))
+**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/63672f9449477196f26d021b1b6102a215ea7d6e/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/63672f9449477196f26d021b1b6102a215ea7d6e/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/63672f9449477196f26d021b1b6102a215ea7d6e/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types-json`](https://github.com/Gallevy/hermex/blob/63672f9449477196f26d021b1b6102a215ea7d6e/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/63672f9449477196f26d021b1b6102a215ea7d6e/fixtures/cases/comply-all-rule-types-json.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-all-rule-types-json`</sub>
 
 ## Config
 
-[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/repos/all-rule-types/hermex.config.ts)
+[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/63672f9449477196f26d021b1b6102a215ea7d6e/fixtures/repos/all-rule-types/hermex.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../../../src/config/types.ts';
@@ -93,103 +93,141 @@ export default {
 } satisfies HermexConfigInput;
 ```
 
-## Diff against the committed baseline
+## Diff against the target branch
 
-<sub>Diffs are unified format: `-` is the committed baseline, `+` is this run. `@@ -12,7 +12,9 @@` is a hunk header — unchanged lines were skipped, and the hunk below covers 7 lines from line 12 of the baseline and 9 lines from line 12 of this run — which is where to look in `tests/__output_baselines__/`.</sub>
+<sub>Diffs are unified format: `-` is the target branch, `+` is this run. `@@ -12,7 +12,9 @@` is a hunk header — unchanged lines were skipped, and the hunk below covers 7 lines from line 12 of the target branch and 9 lines from line 12 of this run.</sub>
 
 ```diff
---- baseline/stdout.json
+--- target/exit-code.txt
++++ current/exit-code.txt
+@@ -1,2 +1,2 @@
+-0
++1
+ 
+
+--- target/stdout.json
 +++ current/stdout.json
-@@ -135,7 +135,7 @@
+@@ -133,14 +133,115 @@
+     }
+   ],
    "versus": [],
-   "ruleViolations": [
-     {
--      "type": "forbid_packages",
+-  "ruleViolations": [],
++  "ruleViolations": [
++    {
 +      "ruleId": "no-packages",
-       "severity": "error",
-       "patterns": [
-         "moment"
-@@ -145,7 +145,7 @@
-       "packageName": "moment"
-     },
-     {
--      "type": "require_packages",
++      "severity": "error",
++      "patterns": [
++        "moment"
++      ],
++      "message": "Use date-fns or dayjs",
++      "matchedFiles": [],
++      "packageName": "moment"
++    },
++    {
 +      "ruleId": "require-packages",
-       "severity": "error",
-       "patterns": [
-         "typescript"
-@@ -154,7 +154,7 @@
-       "matchedFiles": []
-     },
-     {
--      "type": "detect_files",
++      "severity": "error",
++      "patterns": [
++        "typescript"
++      ],
++      "message": "TypeScript is required",
++      "matchedFiles": []
++    },
++    {
 +      "ruleId": "no-files",
-       "severity": "error",
-       "patterns": [
-         "jest.config.*",
-@@ -167,7 +167,7 @@
-       ]
-     },
-     {
--      "type": "require_files",
++      "severity": "error",
++      "patterns": [
++        "jest.config.*",
++        ".babelrc"
++      ],
++      "message": "Use vitest + Vite",
++      "matchedFiles": [
++        "jest.config.js",
++        ".babelrc"
++      ]
++    },
++    {
 +      "ruleId": "require-files",
-       "severity": "error",
-       "patterns": [
-         ".nvmrc"
-@@ -175,7 +175,7 @@
-       "matchedFiles": []
-     },
-     {
--      "type": "require_scripts",
++      "severity": "error",
++      "patterns": [
++        ".nvmrc"
++      ],
++      "matchedFiles": []
++    },
++    {
 +      "ruleId": "require-scripts",
-       "severity": "error",
-       "patterns": [
-         "build",
-@@ -185,7 +185,7 @@
-       "matchedFiles": []
-     },
-     {
--      "type": "require_package_fields",
++      "severity": "error",
++      "patterns": [
++        "build",
++        "test"
++      ],
++      "message": "Required npm scripts",
++      "matchedFiles": []
++    },
++    {
 +      "ruleId": "require-package-fields",
-       "severity": "warn",
-       "patterns": [
-         "license"
-@@ -193,7 +193,7 @@
-       "matchedFiles": []
-     },
-     {
--      "type": "forbid_package_fields",
++      "severity": "warn",
++      "patterns": [
++        "license"
++      ],
++      "matchedFiles": []
++    },
++    {
 +      "ruleId": "no-package-fields",
-       "severity": "warn",
-       "patterns": [
-         "publishConfig.registry"
-@@ -204,7 +204,7 @@
-       "actualValue": "https://npm.internal.example.com"
-     },
-     {
--      "type": "engine_version",
++      "severity": "warn",
++      "patterns": [
++        "publishConfig.registry"
++      ],
++      "message": "Publish to the public registry",
++      "matchedFiles": [],
++      "fieldPath": "publishConfig.registry",
++      "actualValue": "https://npm.internal.example.com"
++    },
++    {
 +      "ruleId": "require-engine-version",
-       "severity": "error",
-       "patterns": [],
-       "message": "Minimum Node 20 required",
-@@ -213,7 +213,7 @@
-       "requiredRange": ">=20"
-     },
-     {
--      "type": "codeowners",
++      "severity": "error",
++      "patterns": [],
++      "message": "Minimum Node 20 required",
++      "matchedFiles": [],
++      "installedRange": ">=16",
++      "requiredRange": ">=20"
++    },
++    {
 +      "ruleId": "require-codeowners",
-       "severity": "info",
-       "patterns": [
-         "CODEOWNERS"
-@@ -224,7 +224,7 @@
-       ]
-     },
-     {
--      "type": "codeowners",
++      "severity": "info",
++      "patterns": [
++        "CODEOWNERS"
++      ],
++      "message": "Every file needs a platform owner",
++      "matchedFiles": [
++        "src/orphan.tsx"
++      ]
++    },
++    {
 +      "ruleId": "require-codeowners",
-       "severity": "info",
-       "patterns": [
-         "CODEOWNERS"
++      "severity": "info",
++      "patterns": [
++        "CODEOWNERS"
++      ],
++      "message": "Every file needs a platform owner",
++      "matchedFiles": [
++        "src/legacy.tsx"
++      ]
++    }
++  ],
+   "compliance": {
+-    "status": "compliant",
+-    "compliant": true,
++    "status": "non-compliant",
++    "compliant": false,
+     "counts": {
+-      "errorRuleViolations": 0,
++      "errorRuleViolations": 6,
+       "releaseAgeViolations": 0,
+-      "warningRuleViolations": 0
++      "warningRuleViolations": 2
+     }
+   }
+ }
 ```
 
 ## Full output

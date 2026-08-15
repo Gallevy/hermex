@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "comply-overrides — output review"
+title: "comply-overrides — Output Review"
 ---
 
 {% raw %}
@@ -14,13 +14,13 @@ _changed_
 
 **Ran** `hermex comply --config configs/overrides.config.ts` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/configs/overrides.config.ts`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/configs/overrides.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/README.md)) · **Case** [`comply-overrides`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/cases/comply-overrides.md))
+**Config** [`fixtures/configs/overrides.config.ts`](https://github.com/Gallevy/hermex/blob/63672f9449477196f26d021b1b6102a215ea7d6e/fixtures/configs/overrides.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/63672f9449477196f26d021b1b6102a215ea7d6e/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/63672f9449477196f26d021b1b6102a215ea7d6e/fixtures/README.md)) · **Case** [`comply-overrides`](https://github.com/Gallevy/hermex/blob/63672f9449477196f26d021b1b6102a215ea7d6e/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/63672f9449477196f26d021b1b6102a215ea7d6e/fixtures/cases/comply-overrides.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-overrides`</sub>
 
 ## Config
 
-[`fixtures/configs/overrides.config.ts`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/configs/overrides.config.ts)
+[`fixtures/configs/overrides.config.ts`](https://github.com/Gallevy/hermex/blob/63672f9449477196f26d021b1b6102a215ea7d6e/fixtures/configs/overrides.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../../src/config/types.ts';
@@ -59,28 +59,50 @@ export default {
 } satisfies HermexConfigInput;
 ```
 
-## Diff against the committed baseline
+## Diff against the target branch
 
-<sub>Diffs are unified format: `-` is the committed baseline, `+` is this run. `@@ -12,7 +12,9 @@` is a hunk header — unchanged lines were skipped, and the hunk below covers 7 lines from line 12 of the baseline and 9 lines from line 12 of this run — which is where to look in `tests/__output_baselines__/`.</sub>
+<sub>Diffs are unified format: `-` is the target branch, `+` is this run. `@@ -12,7 +12,9 @@` is a hunk header — unchanged lines were skipped, and the hunk below covers 7 lines from line 12 of the target branch and 9 lines from line 12 of this run.</sub>
 
 ```diff
---- baseline/stdout.txt
-+++ current/stdout.txt
-@@ -22,11 +22,11 @@
- ┌──────────────────┬────────────────────────────────────────────────────────────────────────┐
- │ Rule             │ Description                                                            │
- ├──────────────────┼────────────────────────────────────────────────────────────────────────┤
--│ forbid_packages  │ 🟡 moment is forbidden — Use date-fns or dayjs (scheduled for removal) │
-+│ no-packages      │ 🟡 moment is forbidden — Use date-fns or dayjs (scheduled for removal) │
- ├──────────────────┼────────────────────────────────────────────────────────────────────────┤
--│ require_packages │ 🔴 typescript not installed — TypeScript is required                   │
-+│ require-packages │ 🔴 typescript not installed — TypeScript is required                   │
- ├──────────────────┼────────────────────────────────────────────────────────────────────────┤
--│ require_files    │ 🔴 .nvmrc not found                                                    │
-+│ require-files    │ 🔴 .nvmrc not found                                                    │
- └──────────────────┴────────────────────────────────────────────────────────────────────────┘
+--- target/exit-code.txt
++++ current/exit-code.txt
+@@ -1,2 +1,2 @@
+-0
++1
  
- 2 errors, 1 warning
+
+--- target/stdout.txt
++++ current/stdout.txt
+@@ -17,6 +17,20 @@
+     Syntax Error
+ 
+ 
++🔍 Rules
++
++┌──────────────────┬────────────────────────────────────────────────────────────────────────┐
++│ Rule             │ Description                                                            │
++├──────────────────┼────────────────────────────────────────────────────────────────────────┤
++│ no-packages      │ 🟡 moment is forbidden — Use date-fns or dayjs (scheduled for removal) │
++├──────────────────┼────────────────────────────────────────────────────────────────────────┤
++│ require-packages │ 🔴 typescript not installed — TypeScript is required                   │
++├──────────────────┼────────────────────────────────────────────────────────────────────────┤
++│ require-files    │ 🔴 .nvmrc not found                                                    │
++└──────────────────┴────────────────────────────────────────────────────────────────────────┘
++
++2 errors, 1 warning
++
+ ⚖️ Versus
+ 
+   Design System Migration
+@@ -25,6 +39,7 @@
+   @new-system/arc            ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0.0% (0 usages)
+ 
+ 
+-🟢 COMPLIANT
++🔴 NOT COMPLIANT
++  2 mandatory violations found
+ 
+ 
 ```
 
 ## Full output

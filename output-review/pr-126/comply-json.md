@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "comply-json — output review"
+title: "comply-json — Output Review"
 ---
 
 {% raw %}
@@ -14,13 +14,13 @@ _changed_
 
 **Ran** `hermex comply --format json` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/README.md)) · **Case** [`comply-json`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/cases/comply-json.md))
+**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/63672f9449477196f26d021b1b6102a215ea7d6e/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/63672f9449477196f26d021b1b6102a215ea7d6e/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/63672f9449477196f26d021b1b6102a215ea7d6e/fixtures/README.md)) · **Case** [`comply-json`](https://github.com/Gallevy/hermex/blob/63672f9449477196f26d021b1b6102a215ea7d6e/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/63672f9449477196f26d021b1b6102a215ea7d6e/fixtures/cases/comply-json.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-json`</sub>
 
 ## Config
 
-[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/hermex.config.ts)
+[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/63672f9449477196f26d021b1b6102a215ea7d6e/fixtures/hermex.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../src/config/types.ts';
@@ -95,49 +95,76 @@ export default {
 } satisfies HermexConfigInput;
 ```
 
-## Diff against the committed baseline
+## Diff against the target branch
 
-<sub>Diffs are unified format: `-` is the committed baseline, `+` is this run. `@@ -12,7 +12,9 @@` is a hunk header — unchanged lines were skipped, and the hunk below covers 7 lines from line 12 of the baseline and 9 lines from line 12 of this run — which is where to look in `tests/__output_baselines__/`.</sub>
+<sub>Diffs are unified format: `-` is the target branch, `+` is this run. `@@ -12,7 +12,9 @@` is a hunk header — unchanged lines were skipped, and the hunk below covers 7 lines from line 12 of the target branch and 9 lines from line 12 of this run.</sub>
 
 ```diff
---- baseline/stdout.json
+--- target/exit-code.txt
++++ current/exit-code.txt
+@@ -1,2 +1,2 @@
+-0
++1
+ 
+
+--- target/stdout.json
 +++ current/stdout.json
-@@ -499,7 +499,7 @@
+@@ -497,14 +497,50 @@
+       "totalCount": 33
+     }
    ],
-   "ruleViolations": [
-     {
--      "type": "forbid_packages",
+-  "ruleViolations": [],
++  "ruleViolations": [
++    {
 +      "ruleId": "no-packages",
-       "severity": "error",
-       "patterns": [
-         "moment"
-@@ -509,7 +509,7 @@
-       "packageName": "moment"
-     },
-     {
--      "type": "require_packages",
++      "severity": "error",
++      "patterns": [
++        "moment"
++      ],
++      "message": "Use date-fns or dayjs",
++      "matchedFiles": [],
++      "packageName": "moment"
++    },
++    {
 +      "ruleId": "require-packages",
-       "severity": "error",
-       "patterns": [
-         "typescript"
-@@ -518,7 +518,7 @@
-       "matchedFiles": []
-     },
-     {
--      "type": "require_files",
++      "severity": "error",
++      "patterns": [
++        "typescript"
++      ],
++      "message": "TypeScript is required",
++      "matchedFiles": []
++    },
++    {
 +      "ruleId": "require-files",
-       "severity": "error",
-       "patterns": [
-         ".nvmrc"
-@@ -526,7 +526,7 @@
-       "matchedFiles": []
-     },
-     {
--      "type": "require_files",
++      "severity": "error",
++      "patterns": [
++        ".nvmrc"
++      ],
++      "matchedFiles": []
++    },
++    {
 +      "ruleId": "require-files",
-       "severity": "warn",
-       "patterns": [
-         ".editorconfig"
++      "severity": "warn",
++      "patterns": [
++        ".editorconfig"
++      ],
++      "matchedFiles": []
++    }
++  ],
+   "compliance": {
+-    "status": "compliant",
+-    "compliant": true,
++    "status": "non-compliant",
++    "compliant": false,
+     "counts": {
+-      "errorRuleViolations": 0,
++      "errorRuleViolations": 3,
+       "releaseAgeViolations": 0,
+-      "warningRuleViolations": 0
++      "warningRuleViolations": 1
+     }
+   }
+ }
 ```
 
 ## Full output
@@ -545,7 +572,7 @@ export default {
       "name": "CaseMap",
       "source": "@design-system/foundation",
       "count": 1,
-… 146 more line(s) — full text in tests/__output_baselines__/
+… 146 more line(s) — re-run locally for the full text.
 ```
 
 </details>

@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "comply-color — output review"
+title: "comply-color — Output Review"
 ---
 
 {% raw %}
@@ -14,7 +14,7 @@ _changed_
 
 **Ran** `hermex comply` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/README.md)) · **Case** [`comply-color`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/cases/comply-color.md))
+**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/63672f9449477196f26d021b1b6102a215ea7d6e/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/63672f9449477196f26d021b1b6102a215ea7d6e/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/63672f9449477196f26d021b1b6102a215ea7d6e/fixtures/README.md)) · **Case** [`comply-color`](https://github.com/Gallevy/hermex/blob/63672f9449477196f26d021b1b6102a215ea7d6e/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/63672f9449477196f26d021b1b6102a215ea7d6e/fixtures/cases/comply-color.md))
 
 **Environment** `NO_COLOR` unset, `FORCE_COLOR=3`
 
@@ -22,7 +22,7 @@ _changed_
 
 ## Config
 
-[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/hermex.config.ts)
+[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/63672f9449477196f26d021b1b6102a215ea7d6e/fixtures/hermex.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../src/config/types.ts';
@@ -97,52 +97,90 @@ export default {
 } satisfies HermexConfigInput;
 ```
 
-## Diff against the committed baseline
+## Diff against the target branch
 
-<sub>Diffs are unified format: `-` is the committed baseline, `+` is this run. `@@ -12,7 +12,9 @@` is a hunk header — unchanged lines were skipped, and the hunk below covers 7 lines from line 12 of the baseline and 9 lines from line 12 of this run — which is where to look in `tests/__output_baselines__/`.</sub>
+<sub>Diffs are unified format: `-` is the target branch, `+` is this run. `@@ -12,7 +12,9 @@` is a hunk header — unchanged lines were skipped, and the hunk below covers 7 lines from line 12 of the target branch and 9 lines from line 12 of this run.</sub>
 
 ```diff
---- baseline/stdout.txt
-+++ current/stdout.txt
-@@ -22,13 +22,13 @@
- ┌──────────────────┬──────────────────────────────────────────────────────┐
- │ Rule             │ Description                                          │
- ├──────────────────┼──────────────────────────────────────────────────────┤
--│ forbid_packages  │ 🔴 moment is forbidden — Use date-fns or dayjs       │
-+│ no-packages      │ 🔴 moment is forbidden — Use date-fns or dayjs       │
- ├──────────────────┼──────────────────────────────────────────────────────┤
--│ require_packages │ 🔴 typescript not installed — TypeScript is required │
-+│ require-packages │ 🔴 typescript not installed — TypeScript is required │
- ├──────────────────┼──────────────────────────────────────────────────────┤
--│ require_files    │ 🔴 .nvmrc not found                                  │
-+│ require-files    │ 🔴 .nvmrc not found                                  │
- ├──────────────────┼──────────────────────────────────────────────────────┤
--│ require_files    │ 🟡 .editorconfig not found                           │
-+│ require-files    │ 🟡 .editorconfig not found                           │
- └──────────────────┴──────────────────────────────────────────────────────┘
+--- target/exit-code.txt
++++ current/exit-code.txt
+@@ -1,2 +1,2 @@
+-0
++1
  
- 3 errors, 1 warning
 
---- baseline/stdout.ansi.txt
+--- target/stdout.txt
++++ current/stdout.txt
+@@ -17,6 +17,22 @@
+     Syntax Error
+ 
+ 
++🔍 Rules
++
++┌──────────────────┬──────────────────────────────────────────────────────┐
++│ Rule             │ Description                                          │
++├──────────────────┼──────────────────────────────────────────────────────┤
++│ no-packages      │ 🔴 moment is forbidden — Use date-fns or dayjs       │
++├──────────────────┼──────────────────────────────────────────────────────┤
++│ require-packages │ 🔴 typescript not installed — TypeScript is required │
++├──────────────────┼──────────────────────────────────────────────────────┤
++│ require-files    │ 🔴 .nvmrc not found                                  │
++├──────────────────┼──────────────────────────────────────────────────────┤
++│ require-files    │ 🟡 .editorconfig not found                           │
++└──────────────────┴──────────────────────────────────────────────────────┘
++
++3 errors, 1 warning
++
+ ⚖️ Versus
+ 
+   Design System Migration
+@@ -25,6 +41,7 @@
+   @new-system/arc            ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0.0% (0 usages)
+ 
+ 
+-🟢 COMPLIANT
++🔴 NOT COMPLIANT
++  3 mandatory violations found
+ 
+ 
+
+--- target/stdout.ansi.txt
 +++ current/stdout.ansi.txt
-@@ -22,13 +22,13 @@
- [90m┌──────────────────[39m[90m┬──────────────────────────────────────────────────────┐[39m
- [90m│[39m[36m Rule             [39m[90m│[39m[36m Description                                          [39m[90m│[39m
- [90m├──────────────────[39m[90m┼──────────────────────────────────────────────────────┤[39m
--[90m│[39m forbid_packages  [90m│[39m 🔴 moment is forbidden[90m — Use date-fns or dayjs[39m       [90m│[39m
-+[90m│[39m no-packages      [90m│[39m 🔴 moment is forbidden[90m — Use date-fns or dayjs[39m       [90m│[39m
- [90m├──────────────────[39m[90m┼──────────────────────────────────────────────────────┤[39m
--[90m│[39m require_packages [90m│[39m 🔴 typescript not installed[90m — TypeScript is required[39m [90m│[39m
-+[90m│[39m require-packages [90m│[39m 🔴 typescript not installed[90m — TypeScript is required[39m [90m│[39m
- [90m├──────────────────[39m[90m┼──────────────────────────────────────────────────────┤[39m
--[90m│[39m require_files    [90m│[39m 🔴 .nvmrc not found                                  [90m│[39m
-+[90m│[39m require-files    [90m│[39m 🔴 .nvmrc not found                                  [90m│[39m
- [90m├──────────────────[39m[90m┼──────────────────────────────────────────────────────┤[39m
--[90m│[39m require_files    [90m│[39m 🟡 .editorconfig not found                           [90m│[39m
-+[90m│[39m require-files    [90m│[39m 🟡 .editorconfig not found                           [90m│[39m
- [90m└──────────────────[39m[90m┴──────────────────────────────────────────────────────┘[39m
+@@ -16,6 +16,22 @@
+ [90mCaused by:[39m
+ [90m    Syntax Error[39m
  [90m[39m
- [90m[31m3 errors[39m[90m, [33m1 warning[39m[90m[39m
++[94m[1m[22m[39m
++[94m[1m🔍 Rules[22m[39m
++[94m[1m[22m[39m
++[90m┌──────────────────[39m[90m┬──────────────────────────────────────────────────────┐[39m
++[90m│[39m[36m Rule             [39m[90m│[39m[36m Description                                          [39m[90m│[39m
++[90m├──────────────────[39m[90m┼──────────────────────────────────────────────────────┤[39m
++[90m│[39m no-packages      [90m│[39m 🔴 moment is forbidden[90m — Use date-fns or dayjs[39m       [90m│[39m
++[90m├──────────────────[39m[90m┼──────────────────────────────────────────────────────┤[39m
++[90m│[39m require-packages [90m│[39m 🔴 typescript not installed[90m — TypeScript is required[39m [90m│[39m
++[90m├──────────────────[39m[90m┼──────────────────────────────────────────────────────┤[39m
++[90m│[39m require-files    [90m│[39m 🔴 .nvmrc not found                                  [90m│[39m
++[90m├──────────────────[39m[90m┼──────────────────────────────────────────────────────┤[39m
++[90m│[39m require-files    [90m│[39m 🟡 .editorconfig not found                           [90m│[39m
++[90m└──────────────────[39m[90m┴──────────────────────────────────────────────────────┘[39m
++[90m[39m
++[90m[31m3 errors[39m[90m, [33m1 warning[39m[90m[39m
+ [95m[1m[22m[39m
+ [95m[1m⚖️ Versus[22m[39m
+ [95m[1m[22m[39m
+@@ -24,7 +40,8 @@
+   @design-system/foundation  [36m██████████████████████████████[39m [1m100.0%[22m [90m(33 usages)[39m
+   @new-system/arc            [90m░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░[39m [1m0.0%[22m [90m(0 usages)[39m
+ 
+-[92m[1m[22m[39m
+-[92m[1m🟢 COMPLIANT[22m[39m
+-[92m[1m[22m[39m
++[91m[1m[22m[39m
++[91m[1m🔴 NOT COMPLIANT[22m[39m
++[31m  3 mandatory violations found[39m
+ 
++
 ```
 
 ## Full output

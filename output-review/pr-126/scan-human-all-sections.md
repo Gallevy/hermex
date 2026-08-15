@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "scan-human-all-sections — output review"
+title: "scan-human-all-sections — Output Review"
 ---
 
 {% raw %}
@@ -14,13 +14,13 @@ _changed_
 
 **Ran** `hermex scan --config configs/all-sections.config.ts` in `fixtures/` → exit 0, as asserted
 
-**Config** [`fixtures/configs/all-sections.config.ts`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/configs/all-sections.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/README.md)) · **Case** [`scan-human-all-sections`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/cases/scan-human-all-sections.md))
+**Config** [`fixtures/configs/all-sections.config.ts`](https://github.com/Gallevy/hermex/blob/63672f9449477196f26d021b1b6102a215ea7d6e/fixtures/configs/all-sections.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/63672f9449477196f26d021b1b6102a215ea7d6e/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/63672f9449477196f26d021b1b6102a215ea7d6e/fixtures/README.md)) · **Case** [`scan-human-all-sections`](https://github.com/Gallevy/hermex/blob/63672f9449477196f26d021b1b6102a215ea7d6e/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/63672f9449477196f26d021b1b6102a215ea7d6e/fixtures/cases/scan-human-all-sections.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter scan-human-all-sections`</sub>
 
 ## Config
 
-[`fixtures/configs/all-sections.config.ts`](https://github.com/Gallevy/hermex/blob/f2199f556fd66b23e3a3183c44943f03f9c57c29/fixtures/configs/all-sections.config.ts)
+[`fixtures/configs/all-sections.config.ts`](https://github.com/Gallevy/hermex/blob/63672f9449477196f26d021b1b6102a215ea7d6e/fixtures/configs/all-sections.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../../src/config/types.ts';
@@ -45,31 +45,45 @@ export default {
 } satisfies HermexConfigInput;
 ```
 
-## Diff against the committed baseline
+## Diff against the target branch
 
-<sub>Diffs are unified format: `-` is the committed baseline, `+` is this run. `@@ -12,7 +12,9 @@` is a hunk header — unchanged lines were skipped, and the hunk below covers 7 lines from line 12 of the baseline and 9 lines from line 12 of this run — which is where to look in `tests/__output_baselines__/`.</sub>
+<sub>Diffs are unified format: `-` is the target branch, `+` is this run. `@@ -12,7 +12,9 @@` is a hunk header — unchanged lines were skipped, and the hunk below covers 7 lines from line 12 of the target branch and 9 lines from line 12 of this run.</sub>
 
 ```diff
---- baseline/stdout.txt
+--- target/stdout.txt
 +++ current/stdout.txt
-@@ -48,13 +48,13 @@
- ┌──────────────────┬──────────────────────────────────────────────────────┐
- │ Rule             │ Description                                          │
- ├──────────────────┼──────────────────────────────────────────────────────┤
--│ forbid_packages  │ 🔴 moment is forbidden — Use date-fns or dayjs       │
-+│ no-packages      │ 🔴 moment is forbidden — Use date-fns or dayjs       │
- ├──────────────────┼──────────────────────────────────────────────────────┤
--│ require_packages │ 🔴 typescript not installed — TypeScript is required │
-+│ require-packages │ 🔴 typescript not installed — TypeScript is required │
- ├──────────────────┼──────────────────────────────────────────────────────┤
--│ require_files    │ 🔴 .nvmrc not found                                  │
-+│ require-files    │ 🔴 .nvmrc not found                                  │
- ├──────────────────┼──────────────────────────────────────────────────────┤
--│ require_files    │ 🟡 .editorconfig not found                           │
-+│ require-files    │ 🟡 .editorconfig not found                           │
- └──────────────────┴──────────────────────────────────────────────────────┘
+@@ -28,7 +28,7 @@
+ ├─────────────────────────────────┼─────────┤
+ │ eslint                          │ N/A     │
+ ├─────────────────────────────────┼─────────┤
+-│ moment                          │ 2.29.4  │
++│ [BANNED] moment                 │ 2.29.4  │
+ ├─────────────────────────────────┼─────────┤
+ │ react-dom                       │ 18.3.1  │
+ └─────────────────────────────────┴─────────┘
+@@ -43,6 +43,22 @@
+   @new-system/arc            ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0.0% (0 usages)
  
- 3 errors, 1 warning
+ 
++🔍 Rules
++
++┌──────────────────┬──────────────────────────────────────────────────────┐
++│ Rule             │ Description                                          │
++├──────────────────┼──────────────────────────────────────────────────────┤
++│ no-packages      │ 🔴 moment is forbidden — Use date-fns or dayjs       │
++├──────────────────┼──────────────────────────────────────────────────────┤
++│ require-packages │ 🔴 typescript not installed — TypeScript is required │
++├──────────────────┼──────────────────────────────────────────────────────┤
++│ require-files    │ 🔴 .nvmrc not found                                  │
++├──────────────────┼──────────────────────────────────────────────────────┤
++│ require-files    │ 🟡 .editorconfig not found                           │
++└──────────────────┴──────────────────────────────────────────────────────┘
++
++3 errors, 1 warning
++
+ 📋 Details
+ 
+   Total usage patterns: 284
 ```
 
 ## Full output
