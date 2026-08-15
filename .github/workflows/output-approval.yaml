@@ -3,20 +3,18 @@
 # output-review.yaml's `review` check only proves a baseline is *true* — it
 # re-runs the CLI and the committed file has to match exactly, so a stale or
 # hand-typed baseline can't pass either way (see CONTRIBUTING.md). It says
-# nothing about whether anyone actually looked at what changed: a reviewer
-# can approve a PR on the code alone without ever opening the output-review
-# comment.
+# nothing about whether anyone actually looked at what changed, and merging
+# a PR doesn't require that either — you can approve a PR on the code alone
+# without ever opening the output-review comment.
 #
-# This is the second, narrower gate: when a PR's tests/__output_baselines__/
-# differs from main's, merging requires the `output:approved` label —
-# applied by someone other than the PR author, since (unlike a review)
-# GitHub doesn't block a label being self-applied. No output change, no
-# label needed; the check passes on its own.
+# This is that second, narrower gate: when a PR's tests/__output_baselines__/
+# differs from the target branch, merging requires the `output:approved`
+# label. No output change, no label needed — the check passes on its own.
 #
-# A later push that touches tests/__output_baselines__/ again removes the
-# label if it's there, the same way a stale review gets dismissed by a new
-# commit — otherwise an old approval could silently cover a different diff
-# than the one it was given for.
+# A later push that touches the baselines again removes the label, so an
+# old approval can't silently cover a different diff than the one it was
+# given for — the point is "did someone look at *this* diff," not "was this
+# label ever applied at some point in this PR's history."
 name: Output approval
 
 on:
@@ -29,8 +27,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  dismiss-on-push:
-    if: github.event.action == 'synchronize'
+  output-approval:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -38,54 +35,26 @@ jobs:
         with:
           fetch-depth: 0
 
+      # `before` is the zero SHA on a PR's first synchronize from a
+      # force-push history GitHub can't diff — nothing to compare, skip.
       - name: Remove output:approved if this push touched the baselines
+        if: >-
+          github.event.action == 'synchronize' &&
+          github.event.before != '0000000000000000000000000000000000000000'
         env:
+          GH_TOKEN: ${{ github.token }}
           BEFORE: ${{ github.event.before }}
           AFTER: ${{ github.event.after }}
         run: |
           set -euo pipefail
-          # `before` is the zero SHA on a PR's first synchronize from a
-          # force-push history GitHub can't diff — nothing to compare, skip.
-          if [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
-            echo "No previous commit to diff against; skipping."
-            exit 0
-          fi
           if git diff --quiet "$BEFORE" "$AFTER" -- tests/__output_baselines__; then
             echo "This push didn't touch tests/__output_baselines__/; leaving the label alone."
           else
             echo "This push changed tests/__output_baselines__/; removing output:approved so it's re-reviewed."
-            echo "should-remove=true" >> "$GITHUB_OUTPUT"
+            gh pr edit "${{ github.event.pull_request.number }}" --remove-label output:approved || true
           fi
-        id: check
 
-      - name: Remove the label
-        if: steps.check.outputs.should-remove == 'true'
-        uses: actions/github-script@v8
-        with:
-          script: |
-            await github.rest.issues
-              .removeLabel({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.payload.pull_request.number,
-                name: 'output:approved',
-              })
-              .catch(() => {});
-
-  # The required check. Runs after dismiss-on-push so a push that both
-  # changes the baseline and (somehow) still carries the label from before
-  # is evaluated post-removal, not against a label that's about to be gone.
-  output-approval:
-    needs: [dismiss-on-push]
-    if: always()
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-
-      - name: Check whether output baselines changed
+      - name: Check whether output baselines changed vs the target branch
         env:
           BASE: ${{ github.event.pull_request.base.sha }}
           HEAD: ${{ github.event.pull_request.head.sha }}
@@ -99,43 +68,13 @@ jobs:
           fi
         id: baseline
 
-      - name: Require output:approved from someone other than the author
-        if: steps.baseline.outputs.changed == 'true'
-        uses: actions/github-script@v8
-        with:
-          script: |
-            const author = context.payload.pull_request.user.login;
-
-            const { data: events } = await github.rest.issues.listEvents({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.payload.pull_request.number,
-              per_page: 100,
-            });
-
-            // Last `labeled` event for this label wins — an unlabel/relabel
-            // cycle means only the most recent application counts.
-            const approvals = events.filter(
-              (e) => e.event === 'labeled' && e.label?.name === 'output:approved',
-            );
-            const last = approvals[approvals.length - 1];
-
-            if (!last) {
-              core.setFailed(
-                "tests/__output_baselines__/ changed in this PR. A reviewer needs to read the output-review diff and apply the `output:approved` label before this can merge.",
-              );
-              return;
-            }
-            if (last.actor.login === author) {
-              core.setFailed(
-                `The output:approved label was applied by @${author}, the PR's own author. It needs to come from someone else who reviewed the diff.`,
-              );
-              return;
-            }
-
-            core.info(
-              `output:approved applied by @${last.actor.login} (not the author) — satisfied.`,
-            );
+      - name: Require the output:approved label
+        if: >-
+          steps.baseline.outputs.changed == 'true' &&
+          !contains(github.event.pull_request.labels.*.name, 'output:approved')
+        run: |
+          echo "::error::tests/__output_baselines__/ changed in this PR. Read the output-review diff, then apply the output:approved label."
+          exit 1
 
       - name: Nothing to approve
         if: steps.baseline.outputs.changed == 'false'

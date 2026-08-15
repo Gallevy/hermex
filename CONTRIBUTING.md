@@ -101,23 +101,22 @@ If it is red, one of two things happened:
 ### Getting a baseline change past the `output:approved` gate
 
 `review` (above) proves the committed baseline is *true* — it can't tell you
-whether anyone actually looked at it. A required approving review doesn't
-either: a reviewer can approve a PR on the code alone without ever opening
-the output-review comment. `.github/workflows/output-approval.yaml` is the
-gate for that specifically:
+whether anyone actually looked at it, and merging a PR doesn't require that
+either. `.github/workflows/output-approval.yaml` is the gate for that
+specifically:
 
-- It diffs `tests/__output_baselines__/` against `main`. No difference, no
-  gate — the check passes on its own.
-- A difference requires the `output:approved` label, applied by someone
-  **other than the PR author** (GitHub doesn't block self-labeling the way
-  it blocks self-approving a review, so this is enforced in the workflow).
+- It diffs `tests/__output_baselines__/` against the target branch. No
+  difference, no gate — the check passes on its own.
+- A difference requires the `output:approved` label before merge — a
+  deliberate act, separate from opening or approving the PR, that says "I
+  read this diff."
 - A later push that touches the baselines again removes the label — an old
   approval can't silently cover a different diff than the one it was given
   for.
 
-So: open the PR with your refreshed baselines already committed, point a
-reviewer at the output-review comment, and ask them to apply
-`output:approved` once they've read it.
+So: after refreshing baselines with `--update`, read the output-review
+comment yourself, and apply `output:approved` once you're satisfied with
+the diff.
 
 ### Adding a case
 
