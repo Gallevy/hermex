@@ -14,7 +14,7 @@ _unchanged_
 
 **Ran** `hermex comply --summary-file $OUT/summary.md --summary-title Design System Compliance` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/d01e8f720d5ac50621f1521073ddff12976dc7e7/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/d01e8f720d5ac50621f1521073ddff12976dc7e7/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/d01e8f720d5ac50621f1521073ddff12976dc7e7/fixtures/README.md)) · **Case** [`comply-summary-title`](https://github.com/Gallevy/hermex/blob/d01e8f720d5ac50621f1521073ddff12976dc7e7/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/d01e8f720d5ac50621f1521073ddff12976dc7e7/fixtures/cases/comply-summary-title.md))
+**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/1c0b8557e2719d4888dc7bf75d99587f7bc03fd9/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/1c0b8557e2719d4888dc7bf75d99587f7bc03fd9/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/1c0b8557e2719d4888dc7bf75d99587f7bc03fd9/fixtures/README.md)) · **Case** [`comply-summary-title`](https://github.com/Gallevy/hermex/blob/1c0b8557e2719d4888dc7bf75d99587f7bc03fd9/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/1c0b8557e2719d4888dc7bf75d99587f7bc03fd9/fixtures/cases/comply-summary-title.md))
 
 **Writes** `summary.md` into `$OUT` — captured and diffed the same as stdout
 
@@ -22,7 +22,7 @@ _unchanged_
 
 ## Config
 
-[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/d01e8f720d5ac50621f1521073ddff12976dc7e7/fixtures/hermex.config.ts)
+[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/1c0b8557e2719d4888dc7bf75d99587f7bc03fd9/fixtures/hermex.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../src/config/types.ts';
