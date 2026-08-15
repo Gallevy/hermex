@@ -108,3 +108,53 @@ export function sortViolationsBySeverity<T extends RuleViolation>(
     })
     .map(({ v }) => v);
 }
+
+/**
+ * Buckets violations by severity in one pass — the single place that knows
+ * how to partition a violations array, so `printRules`, `--summary-file`,
+ * and `computeCompliance`'s error/warn buckets all derive from the same
+ * grouping instead of each re-filtering `ruleViolations` independently (#88).
+ */
+export function groupBySeverity<T extends RuleViolation>(
+  violations: T[],
+): Record<RuleViolation['severity'], T[]> {
+  const groups: Record<RuleViolation['severity'], T[]> = {
+    error: [],
+    warn: [],
+    info: [],
+  };
+  for (const v of violations) groups[v.severity].push(v);
+  return groups;
+}
+
+/**
+ * Renders the colored, pluralized "N error(s), N warning(s)[, N info]" tally
+ * line shared by `printRules` and `--summary-file`. Built on
+ * `groupBySeverity` so the count under a table always matches the rows
+ * above it — `printRules` shows every severity and passes
+ * `includeInfo: true` accordingly; `--summary-file` filters `info` out of
+ * its rows before calling this (per #31) and leaves `includeInfo` off, so
+ * its tally stays untouched (#88).
+ */
+export function formatSeverityTally(
+  violations: RuleViolation[],
+  options?: { includeInfo?: boolean },
+): string {
+  const groups = groupBySeverity(violations);
+  const parts: string[] = [];
+  if (groups.error.length > 0)
+    parts.push(
+      severityColor('error')(
+        `${groups.error.length} error${groups.error.length > 1 ? 's' : ''}`,
+      ),
+    );
+  if (groups.warn.length > 0)
+    parts.push(
+      severityColor('warn')(
+        `${groups.warn.length} warning${groups.warn.length > 1 ? 's' : ''}`,
+      ),
+    );
+  if (options?.includeInfo && groups.info.length > 0)
+    parts.push(severityColor('info')(`${groups.info.length} info`));
+  return parts.join(', ');
+}

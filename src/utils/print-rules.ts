@@ -3,7 +3,11 @@ import Table from 'cli-table3';
 import type { AggregatedReport } from './aggregator';
 import type { RuleViolation } from '../rules/evaluator';
 import { formatTruncatedList } from './format-utils';
-import { severityIcon, sortViolationsBySeverity } from './severity-format';
+import {
+  formatSeverityTally,
+  severityIcon,
+  sortViolationsBySeverity,
+} from './severity-format';
 
 export function formatRuleType(ruleId: RuleViolation['ruleId']): string {
   switch (ruleId) {
@@ -98,15 +102,11 @@ export function printRules(aggregated: AggregatedReport): void {
 
   console.log(table.toString());
 
-  const errorCount = ruleViolations.filter(
-    (v) => v.severity === 'error',
-  ).length;
-  const warnCount = ruleViolations.filter((v) => v.severity === 'warn').length;
-
-  const parts: string[] = [];
-  if (errorCount > 0)
-    parts.push(chalk.red(`${errorCount} error${errorCount > 1 ? 's' : ''}`));
-  if (warnCount > 0)
-    parts.push(chalk.yellow(`${warnCount} warning${warnCount > 1 ? 's' : ''}`));
-  console.log(chalk.gray(`\n${parts.join(', ')}`));
+  // Includes info in the tally — the table above always shows every
+  // severity, so the count below it must too, or the two disagree (#88).
+  console.log(
+    chalk.gray(
+      `\n${formatSeverityTally(ruleViolations, { includeInfo: true })}`,
+    ),
+  );
 }

@@ -9,6 +9,7 @@ import {
   resolveInstalledVersion,
 } from './print-packages';
 import {
+  formatSeverityTally,
   severityIcon,
   sortViolationsBySeverity,
   stripAnsi,
@@ -45,16 +46,7 @@ function buildRulesSection(aggregated: AggregatedReport): string {
     );
   }
 
-  const errorCount = ruleViolations.filter(
-    (v) => v.severity === 'error',
-  ).length;
-  const warnCount = ruleViolations.filter((v) => v.severity === 'warn').length;
-  const parts: string[] = [];
-  if (errorCount > 0)
-    parts.push(`${errorCount} error${errorCount > 1 ? 's' : ''}`);
-  if (warnCount > 0)
-    parts.push(`${warnCount} warning${warnCount > 1 ? 's' : ''}`);
-  lines.push('', parts.join(', '));
+  lines.push('', formatSeverityTally(ruleViolations));
 
   return lines.join('\n') + '\n';
 }
