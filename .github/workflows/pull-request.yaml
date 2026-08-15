@@ -1,9 +1,14 @@
-# .github/workflows/pull-request.yml
+# .github/workflows/pull-request.yaml
 name: PR
 
 on:
   pull_request:
     branches: ['main', 'beta']
+
+# Reset to the minimum; the coverage job grants itself the one extra
+# permission it needs to leave its comment.
+permissions:
+  contents: read
 
 jobs:
   validate:
@@ -37,82 +42,103 @@ jobs:
       - name: Build project
         run: pnpm run build:ci
 
+  # Reports this PR's coverage, compared against the target branch's.
+  #
+  # The suite runs once here, for the PR, and never for the target branch:
+  # `.github/workflows/coverage-baseline.yaml` measures main/beta once per
+  # push and publishes the summary as an artifact, and this job downloads the
+  # newest one. Re-deriving that number per PR is what #34 is about.
   coverage:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - branch: main
-            artifact: main
-          - branch: ${{ github.head_ref }}
-            artifact: pull-request
+    permissions:
+      contents: read
+      pull-requests: write
+      # Read the baseline workflow's runs, and download an artifact from one.
+      actions: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
-        with:
-          ref: ${{ matrix.branch }}
 
       - name: Setup pnpm CLI
         uses: pnpm/setup@v2
         with:
-          # Pinned explicitly: the "main" matrix leg checks out main, which
-          # won't carry packageManager (the version pnpm/setup reads by
-          # default) until this workflow's own PR merges.
-          version: 12.0.0-rc.5
           runtime: node@26
           cache: true
           install: false
 
       - name: Install dependencies
-        # STRICT_DEP_BUILDS=false: the main branch won't have pnpm-workspace.yaml's
-        # allowBuilds until this workflow's own PR merges — relax to a warning
-        # instead of failing when comparing against a main checkout that predates it.
-        env:
-          PNPM_CONFIG_STRICT_DEP_BUILDS: false
         run: pnpm install --frozen-lockfile
 
       - name: Run tests with coverage
-        # --if-present: the main branch won't have this script until this
-        # workflow's own PR merges — skip cleanly instead of failing when
-        # comparing against a main checkout that predates it.
-        run: pnpm run --if-present test:coverage
+        run: pnpm run test:coverage
 
-      - name: Upload coverage artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: coverage-${{ matrix.artifact }}
-          path: coverage
-          if-no-files-found: ignore
+      # The newest successful baseline this branch has published, rather than
+      # one matched to a particular commit: "how does this PR compare to main
+      # as it stands right now" is the question being asked, and the run that
+      # answers it is the last one that finished.
+      #
+      # Tolerates finding nothing. The workflow it names does not exist on
+      # the target branch until this change merges, and `gh` treats an
+      # unknown workflow as an error rather than an empty list.
+      - name: Find the target branch's coverage baseline
+        id: baseline
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          run_id="$(gh run list \
+            --repo "$GITHUB_REPOSITORY" \
+            --workflow coverage-baseline.yaml \
+            --branch "$GITHUB_BASE_REF" \
+            --status success \
+            --limit 1 \
+            --json databaseId \
+            --jq '.[0].databaseId // empty' 2>/dev/null || true)"
+          echo "run-id=${run_id}" >> "$GITHUB_OUTPUT"
 
-  report-coverage:
-    needs: coverage
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-    steps:
-      - name: Download PR coverage
-        uses: actions/download-artifact@v8
-        with:
-          name: coverage-pull-request
-          path: coverage
-
-      - name: Download main coverage
-        # No artifact exists yet the first time this runs (main predates the
-        # coverage tooling) — don't fail the job over a baseline that
-        # doesn't exist yet.
+      # `continue-on-error`: a baseline is a nicety, not a gate. If the
+      # artifact has aged out or the run that held it was deleted, the answer
+      # is to report this PR's coverage without a comparison — never to fail
+      # a PR over the state of the branch it is aimed at.
+      - name: Download the target branch's coverage baseline
+        if: steps.baseline.outputs.run-id != ''
         continue-on-error: true
         uses: actions/download-artifact@v8
         with:
-          name: coverage-main
-          path: coverage-main
+          name: coverage-baseline
+          path: .coverage-baseline
+          run-id: ${{ steps.baseline.outputs.run-id }}
+          github-token: ${{ github.token }}
 
-      - name: Report coverage (vs main)
-        if: hashFiles('coverage-main/coverage-summary.json') != ''
+      - name: Note a missing baseline
+        if: hashFiles('.coverage-baseline/coverage-summary.json') == ''
+        run: echo "::warning::No coverage baseline published for ${GITHUB_BASE_REF}; reporting without a comparison."
+
+      - name: Report coverage
         uses: davelosert/vitest-coverage-report-action@v2
         with:
-          json-summary-compare-path: coverage-main/coverage-summary.json
+          # Empty is how this action is told "no comparison" — passing a path
+          # that isn't there is not.
+          json-summary-compare-path: >-
+            ${{ hashFiles('.coverage-baseline/coverage-summary.json') != ''
+            && '.coverage-baseline/coverage-summary.json' || '' }}
 
-      - name: Report coverage (no main baseline yet)
-        if: hashFiles('coverage-main/coverage-summary.json') == ''
-        uses: davelosert/vitest-coverage-report-action@v2
+          # Blue on every row is what the action falls back to when nothing
+          # tells it what "good" looks like. These bands are a reading aid,
+          # not a gate: vitest's own `coverage.thresholds` would fail the run
+          # instead, and a PR that lands branches at 94.9% is not one anybody
+          # should have to fix before merging.
+          threshold-icons: "{0: '🔴', 90: '🟠', 95: '🟢'}"
+
+          # Six columns of two-line cells is what made the file table hard to
+          # read. "Uncovered Lines" is the widest of them and empty on most
+          # rows — and this job's log still carries the `text` reporter's
+          # copy, line numbers and all, for the rows where it isn't.
+          show-uncovered-lines: 'false'
+
+          # Worst first. Most changed files sit at 100% and say nothing; the
+          # one or two that don't are the reason to open the table at all.
+          sort-by: statements-asc
+
+          # Two decimals on a delta is noise at this suite's size.
+          comparison-decimal-places: 1

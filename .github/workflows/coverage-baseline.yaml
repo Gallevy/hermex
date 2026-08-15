@@ -1,0 +1,78 @@
+# .github/workflows/coverage-baseline.yaml
+#
+# Measures main/beta's coverage once per push and publishes the resulting
+# coverage-summary.json as an artifact, for the `coverage` job in
+# pull-request.yaml to compare a pull request against.
+#
+# This workflow exists so that job doesn't have to. It used to run the whole
+# suite twice on every PR — once for the PR, once for a fresh checkout of
+# main — so every open PR re-derived the same unchanged number from scratch,
+# on every push, forever (#34). Nothing about main's coverage depends on
+# which PR is asking; it only changes when something merges here.
+#
+# An artifact rather than a cache: artifacts are readable across branches by
+# run id, so a PR just takes the newest one this workflow published. A cache
+# would have to be keyed on a commit SHA the PR could name in advance, which
+# is precisely the thing a PR cannot do — github.event.pull_request.base.sha
+# goes stale the moment anything merges, and a key that misses puts the
+# duplicate suite run straight back.
+#
+# Deliberately not folded into push-release.yaml: that pipeline is scoped to
+# releases, is serialised by its own concurrency group, and holds credentials
+# (`id-token: write` on one job) that this has no business sharing a run with.
+name: Coverage baseline
+
+on:
+  push:
+    branches: ['main', 'beta']
+
+permissions:
+  contents: read
+
+# One baseline per branch at a time, and a superseded run is worth
+# cancelling: pull requests read the newest successful run, so a baseline for
+# a commit the branch has already moved past is one nothing will ask for.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm CLI
+        uses: pnpm/setup@v2
+        with:
+          runtime: node@26
+          cache: true
+          install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests with coverage
+        run: pnpm run test:coverage
+
+      # Only the summary is published. The rest of coverage/ — lcov, the
+      # per-statement coverage-final.json — is what a report is built *from*,
+      # and the PR side builds its own from its own run.
+      #
+      # 90 days, well beyond the 14 that output-review's pages get: this is
+      # the only copy of the number, and a quiet month on main must not leave
+      # every open PR without a comparison. It is one small JSON file.
+      #
+      # `if-no-files-found: error` on purpose. A silently empty baseline
+      # artifact would degrade every PR that pulls it, and the failure would
+      # surface a merge too late to connect to its cause.
+      - name: Publish the coverage baseline
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-baseline
+          path: coverage/coverage-summary.json
+          if-no-files-found: error
+          retention-days: 90
