@@ -14,7 +14,7 @@ _unchanged_
 
 **Ran** `hermex comply --config tree.config.ts` in `fixtures/repos/version-conflict` → exit 1, as asserted
 
-**Config** [`fixtures/repos/version-conflict/tree.config.ts`](https://github.com/Gallevy/hermex/blob/9e4165a264a50ac959ad84ea22b6e57dffb81eab/fixtures/repos/version-conflict/tree.config.ts) · **Fixture** [`fixtures/repos/version-conflict`](https://github.com/Gallevy/hermex/blob/9e4165a264a50ac959ad84ea22b6e57dffb81eab/fixtures/repos/version-conflict) ([overview](https://github.com/Gallevy/hermex/blob/9e4165a264a50ac959ad84ea22b6e57dffb81eab/fixtures/repos/version-conflict/README.md)) · **Case** [`release-age-tree-scope`](https://github.com/Gallevy/hermex/blob/9e4165a264a50ac959ad84ea22b6e57dffb81eab/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/9e4165a264a50ac959ad84ea22b6e57dffb81eab/fixtures/cases/release-age-tree-scope.md))
+**Config** [`fixtures/repos/version-conflict/tree.config.ts`](https://github.com/Gallevy/hermex/blob/9ac09e7add0335dc6cbc7c563799536a68be8166/fixtures/repos/version-conflict/tree.config.ts) · **Fixture** [`fixtures/repos/version-conflict`](https://github.com/Gallevy/hermex/blob/9ac09e7add0335dc6cbc7c563799536a68be8166/fixtures/repos/version-conflict) ([overview](https://github.com/Gallevy/hermex/blob/9ac09e7add0335dc6cbc7c563799536a68be8166/fixtures/repos/version-conflict/README.md)) · **Case** [`release-age-tree-scope`](https://github.com/Gallevy/hermex/blob/9ac09e7add0335dc6cbc7c563799536a68be8166/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/9ac09e7add0335dc6cbc7c563799536a68be8166/fixtures/cases/release-age-tree-scope.md))
 
 **Registry** offline, served from `fixtures/registry/timelines.ts` — no network
 
@@ -22,7 +22,7 @@ _unchanged_
 
 ## Config
 
-[`fixtures/repos/version-conflict/tree.config.ts`](https://github.com/Gallevy/hermex/blob/9e4165a264a50ac959ad84ea22b6e57dffb81eab/fixtures/repos/version-conflict/tree.config.ts)
+[`fixtures/repos/version-conflict/tree.config.ts`](https://github.com/Gallevy/hermex/blob/9ac09e7add0335dc6cbc7c563799536a68be8166/fixtures/repos/version-conflict/tree.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../../../src/config/types.ts';
