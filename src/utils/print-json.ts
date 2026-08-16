@@ -1,6 +1,7 @@
 import type { AggregatedReport } from './aggregator';
 import type { ComplianceResult } from './compliance';
 import type { OutputConfig } from '../config/types';
+import type { HermexScanResult } from '../index';
 import { computeCompliance } from './compliance';
 import { sortViolationsBySeverity } from './severity-format';
 import { getVersion } from './version';
@@ -85,6 +86,6 @@ export function printJson(
         warningRuleViolations: compliance.warningRuleViolations.length,
       },
     },
-  };
+  } satisfies HermexScanResult;
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
 }
