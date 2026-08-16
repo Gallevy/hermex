@@ -240,7 +240,7 @@ describe('comply command', () => {
     );
     const result = run(['comply', '--config', configPath]);
     expect(result.status).toBe(1);
-    expect(result.stdout).toMatch(/NOT COMPLIANT/);
+    expect(result.stdout).toMatch(/Not compliant/);
   });
 
   it('exits 0 when there are no mandatory violations', () => {
@@ -252,7 +252,7 @@ describe('comply command', () => {
     );
     const result = run(['comply', '--config', configPath]);
     expect(result.status).toBe(0);
-    expect(result.stdout).toMatch(/COMPLIANT/);
+    expect(result.stdout).toMatch(/Compliant/);
   });
 
   it('exits 2 when no files match includes', () => {
@@ -366,19 +366,19 @@ describe('comply command', () => {
         summaryPath,
       ]);
       expect(result.status).toBe(1);
-      expect(result.stdout).toMatch(/NOT COMPLIANT/); // full report on stdout, unchanged
+      expect(result.stdout).toMatch(/Not compliant/); // full report on stdout, unchanged
       expect(existsSync(summaryPath)).toBe(true);
       const content = readFileSync(summaryPath, 'utf8');
       // oxlint-disable-next-line no-control-regex -- asserting the ANSI escape byte is absent
       expect(content).not.toMatch(/\x1b\[/);
-      expect(content).toMatch(/NOT COMPLIANT/);
+      expect(content).toMatch(/Not compliant/);
       expect(content).not.toMatch(/Versus/);
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
     }
   });
 
-  it('--summary-file writes a COMPLIANT summary when there are no mandatory violations', () => {
+  it('--summary-file writes a Compliant summary when there are no mandatory violations', () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'hermex-summary-e2e-'));
     try {
       const summaryPath = join(tempDir, 'summary.md');
@@ -398,8 +398,8 @@ describe('comply command', () => {
       expect(result.status).toBe(0);
       expect(existsSync(summaryPath)).toBe(true);
       const content = readFileSync(summaryPath, 'utf8');
-      expect(content).toMatch(/COMPLIANT/);
-      expect(content).not.toMatch(/NOT COMPLIANT/);
+      expect(content).toMatch(/Compliant/);
+      expect(content).not.toMatch(/Not compliant/);
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
     }
@@ -454,7 +454,7 @@ describe('comply command', () => {
       expect(() => JSON.parse(result.stdout)).not.toThrow();
       expect(existsSync(summaryPath)).toBe(true);
       const content = readFileSync(summaryPath, 'utf8');
-      expect(content).toMatch(/NOT COMPLIANT/);
+      expect(content).toMatch(/Not compliant/);
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
     }

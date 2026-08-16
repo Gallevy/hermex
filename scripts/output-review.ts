@@ -941,8 +941,8 @@ export const INVARIANTS: Invariant[] = [
         }
 
         const text = payloadOf(result);
-        const saysNotCompliant = text.includes('NOT COMPLIANT');
-        const saysCompliant = text.includes('COMPLIANT') && !saysNotCompliant;
+        const saysNotCompliant = text.includes('Not compliant');
+        const saysCompliant = text.includes('Compliant') && !saysNotCompliant;
         if (exit === 0 && !saysCompliant) {
           breaches.push(
             `${result.fixture.name}: exited 0 without printing a compliant verdict`,
