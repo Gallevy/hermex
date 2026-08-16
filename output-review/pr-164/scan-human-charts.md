@@ -14,13 +14,13 @@ _unchanged_
 
 **Ran** `hermex scan --config configs/charts.config.ts` in `fixtures/` → exit 0, as asserted
 
-**Config** [`fixtures/configs/charts.config.ts`](https://github.com/Gallevy/hermex/blob/573336675ad0e66edc80bbca896966fc2f7db0e0/fixtures/configs/charts.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/573336675ad0e66edc80bbca896966fc2f7db0e0/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/573336675ad0e66edc80bbca896966fc2f7db0e0/fixtures/README.md)) · **Case** [`scan-human-charts`](https://github.com/Gallevy/hermex/blob/573336675ad0e66edc80bbca896966fc2f7db0e0/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/573336675ad0e66edc80bbca896966fc2f7db0e0/fixtures/cases/scan-human-charts.md))
+**Config** [`fixtures/configs/charts.config.ts`](https://github.com/Gallevy/hermex/blob/7e17f25ca9a2ae99eac2e2a8c9a992ba7559fea4/fixtures/configs/charts.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/7e17f25ca9a2ae99eac2e2a8c9a992ba7559fea4/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/7e17f25ca9a2ae99eac2e2a8c9a992ba7559fea4/fixtures/README.md)) · **Case** [`scan-human-charts`](https://github.com/Gallevy/hermex/blob/7e17f25ca9a2ae99eac2e2a8c9a992ba7559fea4/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/7e17f25ca9a2ae99eac2e2a8c9a992ba7559fea4/fixtures/cases/scan-human-charts.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter scan-human-charts`</sub>
 
 ## Config
 
-[`fixtures/configs/charts.config.ts`](https://github.com/Gallevy/hermex/blob/573336675ad0e66edc80bbca896966fc2f7db0e0/fixtures/configs/charts.config.ts)
+[`fixtures/configs/charts.config.ts`](https://github.com/Gallevy/hermex/blob/7e17f25ca9a2ae99eac2e2a8c9a992ba7559fea4/fixtures/configs/charts.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../../src/config/types.ts';

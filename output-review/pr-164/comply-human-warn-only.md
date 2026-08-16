@@ -14,13 +14,13 @@ _changed_
 
 **Ran** `hermex comply --config configs/warn-only.config.ts` in `fixtures/` → exit 0, as asserted
 
-**Config** [`fixtures/configs/warn-only.config.ts`](https://github.com/Gallevy/hermex/blob/573336675ad0e66edc80bbca896966fc2f7db0e0/fixtures/configs/warn-only.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/573336675ad0e66edc80bbca896966fc2f7db0e0/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/573336675ad0e66edc80bbca896966fc2f7db0e0/fixtures/README.md)) · **Case** [`comply-human-warn-only`](https://github.com/Gallevy/hermex/blob/573336675ad0e66edc80bbca896966fc2f7db0e0/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/573336675ad0e66edc80bbca896966fc2f7db0e0/fixtures/cases/comply-human-warn-only.md))
+**Config** [`fixtures/configs/warn-only.config.ts`](https://github.com/Gallevy/hermex/blob/7e17f25ca9a2ae99eac2e2a8c9a992ba7559fea4/fixtures/configs/warn-only.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/7e17f25ca9a2ae99eac2e2a8c9a992ba7559fea4/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/7e17f25ca9a2ae99eac2e2a8c9a992ba7559fea4/fixtures/README.md)) · **Case** [`comply-human-warn-only`](https://github.com/Gallevy/hermex/blob/7e17f25ca9a2ae99eac2e2a8c9a992ba7559fea4/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/7e17f25ca9a2ae99eac2e2a8c9a992ba7559fea4/fixtures/cases/comply-human-warn-only.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-human-warn-only`</sub>
 
 ## Config
 
-[`fixtures/configs/warn-only.config.ts`](https://github.com/Gallevy/hermex/blob/573336675ad0e66edc80bbca896966fc2f7db0e0/fixtures/configs/warn-only.config.ts)
+[`fixtures/configs/warn-only.config.ts`](https://github.com/Gallevy/hermex/blob/7e17f25ca9a2ae99eac2e2a8c9a992ba7559fea4/fixtures/configs/warn-only.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../../src/config/types.ts';
