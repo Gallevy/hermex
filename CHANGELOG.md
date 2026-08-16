@@ -1,5 +1,39 @@
 # hermex
 
+## 3.0.0
+
+### Major Changes
+
+- [#126](https://github.com/Gallevy/hermex/pull/126) [`d5f456d`](https://github.com/Gallevy/hermex/commit/d5f456da15d81f2981646f572f35c2b9456390ed) Thanks [@Gallevy](https://github.com/Gallevy)! - Renamed every rule id to kebab-case and standardized the require-x/no-x naming convention (`detect_files` → `no-files`, `require_files` → `require-files`, `require_packages` → `require-packages`, `forbid_packages` → `no-packages`, `require_scripts` → `require-scripts`, `require_package_fields` → `require-package-fields`, `forbid_package_fields` → `no-package-fields`, `engine_version` → `require-engine-version`, `codeowners` → `require-codeowners`).
+  
+  Config authors must update `hermex.config.ts` to use the new rule keys under `rules` and `overrides[].rules`. The JSON output's `ruleViolations` entries carry a `ruleId` field instead of `type`, using the new ids.
+
+- [#150](https://github.com/Gallevy/hermex/pull/150) [`d9b7ce6`](https://github.com/Gallevy/hermex/commit/d9b7ce607f17d5cf4de6a675afca22bfb9f5600b) Thanks [@Gallevy](https://github.com/Gallevy)! - Removed the unused `packages.internal` config option and its `[int]` marker in package output.
+  
+  Config authors using `packages.internal` in `hermex.config.ts` must remove it — the key is no longer part of the schema. The `internal` field is also gone from the `PackageDistribution` and `PackageInventoryEntry` exported types.
+
+- [#155](https://github.com/Gallevy/hermex/pull/155) [`d86818a`](https://github.com/Gallevy/hermex/commit/d86818aa84dbe8c45cadb7181ab75453e047379a) Thanks [@Gallevy](https://github.com/Gallevy)! - `hermex.config.ts` is now validated strictly: a config file with no default export throws instead of silently loading as an all-defaults config, and any config object (root or nested — `rules`, `overrides[].rules`, `output`, `releaseAge`, etc.) carrying an unrecognized key throws instead of silently dropping it.
+  
+  Both were previously silent failures: a misspelled rule key parsed cleanly and enforced nothing, and a config file that forgot `export default` did the same. Both now fail loudly at load time, naming the offending key or the missing export.
+  
+  Config authors should check `hermex.config.ts` (and any files referenced by `overrides[].rules`) for stray or misspelled keys before upgrading — anything not in the documented schema will now throw.
+
+### Minor Changes
+
+- [#157](https://github.com/Gallevy/hermex/pull/157) [`70fe046`](https://github.com/Gallevy/hermex/commit/70fe046fd733ae64964bd9ba3482384a6b929e79) Thanks [@Gallevy](https://github.com/Gallevy)! - Fix `summary.patternCounts` so it partitions cleanly against the totals it should explain: renamed `imports.aliased` to `imports.named.aliased` (still counted alongside `imports.named`, not subtracted from it — `totalUsagePatterns` counts aliased imports separately too) and added a `usage.props` bucket so props analysis is no longer missing from the pattern breakdown. `imports.aliased` consumers must switch to `imports.named.aliased`.
+
+### Patch Changes
+
+- [#154](https://github.com/Gallevy/hermex/pull/154) [`3b8ff8e`](https://github.com/Gallevy/hermex/commit/3b8ff8ecafd2ae3e9b480a878cde6b515867ea19) Thanks [@Gallevy](https://github.com/Gallevy)! - `allVersions` in lockfile resolution output is now sorted by semver instead of lexicographically, so a package resolved at `1.9.0` and `1.10.0` reports `["1.9.0", "1.10.0"]` instead of `["1.10.0", "1.9.0"]`. Non-semver version strings (git URLs, `file:` links, workspace protocol) are collated last, in stable lexicographic order.
+
+- [#146](https://github.com/Gallevy/hermex/pull/146) [`293e14e`](https://github.com/Gallevy/hermex/commit/293e14e64aad58c7177eb1fe75d6f171834abd20) Thanks [@Gallevy](https://github.com/Gallevy)! - Sort ruleViolations by severity (error, then warn, then info) across every surface — the rules table, --summary-file, and --format json — so a failing row is never buried among passing ones
+
+- [#134](https://github.com/Gallevy/hermex/pull/134) [`48e7711`](https://github.com/Gallevy/hermex/commit/48e77114a17ba4144435bfaaa2bfd615e7f33cdc) Thanks [@Gallevy](https://github.com/Gallevy)! - `--format json` now honours the `output.*` section toggles instead of always dumping the full report ([#63](https://github.com/Gallevy/hermex/issues/63), [#91](https://github.com/Gallevy/hermex/issues/91)). `output.packages: false` omits `packages`, `output.components: false` omits `components`, and `output.versus: false` omits `versus` — the keys are dropped entirely rather than emitted empty, so disabling a section actually shrinks the file (`components[]` and `packages[]` are the bulk of a stored scan). `summary.patternCounts` drops when `output.patterns` and `output.details` are both false, since both of those human sections render that same array.
+  
+  `version`, the `summary` counters, `ruleViolations` and `compliance` are never gated: they are the machine-readable verdict, and `comply` prints rules in human mode regardless of `output.rules`, so honouring it here would make the JSON lossier than the terminal output it mirrors. `output.summary` has no clean JSON counterpart — the human Summary table shows derived metrics that share only `filesAnalyzed` with the serialized counters.
+  
+  Default output is unchanged — every section is enabled by default, so this only takes effect for a config that explicitly opts a section out. `packages`, `components`, `versus` and `summary.patternCounts` on the exported `HermexScanResult` type become optional, matching the fields a config can now remove.
+
 <!--
 Everything below this line was generated by semantic-release from conventional
 commit subjects. Entries above it are authored as changesets — see
