@@ -14,13 +14,13 @@ _unchanged_
 
 **Ran** `hermex comply` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/4815948dc4d10123f386ac3829cd7ab2886d8bc4/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/4815948dc4d10123f386ac3829cd7ab2886d8bc4/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/4815948dc4d10123f386ac3829cd7ab2886d8bc4/fixtures/README.md)) · **Case** [`comply-human-fail`](https://github.com/Gallevy/hermex/blob/4815948dc4d10123f386ac3829cd7ab2886d8bc4/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/4815948dc4d10123f386ac3829cd7ab2886d8bc4/fixtures/cases/comply-human-fail.md))
+**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/a372e988fa290372f8d94e9eb8fd2d7b99041a76/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/a372e988fa290372f8d94e9eb8fd2d7b99041a76/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/a372e988fa290372f8d94e9eb8fd2d7b99041a76/fixtures/README.md)) · **Case** [`comply-human-fail`](https://github.com/Gallevy/hermex/blob/a372e988fa290372f8d94e9eb8fd2d7b99041a76/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/a372e988fa290372f8d94e9eb8fd2d7b99041a76/fixtures/cases/comply-human-fail.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-human-fail`</sub>
 
 ## Config
 
-[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/4815948dc4d10123f386ac3829cd7ab2886d8bc4/fixtures/hermex.config.ts)
+[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/a372e988fa290372f8d94e9eb8fd2d7b99041a76/fixtures/hermex.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../src/config/types.ts';
@@ -140,7 +140,7 @@ Caused by:
   @new-system/arc            ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0.0% (0 usages)
 
 
-🔴 NOT COMPLIANT
+🔴 Not compliant
   3 mandatory violations found
 ```
 

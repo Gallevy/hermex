@@ -14,13 +14,13 @@ _unchanged_
 
 **Ran** `hermex comply --config configs/warn-only.config.ts` in `fixtures/` → exit 0, as asserted
 
-**Config** [`fixtures/configs/warn-only.config.ts`](https://github.com/Gallevy/hermex/blob/4815948dc4d10123f386ac3829cd7ab2886d8bc4/fixtures/configs/warn-only.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/4815948dc4d10123f386ac3829cd7ab2886d8bc4/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/4815948dc4d10123f386ac3829cd7ab2886d8bc4/fixtures/README.md)) · **Case** [`comply-human-warn-only`](https://github.com/Gallevy/hermex/blob/4815948dc4d10123f386ac3829cd7ab2886d8bc4/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/4815948dc4d10123f386ac3829cd7ab2886d8bc4/fixtures/cases/comply-human-warn-only.md))
+**Config** [`fixtures/configs/warn-only.config.ts`](https://github.com/Gallevy/hermex/blob/a372e988fa290372f8d94e9eb8fd2d7b99041a76/fixtures/configs/warn-only.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/a372e988fa290372f8d94e9eb8fd2d7b99041a76/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/a372e988fa290372f8d94e9eb8fd2d7b99041a76/fixtures/README.md)) · **Case** [`comply-human-warn-only`](https://github.com/Gallevy/hermex/blob/a372e988fa290372f8d94e9eb8fd2d7b99041a76/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/a372e988fa290372f8d94e9eb8fd2d7b99041a76/fixtures/cases/comply-human-warn-only.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-human-warn-only`</sub>
 
 ## Config
 
-[`fixtures/configs/warn-only.config.ts`](https://github.com/Gallevy/hermex/blob/4815948dc4d10123f386ac3829cd7ab2886d8bc4/fixtures/configs/warn-only.config.ts)
+[`fixtures/configs/warn-only.config.ts`](https://github.com/Gallevy/hermex/blob/a372e988fa290372f8d94e9eb8fd2d7b99041a76/fixtures/configs/warn-only.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../../src/config/types.ts';
@@ -117,7 +117,7 @@ Caused by:
   @new-system/arc            ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0.0% (0 usages)
 
 
-🟢 COMPLIANT
+🟢 Compliant
 ```
 
 </details>

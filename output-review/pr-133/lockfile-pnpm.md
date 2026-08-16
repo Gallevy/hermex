@@ -14,7 +14,7 @@ _unchanged_
 
 **Ran** `hermex scan --format json` in `fixtures/repos/lockfile-pnpm` → exit 0, as asserted
 
-**Config** _none — the loader found no `hermex.config.ts` in the cwd, so this ran on schema defaults_ · **Fixture** [`fixtures/repos/lockfile-pnpm`](https://github.com/Gallevy/hermex/blob/4815948dc4d10123f386ac3829cd7ab2886d8bc4/fixtures/repos/lockfile-pnpm) ([overview](https://github.com/Gallevy/hermex/blob/4815948dc4d10123f386ac3829cd7ab2886d8bc4/fixtures/repos/lockfile-pnpm/README.md)) · **Case** [`lockfile-pnpm`](https://github.com/Gallevy/hermex/blob/4815948dc4d10123f386ac3829cd7ab2886d8bc4/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/4815948dc4d10123f386ac3829cd7ab2886d8bc4/fixtures/cases/lockfile-pnpm.md))
+**Config** _none — the loader found no `hermex.config.ts` in the cwd, so this ran on schema defaults_ · **Fixture** [`fixtures/repos/lockfile-pnpm`](https://github.com/Gallevy/hermex/blob/a372e988fa290372f8d94e9eb8fd2d7b99041a76/fixtures/repos/lockfile-pnpm) ([overview](https://github.com/Gallevy/hermex/blob/a372e988fa290372f8d94e9eb8fd2d7b99041a76/fixtures/repos/lockfile-pnpm/README.md)) · **Case** [`lockfile-pnpm`](https://github.com/Gallevy/hermex/blob/a372e988fa290372f8d94e9eb8fd2d7b99041a76/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/a372e988fa290372f8d94e9eb8fd2d7b99041a76/fixtures/cases/lockfile-pnpm.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter lockfile-pnpm`</sub>
 

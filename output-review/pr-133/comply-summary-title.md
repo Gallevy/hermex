@@ -14,7 +14,7 @@ _unchanged_
 
 **Ran** `hermex comply --summary-file $OUT/summary.md --summary-title Design System Compliance` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/4815948dc4d10123f386ac3829cd7ab2886d8bc4/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/4815948dc4d10123f386ac3829cd7ab2886d8bc4/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/4815948dc4d10123f386ac3829cd7ab2886d8bc4/fixtures/README.md)) · **Case** [`comply-summary-title`](https://github.com/Gallevy/hermex/blob/4815948dc4d10123f386ac3829cd7ab2886d8bc4/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/4815948dc4d10123f386ac3829cd7ab2886d8bc4/fixtures/cases/comply-summary-title.md))
+**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/a372e988fa290372f8d94e9eb8fd2d7b99041a76/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/a372e988fa290372f8d94e9eb8fd2d7b99041a76/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/a372e988fa290372f8d94e9eb8fd2d7b99041a76/fixtures/README.md)) · **Case** [`comply-summary-title`](https://github.com/Gallevy/hermex/blob/a372e988fa290372f8d94e9eb8fd2d7b99041a76/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/a372e988fa290372f8d94e9eb8fd2d7b99041a76/fixtures/cases/comply-summary-title.md))
 
 **Writes** `summary.md` into `$OUT` — captured and diffed the same as stdout
 
@@ -22,7 +22,7 @@ _unchanged_
 
 ## Config
 
-[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/4815948dc4d10123f386ac3829cd7ab2886d8bc4/fixtures/hermex.config.ts)
+[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/a372e988fa290372f8d94e9eb8fd2d7b99041a76/fixtures/hermex.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../src/config/types.ts';
@@ -142,7 +142,7 @@ Caused by:
   @new-system/arc            ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0.0% (0 usages)
 
 
-🔴 NOT COMPLIANT
+🔴 Not compliant
   3 mandatory violations found
 ```
 
@@ -172,7 +172,7 @@ Caused by:
 
 3 errors, 1 warning
 
-### 🔴 NOT COMPLIANT
+### 🔴 Not compliant
 
 3 mandatory violations found
 ```

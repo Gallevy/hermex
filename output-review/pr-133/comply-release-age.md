@@ -14,7 +14,7 @@ _unchanged_
 
 **Ran** `hermex comply --config configs/release-age.config.ts` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/configs/release-age.config.ts`](https://github.com/Gallevy/hermex/blob/4815948dc4d10123f386ac3829cd7ab2886d8bc4/fixtures/configs/release-age.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/4815948dc4d10123f386ac3829cd7ab2886d8bc4/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/4815948dc4d10123f386ac3829cd7ab2886d8bc4/fixtures/README.md)) · **Case** [`comply-release-age`](https://github.com/Gallevy/hermex/blob/4815948dc4d10123f386ac3829cd7ab2886d8bc4/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/4815948dc4d10123f386ac3829cd7ab2886d8bc4/fixtures/cases/comply-release-age.md))
+**Config** [`fixtures/configs/release-age.config.ts`](https://github.com/Gallevy/hermex/blob/a372e988fa290372f8d94e9eb8fd2d7b99041a76/fixtures/configs/release-age.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/a372e988fa290372f8d94e9eb8fd2d7b99041a76/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/a372e988fa290372f8d94e9eb8fd2d7b99041a76/fixtures/README.md)) · **Case** [`comply-release-age`](https://github.com/Gallevy/hermex/blob/a372e988fa290372f8d94e9eb8fd2d7b99041a76/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/a372e988fa290372f8d94e9eb8fd2d7b99041a76/fixtures/cases/comply-release-age.md))
 
 **Registry** offline, served from `fixtures/registry/timelines.ts` — no network
 
@@ -22,7 +22,7 @@ _unchanged_
 
 ## Config
 
-[`fixtures/configs/release-age.config.ts`](https://github.com/Gallevy/hermex/blob/4815948dc4d10123f386ac3829cd7ab2886d8bc4/fixtures/configs/release-age.config.ts)
+[`fixtures/configs/release-age.config.ts`](https://github.com/Gallevy/hermex/blob/a372e988fa290372f8d94e9eb8fd2d7b99041a76/fixtures/configs/release-age.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../../src/config/types.ts';
@@ -127,7 +127,7 @@ Total: 5 packages
   @new-system/arc            ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0.0% (0 usages)
 
 
-🔴 NOT COMPLIANT
+🔴 Not compliant
   4 mandatory violations found
 ```
 
