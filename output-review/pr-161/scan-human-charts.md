@@ -14,13 +14,13 @@ _unchanged_
 
 **Ran** `hermex scan --config configs/charts.config.ts` in `fixtures/` → exit 0, as asserted
 
-**Config** [`fixtures/configs/charts.config.ts`](https://github.com/Gallevy/hermex/blob/9578036d1d77f8516ecc77088506f70e893d35b8/fixtures/configs/charts.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/9578036d1d77f8516ecc77088506f70e893d35b8/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/9578036d1d77f8516ecc77088506f70e893d35b8/fixtures/README.md)) · **Case** [`scan-human-charts`](https://github.com/Gallevy/hermex/blob/9578036d1d77f8516ecc77088506f70e893d35b8/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/9578036d1d77f8516ecc77088506f70e893d35b8/fixtures/cases/scan-human-charts.md))
+**Config** [`fixtures/configs/charts.config.ts`](https://github.com/Gallevy/hermex/blob/6c9b1964afc8bf2720b4b8172ef0a905f0d0cb6a/fixtures/configs/charts.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/6c9b1964afc8bf2720b4b8172ef0a905f0d0cb6a/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/6c9b1964afc8bf2720b4b8172ef0a905f0d0cb6a/fixtures/README.md)) · **Case** [`scan-human-charts`](https://github.com/Gallevy/hermex/blob/6c9b1964afc8bf2720b4b8172ef0a905f0d0cb6a/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/6c9b1964afc8bf2720b4b8172ef0a905f0d0cb6a/fixtures/cases/scan-human-charts.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter scan-human-charts`</sub>
 
 ## Config
 
-[`fixtures/configs/charts.config.ts`](https://github.com/Gallevy/hermex/blob/9578036d1d77f8516ecc77088506f70e893d35b8/fixtures/configs/charts.config.ts)
+[`fixtures/configs/charts.config.ts`](https://github.com/Gallevy/hermex/blob/6c9b1964afc8bf2720b4b8172ef0a905f0d0cb6a/fixtures/configs/charts.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../../src/config/types.ts';
@@ -144,6 +144,8 @@ CaseBoth            ████████░░░░░░░░░░░░
 
 JSX Usage               ██████████████████████████████████████████████████ 64
 
+Props Analyzed          ██████████████████████████████████████████████████ 64
+
 Default Imports         ██████████████████████████████░░░░░░░░░░░░░░░░░░░░ 39
 
 Named Imports           █████████████████████████████░░░░░░░░░░░░░░░░░░░░░ 37
@@ -156,7 +158,7 @@ Variable Assignments    ███████░░░░░░░░░░░�
 
 Conditional Usage       █████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 7
 
-Aliased Imports         █████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 6
+Named Imports (aliased) █████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 6
 
 Lazy Loading            █████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 6
 

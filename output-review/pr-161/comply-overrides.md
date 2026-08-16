@@ -14,13 +14,13 @@ _unchanged_
 
 **Ran** `hermex comply --config configs/overrides.config.ts` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/configs/overrides.config.ts`](https://github.com/Gallevy/hermex/blob/9578036d1d77f8516ecc77088506f70e893d35b8/fixtures/configs/overrides.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/9578036d1d77f8516ecc77088506f70e893d35b8/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/9578036d1d77f8516ecc77088506f70e893d35b8/fixtures/README.md)) · **Case** [`comply-overrides`](https://github.com/Gallevy/hermex/blob/9578036d1d77f8516ecc77088506f70e893d35b8/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/9578036d1d77f8516ecc77088506f70e893d35b8/fixtures/cases/comply-overrides.md))
+**Config** [`fixtures/configs/overrides.config.ts`](https://github.com/Gallevy/hermex/blob/6c9b1964afc8bf2720b4b8172ef0a905f0d0cb6a/fixtures/configs/overrides.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/6c9b1964afc8bf2720b4b8172ef0a905f0d0cb6a/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/6c9b1964afc8bf2720b4b8172ef0a905f0d0cb6a/fixtures/README.md)) · **Case** [`comply-overrides`](https://github.com/Gallevy/hermex/blob/6c9b1964afc8bf2720b4b8172ef0a905f0d0cb6a/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/6c9b1964afc8bf2720b4b8172ef0a905f0d0cb6a/fixtures/cases/comply-overrides.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-overrides`</sub>
 
 ## Config
 
-[`fixtures/configs/overrides.config.ts`](https://github.com/Gallevy/hermex/blob/9578036d1d77f8516ecc77088506f70e893d35b8/fixtures/configs/overrides.config.ts)
+[`fixtures/configs/overrides.config.ts`](https://github.com/Gallevy/hermex/blob/6c9b1964afc8bf2720b4b8172ef0a905f0d0cb6a/fixtures/configs/overrides.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../../src/config/types.ts';

@@ -14,13 +14,13 @@ _unchanged_
 
 **Ran** `hermex scan --config configs/all-sections.config.ts` in `fixtures/` → exit 0, as asserted
 
-**Config** [`fixtures/configs/all-sections.config.ts`](https://github.com/Gallevy/hermex/blob/9578036d1d77f8516ecc77088506f70e893d35b8/fixtures/configs/all-sections.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/9578036d1d77f8516ecc77088506f70e893d35b8/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/9578036d1d77f8516ecc77088506f70e893d35b8/fixtures/README.md)) · **Case** [`scan-human-all-sections`](https://github.com/Gallevy/hermex/blob/9578036d1d77f8516ecc77088506f70e893d35b8/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/9578036d1d77f8516ecc77088506f70e893d35b8/fixtures/cases/scan-human-all-sections.md))
+**Config** [`fixtures/configs/all-sections.config.ts`](https://github.com/Gallevy/hermex/blob/6c9b1964afc8bf2720b4b8172ef0a905f0d0cb6a/fixtures/configs/all-sections.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/6c9b1964afc8bf2720b4b8172ef0a905f0d0cb6a/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/6c9b1964afc8bf2720b4b8172ef0a905f0d0cb6a/fixtures/README.md)) · **Case** [`scan-human-all-sections`](https://github.com/Gallevy/hermex/blob/6c9b1964afc8bf2720b4b8172ef0a905f0d0cb6a/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/6c9b1964afc8bf2720b4b8172ef0a905f0d0cb6a/fixtures/cases/scan-human-all-sections.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter scan-human-all-sections`</sub>
 
 ## Config
 
-[`fixtures/configs/all-sections.config.ts`](https://github.com/Gallevy/hermex/blob/9578036d1d77f8516ecc77088506f70e893d35b8/fixtures/configs/all-sections.config.ts)
+[`fixtures/configs/all-sections.config.ts`](https://github.com/Gallevy/hermex/blob/6c9b1964afc8bf2720b4b8172ef0a905f0d0cb6a/fixtures/configs/all-sections.config.ts)
 
 ```ts
 import type { HermexConfigInput } from '../../src/config/types.ts';
@@ -115,13 +115,14 @@ Total: 5 packages
 
   Total usage patterns: 284
   JSX Usage: 64
+  Props Analyzed: 64
   Default Imports: 39
   Named Imports: 37
   Object Mappings: 19
   Dynamic Imports: 19
   Variable Assignments: 9
   Conditional Usage: 7
-  Aliased Imports: 6
+  Named Imports (aliased): 6
   Lazy Loading: 6
   Higher-Order Components: 5
   Namespace Imports: 4
@@ -180,6 +181,8 @@ Total: 5 packages
 ├─────────────────────────┼───────┤
 │ JSX Usage               │ 64    │
 ├─────────────────────────┼───────┤
+│ Props Analyzed          │ 64    │
+├─────────────────────────┼───────┤
 │ Default Imports         │ 39    │
 ├─────────────────────────┼───────┤
 │ Named Imports           │ 37    │
@@ -192,7 +195,7 @@ Total: 5 packages
 ├─────────────────────────┼───────┤
 │ Conditional Usage       │ 7     │
 ├─────────────────────────┼───────┤
-│ Aliased Imports         │ 6     │
+│ Named Imports (aliased) │ 6     │
 ├─────────────────────────┼───────┤
 │ Lazy Loading            │ 6     │
 ├─────────────────────────┼───────┤
@@ -207,7 +210,7 @@ Total: 5 packages
 │ Portal Usage            │ 1     │
 └─────────────────────────┴───────┘
 
-Total: 220 patterns detected
+Total: 284 patterns detected
 
 📊 Summary
 
