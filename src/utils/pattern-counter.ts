@@ -21,9 +21,16 @@ export function countPatterns(
     'imports.namespace',
     report.patterns.imports.namespace.length,
   );
+  // Aliased imports are a subset of `imports.named` (every aliased import is
+  // also a named import — see imports.ts), reported here as an informational
+  // duplicate rather than subtracted out of `imports.named`. Subtracting
+  // would make `imports.named` + `imports.named.aliased` sum to a smaller
+  // total than `totalUsagePatterns`, which independently double-counts
+  // aliased imports (namedImports and aliasedImports are separate
+  // collections in ParserState — see report.ts's calculateTotalPatterns).
   increment(
     patternMap,
-    'imports.aliased',
+    'imports.named.aliased',
     report.patterns.imports.aliased.length,
   );
   increment(patternMap, 'usage.jsx', report.patterns.usage.jsx.length);
@@ -62,6 +69,7 @@ export function countPatterns(
     'advanced.portal',
     report.patterns.advanced.portal.length,
   );
+  increment(patternMap, 'usage.props', report.patterns.props.length);
 }
 
 function increment(map: Map<string, number>, key: string, value: number) {
@@ -73,7 +81,7 @@ export function getPatternDisplayName(patternType: string): string {
     'imports.default': 'Default Imports',
     'imports.named': 'Named Imports',
     'imports.namespace': 'Namespace Imports',
-    'imports.aliased': 'Aliased Imports',
+    'imports.named.aliased': 'Named Imports (aliased)',
     'usage.jsx': 'JSX Usage',
     'usage.variables': 'Variable Assignments',
     'usage.destructuring': 'Destructuring',
@@ -86,6 +94,7 @@ export function getPatternDisplayName(patternType: string): string {
     'advanced.memo': 'Memoized Components',
     'advanced.forwardRef': 'Forward Refs',
     'advanced.portal': 'Portal Usage',
+    'usage.props': 'Props Analyzed',
   };
   return displayNames[patternType] || patternType;
 }
