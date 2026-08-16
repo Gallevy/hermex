@@ -1252,17 +1252,17 @@ describe('printComplianceVerdict', () => {
     expect(output).not.toContain('violations found');
   });
 
-  it('prints COMPLIANT when there are no mandatory violations', () => {
+  it('prints Compliant when there are no mandatory violations', () => {
     const compliance = computeCompliance(makeAggregated());
     expect(() => printComplianceVerdict(compliance)).not.toThrow();
     const output = consoleSpy.mock.calls
       .map((call) => call.join(' '))
       .join('\n');
-    expect(output).toContain('COMPLIANT');
-    expect(output).not.toContain('NOT COMPLIANT');
+    expect(output).toContain('Compliant');
+    expect(output).not.toContain('Not compliant');
   });
 
-  it('prints NOT COMPLIANT with a count when mandatory violations are present, without repeating per-violation detail', () => {
+  it('prints Not compliant with a count when mandatory violations are present, without repeating per-violation detail', () => {
     const errorViolation: RuleViolation = {
       ruleId: 'require-files',
       severity: 'error',
@@ -1295,7 +1295,7 @@ describe('printComplianceVerdict', () => {
     const output = consoleSpy.mock.calls
       .map((call) => call.join(' '))
       .join('\n');
-    expect(output).toContain('NOT COMPLIANT');
+    expect(output).toContain('Not compliant');
     expect(output).toContain('2 mandatory violations');
     // per-violation detail belongs to the Rules/Packages sections above
     // the verdict, not the verdict itself — see printPackages tests for the

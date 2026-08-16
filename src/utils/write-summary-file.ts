@@ -93,12 +93,12 @@ function buildPackagesSection(compliance: ComplianceResult): string {
 
 function buildVerdictSection(compliance: ComplianceResult): string {
   if (compliance.compliant) {
-    return `### ${severityIcon('success')} COMPLIANT\n`;
+    return `### ${severityIcon('success')} Compliant\n`;
   }
 
   const mandatoryCount = countMandatoryViolations(compliance);
 
-  return `### ${severityIcon('error')} NOT COMPLIANT\n\n${mandatoryCount} mandatory violation${mandatoryCount > 1 ? 's' : ''} found\n`;
+  return `### ${severityIcon('error')} Not compliant\n\n${mandatoryCount} mandatory violation${mandatoryCount > 1 ? 's' : ''} found\n`;
 }
 
 export const DEFAULT_SUMMARY_TITLE = 'Hermex Compliance Report';

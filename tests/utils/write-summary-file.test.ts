@@ -175,7 +175,7 @@ describe('writeSummaryFile', () => {
       );
       expect(content).not.toContain('### Rules');
       expect(content).not.toContain('no-files');
-      expect(content).toContain('### 🟢 COMPLIANT');
+      expect(content).toContain('### 🟢 Compliant');
     });
 
     // The row wording is unchanged from when banned packages had their own
@@ -250,7 +250,7 @@ describe('writeSummaryFile', () => {
       );
       expect(content).not.toContain('### Rules');
       expect(content).not.toContain('some-pkg');
-      expect(content).toContain('### 🟢 COMPLIANT');
+      expect(content).toContain('### 🟢 Compliant');
     });
   });
 
@@ -498,8 +498,8 @@ describe('writeSummaryFile', () => {
       expect(content).not.toContain('### Packages');
       expect(content).not.toContain('Notes:');
       expect(content).not.toContain('multi-version-lib');
-      expect(content).toContain('### 🟢 COMPLIANT');
-      expect(content).not.toContain('NOT COMPLIANT');
+      expect(content).toContain('### 🟢 Compliant');
+      expect(content).not.toContain('Not compliant');
     });
 
     // (#59) A package can be a MANDATORY failure (root itself is overdue)
@@ -537,7 +537,7 @@ describe('writeSummaryFile', () => {
       expect(content).not.toContain('Notes:');
       expect(content).not.toContain('bundle impact');
       expect(content).not.toContain('nested copy');
-      expect(content).toContain('NOT COMPLIANT');
+      expect(content).toContain('Not compliant');
     });
   });
 
@@ -566,10 +566,10 @@ describe('writeSummaryFile', () => {
     expect(content).not.toContain('ui-kits');
   });
 
-  it('writes a COMPLIANT verdict when there are no violations', () => {
+  it('writes a Compliant verdict when there are no violations', () => {
     const content = write(makeAggregated());
-    expect(content).toContain('COMPLIANT');
-    expect(content).not.toContain('NOT COMPLIANT');
+    expect(content).toContain('Compliant');
+    expect(content).not.toContain('Not compliant');
   });
 
   // A fully clean report shouldn't carry "Rules"/"Packages" boilerplate for
@@ -578,10 +578,10 @@ describe('writeSummaryFile', () => {
     const content = write(makeAggregated());
     expect(content).not.toContain('### Rules');
     expect(content).not.toContain('### Packages');
-    expect(content).toBe(`# ${DEFAULT_SUMMARY_TITLE}\n\n### 🟢 COMPLIANT\n`);
+    expect(content).toBe(`# ${DEFAULT_SUMMARY_TITLE}\n\n### 🟢 Compliant\n`);
   });
 
-  it('writes a NOT COMPLIANT verdict with the mandatory violation count when violations exist', () => {
+  it('writes a Not compliant verdict with the mandatory violation count when violations exist', () => {
     const violation: RuleViolation = {
       ruleId: 'require-files',
       severity: 'error',
@@ -589,7 +589,7 @@ describe('writeSummaryFile', () => {
       matchedFiles: [],
     };
     const content = write(makeAggregated({ ruleViolations: [violation] }));
-    expect(content).toContain('NOT COMPLIANT');
+    expect(content).toContain('Not compliant');
     expect(content).toContain('1 mandatory violation found');
   });
 
