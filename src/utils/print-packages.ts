@@ -2,6 +2,7 @@ import chalk from 'chalk';
 import Table from 'cli-table3';
 import type { AggregatedReport, PackageDistribution } from './aggregator';
 import type { RuleViolation } from '../rules/evaluator';
+import { isPluginViolation } from '../rules/shared';
 import type {
   AvailableUpgrade,
   ReleaseAgeEntry,
@@ -195,7 +196,13 @@ export function findForbidViolation(
   violations: RuleViolation[],
 ): RuleViolation | undefined {
   return violations.find(
-    (v) => v.ruleId === 'no-packages' && v.packageName === pkg.packageName,
+    (v) =>
+      // Plugin findings are excluded before the id check, not just to
+      // narrow the type: this column joins on hermex's own `no-packages`
+      // rule, and a plugin's id space is its own (#102).
+      !isPluginViolation(v) &&
+      v.ruleId === 'no-packages' &&
+      v.packageName === pkg.packageName,
   );
 }
 

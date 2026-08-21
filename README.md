@@ -32,6 +32,8 @@ are no CLI flags for scan behavior; `scan`/`comply` only take `--config`,
 - **Version Tracking**: Components reported with exact package versions from lockfiles
 - **Multi-Lockfile Support**: Parses package-lock.json, yarn.lock, and pnpm-lock.yaml
 - **Flexible Output**: Table and chart visualization formats
+- **Plugins**: Fold another tool's findings — a linter, a size budget — into one verdict.
+  hermex orchestrates, it never reimplements. See [Plugins](./docs/plugins.md)
 - **Zero Configuration**: Works out of the box with sensible defaults
 
 ## Installation
@@ -169,6 +171,7 @@ Total: 272 patterns detected
 
 - **[Examples](./docs/examples.md)** - Comprehensive examples and command usage
 - **[Patterns Guide](./docs/patterns.md)** - All detectable React usage patterns
+- **[Plugins](./docs/plugins.md)** - Run another tool as part of a hermex run, including an oxlint recipe
 
 ## Tech Stack
 

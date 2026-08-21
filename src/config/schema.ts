@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { KNOWN_HOOKS } from '../plugins/types';
+import type { HermexPlugin } from '../plugins/types';
 
 // ── Sub-schemas ────────────────────────────────────────────────────────────────
 
@@ -80,6 +82,86 @@ const OverrideSchema = z
   })
   .strict();
 
+// ── Plugins ────────────────────────────────────────────────────────────────────
+
+// A plugin holds functions, so it can't be described structurally the way
+// every other branch of this schema is — `z.custom` carries the type and the
+// refinement below does the checking by hand. Note this makes a config that
+// declares plugins non-JSON-serializable, which is inherent: hooks are code.
+const PluginSchema = z.custom<HermexPlugin>().superRefine((value, ctx) => {
+  const fail = (message: string, path: (string | number)[] = []) =>
+    ctx.addIssue({ code: 'custom', message, path });
+
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    fail('Plugin must be an object with `name` and `hooks`.');
+    return;
+  }
+
+  const plugin = value as Partial<HermexPlugin>;
+
+  if (typeof plugin.name !== 'string' || plugin.name.trim() === '') {
+    fail('Plugin `name` must be a non-empty string.', ['name']);
+  }
+
+  if (
+    typeof plugin.hooks !== 'object' ||
+    plugin.hooks === null ||
+    Array.isArray(plugin.hooks)
+  ) {
+    fail('Plugin `hooks` must be an object.', ['hooks']);
+    return;
+  }
+
+  const hooks = plugin.hooks as Record<string, unknown>;
+  const declared = Object.keys(hooks);
+
+  for (const key of declared) {
+    // Rejected rather than ignored on purpose: a plugin built against a
+    // newer hermex must fail loudly, not half-run. A hook that silently
+    // never fires is the failure mode this check exists to prevent.
+    if (!(KNOWN_HOOKS as readonly string[]).includes(key)) {
+      fail(
+        `Unknown hook \`${key}\`. This version of hermex supports: ${KNOWN_HOOKS.join(', ')}. ` +
+          `If the plugin targets a newer hermex, upgrade rather than removing the hook.`,
+        ['hooks', key],
+      );
+      continue;
+    }
+    if (typeof hooks[key] !== 'function') {
+      fail(`Hook \`${key}\` must be a function.`, ['hooks', key]);
+    }
+  }
+
+  if (declared.length === 0) {
+    fail(
+      `Plugin "${plugin.name ?? '<unnamed>'}" declares no hooks, so it can never run. ` +
+        `Implement one of: ${KNOWN_HOOKS.join(', ')}.`,
+      ['hooks'],
+    );
+  }
+});
+
+// Identity is the plugin's own `name` — never a namespace the config author
+// assigns. ESLint handed naming to the config layer and had to retrofit
+// `meta.namespace` to recover identity; de-duplicating by declared name here
+// avoids that, and makes a duplicate a config error rather than two
+// silently-merged sources of the same finding.
+const PluginsSchema = z.array(PluginSchema).superRefine((plugins, ctx) => {
+  const seen = new Set<string>();
+  plugins.forEach((plugin, index) => {
+    const name = (plugin as Partial<HermexPlugin>)?.name;
+    if (typeof name !== 'string') return;
+    if (seen.has(name)) {
+      ctx.addIssue({
+        code: 'custom',
+        message: `Duplicate plugin name "${name}". Plugin names must be unique — hermex de-duplicates by name, not by object identity.`,
+        path: [index, 'name'],
+      });
+    }
+    seen.add(name);
+  });
+});
+
 // ── Main schema with defaults ──────────────────────────────────────────────────
 
 export const HermexConfigSchema = z
@@ -116,6 +198,19 @@ export const HermexConfigSchema = z
      * specific repos.
      */
     overrides: z.array(OverrideSchema).default([]),
+
+    /**
+     * Plugins run other tools and fold their findings into this run — hermex
+     * orchestrates, it never reimplements (#102). Each is a plain object with
+     * a canonical `name` and a `hooks` envelope; declare them inline to keep
+     * the config importable under `npx` with no `node_modules`, since only
+     * `node:` builtins and `import type` resolve there.
+     *
+     * hermex owns the channel and nothing else: granularity and severity are
+     * the plugin's, configured in the plugin's own idiom, so `rules` below
+     * stays exclusively hermex's own.
+     */
+    plugins: PluginsSchema.default([]),
 
     rules: z
       .object({
@@ -229,5 +324,6 @@ export type VersusConfig = HermexConfig['versus'][number];
 export type RulesConfig = HermexConfig['rules'];
 export type OverrideConfig = HermexConfig['overrides'][number];
 export type OutputConfig = HermexConfig['output'];
+export type PluginsConfig = HermexConfig['plugins'];
 export type ReleaseAgeConfig = HermexConfig['releaseAge'];
 export type ReleaseAgeThresholds = HermexConfig['releaseAge']['thresholds'];
