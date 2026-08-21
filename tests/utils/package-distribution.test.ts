@@ -99,6 +99,22 @@ describe('findComponentSource', () => {
 
     expect(findComponentSource('Ghost', report, ['antd'])).toBe('unknown');
   });
+
+  it('resolves to the longest matching package name when multiple prefixes match', () => {
+    const report = createMockReport();
+    report.patterns.imports.named.push({
+      name: 'Thing',
+      source: '@scope/pkg/sub/thing',
+    });
+
+    expect(
+      findComponentSource('Thing', report, ['@scope/pkg', '@scope/pkg/sub']),
+    ).toBe('@scope/pkg/sub');
+
+    expect(
+      findComponentSource('Thing', report, ['@scope/pkg/sub', '@scope/pkg']),
+    ).toBe('@scope/pkg/sub');
+  });
 });
 
 describe('calculatePackageDistribution', () => {
