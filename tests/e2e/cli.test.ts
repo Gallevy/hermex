@@ -1,7 +1,13 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { spawnSync, execSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
-import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs';
+import {
+  mkdtempSync,
+  rmSync,
+  existsSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import packageJson from '../../package.json';
 
@@ -704,5 +710,113 @@ describe('package inventory axes (end to end)', () => {
       releaseAgeViolations: 0,
       warningRuleViolations: 0,
     });
+  });
+});
+
+describe('plugins (end to end)', () => {
+  const pluginConfig = join(ROOT, 'tests', 'e2e', 'hermex-plugin.config.ts');
+  const throwingConfig = join(
+    ROOT,
+    'tests',
+    'e2e',
+    'hermex-plugin-throws.config.ts',
+  );
+
+  it('loads a config declaring an inline plugin and runs it', () => {
+    const result = run(['scan', '--config', pluginConfig]);
+    expect(result.status).toBe(0);
+    expect(result.stderr).not.toMatch(/ERR_MODULE_NOT_FOUND/);
+    expect(result.stdout).toMatch(/Analysis complete/);
+  });
+
+  it('names the plugins that ran, so foreign code is attributable', () => {
+    // hermex does not sandbox plugins, which makes visibility the
+    // obligation instead (#102).
+    const result = run(['scan', '--config', pluginConfig]);
+    expect(result.stdout).toMatch(/Ran 1 plugin\(s\): fake-linter/);
+    expect(result.stdout).toMatch(/3 finding\(s\)/);
+  });
+
+  it('renders plugin findings in the rules table under namespaced ids', () => {
+    const result = run(['scan', '--config', pluginConfig]);
+    expect(result.stdout).toContain('fake-linter/no-debugger');
+    expect(result.stdout).toContain('fake-linter/no-unused-vars');
+    expect(result.stdout).toContain('debugger statement');
+    // location renders as file:line
+    expect(result.stdout).toMatch(/patterns[/\\]imports\.tsx:12/);
+  });
+
+  it('an error-severity plugin finding fails comply through the ordinary verdict path', () => {
+    // There is no separate verdict channel — a plugin fails the run by
+    // reporting an error violation, so the verdict always carries a reason.
+    const result = run(['comply', '--config', pluginConfig]);
+    expect(result.status).toBe(1);
+  });
+
+  it('counts plugin findings alongside hermex-authored ones in the verdict', () => {
+    const result = run([
+      'comply',
+      '--config',
+      pluginConfig,
+      '--format',
+      'json',
+    ]);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.compliance.status).toBe('non-compliant');
+    expect(parsed.compliance.counts.errorRuleViolations).toBe(1);
+    expect(parsed.compliance.counts.warningRuleViolations).toBe(1);
+  });
+
+  it('emits plugin findings in the JSON ruleViolations array', () => {
+    const result = run(['scan', '--config', pluginConfig, '--format', 'json']);
+    const parsed = JSON.parse(result.stdout);
+    const ids = parsed.ruleViolations.map((v: { ruleId: string }) => v.ruleId);
+    expect(ids).toContain('fake-linter/no-debugger');
+    // JSON stays full-fidelity: the info-severity row is present too.
+    expect(ids).toContain('fake-linter/prefer-const');
+    const finding = parsed.ruleViolations.find(
+      (v: { ruleId: string }) => v.ruleId === 'fake-linter/no-debugger',
+    );
+    expect(finding.plugin).toBe('fake-linter');
+  });
+
+  it('aborts with exit 2 when a plugin throws', () => {
+    // Not a degradation (#129 does not model this): a run that could not
+    // complete every declared plugin reports neither pass nor fail.
+    const result = run(['comply', '--config', throwingConfig]);
+    expect(result.status).toBe(2);
+    // The spinner reports to stdout in human mode (it only moves to stderr
+    // under --format json, where stdout is the payload).
+    expect(result.stdout).toMatch(/Plugin "broken-linter" failed/);
+    expect(result.stdout).toMatch(/spawn oxlint ENOENT/);
+  });
+
+  it('reports the plugin failure on stderr under --format json', () => {
+    const result = run([
+      'comply',
+      '--config',
+      throwingConfig,
+      '--format',
+      'json',
+    ]);
+    expect(result.status).toBe(2);
+    expect(result.stderr).toMatch(/Plugin "broken-linter" failed/);
+  });
+
+  it('rejects an unknown hook at config-parse time', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'hermex-plugin-hook-'));
+    const configPath = join(dir, 'hermex.config.ts');
+    writeFileSync(
+      configPath,
+      `export default {
+         plugins: [{ name: 'p', hooks: { onFileParsed() {} } }],
+       };\n`,
+      'utf8',
+    );
+
+    const result = run(['scan', '--config', configPath]);
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toMatch(/Unknown hook `onFileParsed`/);
+    rmSync(dir, { recursive: true, force: true });
   });
 });
