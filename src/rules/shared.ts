@@ -31,6 +31,25 @@ export interface NoPackagesViolation extends BaseViolation<'no-packages'> {
   packageName?: string;
 }
 
+/** One entry per oversize file, largest first — same order as `matchedFiles`. */
+export interface OversizeFile {
+  file: string;
+  sizeBytes: number;
+}
+
+/**
+ * The size of every file that breached the ceiling, alongside the ceiling
+ * itself. Kept as its own field rather than folded into `matchedFiles`,
+ * which is read as plain paths everywhere (`describeViolation` takes
+ * basenames off it) — and because re-stat'ing each file is the only other
+ * way a JSON consumer could learn by how much a file is over.
+ */
+export interface MaxFileSizeViolation extends BaseViolation<'max-file-size'> {
+  /** The rule's `maxSize`, normalized to whole bytes by the config schema. */
+  maxSizeBytes: number;
+  oversizeFiles: OversizeFile[];
+}
+
 export interface RequirePackageFieldsViolation extends BaseViolation<'require-package-fields'> {
   fieldPath?: string;
   actualValue?: string;
@@ -49,6 +68,7 @@ export interface RequireEngineVersionViolation extends BaseViolation<'require-en
 export type RuleViolation =
   | NoFilesViolation
   | RequireFilesViolation
+  | MaxFileSizeViolation
   | RequirePackagesViolation
   | NoPackagesViolation
   | RequireScriptsViolation

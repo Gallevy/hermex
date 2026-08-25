@@ -2,14 +2,15 @@ import type { HermexConfigInput } from '../../../src/config/types.ts';
 
 /**
  * Every rule type hermex has, all firing at once, at three different
- * severities. The primary fixture repo only ever trips three of the nine —
+ * severities. The primary fixture repo only ever trips three of the ten —
  * so without this repo the rules table has never been reviewed with an
  * `require-engine-version` row, a `require-codeowners` row, or either of the
  * package-field shapes in it, and nothing would catch a renderer that
  * mishandles `fieldPath` / `installedRange` / a long `matchedFiles` list.
  *
  * Scoped to `src/` so `jest.config.js` is found by `no-files` without
- * also being parsed as source.
+ * also being parsed as source — and so `assets/logo.svg`, which exists
+ * purely to breach `max-file-size`, is never parsed either.
  */
 export default {
   includes: ['src/**/*.{tsx,jsx,ts,js}'],
@@ -22,6 +23,18 @@ export default {
       },
     ],
     'require-files': [{ severity: 'error', patterns: ['.nvmrc'] }],
+    // assets/logo.svg is 1410 bytes, so it clears the 1 KB ceiling. It is
+    // written as a single line with no newline, which keeps its byte count
+    // — and therefore the recorded size in this baseline — identical on
+    // every checkout.
+    'max-file-size': [
+      {
+        severity: 'warn',
+        patterns: ['assets/**/*.svg'],
+        maxSize: '1kb',
+        message: 'Compress it or serve it from the CDN',
+      },
+    ],
     'no-packages': [
       { severity: 'error', patterns: ['moment'], message: 'Use date-fns or dayjs' },
     ],

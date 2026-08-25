@@ -8,6 +8,7 @@ import { evaluateFileRules } from '../../src/rules/file-rules';
 import { evaluateScriptRules } from '../../src/rules/script-rules';
 import { evaluatePackageFieldRules } from '../../src/rules/package-field-rules';
 import { evaluateEngineVersion } from '../../src/rules/engine-version';
+import { evaluateMaxFileSize } from '../../src/rules/max-file-size';
 
 let tempDir: string;
 
@@ -18,6 +19,7 @@ let tempDir: string;
 const emptyRules: ResolvedRulesConfig = {
   'no-files': [],
   'require-files': [],
+  'max-file-size': [],
   'no-packages': [],
   'require-packages': [],
   'require-scripts': [],
@@ -468,6 +470,108 @@ describe('evaluateEngineVersion', () => {
   });
 });
 
+describe('evaluateMaxFileSize', () => {
+  // Sizes are exact and platform-independent: every asset is written as a
+  // single run of ASCII with no newline, so nothing here depends on how the
+  // checkout handles line endings.
+  beforeAll(() => {
+    mkdirSync(join(tempDir, 'assets'), { recursive: true });
+    writeFileSync(join(tempDir, 'assets', 'small.svg'), 'a'.repeat(100));
+    writeFileSync(join(tempDir, 'assets', 'big.svg'), 'a'.repeat(2048));
+    writeFileSync(join(tempDir, 'assets', 'huge.svg'), 'a'.repeat(4096));
+  });
+
+  const rules = (rule: { maxSize: number; patterns?: string[] }) => ({
+    ...emptyRules,
+    'max-file-size': [
+      {
+        severity: 'error' as const,
+        patterns: rule.patterns ?? ['assets/**/*.svg'],
+        maxSize: rule.maxSize,
+      },
+    ],
+  });
+
+  it('no violation when every matched file is within the ceiling', () => {
+    const result = evaluateMaxFileSize(tempDir, rules({ maxSize: 8192 }), []);
+    expect(result).toHaveLength(0);
+  });
+
+  it('no violation when the pattern matches nothing', () => {
+    const result = evaluateMaxFileSize(
+      tempDir,
+      rules({ maxSize: 1, patterns: ['assets/**/*.png'] }),
+      [],
+    );
+    expect(result).toHaveLength(0);
+  });
+
+  // One row per rule, not per file — a pattern matching hundreds of oversize
+  // assets must not flood the rules table.
+  it('reports one violation per rule, listing every oversize file', () => {
+    const result = evaluateMaxFileSize(tempDir, rules({ maxSize: 1024 }), []);
+    expect(result).toHaveLength(1);
+    expect(result[0].ruleId).toBe('max-file-size');
+    expect(result[0].severity).toBe('error');
+    expect(result[0].matchedFiles).toEqual([
+      'assets/huge.svg',
+      'assets/big.svg',
+    ]);
+    for (const file of result[0].matchedFiles) {
+      expect(isAbsolute(file)).toBe(false);
+    }
+  });
+
+  it('carries the ceiling and each file size, largest first', () => {
+    const [violation] = evaluateMaxFileSize(
+      tempDir,
+      rules({ maxSize: 1024 }),
+      [],
+    );
+    expect(violation).toMatchObject({
+      maxSizeBytes: 1024,
+      oversizeFiles: [
+        { file: 'assets/huge.svg', sizeBytes: 4096 },
+        { file: 'assets/big.svg', sizeBytes: 2048 },
+      ],
+    });
+  });
+
+  // Strictly greater-than: a file sitting exactly on the ceiling is allowed,
+  // the way "max 200kb" reads to whoever wrote it.
+  it('allows a file exactly at the ceiling', () => {
+    const result = evaluateMaxFileSize(tempDir, rules({ maxSize: 4096 }), []);
+    expect(result).toHaveLength(0);
+  });
+
+  it('honours excludes', () => {
+    const result = evaluateMaxFileSize(tempDir, rules({ maxSize: 1024 }), [
+      '**/huge.svg',
+    ]);
+    expect(result[0].matchedFiles).toEqual(['assets/big.svg']);
+  });
+
+  it('evaluates each rule independently', () => {
+    const result = evaluateMaxFileSize(
+      tempDir,
+      {
+        ...emptyRules,
+        'max-file-size': [
+          { severity: 'error', patterns: ['assets/big.svg'], maxSize: 1024 },
+          { severity: 'warn', patterns: ['assets/huge.svg'], maxSize: 1024 },
+        ],
+      },
+      [],
+    );
+    expect(result).toHaveLength(2);
+    expect(result.map((v) => v.severity)).toEqual(['error', 'warn']);
+  });
+
+  it('returns nothing when no max-file-size rule is configured', () => {
+    expect(evaluateMaxFileSize(tempDir, emptyRules, [])).toHaveLength(0);
+  });
+});
+
 describe('evaluateRules — integration', () => {
   it('aggregates violations from all sub-evaluators', () => {
     const result = evaluateRules(
@@ -476,12 +580,16 @@ describe('evaluateRules — integration', () => {
         ...emptyRules,
         'no-files': [{ severity: 'error', patterns: ['src/legacy.js'] }],
         'require-scripts': [{ severity: 'warn', patterns: ['typecheck'] }],
+        'max-file-size': [
+          { severity: 'warn', patterns: ['assets/huge.svg'], maxSize: 1 },
+        ],
       },
       [],
     );
     const types = result.map((v) => v.ruleId);
     expect(types).toContain('no-files');
     expect(types).toContain('require-scripts');
+    expect(types).toContain('max-file-size');
   });
 
   it('returns empty array when no rules configured', () => {

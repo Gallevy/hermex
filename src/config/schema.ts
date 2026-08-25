@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { parseByteSize } from '../utils/byte-size';
 
 // ── Sub-schemas ────────────────────────────────────────────────────────────────
 
@@ -33,6 +34,38 @@ const PackageFieldRuleOrArraySchema = z.union([
   z.array(PackageFieldRuleSchema),
 ]);
 
+/**
+ * A file size ceiling, authored either as a raw byte count (`204800`) or as
+ * a string with a unit (`'200kb'`, `'1.5mb'`) — both normalize to whole
+ * bytes here, so everything downstream only ever sees a number. Units are
+ * binary (1 KB = 1024 B); see src/utils/byte-size.ts.
+ */
+const ByteSizeSchema = z
+  .union([z.number(), z.string()])
+  .transform((value, ctx) => {
+    const bytes = parseByteSize(value);
+    if (bytes === null) {
+      ctx.addIssue({
+        code: 'custom',
+        message:
+          `Invalid file size ${JSON.stringify(value)} — use a positive byte ` +
+          `count (204800) or a size with a unit ("200kb", "1.5mb").`,
+      });
+      return z.NEVER;
+    }
+    return bytes;
+  });
+
+const MaxFileSizeRuleSchema = RuleConfigSchema.extend({
+  /** Files matching `patterns` may not exceed this size */
+  maxSize: ByteSizeSchema,
+}).strict();
+
+const MaxFileSizeRuleOrArraySchema = z.union([
+  MaxFileSizeRuleSchema,
+  z.array(MaxFileSizeRuleSchema),
+]);
+
 const EngineVersionRuleSchema = z
   .object({
     severity: RuleSeveritySchema,
@@ -59,6 +92,7 @@ const OverrideRulesSchema = z
   .object({
     'no-files': RuleConfigOrArraySchema.optional(),
     'require-files': RuleConfigOrArraySchema.optional(),
+    'max-file-size': MaxFileSizeRuleOrArraySchema.optional(),
     'no-packages': RuleConfigOrArraySchema.optional(),
     'require-packages': RuleConfigOrArraySchema.optional(),
     'require-scripts': RuleConfigOrArraySchema.optional(),
@@ -121,6 +155,7 @@ export const HermexConfigSchema = z
       .object({
         'no-files': RuleConfigOrArraySchema.default([]),
         'require-files': RuleConfigOrArraySchema.default([]),
+        'max-file-size': MaxFileSizeRuleOrArraySchema.default([]),
         'no-packages': RuleConfigOrArraySchema.default([]),
         'require-packages': RuleConfigOrArraySchema.default([]),
         'require-scripts': RuleConfigOrArraySchema.default([]),
@@ -135,6 +170,7 @@ export const HermexConfigSchema = z
       .default(() => ({
         'no-files': [] as RuleConfig[],
         'require-files': [] as RuleConfig[],
+        'max-file-size': [] as MaxFileSizeRule[],
         'no-packages': [] as RuleConfig[],
         'require-packages': [] as RuleConfig[],
         'require-scripts': [] as RuleConfig[],
@@ -222,6 +258,8 @@ export type HermexConfigInput = z.input<typeof HermexConfigSchema>;
 export type RuleSeverity = z.infer<typeof RuleSeveritySchema>;
 export type RuleConfig = z.infer<typeof RuleConfigSchema>;
 export type PackageFieldRule = z.infer<typeof PackageFieldRuleSchema>;
+/** `maxSize` is normalized to whole bytes on parse — authored as `number | string`, read as `number`. */
+export type MaxFileSizeRule = z.infer<typeof MaxFileSizeRuleSchema>;
 export type EngineVersionRule = z.infer<typeof EngineVersionRuleSchema>;
 export type CodeownersRule = z.infer<typeof CodeownersRuleSchema>;
 export type PackagesConfig = HermexConfig['packages'];

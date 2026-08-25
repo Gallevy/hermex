@@ -1,15 +1,16 @@
 # `repos/all-rule-types/`
 
-A repo engineered so **every one of the nine rule types fires at once**, at
+A repo engineered so **every one of the ten rule types fires at once**, at
 three different severities.
 
 ## What it proves
 
-The primary fixture repo only ever trips three of the nine. Without this
-repo the rules table has never been reviewed with an `require-engine-version` row, a
-`codeowners` row, or either of the two package-field shapes in it — so
-nothing would catch a renderer that mishandles `fieldPath`,
-`installedRange`, or a long `matchedFiles` list.
+The primary fixture repo only ever trips three of the ten. Without this
+repo the rules table has never been reviewed with a `max-file-size` row, an
+`require-engine-version` row, a `codeowners` row, or either of the two
+package-field shapes in it — so nothing would catch a renderer that
+mishandles `fieldPath`, `installedRange`, a rendered byte size, or a long
+`matchedFiles` list.
 
 It also covers both halves of the package-field renderer, which are
 different shapes: a **missing** field reports the absence, a **forbidden**
@@ -21,6 +22,7 @@ field reports the offending value.
 | --- | --- | --- |
 | `no-files` | error | `jest.config.js` and `.babelrc` exist |
 | `require-files` | error | `.nvmrc` does not exist |
+| `max-file-size` | warn | `assets/logo.svg` is 1410 B, over its 1 KB ceiling |
 | `no-packages` | error | `moment` is declared |
 | `require-packages` | error | `typescript` is not declared |
 | `require-scripts` | error | no `build`, no `test` — only `lint` |
@@ -30,7 +32,12 @@ field reports the offending value.
 | `codeowners` | info | fires **twice** — see below |
 
 `includes` is scoped to `src/` so `jest.config.js` is found by
-`no-files` without also being parsed as source.
+`no-files` without also being parsed as source — the same scoping keeps
+`assets/logo.svg` out of the parser.
+
+`assets/logo.svg` is one line with no trailing newline on purpose: its byte
+count is what the baseline records, so it must not change with a checkout's
+line-ending handling.
 
 ## The CODEOWNERS trap
 
@@ -54,7 +61,7 @@ two rows into one distinct wording is the fix landing, not a regression.
 
 | Case | Command | Expects |
 | --- | --- | --- |
-| `comply-all-rule-types` | `hermex comply` | exit 1, all nine rows in the human table |
+| `comply-all-rule-types` | `hermex comply` | exit 1, all ten rows in the human table |
 | `comply-all-rule-types-json` | `hermex comply --format json` | exit 1, the machine-readable shape of each rule type |
 
 ## Layout
@@ -62,7 +69,8 @@ two rows into one distinct wording is the fix landing, not a regression.
 ```
 .babelrc                 no-files hit
 .github/CODEOWNERS       two of three src files covered
-hermex.config.ts         all nine rules, three severities
+assets/logo.svg          1410 B, over the 1 KB max-file-size ceiling
+hermex.config.ts         all ten rules, three severities
 jest.config.js           no-files hit
 package.json             engines >=16, no license, publishConfig.registry, moment
 src/legacy.tsx           owned by the wrong team

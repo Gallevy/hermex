@@ -2,6 +2,7 @@ import chalk from 'chalk';
 import Table from 'cli-table3';
 import type { AggregatedReport } from './aggregator';
 import type { RuleViolation } from '../rules/evaluator';
+import { formatBytes } from './byte-size';
 import { formatTruncatedList } from './format-utils';
 import {
   formatSeverityTally,
@@ -15,6 +16,8 @@ export function formatRuleType(ruleId: RuleViolation['ruleId']): string {
       return 'no-files';
     case 'require-files':
       return 'require-files';
+    case 'max-file-size':
+      return 'max-file-size';
     case 'require-packages':
       return 'require-packages';
     case 'no-packages':
@@ -32,19 +35,36 @@ export function formatRuleType(ruleId: RuleViolation['ruleId']): string {
   }
 }
 
+function basename(file: string): string {
+  const parts = file.replace(/\\/g, '/').split('/');
+  return parts[parts.length - 1];
+}
+
 export function describeViolation(v: RuleViolation): string {
   const patterns = v.patterns.join(', ');
   const suffix = v.message ? chalk.gray(` — ${v.message}`) : '';
 
   if (v.ruleId === 'no-files') {
-    const files = v.matchedFiles.map((f) => {
-      const parts = f.replace(/\\/g, '/').split('/');
-      return parts[parts.length - 1];
-    });
+    const files = v.matchedFiles.map(basename);
     return `${patterns} detected (${formatTruncatedList(files, 'file')})${suffix}`;
   }
 
   if (v.ruleId === 'require-files') return `${patterns} not found${suffix}`;
+  if (v.ruleId === 'max-file-size') {
+    const files = v.matchedFiles.map(basename);
+    const ceiling = `${patterns} over ${formatBytes(v.maxSizeBytes)}`;
+    // oversizeFiles is largest-first, so its head is the worst offender —
+    // naming it is what tells you how far over the ceiling the rule is. With
+    // a single file, "logo.svg at 1.4 KB" beats repeating the same name as
+    // both the list and the largest entry.
+    const largest = v.oversizeFiles[0];
+    if (!largest)
+      return `${ceiling} (${formatTruncatedList(files, 'file')})${suffix}`;
+    if (files.length === 1)
+      return `${ceiling} (${files[0]} at ${formatBytes(largest.sizeBytes)})${suffix}`;
+    return `${ceiling} (${formatTruncatedList(files, 'file')}, largest ${formatBytes(largest.sizeBytes)})${suffix}`;
+  }
+
   if (v.ruleId === 'require-packages')
     return `${patterns} not installed${suffix}`;
   if (v.ruleId === 'no-packages')

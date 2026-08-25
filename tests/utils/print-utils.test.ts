@@ -1122,6 +1122,68 @@ describe('printRules', () => {
     expect(output).toContain('field scripts.postinstall is forbidden');
   });
 
+  it('renders a max-file-size violation with the ceiling and the worst offender', () => {
+    const violation: RuleViolation = {
+      ruleId: 'max-file-size',
+      severity: 'error',
+      patterns: ['**/*.svg'],
+      matchedFiles: ['assets/hero.svg', 'assets/logo.svg'],
+      maxSizeBytes: 204800,
+      oversizeFiles: [
+        { file: 'assets/hero.svg', sizeBytes: 412000 },
+        { file: 'assets/logo.svg', sizeBytes: 262144 },
+      ],
+    };
+    const aggregated = makeAggregated({ ruleViolations: [violation] });
+    printRules(aggregated);
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('max-file-size');
+    expect(output).toContain('**/*.svg over 200 KB');
+    // Basenames, like no-files — the full paths are in matchedFiles.
+    expect(output).toContain('hero.svg, logo.svg');
+    expect(output).toContain('largest 402.3 KB');
+  });
+
+  it('names the single file inline when only one file is over', () => {
+    const violation: RuleViolation = {
+      ruleId: 'max-file-size',
+      severity: 'warn',
+      patterns: ['assets/**/*.svg'],
+      matchedFiles: ['assets/logo.svg'],
+      maxSizeBytes: 1024,
+      oversizeFiles: [{ file: 'assets/logo.svg', sizeBytes: 1410 }],
+    };
+    const aggregated = makeAggregated({ ruleViolations: [violation] });
+    printRules(aggregated);
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join(String.fromCharCode(10));
+    expect(output).toContain('assets/**/*.svg over 1 KB (logo.svg at 1.4 KB)');
+  });
+
+  it('truncates a long max-file-size file list', () => {
+    const violation: RuleViolation = {
+      ruleId: 'max-file-size',
+      severity: 'warn',
+      patterns: ['**/*.png'],
+      matchedFiles: ['a.png', 'b.png', 'c.png'],
+      maxSizeBytes: 1024,
+      oversizeFiles: [
+        { file: 'a.png', sizeBytes: 4096 },
+        { file: 'b.png', sizeBytes: 2048 },
+        { file: 'c.png', sizeBytes: 1536 },
+      ],
+    };
+    const aggregated = makeAggregated({ ruleViolations: [violation] });
+    printRules(aggregated);
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('a.png, b.png and 1 other file');
+  });
+
   it('renders an require-engine-version violation showing installedRange when present', () => {
     const violation: RuleViolation = {
       ruleId: 'require-engine-version',
