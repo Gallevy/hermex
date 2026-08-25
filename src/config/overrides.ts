@@ -8,6 +8,7 @@ import type {
   MaxFileSizeRule,
   EngineVersionRule,
   CodeownersRule,
+  RepoNameMatchRule,
 } from './schema';
 
 /**
@@ -25,6 +26,7 @@ export type ResolvedPackageFieldRule = Resolved<PackageFieldRule>;
 export type ResolvedMaxFileSizeRule = Resolved<MaxFileSizeRule>;
 export type ResolvedEngineVersionRule = Resolved<EngineVersionRule>;
 export type ResolvedCodeownersRule = Resolved<CodeownersRule>;
+export type ResolvedRepoNameMatchRule = Resolved<RepoNameMatchRule>;
 
 /** The shape `RulesConfig` resolves to after `applyOverrides` — see `ResolvedRuleConfig`. */
 export interface ResolvedRulesConfig {
@@ -38,6 +40,7 @@ export interface ResolvedRulesConfig {
   'no-package-fields': ResolvedPackageFieldRule[];
   'require-engine-version': ResolvedEngineVersionRule[];
   'require-codeowners': ResolvedCodeownersRule | undefined;
+  'require-repo-name-match': ResolvedRepoNameMatchRule | undefined;
 }
 
 /** What `applyOverrides` returns: `HermexConfig` with `rules` resolved. */
@@ -89,8 +92,12 @@ function upsertEngineVersionRules<
   return result;
 }
 
-/** `require-codeowners` only ever holds one rule, so 'off' simply clears it. */
-function resolveCodeowners<T extends { severity: string }>(
+/**
+ * Singleton rules (`require-codeowners`, `require-repo-name-match`) hold one
+ * rule rather than a list, so there is no identity to upsert on: 'off' simply
+ * clears it, and a matching override replaces it outright.
+ */
+function resolveSingletonRule<T extends { severity: string }>(
   rule: T | undefined,
 ): Resolved<T> | undefined {
   if (rule === undefined) return undefined;
@@ -136,7 +143,10 @@ function resolveRules(rules: RulesConfig): ResolvedRulesConfig {
       [],
       toArray(rules['require-engine-version']),
     ),
-    'require-codeowners': resolveCodeowners(rules['require-codeowners']),
+    'require-codeowners': resolveSingletonRule(rules['require-codeowners']),
+    'require-repo-name-match': resolveSingletonRule(
+      rules['require-repo-name-match'],
+    ),
   };
 }
 
@@ -224,8 +234,13 @@ export function applyOverrides(
           );
         }
         if (o['require-codeowners'] !== undefined) {
-          rules['require-codeowners'] = resolveCodeowners(
+          rules['require-codeowners'] = resolveSingletonRule(
             o['require-codeowners'],
+          );
+        }
+        if (o['require-repo-name-match'] !== undefined) {
+          rules['require-repo-name-match'] = resolveSingletonRule(
+            o['require-repo-name-match'],
           );
         }
       }

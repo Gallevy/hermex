@@ -12,6 +12,7 @@ export type {
   MaxFileSizeRule,
   EngineVersionRule,
   CodeownersRule,
+  RepoNameMatchRule,
   PackagesConfig,
   VersusConfig,
   RulesConfig,

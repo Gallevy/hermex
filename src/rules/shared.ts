@@ -70,7 +70,18 @@ export interface RequireEngineVersionViolation extends BaseViolation<'require-en
 }
 
 /**
- * hermex's own violations — the nine rules it implements itself. Each has a
+ * `expectedName` is the slug taken from the git remote, `actualName` the
+ * manifest's "name" verbatim (scope included). Deliberately not reusing
+ * `packageName` — that field already means something else on
+ * `NoPackagesViolation`.
+ */
+export interface RequireRepoNameMatchViolation extends BaseViolation<'require-repo-name-match'> {
+  expectedName?: string;
+  actualName?: string;
+}
+
+/**
+ * hermex's own violations — the rules it implements itself. Each has a
  * literal `ruleId` and may carry rule-specific fields.
  */
 export type CoreRuleViolation =
@@ -83,7 +94,8 @@ export type CoreRuleViolation =
   | RequirePackageFieldsViolation
   | NoPackageFieldsViolation
   | RequireEngineVersionViolation
-  | RequireCodeownersViolation;
+  | RequireCodeownersViolation
+  | RequireRepoNameMatchViolation;
 
 /**
  * Everything the rules table and the compliance verdict see, hermex's own

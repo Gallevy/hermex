@@ -132,7 +132,7 @@ export const cases: FixtureCase[] = [
   {
     name: 'comply-all-rule-types',
     proves:
-      'Every one of the ten rule types in one table, at three severities — the only case that renders max-file-size, require-engine-version, codeowners and both package-field shapes.',
+      'Every one of the eleven rule types in one table, at three severities — the only case that renders max-file-size, require-engine-version, codeowners, require-repo-name-match and both package-field shapes.',
     cwd: 'repos/all-rule-types',
     args: ['comply'],
     expectExit: 1,
