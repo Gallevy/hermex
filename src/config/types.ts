@@ -6,6 +6,7 @@ export type {
   ParserName,
   RuleConfig,
   PackageFieldRule,
+  MaxFileSizeRule,
   EngineVersionRule,
   CodeownersRule,
   PackagesConfig,
@@ -22,6 +23,7 @@ export type {
 export type {
   ResolvedRuleConfig,
   ResolvedPackageFieldRule,
+  ResolvedMaxFileSizeRule,
   ResolvedEngineVersionRule,
   ResolvedCodeownersRule,
   ResolvedRulesConfig,
