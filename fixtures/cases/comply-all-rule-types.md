@@ -3,7 +3,7 @@
 
 # `comply-all-rule-types`
 
-Every one of the nine rule types in one table, at three severities — the only case that renders require-engine-version, codeowners and both package-field shapes.
+Every one of the nine file- and manifest-based rule types in one table, at three severities — the only case that renders require-engine-version, codeowners and both package-field shapes. (require-repo-name-match needs a .git/config that cannot be committed, so tests cover it instead.)
 
 ## What runs
 

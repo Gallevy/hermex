@@ -8,6 +8,7 @@ export type {
   PackageFieldRule,
   EngineVersionRule,
   CodeownersRule,
+  RepoNameMatchRule,
   PackagesConfig,
   VersusConfig,
   RulesConfig,
@@ -24,6 +25,7 @@ export type {
   ResolvedPackageFieldRule,
   ResolvedEngineVersionRule,
   ResolvedCodeownersRule,
+  ResolvedRepoNameMatchRule,
   ResolvedRulesConfig,
   ResolvedHermexConfig,
 } from './overrides';

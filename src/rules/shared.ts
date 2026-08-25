@@ -46,6 +46,17 @@ export interface RequireEngineVersionViolation extends BaseViolation<'require-en
   requiredRange?: string;
 }
 
+/**
+ * `expectedName` is the slug taken from the git remote, `actualName` the
+ * manifest's "name" verbatim (scope included). Deliberately not reusing
+ * `packageName` — that field already means something else on
+ * `NoPackagesViolation`.
+ */
+export interface RequireRepoNameMatchViolation extends BaseViolation<'require-repo-name-match'> {
+  expectedName?: string;
+  actualName?: string;
+}
+
 export type RuleViolation =
   | NoFilesViolation
   | RequireFilesViolation
@@ -55,7 +66,8 @@ export type RuleViolation =
   | RequirePackageFieldsViolation
   | NoPackageFieldsViolation
   | RequireEngineVersionViolation
-  | RequireCodeownersViolation;
+  | RequireCodeownersViolation
+  | RequireRepoNameMatchViolation;
 
 export function toArray<T>(val: T | T[] | undefined): T[] {
   if (!val) return [];

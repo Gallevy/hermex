@@ -1240,6 +1240,36 @@ describe('printRules', () => {
 });
 
 describe('describeViolation', () => {
+  it('renders a require-repo-name-match violation naming both the manifest and the repository', () => {
+    const violation: RuleViolation = {
+      ruleId: 'require-repo-name-match',
+      severity: 'error',
+      patterns: [],
+      matchedFiles: [],
+      expectedName: 'checkout-web',
+      actualName: 'legacy-cart',
+    };
+    // Stripped of colour so the assertion reads as the user sees it.
+    expect(stripAnsi(describeViolation(violation))).toBe(
+      'package.json name is legacy-cart, repository is checkout-web',
+    );
+  });
+
+  it('appends a custom message to a require-repo-name-match violation', () => {
+    const violation: RuleViolation = {
+      ruleId: 'require-repo-name-match',
+      severity: 'warn',
+      patterns: [],
+      matchedFiles: [],
+      expectedName: 'checkout-web',
+      actualName: 'legacy-cart',
+      message: 'Renamed in 2024 — update the manifest',
+    };
+    expect(stripAnsi(describeViolation(violation))).toContain(
+      '— Renamed in 2024 — update the manifest',
+    );
+  });
+
   it('falls back to a generic "not present" description for an unrecognized violation type', () => {
     // Defensive fallback for a violation type outside the known union —
     // e.g. a newer config schema evaluated against an older build.

@@ -50,6 +50,15 @@ const CodeownersRuleSchema = z
   })
   .strict();
 
+const RepoNameMatchRuleSchema = z
+  .object({
+    severity: RuleSeveritySchema,
+    message: z.string().optional(),
+    /** Which git remote names the repository. */
+    remote: z.string().default('origin'),
+  })
+  .strict();
+
 const ThresholdSchema = z.union([z.number(), z.literal(false)]);
 
 /**
@@ -80,6 +89,7 @@ const OverrideRulesSchema = z
       .union([EngineVersionRuleSchema, z.array(EngineVersionRuleSchema)])
       .optional(),
     'require-codeowners': CodeownersRuleSchema.optional(),
+    'require-repo-name-match': RepoNameMatchRuleSchema.optional(),
   })
   .strict()
   .default(() => ({}));
@@ -144,6 +154,7 @@ export const HermexConfigSchema = z
           .union([EngineVersionRuleSchema, z.array(EngineVersionRuleSchema)])
           .optional(),
         'require-codeowners': CodeownersRuleSchema.optional(),
+        'require-repo-name-match': RepoNameMatchRuleSchema.optional(),
       })
       .strict()
       .default(() => ({
@@ -239,6 +250,7 @@ export type RuleConfig = z.infer<typeof RuleConfigSchema>;
 export type PackageFieldRule = z.infer<typeof PackageFieldRuleSchema>;
 export type EngineVersionRule = z.infer<typeof EngineVersionRuleSchema>;
 export type CodeownersRule = z.infer<typeof CodeownersRuleSchema>;
+export type RepoNameMatchRule = z.infer<typeof RepoNameMatchRuleSchema>;
 export type PackagesConfig = HermexConfig['packages'];
 export type VersusConfig = HermexConfig['versus'][number];
 export type RulesConfig = HermexConfig['rules'];

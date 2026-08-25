@@ -7,6 +7,11 @@ import type { HermexConfigInput } from '../../../src/config/types.ts';
  * every difference in their output comes from the repo, never from the
  * policy. If a rule is added to the primary config, add it here too and
  * satisfy it, or the pair stops proving anything.
+ *
+ * One rule is exempt: `require-repo-name-match` cannot be satisfied here,
+ * since this fixture would have to be named after hermex's own remote. It
+ * needs a `.git/config` that cannot be committed anyway — unit and e2e tests
+ * cover it instead.
  */
 export default {
   rules: {

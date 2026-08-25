@@ -475,6 +475,80 @@ describe('applyOverrides', () => {
       requiredOwners: ['@acme/platform-team'],
     });
   });
+
+  it('replaces (not merges) the single-value repo-name-match rule', () => {
+    const config = createConfig({
+      rules: {
+        'require-repo-name-match': { severity: 'warn' },
+      },
+      overrides: [
+        {
+          match: ['@acme/checkout'],
+          rules: {
+            'require-repo-name-match': {
+              severity: 'error',
+              remote: 'upstream',
+            },
+          },
+        },
+      ],
+    });
+
+    const result = applyOverrides(config, repo('@acme/checkout'));
+
+    expect(result.rules['require-repo-name-match']).toEqual({
+      severity: 'error',
+      remote: 'upstream',
+    });
+  });
+
+  it('defaults the repo-name-match remote to origin', () => {
+    const config = createConfig({
+      rules: { 'require-repo-name-match': { severity: 'error' } },
+    });
+
+    const result = applyOverrides(config, repo('@acme/checkout'));
+
+    expect(result.rules['require-repo-name-match']).toEqual({
+      severity: 'error',
+      remote: 'origin',
+    });
+  });
+
+  // The documented monorepo escape hatch: a monorepo root cannot satisfy a
+  // rule comparing its package name to the repository slug, so it turns the
+  // rule off by name. No monorepo detection exists (or is needed) for this.
+  it('lets a monorepo root switch repo-name-match off by name', () => {
+    const config = createConfig({
+      rules: { 'require-repo-name-match': { severity: 'error' } },
+      overrides: [
+        {
+          match: ['@acme/*-monorepo'],
+          rules: { 'require-repo-name-match': { severity: 'off' } },
+        },
+      ],
+    });
+
+    const monorepo = applyOverrides(config, repo('@acme/platform-monorepo'));
+    expect(monorepo.rules['require-repo-name-match']).toBeUndefined();
+
+    // A repo that does not match keeps the org-wide rule.
+    const app = applyOverrides(config, repo('@acme/checkout'));
+    expect(app.rules['require-repo-name-match']).toEqual({
+      severity: 'error',
+      remote: 'origin',
+    });
+  });
+
+  it('drops repo-name-match authored directly as off, with no overrides', () => {
+    const config = createConfig({
+      rules: { 'require-repo-name-match': { severity: 'off' } },
+    });
+
+    const result = applyOverrides(config, repo('@acme/checkout'));
+
+    expect(result.rules['require-repo-name-match']).toBeUndefined();
+  });
 });
 
 describe('applyOverrides — severity "off" and upsert-by-identity (ESLint-like)', () => {

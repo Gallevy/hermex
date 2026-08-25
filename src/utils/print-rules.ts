@@ -29,6 +29,8 @@ export function formatRuleType(ruleId: RuleViolation['ruleId']): string {
       return 'require-engine-version';
     case 'require-codeowners':
       return 'require-codeowners';
+    case 'require-repo-name-match':
+      return 'require-repo-name-match';
   }
 }
 
@@ -69,6 +71,10 @@ export function describeViolation(v: RuleViolation): string {
     if (v.matchedFiles.length === 0)
       return `CODEOWNERS not found (looked in ${patterns})${suffix}`;
     return `${v.matchedFiles.length} scanned file(s) have no owner: ${formatTruncatedList(v.matchedFiles, 'file')}${suffix}`;
+  }
+
+  if (v.ruleId === 'require-repo-name-match') {
+    return `package.json name is ${chalk.yellow(v.actualName)}, repository is ${chalk.cyan(v.expectedName)}${suffix}`;
   }
 
   return `${patterns} not present${suffix}`;

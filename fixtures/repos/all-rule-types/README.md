@@ -1,7 +1,9 @@
 # `repos/all-rule-types/`
 
-A repo engineered so **every one of the nine rule types fires at once**, at
-three different severities.
+A repo engineered so **every one of the nine file- and manifest-based rule
+types fires at once**, at three different severities.
+
+It does not cover `require-repo-name-match`: that rule compares package.json "name" against the git remote, and git refuses to track any path containing a `.git` component, so no fixture repo can carry the `.git/config` it needs. It is covered by unit and e2e tests, which build a repo in a temp directory instead.
 
 ## What it proves
 
@@ -62,7 +64,7 @@ two rows into one distinct wording is the fix landing, not a regression.
 ```
 .babelrc                 no-files hit
 .github/CODEOWNERS       two of three src files covered
-hermex.config.ts         all nine rules, three severities
+hermex.config.ts         all nine file/manifest rules, three severities
 jest.config.js           no-files hit
 package.json             engines >=16, no license, publishConfig.registry, moment
 src/legacy.tsx           owned by the wrong team

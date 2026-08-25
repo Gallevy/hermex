@@ -2,7 +2,7 @@
   "name": "hermex-fixture-all-rule-types",
   "version": "1.0.0",
   "private": true,
-  "description": "A repo engineered so every one of the nine rule types fires at once, which no other fixture does: `license` is missing (require-package-fields), `publishConfig.registry` is present (no-package-fields), engines.node is below the required range (require-engine-version), `build` and `test` scripts are absent (require-scripts), moment is declared (no-packages), typescript is not (require-packages), jest.config.js and .babelrc exist (no-files), .nvmrc does not (require-files), and CODEOWNERS leaves one file unowned and another owned by the wrong team (codeowners, twice).",
+  "description": "A repo engineered so every one of the nine file- and manifest-based rule types fires at once, which no other fixture does (require-repo-name-match is excluded: it needs a .git/config, which cannot be committed inside this repo, so unit and e2e tests cover it instead): `license` is missing (require-package-fields), `publishConfig.registry` is present (no-package-fields), engines.node is below the required range (require-engine-version), `build` and `test` scripts are absent (require-scripts), moment is declared (no-packages), typescript is not (require-packages), jest.config.js and .babelrc exist (no-files), .nvmrc does not (require-files), and CODEOWNERS leaves one file unowned and another owned by the wrong team (codeowners, twice).",
   "type": "module",
   "engines": {
     "node": ">=16"

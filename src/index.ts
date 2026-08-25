@@ -11,6 +11,7 @@ export type {
   PackageFieldRule,
   EngineVersionRule,
   CodeownersRule,
+  RepoNameMatchRule,
   PackagesConfig,
   VersusConfig,
   RulesConfig,

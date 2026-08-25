@@ -200,10 +200,10 @@ same set of strings), not a glob comparison — write the override's
 
 Every rule type supports this (`no-files`, `require-files`,
 `no-packages`, `require-packages`, `require-scripts`,
-`require-package-fields`, `no-package-fields`, `require-engine-version`). The
-exception is `require-codeowners`, which only ever holds a single rule — any
-matching override's `require-codeowners` replaces the base one outright, and
-severity `'off'` clears it.
+`require-package-fields`, `no-package-fields`, `require-engine-version`).
+`require-codeowners` and `require-repo-name-match` are the exceptions: each
+only ever holds a single rule, so a matching override replaces the base one
+outright, and severity `'off'` clears it.
 
 When more than one override entry matches the same repo, all of them apply,
 in array order.
@@ -369,6 +369,90 @@ written in the file, e.g. `@org/team` or `@individual`) — it does not
 resolve GitHub team membership. Files with no CODEOWNERS coverage at all
 are still reported as "unowned," separately from files owned by someone
 who isn't in `requiredOwners`.
+
+### Repository Name Match
+
+Requires `package.json` "name" to match the repository it lives in, so a
+manifest cannot drift away from the repo it was forked or renamed out of:
+
+```ts
+export default defineConfig({
+  rules: {
+    'require-repo-name-match': {
+      severity: 'error',
+      message: 'Rename the package to match its repository',
+    },
+  },
+});
+```
+
+The repository name comes from the git remote — hermex reads `.git/config`
+directly and takes the last path segment of the remote URL, dropping a
+trailing `.git`. All three URL forms work:
+
+| Remote URL | Repository |
+| --- | --- |
+| `git@github.com:acme/checkout-web.git` | `checkout-web` |
+| `https://github.com/acme/checkout-web.git` | `checkout-web` |
+| `ssh://git@gitlab.com/team/sub/app` | `app` |
+
+Comparison ignores the npm scope and is case-insensitive, so `@acme/checkout`
+in a `checkout` repository passes, as does `checkout-web` in a `Checkout-Web`
+one. The violation reports the manifest name verbatim, scope included.
+
+This is worth enforcing beyond tidiness: hermex's own
+[overrides](#overrides--repo-scoped-rules) match on `package.json` "name", so a
+repo whose name no longer resembles its remote quietly stops matching the
+org-wide rules written for it.
+
+To compare against a remote other than `origin`:
+
+```ts
+export default defineConfig({
+  rules: {
+    'require-repo-name-match': { severity: 'error', remote: 'upstream' },
+  },
+});
+```
+
+**The rule skips silently when it cannot identify the repository** — no
+violation, and nothing in the output. That happens when the scanned directory
+has no `.git` of its own, when the named remote is not configured, or when the
+URL has no recognisable slug. Those are properties of the checkout rather than
+policy breaches, so a tarball install or a `.git`-less CI export will not fail
+it. `git` does **not** need to be on `PATH`; only the config file is read.
+
+Note that hermex looks for `.git` in the scanned directory **only** — it does
+not walk up to a parent. Running it inside `packages/app` of a monorepo
+therefore skips the rule rather than inheriting the monorepo's remote.
+
+#### Monorepos
+
+A monorepo root cannot satisfy this rule: its package name (`@acme/platform`,
+say) is rarely the repository slug, and its workspace packages are named for
+themselves. Switch it off for those repos by name, using the same `overrides`
+mechanism every other rule uses:
+
+```ts
+export default defineConfig({
+  rules: {
+    'require-repo-name-match': { severity: 'error' },
+  },
+  overrides: [
+    {
+      match: ['@acme/*-monorepo', '@acme/platform'],
+      rules: {
+        'require-repo-name-match': { severity: 'off' },
+      },
+    },
+  ],
+});
+```
+
+Every other repo in the org keeps the rule. There is no monorepo
+auto-detection, deliberately — `overrides` already keys on `package.json`
+"name", which is exactly the axis needed here, and an explicit list is easier
+to audit than a heuristic.
 
 ### Script and Field Requirements
 
@@ -539,10 +623,10 @@ Severity is the only thing that decides which bucket a rule violation lands in; 
 | `packages` | Every package the repo owns — see below. Carries version, `declaredIn`, usage counts, and `releaseAge` when enrichment ran. |
 | `components` | Every component found, with its source package, usage count and the files using it. The one place component names live. |
 | `versus` | Head-to-head comparisons configured under `versus`. |
-| `ruleViolations` | **Every rule hit, in one list** — `no-files`, `require-files`, `require-packages`, `no-packages`, `require-scripts`, `require-package-fields`, `no-package-fields`, `require-engine-version`, `require-codeowners`. Filter on `ruleId`. |
+| `ruleViolations` | **Every rule hit, in one list** — `no-files`, `require-files`, `require-packages`, `no-packages`, `require-scripts`, `require-package-fields`, `no-package-fields`, `require-engine-version`, `require-codeowners`, `require-repo-name-match`. Filter on `ruleId`. |
 | `compliance` | The canonical verdict — see above. |
 
-`ruleViolations` is the single source of truth for rule hits. Entries share a common shape (`ruleId`, `severity`, `patterns`, `message?`, `matchedFiles`) and add per-type fields where they apply: `packageName` for `no-packages`, `fieldPath`/`actualValue` for the package-field rules, `installedRange`/`requiredRange` for `require-engine-version`.
+`ruleViolations` is the single source of truth for rule hits. Entries share a common shape (`ruleId`, `severity`, `patterns`, `message?`, `matchedFiles`) and add per-type fields where they apply: `packageName` for `no-packages`, `fieldPath`/`actualValue` for the package-field rules, `installedRange`/`requiredRange` for `require-engine-version`, and `expectedName`/`actualName` for `require-repo-name-match`.
 
 #### Trimming the JSON with `output.*`
 
@@ -671,6 +755,7 @@ export default defineConfig({
     ],
     'require-scripts': [{ severity: 'error', patterns: ['build', 'test'] }],
     'require-engine-version': { severity: 'error', range: '>=20' },
+    'require-repo-name-match': { severity: 'error' },
   },
 
   releaseAge: {

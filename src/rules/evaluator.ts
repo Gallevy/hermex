@@ -4,6 +4,7 @@ import { evaluateScriptRules } from './script-rules';
 import { evaluatePackageFieldRules } from './package-field-rules';
 import { evaluateEngineVersion } from './engine-version';
 import { evaluateCodeowners } from './codeowners';
+import { evaluateRepoNameMatch } from './repo-name-match';
 
 export type { RuleViolation } from './shared';
 
@@ -19,5 +20,6 @@ export function evaluateRules(
     ...evaluatePackageFieldRules(repoPath, rulesConfig),
     ...evaluateEngineVersion(repoPath, rulesConfig),
     ...evaluateCodeowners(repoPath, rulesConfig, scannedFiles),
+    ...evaluateRepoNameMatch(repoPath, rulesConfig),
   ];
 }
