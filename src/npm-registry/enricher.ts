@@ -355,11 +355,10 @@ export async function enrichWithReleaseAge(
   const registryUrl = config.registry;
   const authToken =
     config.authToken ?? process.env['HERMEX_REGISTRY_AUTH_TOKEN'];
-  // `packages` is every package the repo owns (#78); only a subset is in
-  // scope for a registry lookup — see `isReleaseAgeTarget`. Filtering here
-  // rather than upstream keeps `packages[]` honest about what the repo
-  // depends on while leaving registry traffic and the compliance verdict
-  // exactly where they were.
+  // `packages` is every package the repo owns (#78). With `enforceOn` set
+  // all of them are looked up — non-matches are advisory, so the verdict
+  // can't move — while an empty `enforceOn` (severity 'error' for
+  // everything) stays on the used subset. See `isReleaseAgeTarget`.
   const targets = packages.filter(
     (p) => p.version && isReleaseAgeTarget(p, config.enforceOn),
   );

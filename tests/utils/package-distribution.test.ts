@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   calculatePackageDistribution,
   findComponentSource,
+  isReleaseAgeTarget,
 } from '../../src/utils/package-distribution';
 import type { ComponentUsage } from '../../src/utils/package-distribution';
 import { buildPackageInventory } from '../../src/utils/package-inventory';
@@ -561,5 +562,26 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
     expect(antd?.percentage).toBeCloseTo(75);
     expect(moment?.percentage).toBeCloseTo(25);
     expect(pulseStyles?.percentage).toBe(0);
+  });
+});
+
+describe('isReleaseAgeTarget', () => {
+  it('targets a used package whatever enforceOn says', () => {
+    expect(isReleaseAgeTarget({ usageCount: 3 }, [])).toBe(true);
+    expect(isReleaseAgeTarget({ usageCount: 3 }, ['@acme/*'])).toBe(true);
+  });
+
+  // An empty enforceOn marks every fetched package severity 'error', so
+  // widening the target set there would turn newly-visible overdue
+  // dependencies into mandatory failures for repos that pass today.
+  it('skips an unused package when enforceOn is empty', () => {
+    expect(isReleaseAgeTarget({ usageCount: 0 }, [])).toBe(false);
+  });
+
+  // #171: with enforceOn set, everything it does not name is advisory, so
+  // a package used only as functions/hooks (usageCount 0) gets its
+  // '[not enforced]' row instead of a blank Target cell.
+  it('targets an unused package once enforceOn is non-empty', () => {
+    expect(isReleaseAgeTarget({ usageCount: 0 }, ['@acme/*'])).toBe(true);
   });
 });

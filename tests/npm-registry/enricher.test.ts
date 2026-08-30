@@ -93,6 +93,42 @@ describe('enrichWithReleaseAge â€” skipped packages', () => {
     expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 
+  // #171: usage counts JSX component rendering, so a package imported only
+  // as functions/hooks reads 0 and used to get a blank Target cell next to
+  // its JSX siblings' advisory rows. With enforceOn set, everything it does
+  // not name is severity 'warn', so enriching those costs nothing but a
+  // lookup and the verdict can't move.
+  it('looks up an owned function-only package when enforceOn is non-empty', async () => {
+    const jsx = createMockPackage('@acme/ui', {
+      version: '18.3.1',
+      usageCount: 4,
+    });
+    const functionOnly = createMockPackage('@acme/toolkit', {
+      version: '2.11.2',
+      usageCount: 0,
+    });
+    mockFetch.mockResolvedValue({
+      name: 'pkg',
+      time: { created: daysAgo(500), '2.11.2': daysAgo(400) },
+      versions: {},
+    });
+
+    const { enriched } = await enrichWithReleaseAge([jsx, functionOnly], {
+      ...BASE_CONFIG,
+      enforceOn: ['@other/*'],
+    });
+
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(mockFetch.mock.calls.map((c) => c[0])).toEqual([
+      '@acme/ui',
+      '@acme/toolkit',
+    ]);
+    expect(
+      enriched.find((p) => p.packageName === '@acme/toolkit')?.releaseAge
+        ?.severity,
+    ).toBe('warn');
+  });
+
   it('increments skipped counter when registry returns null', async () => {
     const pkg = createMockPackage('react', { version: '18.0.0' });
     mockFetch.mockResolvedValueOnce(null);
