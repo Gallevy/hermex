@@ -8,7 +8,7 @@ importers:
 
   .:
     dependencies:
-      legacy-widget:
+      '@hermex/legacy-widget':
         specifier: ^1.0.0
         version: 1.0.0
       react:
@@ -17,7 +17,7 @@ importers:
 
 packages:
 
-  legacy-widget@1.0.0:
+  '@hermex/legacy-widget@1.0.0':
     resolution: {integrity: sha512-mock}
     peerDependencies:
       react: ^17.0.0
@@ -26,7 +26,7 @@ packages:
     resolution: {integrity: sha512-mock}
     engines: {node: '>=0.10.0'}
 
-  # The nested copy legacy-widget resolves for itself. Present only under
+  # The nested copy @hermex/legacy-widget resolves for itself. Present only under
   # `packages`, never in `importers` — so it counts toward allVersions but
   # is not the root resolution.
   react@17.0.2:

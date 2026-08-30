@@ -170,7 +170,7 @@ export const cases: FixtureCase[] = [
 
   // ── release-age scope ────────────────────────────────────────────────────
   // The same repo — react 18.3.1 at the root, react 17.0.2 nested under
-  // legacy-widget — under both scopes. The diff between these two baselines
+  // @hermex/legacy-widget — under both scopes. The diff between these two baselines
   // is exactly what `releaseAge.scope` does (#57).
   {
     name: 'release-age-root-scope',

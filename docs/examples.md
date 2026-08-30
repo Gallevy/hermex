@@ -255,9 +255,9 @@ no need to spell it out as `'no-package-fields': ['dependencies.x', 'devDependen
 Purely transitive dependencies are never flagged: they arrive through another package, so removing one
 isn't something your repo can do. Packages excluded by `packages.ignore` are never flagged either.
 
-Every banned package appears in the Rules and Compliance sections. Those with measured usage also get a
-`[BANNED]` or `[RESTRICTED]` badge in the packages table, which since #78 lists every package the repo
-owns — so a declared-but-unimported banned package now has a row there too.
+Every banned package appears in the Rules and Compliance sections, and also gets a `[BANNED]` or
+`[RESTRICTED]` badge in the packages table. Since #78 that table lists every package the repo owns, so a
+declared-but-unimported banned package has a row — and a badge on it — just like an imported one.
 
 In the JSON output, each hit is an ordinary entry in `ruleViolations` with `ruleId: "no-packages"` —
 `patterns` carries the rule's globs, `packageName` the package that matched, and `matchedFiles` is empty

@@ -41,7 +41,7 @@ export interface FixtureTimeline {
  * - `react-dom` — not overdue yet. A fresh patch exists inside its
  *   threshold, which is the "coming due in N days" advisory, not a
  *   violation.
- * - `legacy-widget` — overdue, and owned by `repos/version-conflict/`
+ * - `@hermex/legacy-widget` — overdue, and owned by `repos/version-conflict/`
  *   without ever being imported. Its only reason to exist is #171: a
  *   package with no measured usage is still a release-age target once
  *   `enforceOn` is set, so it must have a timeline or the case reports a
@@ -81,7 +81,7 @@ export const RELEASE_TIMELINES: Record<string, FixtureTimeline> = {
   // never imports it. Shaped like `react` — a breaching major plus a newer
   // one still inside its window — so the row reads as a normal advisory
   // recommendation rather than "no compliant release available" (#26).
-  'legacy-widget': {
+  '@hermex/legacy-widget': {
     latest: '2.1.0',
     releases: {
       '1.0.0': { daysAgo: 900 },
