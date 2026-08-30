@@ -86,5 +86,5 @@
   "engines": {
     "node": ">=24.11.1"
   },
-  "packageManager": "pnpm@12.0.0-rc.6+sha512.3927fce49c3054b7e5541dc720bce7b4ebab07f4562fa6ffce7b39720a25e6a767d76384984e2265c800799613f7f79c5c422e9f5cedc9b66cfffd08ca3c77a9"
+  "packageManager": "pnpm@12.1.0+sha512.d9b8276d97f6ec86e49815877f91ee9f63cee61f2063b304e43b6dab8fa07ce8a9afd46d2facd39f921e6a9d06b3c75a81349c7b888c2d22886bae0229901037"
 }
