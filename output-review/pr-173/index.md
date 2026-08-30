@@ -12,8 +12,8 @@ title: "Output Review"
 
 | Case | Status | Proves |
 | --- | --- | --- |
-| [`release-age-root-scope`](./release-age-root-scope.html) | **changed** <span class="or-add">+1</span> <span class="or-del">−1</span> | scope: root enforces only the direct copy, and still surfaces the overdue nested copy as an advisory breach rather than hiding it. |
-| [`release-age-tree-scope`](./release-age-tree-scope.html) | **changed** <span class="or-add">+1</span> <span class="or-del">−1</span> | scope: tree enforces every resolved copy, so the nested version becomes the mandatory failure and the reported installed version follows it. |
+| [`release-age-root-scope`](./release-age-root-scope.html) | **changed** <span class="or-add">+7</span> <span class="or-del">−7</span> | scope: root enforces only the direct copy, and still surfaces the overdue nested copy as an advisory breach rather than hiding it. |
+| [`release-age-tree-scope`](./release-age-tree-scope.html) | **changed** <span class="or-add">+7</span> <span class="or-del">−7</span> | scope: tree enforces every resolved copy, so the nested version becomes the mandatory failure and the reported installed version follows it. |
 
 ## All cases
 
@@ -36,8 +36,8 @@ title: "Output Review"
 | [`comply-summary-title`](./comply-summary-title.html) | unchanged | --summary-title replaces the default heading, so a consumer embedding the markdown can name it after the policy rather than the tool. |
 | [`comply-exit-2`](./comply-exit-2.html) | unchanged | A pipeline failure (nothing matched `includes`) exits 2, not 1 — a consumer must be able to tell "could not run" from "not compliant". |
 | [`scan-no-files`](./scan-no-files.html) | unchanged | The same pipeline failure under `scan` reports the problem and exits 0 — the deliberate asymmetry with comply-exit-2, kept visible so it cannot drift unnoticed. |
-| [`release-age-root-scope`](./release-age-root-scope.html) | **changed** <span class="or-add">+1</span> <span class="or-del">−1</span> | scope: root enforces only the direct copy, and still surfaces the overdue nested copy as an advisory breach rather than hiding it. |
-| [`release-age-tree-scope`](./release-age-tree-scope.html) | **changed** <span class="or-add">+1</span> <span class="or-del">−1</span> | scope: tree enforces every resolved copy, so the nested version becomes the mandatory failure and the reported installed version follows it. |
+| [`release-age-root-scope`](./release-age-root-scope.html) | **changed** <span class="or-add">+7</span> <span class="or-del">−7</span> | scope: root enforces only the direct copy, and still surfaces the overdue nested copy as an advisory breach rather than hiding it. |
+| [`release-age-tree-scope`](./release-age-tree-scope.html) | **changed** <span class="or-add">+7</span> <span class="or-del">−7</span> | scope: tree enforces every resolved copy, so the nested version becomes the mandatory failure and the reported installed version follows it. |
 | [`comply-overrides`](./comply-overrides.html) | unchanged | Repo-scoped overrides re-scope severities: one rule downgraded to warn, one switched off and gone from the table. |
 | [`lockfile-npm`](./lockfile-npm.html) | unchanged | package-lock.json produces the same inventory as its siblings. |
 | [`lockfile-yarn`](./lockfile-yarn.html) | unchanged | yarn.lock produces the same inventory as its siblings. |
