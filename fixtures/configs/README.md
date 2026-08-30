@@ -38,6 +38,7 @@ across both severity tiers, since a looked-up package that does not match
 | `react-dom` | yes | coming due | advisory, "N days remaining" |
 | `react` | no | overdue | warning, does not fail `comply` |
 
-Without `enforceOn` only packages with measured usage are looked up at all,
-which in this repo is `react` alone — `moment` and `react-dom` are installed
-but never imported.
+`enforceOn` decides severity only — every installed package is looked up
+either way ([#171](https://github.com/Gallevy/hermex/issues/171)). Emptying
+it enforces nothing rather than everything, which is what
+[`release-age-unscoped.config.ts`](./release-age-unscoped.config.ts) covers.

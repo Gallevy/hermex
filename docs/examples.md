@@ -398,11 +398,21 @@ export default defineConfig({
 });
 ```
 
-If `enforceOn` is omitted, every package's release age counts toward compliance (current behavior).
+`enforceOn` is a plain glob list of the packages that are mandatory, with no special case for the empty one:
+
+| `enforceOn` | Mandatory (`error`) | Advisory (`warn`) |
+| --- | --- | --- |
+| `[]` (the default) | nothing | every installed package |
+| `['**']` | every installed package | nothing |
+| `['@my-org/*']` | `@my-org/…` | everything else |
+
+Note `['**']`, not `['*']`, for "everything": these are micromatch globs, and a single `*` stops at the `/` in a scoped name — `['*']` would enforce `react` while leaving `@my-org/ui` advisory.
+
+Release age never blocks `comply` until you name something here. Everything is still fetched and reported either way; `enforceOn` only decides which rows can fail the build.
 
 `enforceOn` matches are checked against the lockfile directly, not just packages hermex found imported as components — so a CSS-only or side-effect-only dependency (e.g. `import '@my-org/styles/button.css'`) still gets checked and can still fail `hermex comply`, even though it never shows up in component usage.
 
-Setting `enforceOn` also widens *what gets checked at all*: every package in the packages table gets its release age looked up, not only the ones hermex measured rendering as JSX components. A dependency imported purely as functions or hooks (`@my-org/toolkit`) shows the same advisory `[not enforced]` Target as its component-shaped siblings rather than a blank cell. Only `enforceOn` matches are mandatory, so this never changes the `hermex comply` verdict — it just costs one registry request per declared dependency. With `enforceOn` omitted (where every package is mandatory) the lookups stay narrow: components hermex saw used, and nothing else.
+`enforceOn` decides *severity*, never *whether a package is checked*. Every package in the packages table with an installed version gets its release age looked up, so a dependency imported purely as functions or hooks (`@my-org/toolkit`) shows a Target like any other — advisory `[not enforced]` when `enforceOn` doesn't name it, mandatory when it does. Before v3 that lookup was gated on JSX component usage, which had nothing to do with whether an installed version is stale and silently exempted every function-only dependency ([#171](https://github.com/Gallevy/hermex/issues/171)). The cost is one registry request per installed dependency rather than per rendered one.
 
 `enforceOn` only decides *severity* (mandatory vs. advisory) for a package that's already being enforced under the current `scope` — it doesn't override `scope` itself. Under `scope: 'root'` (the default), a package matching `enforceOn` that's only ever pulled in transitively (never a direct dependency in your `package.json`) still can't fail `comply` — there's no root copy to hold accountable. It still shows up as advisory context (see below), it just doesn't block the build.
 

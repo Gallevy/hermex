@@ -19,11 +19,9 @@ export default {
       process.env['HERMEX_FIXTURE_REGISTRY'] ?? 'https://registry.npmjs.org',
     cacheDisabled: true,
     thresholds: { patch: 30, minor: 45, major: 60 },
-    // Without `enforceOn`, only packages with measured usage are looked up
-    // at all, which in this repo is `react` alone — `moment` and
-    // `react-dom` are installed but never imported. Naming them here makes
-    // all three targets *and* splits them across both severity tiers, since
-    // a looked-up package that does not match `enforceOn` is advisory:
+    // Every installed package is looked up regardless (#171). `enforceOn`
+    // decides only severity, and naming these two splits the repo across
+    // both tiers, since a package `enforceOn` does not match is advisory:
     //
     //   moment     enforced, overdue          → mandatory failure
     //   react-dom  enforced, coming due       → advisory "N days remaining"

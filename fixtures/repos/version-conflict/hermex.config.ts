@@ -17,11 +17,10 @@ export default {
       process.env['HERMEX_FIXTURE_REGISTRY'] ?? 'https://registry.npmjs.org',
     cacheDisabled: true,
     thresholds: { patch: 30, minor: 45, major: 60 },
-    // Only `react` is mandatory. `@hermex/legacy-widget` is looked
-    // up too — since
-    // #171 every owned package is a target once `enforceOn` is set — but
-    // lands at severity 'warn', so it cannot affect the verdict and the
-    // diff against `./tree.config.ts` stays purely about `scope`.
+    // Only `react` is mandatory. `@hermex/legacy-widget` is looked up too
+    // — every installed package is, since #171 — but lands at severity
+    // 'warn', so it cannot affect the verdict and the diff against
+    // `./tree.config.ts` stays purely about `scope`.
     enforceOn: ['react'],
     scope: 'root',
   },

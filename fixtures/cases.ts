@@ -121,6 +121,15 @@ export const cases: FixtureCase[] = [
     expectExit: 1,
   },
   {
+    name: 'comply-release-age-unscoped',
+    proves:
+      'An empty enforceOn enforces nothing rather than everything: every installed package is still fetched and reported, every release-age row is advisory, and the exit code comes from rule violations alone. Includes moment — declared, installed, never imported — which was invisible to release age before #171.',
+    cwd: '.',
+    args: ['comply', '--config', 'configs/release-age-unscoped.config.ts'],
+    registry: true,
+    expectExit: 1,
+  },
+  {
     name: 'comply-all-rule-types',
     proves:
       'Every one of the nine rule types in one table, at three severities — the only case that renders require-engine-version, codeowners and both package-field shapes.',

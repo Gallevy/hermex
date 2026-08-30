@@ -113,12 +113,11 @@ export function findComponentSource(
  * nobody. Dropping it here would silently exempt it from compliance, so it
  * is surfaced with zero usage.
  *
- * Note this is not quite the set release-age enrichment operates on — see
- * `isReleaseAgeTarget`. With the default empty `enforceOn` (which marks
- * every fetched package `severity: 'error'`) enrichment stays on the used
- * packages only, so newly-visible overdue dependencies don't become
- * mandatory compliance failures for repos that pass today. Once
- * `enforceOn` is set, the two sets coincide.
+ * This is also exactly the set release-age enrichment operates on: every
+ * package here with an installed version is looked up. It was once narrower
+ * — gated on `usageCount > 0` plus `enforceOn` matches — but usage counts
+ * JSX component rendering, which has nothing to do with whether an
+ * installed dependency is stale (#171).
  */
 export function calculatePackageDistribution(
   inventory: PackageInventoryEntry[],
@@ -166,44 +165,4 @@ export function calculatePackageDistribution(
   // self-contained rather than silently depending on that. Equal usage keeps
   // insertion order, so the zero-usage tail stays in discovery order.
   return distribution.sort((a, b) => b.usageCount - a.usageCount);
-}
-
-/**
- * Whether release-age enrichment should look this package up in the
- * registry. Narrower than `packages[]` itself (#78) only while `enforceOn`
- * is empty, because `enricher.ts` reads that as "everything is severity
- * `error`": enriching every owned package there would promote every
- * newly-visible overdue dependency to a mandatory violation, flipping
- * `comply` to a failure for repos that pass today. That case therefore
- * keeps the pre-#78 target set — packages with measured usage.
- *
- * Once `enforceOn` is non-empty the compliance contract already pins
- * everything it doesn't name to `warn`, so every package `packages[]`
- * lists can be enriched without moving the verdict: `enforceOn` matches
- * stay mandatory, and the rest become the advisory `[not enforced]` rows
- * they should always have been. Restricting those extra rows to
- * `usageCount > 0` was an accident of how usage is measured — usage counts
- * JSX component rendering, so a package imported only as functions or hooks
- * (`@acme/toolkit`) reads 0 while being just as real a dependency as one
- * rendered as a component, and got a blank Target cell beside its JSX
- * siblings' `[not enforced]` (#171).
- *
- * Note the non-empty branch subsumes the `enforceOn` matches that used to
- * need their own clause — a package installed and explicitly enforced yet
- * never imported as a component (a side-effect-only
- * `import '@acme-ui/pulse-styles/button.css'` has no specifiers, so the
- * usage scan never sees it) is still never silently exempted.
- */
-export function isReleaseAgeTarget(
-  pkg: Pick<PackageDistribution, 'usageCount'>,
-  enforceOn: string[],
-): boolean {
-  // Everything in `packages[]` is a package the repo owns (or an explicit
-  // `enforceOn` match), and anything `enforceOn` does not name is advisory
-  // — so with it set, look every one of them up.
-  if (enforceOn.length > 0) return true;
-  // Empty `enforceOn` is the "everything is severity 'error'" case, where
-  // widening the target set would move the verdict. Only there does usage
-  // decide anything.
-  return pkg.usageCount > 0;
 }
