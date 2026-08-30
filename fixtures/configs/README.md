@@ -4,9 +4,12 @@ Config variants over the **primary fixture repo** (`fixtures/`). Every one
 of them spreads `../hermex.config.ts` and changes exactly one thing, so the
 difference between two outputs is never a difference between two policies.
 
-Each file carries a doc comment explaining why it exists; this table is the
-index. A case names one of these with `--config`, which
-`src/config/loader.ts` resolves relative to the case's working directory.
+The files themselves are bare config objects. Why each exists is this
+table's job, and `scripts/output-review.ts` prints every case's config
+**fully resolved** — spreads applied — next to its output, so a reviewer
+never has to reconstruct a policy from `...base`. A case names one of these
+with `--config`, which `src/config/loader.ts` resolves relative to the
+case's working directory.
 
 | Config | Changes | Expected output | Cases |
 | --- | --- | --- | --- |
@@ -17,6 +20,7 @@ index. A case names one of these with `--config`, which
 | [`overrides.config.ts`](./overrides.config.ts) | An `overrides[]` entry matching `hermex-fixtures`. | Resolved severities, not authored ones: `no-packages` on `moment` drops error → warn, and `require-files` on `.editorconfig` is off and **gone from the table**, not greyed out. Remaining error rules are untouched on purpose — an override that made the repo compliant would prove the rules vanished. | `comply-overrides` |
 | [`parse-errors.config.ts`](./parse-errors.config.ts) | `includes` scoped to `broken/`, every section off. | The parse-error report as the whole output instead of three lines buried above the packages table ([#13](https://github.com/Gallevy/hermex/issues/13)). | `parse-errors` |
 | [`release-age.config.ts`](./release-age.config.ts) | `releaseAge.enabled`, pointed at the offline registry. | The flagged-packages table across both severity tiers — see below. | `comply-release-age` |
+| [`release-age-unscoped.config.ts`](./release-age-unscoped.config.ts) | The same, with `enforceOn` emptied — the default. | The same packages checked, all advisory. An empty `enforceOn` names no mandatory packages and so enforces none, and release age cannot fail `comply` at all. The only case covering that path. | `comply-release-age-unscoped` |
 | [`warn-only.config.ts`](./warn-only.config.ts) | The same rules, none at `error`. | Every finding printed, exit **0**, and a verdict that says "compliant" without pretending the repo is clean. That wording is the point of the case. | `comply-human-warn-only` |
 
 ## `release-age.config.ts` in detail

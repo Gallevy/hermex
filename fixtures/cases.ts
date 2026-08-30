@@ -114,7 +114,7 @@ export const cases: FixtureCase[] = [
   {
     name: 'comply-release-age',
     proves:
-      'The flagged-packages table, against a recorded registry: an overdue package with no in-window target (#26), one with a real target, and one merely coming due.',
+      'The flagged-packages table, against a recorded registry: an overdue package with no in-window target (#26), one with a real target, and one merely coming due. enforceOn names two of them, so the same three packages split across both severity tiers — pair it with comply-release-age-unscoped, where the identical repo is checked with nothing enforced.',
     cwd: '.',
     args: ['comply', '--config', 'configs/release-age.config.ts'],
     registry: true,
@@ -123,7 +123,7 @@ export const cases: FixtureCase[] = [
   {
     name: 'comply-release-age-unscoped',
     proves:
-      'An empty enforceOn enforces nothing rather than everything: every installed package is still fetched and reported, every release-age row is advisory, and the exit code comes from rule violations alone. Includes moment — declared, installed, never imported — which was invisible to release age before #171.',
+      'An empty enforceOn names no mandatory packages and so enforces none, rather than enforcing everything: every installed package is still fetched and reported, every release-age row is advisory, and the exit code comes from rule violations alone. Includes moment — declared, installed, never imported — which release age never even looked up before #171. The only case covering the empty-enforceOn path, which is the one path where #171 can move a verdict.',
     cwd: '.',
     args: ['comply', '--config', 'configs/release-age-unscoped.config.ts'],
     registry: true,

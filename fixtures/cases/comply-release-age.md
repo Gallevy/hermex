@@ -3,7 +3,7 @@
 
 # `comply-release-age`
 
-The flagged-packages table, against a recorded registry: an overdue package with no in-window target (#26), one with a real target, and one merely coming due.
+The flagged-packages table, against a recorded registry: an overdue package with no in-window target (#26), one with a real target, and one merely coming due. enforceOn names two of them, so the same three packages split across both severity tiers — pair it with comply-release-age-unscoped, where the identical repo is checked with nothing enforced.
 
 ## What runs
 

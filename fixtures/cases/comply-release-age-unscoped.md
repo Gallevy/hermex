@@ -3,7 +3,7 @@
 
 # `comply-release-age-unscoped`
 
-An empty enforceOn enforces nothing rather than everything: every installed package is still fetched and reported, every release-age row is advisory, and the exit code comes from rule violations alone. Includes moment — declared, installed, never imported — which was invisible to release age before #171.
+An empty enforceOn names no mandatory packages and so enforces none, rather than enforcing everything: every installed package is still fetched and reported, every release-age row is advisory, and the exit code comes from rule violations alone. Includes moment — declared, installed, never imported — which release age never even looked up before #171. The only case covering the empty-enforceOn path, which is the one path where #171 can move a verdict.
 
 ## What runs
 

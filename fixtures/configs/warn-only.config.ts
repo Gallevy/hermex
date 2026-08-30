@@ -1,12 +1,6 @@
 import type { HermexConfigInput } from '../../src/config/types.ts';
 import base from '../hermex.config.ts';
 
-/**
- * The same rules as the primary config, none of them at `error`. Nothing
- * here can fail a build, so `comply` must exit 0 while still printing every
- * finding — and the verdict has to say "compliant" without pretending the
- * repo is clean. That wording is the whole point of the case.
- */
 export default {
   ...base,
   rules: {
