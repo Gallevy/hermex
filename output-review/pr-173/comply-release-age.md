@@ -10,11 +10,11 @@ title: "comply-release-age — Output Review"
 
 _unchanged_
 
-**Asserts** — The flagged-packages table, against a recorded registry: an overdue package with no in-window target (#26), one with a real target, and one merely coming due.
+**Asserts** — The flagged-packages table, against a recorded registry: an overdue package with no in-window target (#26), one with a real target, and one merely coming due. enforceOn names two of them, so the same three packages split across both severity tiers — pair it with comply-release-age-unscoped, where the identical repo is checked with nothing enforced.
 
 **Ran** `hermex comply --config configs/release-age.config.ts` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/configs/release-age.config.ts`](https://github.com/Gallevy/hermex/blob/7583d938f0f63304b219558ba789a91b0ed97036/fixtures/configs/release-age.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/7583d938f0f63304b219558ba789a91b0ed97036/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/7583d938f0f63304b219558ba789a91b0ed97036/fixtures/README.md)) · **Case** [`comply-release-age`](https://github.com/Gallevy/hermex/blob/7583d938f0f63304b219558ba789a91b0ed97036/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/7583d938f0f63304b219558ba789a91b0ed97036/fixtures/cases/comply-release-age.md))
+**Config** [`fixtures/configs/release-age.config.ts`](https://github.com/Gallevy/hermex/blob/8caf9cb2bebf5f80e69e5eaeb1e269930b8e5e18/fixtures/configs/release-age.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/8caf9cb2bebf5f80e69e5eaeb1e269930b8e5e18/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/8caf9cb2bebf5f80e69e5eaeb1e269930b8e5e18/fixtures/README.md)) · **Case** [`comply-release-age`](https://github.com/Gallevy/hermex/blob/8caf9cb2bebf5f80e69e5eaeb1e269930b8e5e18/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/8caf9cb2bebf5f80e69e5eaeb1e269930b8e5e18/fixtures/cases/comply-release-age.md))
 
 **Registry** offline, served from `fixtures/registry/timelines.ts` — no network
 
@@ -22,40 +22,115 @@ _unchanged_
 
 ## Config
 
-[`fixtures/configs/release-age.config.ts`](https://github.com/Gallevy/hermex/blob/7583d938f0f63304b219558ba789a91b0ed97036/fixtures/configs/release-age.config.ts)
+[`fixtures/configs/release-age.config.ts`](https://github.com/Gallevy/hermex/blob/8caf9cb2bebf5f80e69e5eaeb1e269930b8e5e18/fixtures/configs/release-age.config.ts) — resolved, as the loader sees it
 
-```ts
-import type { HermexConfigInput } from '../../src/config/types.ts';
-import base from '../hermex.config.ts';
-
-/**
- * Turns on the release-age policy, which is the only part of hermex that
- * reaches the network. `HERMEX_FIXTURE_REGISTRY` points it at the offline
- * registry `scripts/output-review.ts` serves from
- * `fixtures/registry/timelines.ts`; without the env var it falls back to
- * the real registry so the config is still runnable by hand.
- *
- * The cache is disabled deliberately: a warm `~/.hermex` entry from an
- * earlier run against the real registry would otherwise decide the output.
- */
-export default {
-  ...base,
-  releaseAge: {
-    enabled: true,
-    registry:
-      process.env['HERMEX_FIXTURE_REGISTRY'] ?? 'https://registry.npmjs.org',
-    cacheDisabled: true,
-    thresholds: { patch: 30, minor: 45, major: 60 },
-    // Every installed package is looked up regardless (#171). `enforceOn`
-    // decides only severity, and naming these two splits the repo across
-    // both tiers, since a package `enforceOn` does not match is advisory:
-    //
-    //   moment     enforced, overdue          → mandatory failure
-    //   react-dom  enforced, coming due       → advisory "N days remaining"
-    //   react      not enforced, overdue      → warning, does not fail comply
-    enforceOn: ['moment', 'react-dom'],
+```json
+{
+  "excludes": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "cases.ts",
+    "configs/**",
+    "registry/**",
+    "repos/**"
+  ],
+  "versus": [
+    {
+      "name": "Design System Migration",
+      "packages": [
+        "@design-system/foundation",
+        "@new-system/arc"
+      ]
+    }
+  ],
+  "rules": {
+    "no-files": [
+      {
+        "severity": "error",
+        "patterns": [
+          "jest.config.*",
+          ".babelrc"
+        ],
+        "message": "Use vitest + Vite"
+      }
+    ],
+    "no-packages": [
+      {
+        "severity": "error",
+        "patterns": [
+          "moment"
+        ],
+        "message": "Use date-fns or dayjs"
+      }
+    ],
+    "require-files": [
+      {
+        "severity": "error",
+        "patterns": [
+          ".nvmrc"
+        ]
+      },
+      {
+        "severity": "warn",
+        "patterns": [
+          ".editorconfig"
+        ]
+      }
+    ],
+    "require-packages": [
+      {
+        "severity": "error",
+        "patterns": [
+          "typescript"
+        ],
+        "message": "TypeScript is required"
+      }
+    ],
+    "require-scripts": [
+      {
+        "severity": "error",
+        "patterns": [
+          "build",
+          "test"
+        ],
+        "message": "Required npm scripts"
+      }
+    ],
+    "require-package-fields": [
+      {
+        "severity": "warn",
+        "patterns": [
+          "engines",
+          "license"
+        ]
+      }
+    ],
+    "require-engine-version": {
+      "severity": "warn",
+      "range": ">=20",
+      "message": "Minimum Node 20 required"
+    }
   },
-} satisfies HermexConfigInput;
+  "output": {
+    "details": false,
+    "patterns": false
+  },
+  "releaseAge": {
+    "enabled": true,
+    "registry": "<fixture registry>",
+    "cacheDisabled": true,
+    "thresholds": {
+      "patch": 30,
+      "minor": 45,
+      "major": 60
+    },
+    "enforceOn": [
+      "moment",
+      "react-dom"
+    ]
+  }
+}
 ```
 
 ## Full output

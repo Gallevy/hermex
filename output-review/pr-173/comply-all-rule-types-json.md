@@ -14,83 +14,103 @@ _unchanged_
 
 **Ran** `hermex comply --format json` in `fixtures/repos/all-rule-types` → exit 1, as asserted
 
-**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/7583d938f0f63304b219558ba789a91b0ed97036/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/7583d938f0f63304b219558ba789a91b0ed97036/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/7583d938f0f63304b219558ba789a91b0ed97036/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types-json`](https://github.com/Gallevy/hermex/blob/7583d938f0f63304b219558ba789a91b0ed97036/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/7583d938f0f63304b219558ba789a91b0ed97036/fixtures/cases/comply-all-rule-types-json.md))
+**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/8caf9cb2bebf5f80e69e5eaeb1e269930b8e5e18/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/8caf9cb2bebf5f80e69e5eaeb1e269930b8e5e18/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/8caf9cb2bebf5f80e69e5eaeb1e269930b8e5e18/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types-json`](https://github.com/Gallevy/hermex/blob/8caf9cb2bebf5f80e69e5eaeb1e269930b8e5e18/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/8caf9cb2bebf5f80e69e5eaeb1e269930b8e5e18/fixtures/cases/comply-all-rule-types-json.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-all-rule-types-json`</sub>
 
 ## Config
 
-[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/7583d938f0f63304b219558ba789a91b0ed97036/fixtures/repos/all-rule-types/hermex.config.ts)
+[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/8caf9cb2bebf5f80e69e5eaeb1e269930b8e5e18/fixtures/repos/all-rule-types/hermex.config.ts) — resolved, as the loader sees it
 
-```ts
-import type { HermexConfigInput } from '../../../src/config/types.ts';
-
-/**
- * Every rule type hermex has, all firing at once, at three different
- * severities. The primary fixture repo only ever trips three of the nine —
- * so without this repo the rules table has never been reviewed with an
- * `require-engine-version` row, a `require-codeowners` row, or either of the
- * package-field shapes in it, and nothing would catch a renderer that
- * mishandles `fieldPath` / `installedRange` / a long `matchedFiles` list.
- *
- * Scoped to `src/` so `jest.config.js` is found by `no-files` without
- * also being parsed as source.
- */
-export default {
-  includes: ['src/**/*.{tsx,jsx,ts,js}'],
-  rules: {
-    'no-files': [
+```json
+{
+  "includes": [
+    "src/**/*.{tsx,jsx,ts,js}"
+  ],
+  "rules": {
+    "no-files": [
       {
-        severity: 'error',
-        patterns: ['jest.config.*', '.babelrc'],
-        message: 'Use vitest + Vite',
-      },
+        "severity": "error",
+        "patterns": [
+          "jest.config.*",
+          ".babelrc"
+        ],
+        "message": "Use vitest + Vite"
+      }
     ],
-    'require-files': [{ severity: 'error', patterns: ['.nvmrc'] }],
-    'no-packages': [
-      { severity: 'error', patterns: ['moment'], message: 'Use date-fns or dayjs' },
-    ],
-    'require-packages': [
-      { severity: 'error', patterns: ['typescript'], message: 'TypeScript is required' },
-    ],
-    'require-scripts': [
-      { severity: 'error', patterns: ['build', 'test'], message: 'Required npm scripts' },
-    ],
-    // Missing outright, so the violation reports the absence.
-    'require-package-fields': [{ severity: 'warn', patterns: ['license'] }],
-    // Present, so the violation reports the offending value — the other
-    // half of the package-field renderer.
-    'no-package-fields': [
+    "require-files": [
       {
-        severity: 'warn',
-        patterns: ['publishConfig.registry'],
-        message: 'Publish to the public registry',
-      },
+        "severity": "error",
+        "patterns": [
+          ".nvmrc"
+        ]
+      }
     ],
-    // engines.node is ">=16", so this reports both ranges rather than the
-    // "not specified" shape.
-    'require-engine-version': { severity: 'error', range: '>=20', message: 'Minimum Node 20 required' },
-    // CODEOWNERS covers two of the three scanned files, and one of those
-    // belongs to a team outside `requiredOwners` — so this produces both
-    // codeowners violations, unowned and wrong-owner.
-    //
-    // The baseline currently describes both as "have no owner", which is
-    // wrong for src/legacy.tsx: it has an owner, just not a required one.
-    // That is #95, left unfixed on purpose — the recorded output is the
-    // evidence, and refreshing this baseline is how the fix gets reviewed.
-    'require-codeowners': {
-      severity: 'info',
-      requiredOwners: ['@org/platform'],
-      message: 'Every file needs a platform owner',
+    "no-packages": [
+      {
+        "severity": "error",
+        "patterns": [
+          "moment"
+        ],
+        "message": "Use date-fns or dayjs"
+      }
+    ],
+    "require-packages": [
+      {
+        "severity": "error",
+        "patterns": [
+          "typescript"
+        ],
+        "message": "TypeScript is required"
+      }
+    ],
+    "require-scripts": [
+      {
+        "severity": "error",
+        "patterns": [
+          "build",
+          "test"
+        ],
+        "message": "Required npm scripts"
+      }
+    ],
+    "require-package-fields": [
+      {
+        "severity": "warn",
+        "patterns": [
+          "license"
+        ]
+      }
+    ],
+    "no-package-fields": [
+      {
+        "severity": "warn",
+        "patterns": [
+          "publishConfig.registry"
+        ],
+        "message": "Publish to the public registry"
+      }
+    ],
+    "require-engine-version": {
+      "severity": "error",
+      "range": ">=20",
+      "message": "Minimum Node 20 required"
     },
+    "require-codeowners": {
+      "severity": "info",
+      "requiredOwners": [
+        "@org/platform"
+      ],
+      "message": "Every file needs a platform owner"
+    }
   },
-  output: {
-    packages: false,
-    components: false,
-    patterns: false,
-    versus: false,
-  },
-} satisfies HermexConfigInput;
+  "output": {
+    "packages": false,
+    "components": false,
+    "patterns": false,
+    "versus": false
+  }
+}
 ```
 
 ## Full output
