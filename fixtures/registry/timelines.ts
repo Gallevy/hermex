@@ -27,9 +27,9 @@ export interface FixtureTimeline {
 }
 
 /**
- * Keyed by package name. Between them the three entries cover every branch
- * of the release-age verdict, against the versions the primary fixture repo
- * actually has installed (see `fixtures/pnpm-lock.yaml`):
+ * Keyed by package name. Between them these entries cover every branch of
+ * the release-age verdict, against the versions the fixture repos actually
+ * have installed (see `fixtures/pnpm-lock.yaml`):
  *
  * - `moment` — overdue with no way out. Every candidate, `latest` included,
  *   is past its threshold, so there is no in-window upgrade target and the
@@ -41,6 +41,11 @@ export interface FixtureTimeline {
  * - `react-dom` — not overdue yet. A fresh patch exists inside its
  *   threshold, which is the "coming due in N days" advisory, not a
  *   violation.
+ * - `legacy-widget` — overdue, and owned by `repos/version-conflict/`
+ *   without ever being imported. Its only reason to exist is #171: a
+ *   package with no measured usage is still a release-age target once
+ *   `enforceOn` is set, so it must have a timeline or the case reports a
+ *   registry miss instead of the advisory row it is there to show.
  */
 export const RELEASE_TIMELINES: Record<string, FixtureTimeline> = {
   moment: {
@@ -70,6 +75,18 @@ export const RELEASE_TIMELINES: Record<string, FixtureTimeline> = {
     releases: {
       '18.3.1': { daysAgo: 700 },
       '18.3.2': { daysAgo: 10 },
+    },
+  },
+  // Only reachable from `repos/version-conflict/`, which declares it and
+  // never imports it. Shaped like `react` — a breaching major plus a newer
+  // one still inside its window — so the row reads as a normal advisory
+  // recommendation rather than "no compliant release available" (#26).
+  'legacy-widget': {
+    latest: '2.1.0',
+    releases: {
+      '1.0.0': { daysAgo: 900 },
+      '2.0.0': { daysAgo: 300 },
+      '2.1.0': { daysAgo: 20 },
     },
   },
 };

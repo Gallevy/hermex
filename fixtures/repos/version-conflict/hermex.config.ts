@@ -17,9 +17,10 @@ export default {
       process.env['HERMEX_FIXTURE_REGISTRY'] ?? 'https://registry.npmjs.org',
     cacheDisabled: true,
     thresholds: { patch: 30, minor: 45, major: 60 },
-    // Keeps `legacy-widget` — which no recorded timeline covers — out of
-    // the lookup entirely, so this case reports a scope difference rather
-    // than a registry miss.
+    // Only `react` is mandatory. `legacy-widget` is looked up too — since
+    // #171 every owned package is a target once `enforceOn` is set — but
+    // lands at severity 'warn', so it cannot affect the verdict and the
+    // diff against `./tree.config.ts` stays purely about `scope`.
     enforceOn: ['react'],
     scope: 'root',
   },
