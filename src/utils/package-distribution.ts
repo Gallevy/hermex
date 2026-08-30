@@ -188,18 +188,22 @@ export function calculatePackageDistribution(
  * rendered as a component, and got a blank Target cell beside its JSX
  * siblings' `[not enforced]` (#171).
  *
- * Usage alone still qualifies a package, and so does an `enforceOn` match:
- * a package installed and explicitly enforced yet never imported as a
- * component — a side-effect-only `import '@acme-ui/pulse-styles/button.css'`
- * has no specifiers, so the usage scan never sees it — must never be
- * silently exempted.
+ * Note the non-empty branch subsumes the `enforceOn` matches that used to
+ * need their own clause — a package installed and explicitly enforced yet
+ * never imported as a component (a side-effect-only
+ * `import '@acme-ui/pulse-styles/button.css'` has no specifiers, so the
+ * usage scan never sees it) is still never silently exempted.
  */
 export function isReleaseAgeTarget(
   pkg: Pick<PackageDistribution, 'usageCount'>,
   enforceOn: string[],
 ): boolean {
-  if (pkg.usageCount > 0) return true;
-  // Everything else in `packages[]` is a package the repo owns (or an
-  // explicit `enforceOn` match), which is advisory unless named.
-  return enforceOn.length > 0;
+  // Everything in `packages[]` is a package the repo owns (or an explicit
+  // `enforceOn` match), and anything `enforceOn` does not name is advisory
+  // — so with it set, look every one of them up.
+  if (enforceOn.length > 0) return true;
+  // Empty `enforceOn` is the "everything is severity 'error'" case, where
+  // widening the target set would move the verdict. Only there does usage
+  // decide anything.
+  return pkg.usageCount > 0;
 }
