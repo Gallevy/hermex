@@ -6,12 +6,13 @@ title: "Output Review"
 {% raw %}
 # Output Review
 
-26 cases · 2 changed · 0 invariant breach(es)
+27 cases · 3 changed · 0 invariant breach(es)
 
 ## Changed
 
 | Case | Status | Proves |
 | --- | --- | --- |
+| [`comply-release-age-unscoped`](./comply-release-age-unscoped.html) | **changed** <span class="or-add">+14</span> <span class="or-del">−14</span> | An empty enforceOn enforces nothing rather than everything: every installed package is still fetched and reported, every release-age row is advisory, and the exit code comes from rule violations alone. Includes moment — declared, installed, never imported — which was invisible to release age before #171. |
 | [`release-age-root-scope`](./release-age-root-scope.html) | **changed** <span class="or-add">+7</span> <span class="or-del">−7</span> | scope: root enforces only the direct copy, and still surfaces the overdue nested copy as an advisory breach rather than hiding it. |
 | [`release-age-tree-scope`](./release-age-tree-scope.html) | **changed** <span class="or-add">+7</span> <span class="or-del">−7</span> | scope: tree enforces every resolved copy, so the nested version becomes the mandatory failure and the reported installed version follows it. |
 
@@ -31,6 +32,7 @@ title: "Output Review"
 | [`comply-json`](./comply-json.html) | unchanged | The compliance block as machine-readable output on a failing repo. |
 | [`comply-summary-file`](./comply-summary-file.html) | unchanged | The markdown a consumer pastes into a PR comment or job summary — ANSI-free, rules + flagged packages + verdict. |
 | [`comply-release-age`](./comply-release-age.html) | unchanged | The flagged-packages table, against a recorded registry: an overdue package with no in-window target (#26), one with a real target, and one merely coming due. |
+| [`comply-release-age-unscoped`](./comply-release-age-unscoped.html) | **changed** <span class="or-add">+14</span> <span class="or-del">−14</span> | An empty enforceOn enforces nothing rather than everything: every installed package is still fetched and reported, every release-age row is advisory, and the exit code comes from rule violations alone. Includes moment — declared, installed, never imported — which was invisible to release age before #171. |
 | [`comply-all-rule-types`](./comply-all-rule-types.html) | unchanged | Every one of the nine rule types in one table, at three severities — the only case that renders require-engine-version, codeowners and both package-field shapes. |
 | [`comply-all-rule-types-json`](./comply-all-rule-types-json.html) | unchanged | The machine-readable shape of every rule type: fieldPath and actualValue on package-field hits, installedRange/requiredRange on require-engine-version, matchedFiles on codeowners. Also where #95 is visible — the two codeowners entries are byte-identical apart from matchedFiles. |
 | [`comply-summary-title`](./comply-summary-title.html) | unchanged | --summary-title replaces the default heading, so a consumer embedding the markdown can name it after the policy rather than the tool. |
