@@ -1,4 +1,5 @@
 import type { ParserState } from '../types';
+import { lineOf } from '../utils/span';
 
 /**
  * Analyzes Higher-Order Component (HOC) usage
@@ -7,7 +8,7 @@ export function analyzeHOCUsage(node: any, state: ParserState): void {
   state.usagePatterns.hocUsage.add({
     function: node.callee?.value || '[unknown]',
     component: node.arguments?.[0]?.expression?.value || '[unknown]',
-    line: node.span?.start || 0,
+    line: lineOf(node),
   });
 }
 
@@ -22,7 +23,7 @@ export function analyzeMemoUsage(node: any, state: ParserState): void {
   ) {
     state.usagePatterns.memoizedComponents.add({
       component: component.value,
-      line: node.span?.start || 0,
+      line: lineOf(node),
     });
   }
 }
@@ -32,7 +33,7 @@ export function analyzeMemoUsage(node: any, state: ParserState): void {
  */
 export function analyzeForwardRefUsage(node: any, state: ParserState): void {
   state.usagePatterns.forwardedRefs.add({
-    line: node.span?.start || 0,
+    line: lineOf(node),
   });
 }
 
@@ -41,7 +42,7 @@ export function analyzeForwardRefUsage(node: any, state: ParserState): void {
  */
 export function analyzePortalUsage(node: any, state: ParserState): void {
   state.usagePatterns.portalUsage.add({
-    line: node.span?.start || 0,
+    line: lineOf(node),
   });
 }
 

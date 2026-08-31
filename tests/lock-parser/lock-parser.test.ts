@@ -556,6 +556,19 @@ describe('compareVersions', () => {
     ]);
   });
 
+  it('orders two non-semver strings lexicographically in both directions', () => {
+    expect(compareVersions('file:../local-pkg', 'git+https://x/pkg.git')).toBe(
+      -1,
+    );
+    expect(compareVersions('git+https://x/pkg.git', 'file:../local-pkg')).toBe(
+      1,
+    );
+  });
+
+  it('treats two identical non-semver strings as equal', () => {
+    expect(compareVersions('workspace:*', 'workspace:*')).toBe(0);
+  });
+
   it('orders a prerelease before its final release', () => {
     expect(['1.0.0', '1.0.0-beta.1'].sort(compareVersions)).toEqual([
       '1.0.0-beta.1',

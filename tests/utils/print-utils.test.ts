@@ -1044,6 +1044,23 @@ describe('printRules', () => {
     expect(output).toContain('🟡');
   });
 
+  // `packageName` is set by `detectForbiddenPackages`, but the rule's own
+  // patterns are the fallback for a violation raised without one.
+  it('falls back to the rule patterns when a no-packages violation has no packageName', () => {
+    const violation: RuleViolation = {
+      ruleId: 'no-packages',
+      severity: 'error',
+      patterns: ['@legacy/*'],
+      matchedFiles: [],
+    };
+    const aggregated = makeAggregated({ ruleViolations: [violation] });
+    printRules(aggregated);
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('@legacy/* is forbidden');
+  });
+
   it('renders a require-files violation as "not found"', () => {
     const violation: RuleViolation = {
       ruleId: 'require-files',
