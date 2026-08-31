@@ -1,8 +1,7 @@
 import type { Ora } from 'ora';
 import chalk from 'chalk';
-import { parseFile } from '../swc-parser';
-import type { UsageReport } from '../swc-parser';
-import type { ParseError } from '../swc-parser/types';
+import { getParser } from '../parser';
+import type { UsageReport, ParseError } from '../swc-parser/types';
 import { aggregateReports } from '../utils/aggregator';
 import type { AggregatedReport } from '../utils/aggregator';
 import { printErrors } from '../utils/print-errors';
@@ -63,6 +62,17 @@ export async function runPipeline(
 
   spinner.succeed(chalk.green(`Found ${files.length} files`));
 
+  const parser = await getParser(resolvedConfig.parser);
+
+  // Only announced when it is not the default: an experimental front-end
+  // should never be a silent property of a run, but the supported one adds
+  // nothing to say.
+  if (parser.name !== 'swc') {
+    spinner.info(
+      chalk.yellow(`Using experimental parser: ${parser.name} (opt-in)`),
+    );
+  }
+
   if (spinner.isEnabled) spinner.start('Analyzing files...');
   const reports: UsageReport[] = [];
   const parseErrors: ParseError[] = [];
@@ -73,7 +83,7 @@ export async function runPipeline(
       spinner.text = `Analyzing files... (${i + 1}/${files.length})`;
 
     try {
-      const report = parseFile(file);
+      const report = parser.parseFile(file);
       if (report) {
         reports.push(report);
       }
