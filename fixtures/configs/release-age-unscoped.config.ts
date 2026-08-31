@@ -1,7 +1,7 @@
 import type { HermexConfigInput } from '../../src/config/types.ts';
-import base from '../hermex.config.ts';
+import base from './release-age.config.ts';
 
 export default {
   ...base,
-  includes: ['no-such-directory/**/*.{tsx,jsx,ts,js}'],
+  releaseAge: { ...base.releaseAge, enforceOn: [] },
 } satisfies HermexConfigInput;

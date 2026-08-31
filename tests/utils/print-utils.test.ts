@@ -740,7 +740,9 @@ describe('formatUpgradeCell — stale 0.x minor line beneath a compliant newer m
       enabled: true,
       registry: 'https://registry.npmjs.org',
       thresholds: { patch: 30, minor: 45, major: 60 },
-      enforceOn: [],
+      // Named explicitly: severity follows `enforceOn` alone, so the 🔴 this
+      // case asserts requires the package to actually be enforced.
+      enforceOn: ['some-lib'],
       scope: 'root',
       scopeExceptions: [],
     });

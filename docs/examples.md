@@ -255,9 +255,9 @@ no need to spell it out as `'no-package-fields': ['dependencies.x', 'devDependen
 Purely transitive dependencies are never flagged: they arrive through another package, so removing one
 isn't something your repo can do. Packages excluded by `packages.ignore` are never flagged either.
 
-Every banned package appears in the Rules and Compliance sections. Those with measured usage also get a
-`[BANNED]` or `[RESTRICTED]` badge in the packages table, which since #78 lists every package the repo
-owns — so a declared-but-unimported banned package now has a row there too.
+Every banned package appears in the Rules and Compliance sections, and also gets a `[BANNED]` or
+`[RESTRICTED]` badge in the packages table. Since #78 that table lists every package the repo owns, so a
+declared-but-unimported banned package has a row — and a badge on it — just like an imported one.
 
 In the JSON output, each hit is an ordinary entry in `ruleViolations` with `ruleId: "no-packages"` —
 `patterns` carries the rule's globs, `packageName` the package that matched, and `matchedFiles` is empty
@@ -398,9 +398,21 @@ export default defineConfig({
 });
 ```
 
-If `enforceOn` is omitted, every package's release age counts toward compliance (current behavior).
+`enforceOn` is a plain glob list of the packages that are mandatory, with no special case for the empty one:
+
+| `enforceOn` | Mandatory (`error`) | Advisory (`warn`) |
+| --- | --- | --- |
+| `[]` (the default) | nothing | every installed package |
+| `['**']` | every installed package | nothing |
+| `['@my-org/*']` | `@my-org/…` | everything else |
+
+Note `['**']`, not `['*']`, for "everything": these are micromatch globs, and a single `*` stops at the `/` in a scoped name — `['*']` would enforce `react` while leaving `@my-org/ui` advisory.
+
+Release age never blocks `comply` until you name something here. Everything is still fetched and reported either way; `enforceOn` only decides which rows can fail the build.
 
 `enforceOn` matches are checked against the lockfile directly, not just packages hermex found imported as components — so a CSS-only or side-effect-only dependency (e.g. `import '@my-org/styles/button.css'`) still gets checked and can still fail `hermex comply`, even though it never shows up in component usage.
+
+`enforceOn` decides *severity*, never *whether a package is checked*. Every package in the packages table with an installed version gets its release age looked up, so a dependency imported purely as functions or hooks (`@my-org/toolkit`) shows a Target like any other — advisory `[not enforced]` when `enforceOn` doesn't name it, mandatory when it does. Before v3 that lookup was gated on JSX component usage, which had nothing to do with whether an installed version is stale and silently exempted every function-only dependency ([#171](https://github.com/Gallevy/hermex/issues/171)). The cost is one registry request per installed dependency rather than per rendered one.
 
 `enforceOn` only decides *severity* (mandatory vs. advisory) for a package that's already being enforced under the current `scope` — it doesn't override `scope` itself. Under `scope: 'root'` (the default), a package matching `enforceOn` that's only ever pulled in transitively (never a direct dependency in your `package.json`) still can't fail `comply` — there's no root copy to hold accountable. It still shows up as advisory context (see below), it just doesn't block the build.
 

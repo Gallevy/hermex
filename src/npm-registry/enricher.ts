@@ -1,7 +1,6 @@
 import semver from 'semver';
 import micromatch from 'micromatch';
 import type { PackageDistribution } from '../utils/aggregator';
-import { isReleaseAgeTarget } from '../utils/package-distribution';
 import type { ReleaseAgeConfig } from '../config/types';
 import type {
   AvailableUpgrade,
@@ -355,14 +354,16 @@ export async function enrichWithReleaseAge(
   const registryUrl = config.registry;
   const authToken =
     config.authToken ?? process.env['HERMEX_REGISTRY_AUTH_TOKEN'];
-  // `packages` is every package the repo owns (#78); only a subset is in
-  // scope for a registry lookup — see `isReleaseAgeTarget`. Filtering here
-  // rather than upstream keeps `packages[]` honest about what the repo
-  // depends on while leaving registry traffic and the compliance verdict
-  // exactly where they were.
-  const targets = packages.filter(
-    (p) => p.version && isReleaseAgeTarget(p, config.enforceOn),
-  );
+  // Every package the repo owns (#78) that has an installed version. A
+  // version is the only real precondition — there is no release date to
+  // check without one.
+  //
+  // This used to also require `usageCount > 0` or an `enforceOn` match.
+  // Usage counts JSX component rendering, so that silently exempted every
+  // dependency consumed as functions or hooks from a check that is about
+  // the installed version's age and never had anything to do with how the
+  // package is consumed (#171).
+  const targets = packages.filter((p) => p.version);
   const enriched = [...packages];
   let skipped = 0;
 
@@ -393,11 +394,22 @@ export async function enrichWithReleaseAge(
         const deprecated =
           info.versions?.[pkg.version!]?.deprecated ?? info.deprecated;
 
-        const severity: 'error' | 'warn' =
-          config.enforceOn.length === 0 ||
-          micromatch.isMatch(pkg.packageName, config.enforceOn)
-            ? 'error'
-            : 'warn';
+        // `enforceOn` is a plain glob list, with no special case for the
+        // empty one: it names the mandatory packages and nothing else.
+        // `[]` matches nothing, so it enforces nothing; `['**']` matches
+        // everything, so it enforces everything (`'*'` does NOT — it stops
+        // at the `/` in a scoped name). Everything not named is still
+        // fetched and reported, just advisory.
+        //
+        // It used to read `enforceOn.length === 0` as "enforce everything",
+        // which inverted the list's own meaning: an empty list of mandatory
+        // packages made every package mandatory.
+        const severity: 'error' | 'warn' = micromatch.isMatch(
+          pkg.packageName,
+          config.enforceOn,
+        )
+          ? 'error'
+          : 'warn';
 
         const scope = resolveReleaseAgeScope(pkg.packageName, config);
         // `undefined` (never populated — e.g. a hand-built PackageDistribution

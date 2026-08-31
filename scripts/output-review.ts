@@ -1715,6 +1715,59 @@ function frontMatter(title: string): string[] {
   ];
 }
 
+/**
+ * Effective config per source path, filled by `resolveConfigs` before any
+ * rendering. Keyed by the repo-relative path `sourcesOf` reports.
+ */
+const RESOLVED_CONFIGS = new Map<string, string>();
+
+/**
+ * The registry a fixture config falls back to is `process.env`-dependent and
+ * the offline one binds a random port, so neither is stable enough to print.
+ * Importing under a fixed placeholder makes the rendered value deterministic
+ * without pretending the config hard-codes a URL.
+ */
+const REGISTRY_PLACEHOLDER = '<fixture registry>';
+
+/**
+ * Imports every config a selected case loads and records it fully resolved.
+ *
+ * The point of printing a config at all is to answer "what policy produced
+ * this output", and the fixture configs compose — nearly all of them spread
+ * `fixtures/hermex.config.ts` and override a field or two. Printing the
+ * source alone answers the question with `...base`, which is no answer;
+ * printing nine literal copies of the same 67-line base instead would be
+ * worse. Resolving it keeps the fixtures composed and the report readable.
+ */
+export async function resolveConfigs(fixtures: FixtureCase[]): Promise<void> {
+  const previous = process.env['HERMEX_FIXTURE_REGISTRY'];
+  process.env['HERMEX_FIXTURE_REGISTRY'] = REGISTRY_PLACEHOLDER;
+  try {
+    for (const fixture of fixtures) {
+      const source = sourcesOf(fixture).config;
+      if (!source || RESOLVED_CONFIGS.has(source)) continue;
+      const absolute = join(ROOT, source);
+      if (!existsSync(absolute)) continue;
+      try {
+        const loaded = (await import(pathToFileURL(absolute).href)) as {
+          default?: unknown;
+        };
+        RESOLVED_CONFIGS.set(
+          source,
+          JSON.stringify(loaded.default ?? null, null, 2),
+        );
+      } catch {
+        // A config that cannot be imported is not worth failing the review
+        // over — the raw source is still linked, and the CLI run itself
+        // already reported whatever the loader made of it.
+      }
+    }
+  } finally {
+    if (previous === undefined) delete process.env['HERMEX_FIXTURE_REGISTRY'];
+    else process.env['HERMEX_FIXTURE_REGISTRY'] = previous;
+  }
+}
+
 /** The config a case actually loaded, inlined so the policy is on the page. */
 function configBlock(fixture: FixtureCase, base: string | null): string[] {
   const sources = sourcesOf(fixture);
@@ -1727,19 +1780,22 @@ function configBlock(fixture: FixtureCase, base: string | null): string[] {
     ];
   }
 
-  const absolute = join(ROOT, sources.config);
-  const contents = existsSync(absolute) ? readFileSync(absolute, 'utf8') : null;
+  const resolved = RESOLVED_CONFIGS.get(sources.config);
   return [
     '## Config',
     '',
     // Inlined rather than only linked. "What policy produced this output?"
     // is the question a diff cannot answer, and a reviewer who has to open
     // another tab to answer it mostly does not answer it.
-    `${fileLink(sources.config, base)}`,
+    //
+    // Fully resolved, not as authored: the fixture configs compose, so the
+    // source of most of them is a spread plus an override and answers the
+    // question with `...base`.
+    `${fileLink(sources.config, base)} — resolved, as the loader sees it`,
     '',
-    ...(contents
-      ? ['```ts', contents.trimEnd(), '```', '']
-      : ['_Not readable at report time._', '']),
+    ...(resolved
+      ? ['```json', resolved, '```', '']
+      : ['_Not resolvable at report time._', '']),
   ];
 }
 
@@ -1894,6 +1950,9 @@ async function main(): Promise<void> {
   // there is no cost to always leaving the tree in a state
   // `no-orphaned-case-docs` already agrees with.
   writeCaseDocs(module.cases);
+
+  // Before any rendering: every report surface prints a config block.
+  await resolveConfigs(selected);
 
   const referenceCli = buildReference(against);
 

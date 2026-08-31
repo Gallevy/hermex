@@ -8,6 +8,7 @@ import {
   scrub,
   SITE_STYLE,
   unifiedDiff,
+  resolveConfigs,
 } from '../../scripts/output-review';
 import type { CaseResult, FixtureCase } from '../../scripts/output-review';
 
@@ -380,24 +381,29 @@ describe('buildSite', () => {
     expect(beta).toContain('+b');
   });
 
-  it('inlines the config a case ran under, not merely a link to it', () => {
+  it('inlines the config a case ran under, resolved rather than as authored', async () => {
     // "What policy produced this output?" is the one question a diff cannot
     // answer, and a reviewer who has to open another tab mostly does not.
+    //
+    // Resolved, because every fixture config composes: printing the source
+    // of `minimal.config.ts` answers the question with `...base`, which is
+    // not an answer. The rules below live only in `fixtures/hermex.config.ts`
+    // and reaching them proves the spread was applied.
+    const fixture = fixtureCase({
+      name: 'configured',
+      args: ['scan', '--config', 'configs/minimal.config.ts'],
+    });
+    await resolveConfigs([fixture]);
+
     const page =
-      buildSite(
-        [
-          caseResult(
-            fixtureCase({
-              name: 'configured',
-              args: ['scan', '--config', 'configs/minimal.config.ts'],
-            }),
-          ),
-        ],
-        [],
-        null,
-      ).get('configured.md') ?? '';
+      buildSite([caseResult(fixture)], [], null).get('configured.md') ?? '';
+
     expect(page).toContain('## Config');
-    expect(page).toContain('HermexConfigInput');
+    // Authored in minimal.config.ts itself.
+    expect(page).toContain('"summary": "log"');
+    // Inherited from the base config it spreads — absent from its source.
+    expect(page).toContain('"no-packages"');
+    expect(page).not.toContain('...base');
   });
 
   /**
