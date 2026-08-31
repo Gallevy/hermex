@@ -15,7 +15,7 @@
   color: inherit;
 }
 
-/* Case names in the "All cases" table are the short, structured column —
+/* Case names in the case tables are the short, structured column —
    let them stay on one line and leave wrapping to the "Proves" prose. */
 .markdown-body table td:first-child,
 .markdown-body table th:first-child {
@@ -32,6 +32,27 @@
 .or-del {
   color: #cf222e;
   font-weight: 600;
+}
+
+/* A unified diff has three kinds of line, and only two of them are a
+   change: the `@@` hunk header and the `---`/`+++` file headers are
+   signposts. Left to Rouge they come out red and green like the removals
+   and additions around them, so blue — the third colour every diff viewer
+   uses for them — is what says they are structure rather than content. */
+.markdown-body .highlight .gu {
+  color: #0550ae;
+  background-color: transparent;
+  font-weight: 600;
+}
+
+/* Rouge tags the `---`/`+++` headers `.gd`/`.gi`, exactly as it tags a
+   removed and an added line, so position is the only thing left to tell
+   them apart: `renderHunks` always emits both, always first, so they are
+   the first two spans of the block and nothing else can be. */
+.markdown-body .highlight .gd:first-child,
+.markdown-body .highlight .gd:first-child + .gi {
+  color: #0550ae;
+  background-color: transparent;
 }
 
 /* The broken-invariants callout. A class rather than an inline style, so
@@ -119,6 +140,92 @@
     color: #c9d1d9;
   }
 
+  /* The token classes Rouge tags the *contents* of a block with are
+     coloured by Primer for a light background only, and unlike the
+     background above nothing here inherits: a resolved config came out as
+     navy strings and near-black punctuation on #161b22 — the block that
+     answers "what policy produced this output" being the least readable
+     thing on the page. These mirror GitHub's dark syntax palette, for the
+     tokens the report can actually print: JSON in the config and artifact
+     blocks, Markdown in the summary artifacts. */
+  .markdown-body .highlight .p,
+  .markdown-body .highlight .pi,
+  .markdown-body .highlight .w {
+    color: #c9d1d9;
+  }
+
+  .markdown-body .highlight .na,
+  .markdown-body .highlight .nt {
+    color: #7ee787;
+  }
+
+  .markdown-body .highlight .dl,
+  .markdown-body .highlight .s,
+  .markdown-body .highlight .s1,
+  .markdown-body .highlight .s2,
+  .markdown-body .highlight .sb,
+  .markdown-body .highlight .sc,
+  .markdown-body .highlight .sd,
+  .markdown-body .highlight .se,
+  .markdown-body .highlight .sh,
+  .markdown-body .highlight .si,
+  .markdown-body .highlight .sr,
+  .markdown-body .highlight .ss,
+  .markdown-body .highlight .sx {
+    color: #a5d6ff;
+  }
+
+  .markdown-body .highlight .il,
+  .markdown-body .highlight .m,
+  .markdown-body .highlight .mb,
+  .markdown-body .highlight .mf,
+  .markdown-body .highlight .mh,
+  .markdown-body .highlight .mi,
+  .markdown-body .highlight .mo,
+  .markdown-body .highlight .nb,
+  .markdown-body .highlight .nc,
+  .markdown-body .highlight .nf,
+  .markdown-body .highlight .nl,
+  .markdown-body .highlight .nn,
+  .markdown-body .highlight .no,
+  .markdown-body .highlight .nv,
+  .markdown-body .highlight .nx {
+    color: #79c0ff;
+  }
+
+  .markdown-body .highlight .k,
+  .markdown-body .highlight .kc,
+  .markdown-body .highlight .kd,
+  .markdown-body .highlight .kn,
+  .markdown-body .highlight .kp,
+  .markdown-body .highlight .kr,
+  .markdown-body .highlight .kt,
+  .markdown-body .highlight .o,
+  .markdown-body .highlight .ow {
+    color: #ff7b72;
+  }
+
+  .markdown-body .highlight .c,
+  .markdown-body .highlight .c1,
+  .markdown-body .highlight .cd,
+  .markdown-body .highlight .cm,
+  .markdown-body .highlight .cs {
+    color: #8b949e;
+  }
+
+  .markdown-body .highlight .ge,
+  .markdown-body .highlight .gh,
+  .markdown-body .highlight .gs {
+    color: #e6edf3;
+  }
+
+  /* Primer paints `.err` dark red on pale pink. A lexer hiccup inside a
+     captured artifact is not a finding, and it should not look like one. */
+  .markdown-body .highlight .err {
+    color: #ffa198;
+    background-color: transparent;
+  }
+
   /* Rouge's diff-fence colours (`.gd` deletion, `.gi` addition) are also
      hardcoded light, so a ```diff block would otherwise be the one
      unreadable corner of an otherwise-dark page. */
@@ -130,6 +237,16 @@
   .markdown-body .gi {
     background-color: rgba(63, 185, 80, 0.15);
     color: #d2f6da;
+  }
+
+  .markdown-body .highlight .gu {
+    color: #58a6ff;
+  }
+
+  .markdown-body .highlight .gd:first-child,
+  .markdown-body .highlight .gd:first-child + .gi {
+    color: #58a6ff;
+    background-color: transparent;
   }
 
   .or-add {
