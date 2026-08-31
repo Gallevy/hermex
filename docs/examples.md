@@ -56,18 +56,35 @@ detail and advanced pattern comes out identical. `tests/oxc-parser/parity.test.t
 asserts that report-for-report against `swc` over the whole fixture corpus, and
 the e2e suite diffs a full `scan --format json` run between the two.
 
-Why it exists, measured on the fixture corpus:
+Why it exists, and what it costs today. Measured on the fixture corpus
+(41 files, 200 rounds, ms per pass):
 
 | | `swc` | `oxc-experimental` |
 | --- | --- | --- |
-| Installed size (parser + native binding) | ~27 MB | ~3 MB |
-| Parse step | 10.0 ms/pass | 1.8 ms/pass |
-| Parse + analysis | 11.7 ms/pass | 17.6 ms/pass |
+| Installed size (parser + native binding) | ~27 MB | **~3 MB** |
+| Parse, to a usable JS AST | 11.7 | **7.7** |
+| AST normalization | — | +7.0 |
+| Analysis walk | +2.3 | +3.6 |
+| **Total** | **14.0** | **18.3** |
 
-The install-size win is the reason to reach for it today. The parse itself is
-substantially faster, but the AST normalization pass currently costs more than
-that saves, so end-to-end scans are slower until the analyzers can read oxc's
-AST directly. It is opt-in for exactly that reason.
+The install-size win — about 9x smaller — is the reason to reach for it today.
+
+Scans are currently *slower* end to end, and the breakdown says exactly why.
+oxc's parse is genuinely faster (7.7 vs 11.7 ms, ~1.5x), but normalizing its
+AST into the analyzers' node shape costs 7.0 ms, more than that saves. The
+analysis walk is then a further 1.3 ms slower because the normalized tree
+carries more fields than SWC's native one (63.3k vs 51.9k) and `visitChildren`
+iterates every field of every node. Net: +4.3 ms.
+
+Both costs come from normalization being an eager deep copy; removing it means
+teaching the analyzers to read oxc's AST directly. That is why the option is
+experimental and opt-in.
+
+> A note on benchmarking oxc: `parseSync().program` is a **lazy getter**.
+> Timing a parse without reading `program` measures ~2.4 ms and is not
+> comparable to SWC, which always materializes its AST — the deserialization
+> cost simply lands on whoever touches the tree first. The 7.7 ms above
+> includes materializing the AST.
 
 ## Ignoring Packages
 

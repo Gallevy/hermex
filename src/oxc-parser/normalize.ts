@@ -25,6 +25,14 @@
  *    re-appended at the end.
  *  - Positions are converted to SWC's coordinate system (see
  *    `createPositionMapper`).
+ *
+ * Cost: this is an eager deep copy, and it is what makes `oxc-experimental`
+ * slower end to end than the default front-end despite oxc parsing faster.
+ * On the fixture corpus the clone costs ~7.0 ms/pass against a ~4.0 ms parse
+ * saving, and the copy it produces carries more fields than SWC's native AST
+ * (63.3k vs 51.9k), which costs the `visitChildren` walk a further ~1.3 ms.
+ * Closing that gap means teaching the analyzers to read oxc's AST directly
+ * rather than making this function cheaper.
  */
 
 type AnyNode = Record<string, unknown> & { type: string };
