@@ -1,28 +1,28 @@
 ---
 layout: default
-title: "comply-release-age — Output Review"
+title: "comply-release-age-unscoped — Output Review"
 ---
 
 {% raw %}
 [← all cases](./index.html)
 
-# `comply-release-age`
+# `comply-release-age-unscoped`
 
 _unchanged_
 
-**Asserts** — The flagged-packages table, against a recorded registry: an overdue package with no in-window target (#26), one with a real target, and one merely coming due. enforceOn names two of them, so the same three packages split across both severity tiers — pair it with comply-release-age-unscoped, where the identical repo is checked with nothing enforced.
+**Asserts** — An empty enforceOn names no mandatory packages and so enforces none, rather than enforcing everything: every installed package is still fetched and reported, every release-age row is advisory, and the exit code comes from rule violations alone. Includes moment — declared, installed, never imported — which release age never even looked up before #171. The only case covering the empty-enforceOn path, which is the one path where #171 can move a verdict.
 
-**Ran** `hermex comply --config configs/release-age.config.ts` in `fixtures/` → exit 1, as asserted
+**Ran** `hermex comply --config configs/release-age-unscoped.config.ts` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/configs/release-age.config.ts`](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/configs/release-age.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/README.md)) · **Case** [`comply-release-age`](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/cases/comply-release-age.md))
+**Config** [`fixtures/configs/release-age-unscoped.config.ts`](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/configs/release-age-unscoped.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/README.md)) · **Case** [`comply-release-age-unscoped`](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/cases/comply-release-age-unscoped.md))
 
 **Registry** offline, served from `fixtures/registry/timelines.ts` — no network
 
-<sub>Reproduce locally: `pnpm run test:output -- --filter comply-release-age`</sub>
+<sub>Reproduce locally: `pnpm run test:output -- --filter comply-release-age-unscoped`</sub>
 
 ## Config
 
-[`fixtures/configs/release-age.config.ts`](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/configs/release-age.config.ts) — resolved, as the loader sees it
+[`fixtures/configs/release-age-unscoped.config.ts`](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/configs/release-age-unscoped.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -125,10 +125,7 @@ _unchanged_
       "minor": 45,
       "major": 60
     },
-    "enforceOn": [
-      "moment",
-      "react-dom"
-    ]
+    "enforceOn": []
   }
 }
 ```
@@ -176,19 +173,19 @@ Caused by:
 
 📦 Packages
 
-┌──────────────────────────────┬───────────┬───────────────────────────────────────────────────┐
-│ Package                      │ Installed │ Target                                            │
-├──────────────────────────────┼───────────┼───────────────────────────────────────────────────┤
-│ @design-system/foundation    │ 2.5.3     │                                                   │
-├──────────────────────────────┼───────────┼───────────────────────────────────────────────────┤
-│ react                        │ 18.3.1    │ 🟡 major 19.1.0 (340 days overdue) [not enforced] │
-├──────────────────────────────┼───────────┼───────────────────────────────────────────────────┤
-│ eslint                       │ N/A       │                                                   │
-├──────────────────────────────┼───────────┼───────────────────────────────────────────────────┤
-│ [DEPRECATED] [BANNED] moment │ 2.29.4    │ 🔴 minor 2.30.1 (no compliant release available)  │
-├──────────────────────────────┼───────────┼───────────────────────────────────────────────────┤
-│ react-dom                    │ 18.3.1    │ 🔵 patch 18.3.2 (20 days remaining)               │
-└──────────────────────────────┴───────────┴───────────────────────────────────────────────────┘
+┌──────────────────────────────┬───────────┬─────────────────────────────────────────────────────────────────┐
+│ Package                      │ Installed │ Target                                                          │
+├──────────────────────────────┼───────────┼─────────────────────────────────────────────────────────────────┤
+│ @design-system/foundation    │ 2.5.3     │                                                                 │
+├──────────────────────────────┼───────────┼─────────────────────────────────────────────────────────────────┤
+│ react                        │ 18.3.1    │ 🟡 major 19.1.0 (340 days overdue) [not enforced]               │
+├──────────────────────────────┼───────────┼─────────────────────────────────────────────────────────────────┤
+│ eslint                       │ N/A       │                                                                 │
+├──────────────────────────────┼───────────┼─────────────────────────────────────────────────────────────────┤
+│ [DEPRECATED] [BANNED] moment │ 2.29.4    │ 🟡 minor 2.30.1 (no compliant release available) [not enforced] │
+├──────────────────────────────┼───────────┼─────────────────────────────────────────────────────────────────┤
+│ react-dom                    │ 18.3.1    │ 🔵 patch 18.3.2 (20 days remaining)                             │
+└──────────────────────────────┴───────────┴─────────────────────────────────────────────────────────────────┘
 
 Total: 5 packages
 
@@ -201,7 +198,7 @@ Total: 5 packages
 
 
 🔴 Not compliant
-  4 mandatory violations found
+  3 mandatory violations found
 ```
 
 </details>

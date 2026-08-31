@@ -14,59 +14,107 @@ _unchanged_
 
 **Ran** `hermex comply --config configs/warn-only.config.ts` in `fixtures/` → exit 0, as asserted
 
-**Config** [`fixtures/configs/warn-only.config.ts`](https://github.com/Gallevy/hermex/blob/0551cb14c4dc0175c00812f816f79e3647761a75/fixtures/configs/warn-only.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/0551cb14c4dc0175c00812f816f79e3647761a75/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/0551cb14c4dc0175c00812f816f79e3647761a75/fixtures/README.md)) · **Case** [`comply-human-warn-only`](https://github.com/Gallevy/hermex/blob/0551cb14c4dc0175c00812f816f79e3647761a75/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/0551cb14c4dc0175c00812f816f79e3647761a75/fixtures/cases/comply-human-warn-only.md))
+**Config** [`fixtures/configs/warn-only.config.ts`](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/configs/warn-only.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/README.md)) · **Case** [`comply-human-warn-only`](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/cases/comply-human-warn-only.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-human-warn-only`</sub>
 
 ## Config
 
-[`fixtures/configs/warn-only.config.ts`](https://github.com/Gallevy/hermex/blob/0551cb14c4dc0175c00812f816f79e3647761a75/fixtures/configs/warn-only.config.ts)
+[`fixtures/configs/warn-only.config.ts`](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/configs/warn-only.config.ts) — resolved, as the loader sees it
 
-```ts
-import type { HermexConfigInput } from '../../src/config/types.ts';
-import base from '../hermex.config.ts';
-
-/**
- * The same rules as the primary config, none of them at `error`. Nothing
- * here can fail a build, so `comply` must exit 0 while still printing every
- * finding — and the verdict has to say "compliant" without pretending the
- * repo is clean. That wording is the whole point of the case.
- */
-export default {
-  ...base,
-  rules: {
-    'no-files': [
+```json
+{
+  "excludes": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "cases.ts",
+    "configs/**",
+    "registry/**",
+    "repos/**"
+  ],
+  "versus": [
+    {
+      "name": "Design System Migration",
+      "packages": [
+        "@design-system/foundation",
+        "@new-system/arc"
+      ]
+    }
+  ],
+  "rules": {
+    "no-files": [
       {
-        severity: 'warn',
-        patterns: ['jest.config.*', '.babelrc'],
-        message: 'Use vitest + Vite',
-      },
+        "severity": "warn",
+        "patterns": [
+          "jest.config.*",
+          ".babelrc"
+        ],
+        "message": "Use vitest + Vite"
+      }
     ],
-    'no-packages': [
-      { severity: 'warn', patterns: ['moment'], message: 'Use date-fns or dayjs' },
-    ],
-    'require-files': [
-      { severity: 'warn', patterns: ['.nvmrc'] },
-      { severity: 'info', patterns: ['.editorconfig'] },
-    ],
-    'require-packages': [
+    "no-packages": [
       {
-        severity: 'info',
-        patterns: ['typescript'],
-        message: 'TypeScript is required',
-      },
+        "severity": "warn",
+        "patterns": [
+          "moment"
+        ],
+        "message": "Use date-fns or dayjs"
+      }
     ],
-    'require-scripts': [
+    "require-files": [
       {
-        severity: 'warn',
-        patterns: ['build', 'test'],
-        message: 'Required npm scripts',
+        "severity": "warn",
+        "patterns": [
+          ".nvmrc"
+        ]
       },
+      {
+        "severity": "info",
+        "patterns": [
+          ".editorconfig"
+        ]
+      }
     ],
-    'require-package-fields': [{ severity: 'warn', patterns: ['engines', 'license'] }],
-    'require-engine-version': { severity: 'info', range: '>=20', message: 'Minimum Node 20 required' },
+    "require-packages": [
+      {
+        "severity": "info",
+        "patterns": [
+          "typescript"
+        ],
+        "message": "TypeScript is required"
+      }
+    ],
+    "require-scripts": [
+      {
+        "severity": "warn",
+        "patterns": [
+          "build",
+          "test"
+        ],
+        "message": "Required npm scripts"
+      }
+    ],
+    "require-package-fields": [
+      {
+        "severity": "warn",
+        "patterns": [
+          "engines",
+          "license"
+        ]
+      }
+    ],
+    "require-engine-version": {
+      "severity": "info",
+      "range": ">=20",
+      "message": "Minimum Node 20 required"
+    }
   },
-} satisfies HermexConfigInput;
+  "output": {
+    "details": false,
+    "patterns": false
+  }
+}
 ```
 
 ## Full output

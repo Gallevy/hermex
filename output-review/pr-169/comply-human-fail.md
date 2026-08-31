@@ -14,82 +14,107 @@ _unchanged_
 
 **Ran** `hermex comply` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/0551cb14c4dc0175c00812f816f79e3647761a75/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/0551cb14c4dc0175c00812f816f79e3647761a75/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/0551cb14c4dc0175c00812f816f79e3647761a75/fixtures/README.md)) · **Case** [`comply-human-fail`](https://github.com/Gallevy/hermex/blob/0551cb14c4dc0175c00812f816f79e3647761a75/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/0551cb14c4dc0175c00812f816f79e3647761a75/fixtures/cases/comply-human-fail.md))
+**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/README.md)) · **Case** [`comply-human-fail`](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/cases/comply-human-fail.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-human-fail`</sub>
 
 ## Config
 
-[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/0551cb14c4dc0175c00812f816f79e3647761a75/fixtures/hermex.config.ts)
+[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/hermex.config.ts) — resolved, as the loader sees it
 
-```ts
-import type { HermexConfigInput } from '../src/config/types.ts';
-
-/**
- * The primary fixture repo's config: a deliberately non-compliant policy
- * over a deliberately messy repo, so `scan` and `comply` both have
- * something to say. Variants that change one thing at a time live in
- * `./configs/` and spread this object — see `fixtures/README.md`.
- */
-export default {
-  // Spelled out rather than left to the schema defaults because this repo
-  // now contains fixture *machinery* alongside the code under analysis:
-  // the case manifest, the alternate configs, the recorded registry
-  // timelines, and the secondary repos that cases scan with their own cwd.
-  // None of it is code this repo "uses", and without these entries the
-  // primary output would grow rows every time a case is added.
-  excludes: [
-    '**/node_modules/**',
-    '**/dist/**',
-    '**/build/**',
-    'cases.ts',
-    'configs/**',
-    'registry/**',
-    'repos/**',
+```json
+{
+  "excludes": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "cases.ts",
+    "configs/**",
+    "registry/**",
+    "repos/**"
   ],
-  versus: [
+  "versus": [
     {
-      name: 'Design System Migration',
-      packages: ['@design-system/foundation', '@new-system/arc'],
-    },
+      "name": "Design System Migration",
+      "packages": [
+        "@design-system/foundation",
+        "@new-system/arc"
+      ]
+    }
   ],
-  rules: {
-    'no-files': [
+  "rules": {
+    "no-files": [
       {
-        severity: 'error',
-        patterns: ['jest.config.*', '.babelrc'],
-        message: 'Use vitest + Vite',
-      },
+        "severity": "error",
+        "patterns": [
+          "jest.config.*",
+          ".babelrc"
+        ],
+        "message": "Use vitest + Vite"
+      }
     ],
-    'no-packages': [
-      { severity: 'error', patterns: ['moment'], message: 'Use date-fns or dayjs' },
-    ],
-    'require-files': [
-      { severity: 'error', patterns: ['.nvmrc'] },
-      { severity: 'warn', patterns: ['.editorconfig'] },
-    ],
-    'require-packages': [
+    "no-packages": [
       {
-        severity: 'error',
-        patterns: ['typescript'],
-        message: 'TypeScript is required',
-      },
+        "severity": "error",
+        "patterns": [
+          "moment"
+        ],
+        "message": "Use date-fns or dayjs"
+      }
     ],
-    'require-scripts': [
+    "require-files": [
       {
-        severity: 'error',
-        patterns: ['build', 'test'],
-        message: 'Required npm scripts',
+        "severity": "error",
+        "patterns": [
+          ".nvmrc"
+        ]
       },
+      {
+        "severity": "warn",
+        "patterns": [
+          ".editorconfig"
+        ]
+      }
     ],
-    'require-package-fields': [{ severity: 'warn', patterns: ['engines', 'license'] }],
-    'require-engine-version': { severity: 'warn', range: '>=20', message: 'Minimum Node 20 required' },
+    "require-packages": [
+      {
+        "severity": "error",
+        "patterns": [
+          "typescript"
+        ],
+        "message": "TypeScript is required"
+      }
+    ],
+    "require-scripts": [
+      {
+        "severity": "error",
+        "patterns": [
+          "build",
+          "test"
+        ],
+        "message": "Required npm scripts"
+      }
+    ],
+    "require-package-fields": [
+      {
+        "severity": "warn",
+        "patterns": [
+          "engines",
+          "license"
+        ]
+      }
+    ],
+    "require-engine-version": {
+      "severity": "warn",
+      "range": ">=20",
+      "message": "Minimum Node 20 required"
+    }
   },
-  output: {
-    details: false,
-    patterns: false,
-  },
-} satisfies HermexConfigInput;
+  "output": {
+    "details": false,
+    "patterns": false
+  }
+}
 ```
 
 ## Full output

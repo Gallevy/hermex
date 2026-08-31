@@ -14,7 +14,7 @@ _unchanged_
 
 **Ran** `hermex comply --config tree.config.ts` in `fixtures/repos/version-conflict` → exit 1, as asserted
 
-**Config** [`fixtures/repos/version-conflict/tree.config.ts`](https://github.com/Gallevy/hermex/blob/0551cb14c4dc0175c00812f816f79e3647761a75/fixtures/repos/version-conflict/tree.config.ts) · **Fixture** [`fixtures/repos/version-conflict`](https://github.com/Gallevy/hermex/blob/0551cb14c4dc0175c00812f816f79e3647761a75/fixtures/repos/version-conflict) ([overview](https://github.com/Gallevy/hermex/blob/0551cb14c4dc0175c00812f816f79e3647761a75/fixtures/repos/version-conflict/README.md)) · **Case** [`release-age-tree-scope`](https://github.com/Gallevy/hermex/blob/0551cb14c4dc0175c00812f816f79e3647761a75/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/0551cb14c4dc0175c00812f816f79e3647761a75/fixtures/cases/release-age-tree-scope.md))
+**Config** [`fixtures/repos/version-conflict/tree.config.ts`](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/repos/version-conflict/tree.config.ts) · **Fixture** [`fixtures/repos/version-conflict`](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/repos/version-conflict) ([overview](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/repos/version-conflict/README.md)) · **Case** [`release-age-tree-scope`](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/cases/release-age-tree-scope.md))
 
 **Registry** offline, served from `fixtures/registry/timelines.ts` — no network
 
@@ -22,23 +22,30 @@ _unchanged_
 
 ## Config
 
-[`fixtures/repos/version-conflict/tree.config.ts`](https://github.com/Gallevy/hermex/blob/0551cb14c4dc0175c00812f816f79e3647761a75/fixtures/repos/version-conflict/tree.config.ts)
+[`fixtures/repos/version-conflict/tree.config.ts`](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/repos/version-conflict/tree.config.ts) — resolved, as the loader sees it
 
-```ts
-import type { HermexConfigInput } from '../../../src/config/types.ts';
-import base from './hermex.config.ts';
-
-/**
- * `scope: 'tree'` — every resolved copy is enforced, so the ancient nested
- * react 17.0.2 becomes a mandatory failure rather than advisory context,
- * and the reported installed version is the worst copy rather than the
- * direct one. Everything else is identical to `./hermex.config.ts`, so the
- * diff between the two baselines is exactly what `scope` does.
- */
-export default {
-  ...base,
-  releaseAge: { ...base.releaseAge, scope: 'tree' },
-} satisfies HermexConfigInput;
+```json
+{
+  "releaseAge": {
+    "enabled": true,
+    "registry": "<fixture registry>",
+    "cacheDisabled": true,
+    "thresholds": {
+      "patch": 30,
+      "minor": 45,
+      "major": 60
+    },
+    "enforceOn": [
+      "react"
+    ],
+    "scope": "tree"
+  },
+  "output": {
+    "components": false,
+    "patterns": false,
+    "versus": false
+  }
+}
 ```
 
 ## Full output
@@ -55,13 +62,13 @@ hermex v<version>
 
 📦 Packages
 
-┌───────────────┬───────────┬────────────────────────────────────┐
-│ Package       │ Installed │ Target                             │
-├───────────────┼───────────┼────────────────────────────────────┤
-│ legacy-widget │ 1.0.0     │                                    │
-├───────────────┼───────────┼────────────────────────────────────┤
-│ react         │ 17.0.2    │ 🔴 major 19.1.0 (640 days overdue) │
-└───────────────┴───────────┴────────────────────────────────────┘
+┌───────────────────────┬───────────┬──────────────────────────────────────────────────┐
+│ Package               │ Installed │ Target                                           │
+├───────────────────────┼───────────┼──────────────────────────────────────────────────┤
+│ @hermex/legacy-widget │ 1.0.0     │ 🟡 major 2.1.0 (240 days overdue) [not enforced] │
+├───────────────────────┼───────────┼──────────────────────────────────────────────────┤
+│ react                 │ 17.0.2    │ 🔴 major 19.1.0 (640 days overdue)               │
+└───────────────────────┴───────────┴──────────────────────────────────────────────────┘
 
 Notes:
   🔵 react → 2 versions installed (bundle impact): 17.0.2, 18.3.1
