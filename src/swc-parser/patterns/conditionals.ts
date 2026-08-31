@@ -1,4 +1,5 @@
 import type { ParserState } from '../types';
+import { lineOf } from '../utils/span';
 
 /**
  * Analyzes conditional expressions (ternary operators) with components
@@ -19,7 +20,7 @@ export function analyzeConditionalExpression(
     state.usagePatterns.conditionalUsage.add({
       consequent: consequent || '',
       alternate: alternate || '',
-      line: node.span?.start || 0,
+      line: lineOf(node),
     });
   }
 }

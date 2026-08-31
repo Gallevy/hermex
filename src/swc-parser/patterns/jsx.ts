@@ -6,6 +6,7 @@ import {
   getUsageContext,
 } from '../utils/jsx-helpers';
 import { analyzePropsInDetail } from './props';
+import { lineOf } from '../utils/span';
 
 /**
  * Analyzes JSX element usage
@@ -43,7 +44,7 @@ export function analyzeJSXOpeningElement(
     component: elementName,
     props: extractJSXProps(node.attributes).map((p) => p.name),
     propsAnalysis,
-    line: node.span?.start || 0,
+    line: lineOf(node),
     context: getUsageContext(parent),
   };
 
