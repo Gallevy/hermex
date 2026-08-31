@@ -1,0 +1,241 @@
+---
+layout: default
+title: "lockfile-pnpm — Output Review"
+---
+
+{% raw %}
+[← all cases](./index.html)
+
+# `lockfile-pnpm`
+
+_unchanged_
+
+**Asserts** — pnpm-lock.yaml produces the same inventory as its siblings.
+
+**Ran** `hermex scan --format json` in `fixtures/repos/lockfile-pnpm` → exit 0, as asserted
+
+**Config** _none — the loader found no `hermex.config.ts` in the cwd, so this ran on schema defaults_ · **Fixture** [`fixtures/repos/lockfile-pnpm`](https://github.com/Gallevy/hermex/blob/90c860852e70ca8d1c518db2ec2f8a40bea63bff/fixtures/repos/lockfile-pnpm) ([overview](https://github.com/Gallevy/hermex/blob/90c860852e70ca8d1c518db2ec2f8a40bea63bff/fixtures/repos/lockfile-pnpm/README.md)) · **Case** [`lockfile-pnpm`](https://github.com/Gallevy/hermex/blob/90c860852e70ca8d1c518db2ec2f8a40bea63bff/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/90c860852e70ca8d1c518db2ec2f8a40bea63bff/fixtures/cases/lockfile-pnpm.md))
+
+<sub>Reproduce locally: `pnpm run test:output -- --filter lockfile-pnpm`</sub>
+
+## Config
+
+None. `src/config/loader.ts` looks for `hermex.config.ts` in the working directory and does not walk up, so this case runs on the built-in schema defaults.
+
+## Full output
+
+<details markdown="1"><summary><code>stdout.json</code></summary>
+
+```json
+{
+  "version": "<version>",
+  "summary": {
+    "filesAnalyzed": 1,
+    "totalImports": 4,
+    "totalComponents": 3,
+    "totalUsagePatterns": 10,
+    "patternCounts": [
+      {
+        "patternType": "imports.named",
+        "displayName": "Named Imports",
+        "count": 4
+      },
+      {
+        "patternType": "usage.jsx",
+        "displayName": "JSX Usage",
+        "count": 3
+      },
+      {
+        "patternType": "usage.props",
+        "displayName": "Props Analyzed",
+        "count": 3
+      },
+      {
+        "patternType": "imports.default",
+        "displayName": "Default Imports",
+        "count": 0
+      },
+      {
+        "patternType": "imports.namespace",
+        "displayName": "Namespace Imports",
+        "count": 0
+      },
+      {
+        "patternType": "imports.named.aliased",
+        "displayName": "Named Imports (aliased)",
+        "count": 0
+      },
+      {
+        "patternType": "usage.variables",
+        "displayName": "Variable Assignments",
+        "count": 0
+      },
+      {
+        "patternType": "usage.destructuring",
+        "displayName": "Destructuring",
+        "count": 0
+      },
+      {
+        "patternType": "usage.conditional",
+        "displayName": "Conditional Usage",
+        "count": 0
+      },
+      {
+        "patternType": "usage.arrays",
+        "displayName": "Array Mappings",
+        "count": 0
+      },
+      {
+        "patternType": "usage.objects",
+        "displayName": "Object Mappings",
+        "count": 0
+      },
+      {
+        "patternType": "advanced.lazy",
+        "displayName": "Lazy Loading",
+        "count": 0
+      },
+      {
+        "patternType": "advanced.dynamic",
+        "displayName": "Dynamic Imports",
+        "count": 0
+      },
+      {
+        "patternType": "advanced.hoc",
+        "displayName": "Higher-Order Components",
+        "count": 0
+      },
+      {
+        "patternType": "advanced.memo",
+        "displayName": "Memoized Components",
+        "count": 0
+      },
+      {
+        "patternType": "advanced.forwardRef",
+        "displayName": "Forward Refs",
+        "count": 0
+      },
+      {
+        "patternType": "advanced.portal",
+        "displayName": "Portal Usage",
+        "count": 0
+      }
+    ]
+  },
+  "packages": [
+    {
+      "packageName": "@design-system/foundation",
+      "version": "2.5.0",
+      "rootVersion": "2.5.0",
+      "declaredIn": [
+        "dependencies"
+      ],
+      "componentCount": 2,
+      "usageCount": 2,
+      "percentage": 66.66666666666666,
+      "hasVersionConflict": false,
+      "allVersions": [
+        "2.5.0"
+      ]
+    },
+    {
+      "packageName": "@old-system/ui",
+      "version": "1.2.3",
+      "rootVersion": "1.2.3",
+      "declaredIn": [
+        "dependencies"
+      ],
+      "componentCount": 1,
+      "usageCount": 1,
+      "percentage": 33.33333333333333,
+      "hasVersionConflict": false,
+      "allVersions": [
+        "1.2.3"
+      ]
+    },
+    {
+      "packageName": "react",
+      "version": "18.2.0",
+      "rootVersion": "18.2.0",
+      "declaredIn": [
+        "dependencies"
+      ],
+      "componentCount": 0,
+      "usageCount": 0,
+      "percentage": 0,
+      "hasVersionConflict": false,
+      "allVersions": [
+        "18.2.0"
+      ]
+    },
+    {
+      "packageName": "react-dom",
+      "version": "18.2.0",
+      "rootVersion": "18.2.0",
+      "declaredIn": [
+        "dependencies"
+      ],
+      "componentCount": 0,
+      "usageCount": 0,
+      "percentage": 0,
+      "hasVersionConflict": false,
+      "allVersions": [
+        "18.2.0"
+      ]
+    }
+  ],
+  "components": [
+    {
+      "name": "Card",
+      "source": "@design-system/foundation",
+      "count": 1,
+      "files": [
+        "src/usage.tsx"
+      ]
+    },
+    {
+      "name": "LegacyBanner",
+      "source": "@old-system/ui",
+      "count": 1,
+      "files": [
+        "src/usage.tsx"
+      ]
+    },
+    {
+      "name": "Button",
+      "source": "@design-system/foundation",
+      "count": 1,
+      "files": [
+        "src/usage.tsx"
+      ]
+    }
+  ],
+  "versus": [],
+  "ruleViolations": [],
+  "compliance": {
+    "status": "compliant",
+    "compliant": true,
+    "counts": {
+      "errorRuleViolations": 0,
+      "releaseAgeViolations": 0,
+      "warningRuleViolations": 0
+    }
+  }
+}
+```
+
+</details>
+
+<details markdown="1"><summary><code>stderr.txt</code></summary>
+
+```text
+hermex v<version>
+- Parsing lockfile...
+✔ Found pnpm lockfile (supports: v5, v6, v9) - 7 packages
+✔ Found 1 files
+✔ Analysis complete! Analyzed 1/1 files
+```
+
+</details>
+
+{% endraw %}
