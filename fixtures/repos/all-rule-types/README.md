@@ -1,13 +1,16 @@
 # `repos/all-rule-types/`
 
-A repo engineered so **every one of the nine file- and manifest-based rule
-types fires at once**, at three different severities.
+A repo engineered so **every one of the ten rule types fires at once**, at
+three different severities.
 
-It does not cover `require-repo-name-match`: that rule compares package.json "name" against the git remote, and git refuses to track any path containing a `.git` component, so no fixture repo can carry the `.git/config` it needs. It is covered by unit and e2e tests, which build a repo in a temp directory instead.
+`require-repo-name-match` needs a `.git/config`, which git will not track
+inside this repository. The case that uses this fixture supplies one through
+its `setup` field, which runs the case against a sandboxed copy — see
+`fixtures/cases.ts`.
 
 ## What it proves
 
-The primary fixture repo only ever trips three of the nine. Without this
+The primary fixture repo only ever trips three of the ten. Without this
 repo the rules table has never been reviewed with an `require-engine-version` row, a
 `codeowners` row, or either of the two package-field shapes in it — so
 nothing would catch a renderer that mishandles `fieldPath`,
@@ -56,7 +59,7 @@ two rows into one distinct wording is the fix landing, not a regression.
 
 | Case | Command | Expects |
 | --- | --- | --- |
-| `comply-all-rule-types` | `hermex comply` | exit 1, all nine rows in the human table |
+| `comply-all-rule-types` | `hermex comply` | exit 1, all ten rows in the human table |
 | `comply-all-rule-types-json` | `hermex comply --format json` | exit 1, the machine-readable shape of each rule type |
 
 ## Layout
@@ -64,7 +67,7 @@ two rows into one distinct wording is the fix landing, not a regression.
 ```
 .babelrc                 no-files hit
 .github/CODEOWNERS       two of three src files covered
-hermex.config.ts         all nine file/manifest rules, three severities
+hermex.config.ts         all ten rules, three severities
 jest.config.js           no-files hit
 package.json             engines >=16, no license, publishConfig.registry, moment
 src/legacy.tsx           owned by the wrong team

@@ -27,6 +27,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { createServer, type Server } from 'node:http';
 import {
+  cpSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -57,6 +58,20 @@ export interface FixtureCase {
   env?: Record<string, string | null>;
   /** Files the case writes into `{OUT}`, captured as artifacts. */
   writes?: string[];
+  /**
+   * Files to create before the run, keyed by path relative to the case's
+   * working directory, with the file's contents as the value.
+   *
+   * A case with `setup` runs against a **copy** of its fixture directory in
+   * a temp sandbox, so nothing is ever written inside the repository. That
+   * indirection exists for one reason: git silently refuses to track any
+   * path containing a `.git` component, so a rule that reads `.git/config`
+   * — `require-repo-name-match` — could not otherwise be covered by any
+   * fixture at all. The sandbox path is rewritten back to the real fixture
+   * path before output is recorded, so a sandboxed case's output is
+   * byte-identical to what running in the fixture directory would produce.
+   */
+  setup?: Record<string, string>;
   /** Serve `fixtures/registry/timelines.ts` instead of reaching the network. */
   registry?: boolean;
   /** Also keep the raw, un-stripped stdout, so escape sequences are diffed. */
@@ -310,7 +325,19 @@ async function runCase(
   cliPath: string,
 ): Promise<{ artifacts: Artifacts; status: number; raw: RawCapture }> {
   const scratch = mkdtempSync(join(tmpdir(), `hermex-output-${fixture.name}-`));
+  const fixtureDir = join(FIXTURES, fixture.cwd);
+  let sandbox: string | null = null;
   try {
+    if (fixture.setup) {
+      sandbox = mkdtempSync(join(tmpdir(), `hermex-sandbox-${fixture.name}-`));
+      cpSync(fixtureDir, sandbox, { recursive: true });
+      for (const [relative, contents] of Object.entries(fixture.setup)) {
+        const target = join(sandbox, relative);
+        mkdirSync(dirname(target), { recursive: true });
+        writeFileSync(target, contents);
+      }
+    }
+    const cwd = sandbox ?? fixtureDir;
     const args = fixture.args.map((arg) => arg.replace('{OUT}', scratch));
     const env = baseEnv();
     if (registryUrl) env['HERMEX_FIXTURE_REGISTRY'] = registryUrl;
@@ -320,13 +347,13 @@ async function runCase(
     }
 
     const result = await spawnCapture([cliPath, ...args], {
-      cwd: join(FIXTURES, fixture.cwd),
+      cwd,
       env,
     });
 
     const status = result.status;
-    const stdout = scrub(result.stdout);
-    const stderr = scrub(result.stderr);
+    const stdout = scrub(unsandbox(result.stdout, sandbox, fixtureDir));
+    const stderr = scrub(unsandbox(result.stderr, sandbox, fixtureDir));
     const artifacts: Artifacts = { 'exit-code.txt': `${status}\n` };
 
     // JSON stdout is kept exactly as the CLI emitted it rather than
@@ -341,7 +368,7 @@ async function runCase(
     for (const name of fixture.writes ?? []) {
       const written = join(scratch, name);
       artifacts[name] = existsSync(written)
-        ? scrub(readFileSync(written, 'utf8'))
+        ? scrub(unsandbox(readFileSync(written, 'utf8'), sandbox, fixtureDir))
         : '<file was not written>\n';
     }
 
@@ -351,7 +378,37 @@ async function runCase(
     return { artifacts, status, raw: { stdout, stderr } };
   } finally {
     rmSync(scratch, { recursive: true, force: true });
+    if (sandbox) rmSync(sandbox, { recursive: true, force: true });
   }
+}
+
+/**
+ * Rewrites a sandbox path back to the fixture directory it was copied from.
+ *
+ * A sandboxed run happens outside the repo, so `scrub`'s `<repo>` rewrite
+ * would not catch its path — and the temp directory name differs between the
+ * current-tree build and the reference build, so any leak would surface as a
+ * spurious diff on every single run. Both spellings are handled because a
+ * path can reach the output as a native Windows path or as a `file://` URL.
+ */
+function unsandbox(
+  text: string,
+  sandbox: string | null,
+  fixtureDir: string,
+): string {
+  if (sandbox === null) return text;
+  return text
+    .split(sandbox)
+    .join(fixtureDir)
+    .split(sandbox.replace(/\\/g, '/'))
+    .join(fixtureDir.replace(/\\/g, '/'));
+}
+
+/** The paths a case's `setup` materializes, formatted for a dossier line. */
+function setupPaths(fixture: FixtureCase): string {
+  return Object.keys(fixture.setup ?? {})
+    .map((name) => `\`${name}\``)
+    .join(', ');
 }
 
 function isJson(text: string): boolean {
@@ -522,6 +579,12 @@ export function caseDoc(fixture: FixtureCase): string {
     rows.push([
       'Writes',
       `${fixture.writes.map((name) => `\`${name}\``).join(', ')} into a scratch directory outside the repo`,
+    ]);
+  }
+  if (fixture.setup) {
+    rows.push([
+      'Sandbox',
+      `runs against a copy of the fixture directory, with ${setupPaths(fixture)} created first — paths git cannot track`,
     ]);
   }
   if (fixture.registry) {
@@ -1270,6 +1333,12 @@ function caseContext(result: CaseResult, base: string | null): string[] {
   if (fixture.writes && fixture.writes.length > 0) {
     lines.push(
       `**Writes** ${fixture.writes.map((name) => `\`${name}\``).join(', ')} into \`$OUT\` — captured and diffed the same as stdout`,
+      '',
+    );
+  }
+  if (fixture.setup) {
+    lines.push(
+      `**Sandboxed** — runs against a copy of the fixture directory with ${setupPaths(fixture)} created first, because git cannot track those paths`,
       '',
     );
   }

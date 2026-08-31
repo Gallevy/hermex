@@ -3,7 +3,7 @@
 
 # `comply-all-rule-types-json`
 
-The machine-readable shape of every rule type: fieldPath and actualValue on package-field hits, installedRange/requiredRange on require-engine-version, matchedFiles on codeowners. Also where #95 is visible — the two codeowners entries are byte-identical apart from matchedFiles.
+The machine-readable shape of every rule type: fieldPath and actualValue on package-field hits, installedRange/requiredRange on require-engine-version, matchedFiles on codeowners, expectedName/actualName on require-repo-name-match. Also where #95 is visible — the two codeowners entries are byte-identical apart from matchedFiles.
 
 ## What runs
 
@@ -14,6 +14,11 @@ The machine-readable shape of every rule type: fieldPath and actualValue on pack
 | **Config** | [`fixtures/repos/all-rule-types/hermex.config.ts`](../repos/all-rule-types/hermex.config.ts) |
 | **Fixture** | [`fixtures/repos/all-rule-types`](../repos/all-rule-types) — [overview](../repos/all-rule-types/README.md) |
 | **Asserted exit code** | `1` |
+| **Sandbox** | runs against a copy of the fixture directory, with `.git/config` created first — paths git cannot track |
+
+## What to look at
+
+The target-branch side of this diff is a ZodError, not output: `rules` is a strict schema, so a build that predates `require-repo-name-match` rejects this fixture config outright. That is expected for any PR adding a rule key, and it is why the whole table reads as added rather than as one new row.
 
 ## Recorded output
 

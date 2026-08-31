@@ -2,7 +2,7 @@ import type { HermexConfigInput } from '../../../src/config/types.ts';
 
 /**
  * Every rule type hermex has, all firing at once, at three different
- * severities. The primary fixture repo only ever trips three of the nine —
+ * severities. The primary fixture repo only ever trips three of the ten —
  * so without this repo the rules table has never been reviewed with an
  * `require-engine-version` row, a `require-codeowners` row, or either of the
  * package-field shapes in it, and nothing would catch a renderer that
@@ -57,6 +57,15 @@ export default {
       severity: 'info',
       requiredOwners: ['@org/platform'],
       message: 'Every file needs a platform owner',
+    },
+    // The repository identity this compares against is materialized by the
+    // case's `setup` (see fixtures/cases.ts): git cannot track a `.git`
+    // path, so the remote is written into a sandboxed copy at run time.
+    // The remote slug is `checkout-web`, the manifest name is
+    // `hermex-fixture-all-rule-types`, so this always fires.
+    'require-repo-name-match': {
+      severity: 'warn',
+      message: 'Package name must match the repository',
     },
   },
   output: {
