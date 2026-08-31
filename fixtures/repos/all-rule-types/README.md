@@ -1,7 +1,12 @@
 # `repos/all-rule-types/`
 
-A repo engineered so **every one of the ten rule types fires at once**, at
+A repo engineered so **every one of the eleven rule types fires at once**, at
 three different severities.
+
+`require-repo-name-match` needs a `.git/config`, which git will not track
+inside this repository. The cases that use this fixture supply one through
+their `setup` field, which runs the case against a sandboxed copy — see
+`fixtures/cases.ts`.
 
 ## What it proves
 
@@ -70,7 +75,7 @@ two rows into one distinct wording is the fix landing, not a regression.
 .babelrc                 no-files hit
 .github/CODEOWNERS       two of three src files covered
 assets/logo.svg          1410 B, over the 1 KB max-file-size ceiling
-hermex.config.ts         all ten rules, three severities
+hermex.config.ts         all eleven rules, three severities
 jest.config.js           no-files hit
 package.json             engines >=16, no license, publishConfig.registry, moment
 src/legacy.tsx           owned by the wrong team

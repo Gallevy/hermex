@@ -71,6 +71,15 @@ export default {
       requiredOwners: ['@org/platform'],
       message: 'Every file needs a platform owner',
     },
+    // The repository identity this compares against is materialized by the
+    // case's `setup` (see fixtures/cases.ts): git cannot track a `.git`
+    // path, so the remote is written into a sandboxed copy at run time.
+    // The remote slug is `checkout-web`, the manifest name is
+    // `hermex-fixture-all-rule-types`, so this always fires.
+    'require-repo-name-match': {
+      severity: 'warn',
+      message: 'Package name must match the repository',
+    },
   },
   output: {
     packages: false,
