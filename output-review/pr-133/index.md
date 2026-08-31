@@ -10,7 +10,7 @@ title: "Output Review"
 
 Every case matches the target branch.
 
-## All cases
+## Unchanged (27)
 
 | Case | Status | Proves |
 | --- | --- | --- |
