@@ -8,6 +8,7 @@ export type {
   RuleSeverity,
   RuleConfig,
   PackageFieldRule,
+  MaxFileSizeRule,
   EngineVersionRule,
   CodeownersRule,
   PackagesConfig,

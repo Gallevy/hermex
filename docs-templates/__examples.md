@@ -108,6 +108,36 @@ export default defineConfig({
 });
 ```
 
+### File Size Limits
+
+`max-file-size` flags any file matching `patterns` that is bigger than
+`maxSize`. Sizes are written either as a plain byte count (`204800`) or with
+a unit — `'200kb'`, `'1.5mb'`, `'500b'`. Units are binary, so 1 KB is 1024 B
+(`kib`/`mib`/`gib` are accepted spellings of the same values). A file sitting
+exactly on the ceiling passes; only files strictly over it are reported.
+
+```ts
+export default defineConfig({
+  rules: {
+    'max-file-size': [
+      {
+        severity: 'error',
+        patterns: ['**/*.svg', '**/*.png'],
+        maxSize: '200kb',
+        message: 'Compress it or serve it from the CDN',
+      },
+      // Same rule, byte count instead of a unit — 50 KB.
+      { severity: 'warn', patterns: ['src/**/*.json'], maxSize: 51200 },
+    ],
+  },
+});
+```
+
+Each rule reports a single violation listing every file over its ceiling, so
+one pattern is one row in the rules table no matter how many assets it
+catches. Under `--format json` the violation also carries `maxSizeBytes` and
+an `oversizeFiles` array of `{ file, sizeBytes }`, largest first.
+
 ### Banned Packages
 
 ```ts

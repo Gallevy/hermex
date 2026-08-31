@@ -403,6 +403,85 @@ describe('applyOverrides', () => {
     ]);
   });
 
+  it('merges max-file-size, keeping maxSize normalized to bytes', () => {
+    const config = createConfig({
+      rules: {
+        'max-file-size': [
+          { severity: 'error', patterns: ['**/*.svg'], maxSize: '200kb' },
+        ],
+      },
+      overrides: [
+        {
+          match: ['@acme/checkout'],
+          rules: {
+            'max-file-size': [
+              { severity: 'warn', patterns: ['**/*.png'], maxSize: '1mb' },
+            ],
+          },
+        },
+      ],
+    });
+
+    const result = applyOverrides(config, repo('@acme/checkout'));
+
+    expect(result.rules['max-file-size']).toEqual([
+      { severity: 'error', patterns: ['**/*.svg'], maxSize: 204800 },
+      { severity: 'warn', patterns: ['**/*.png'], maxSize: 1048576 },
+    ]);
+  });
+
+  // Identity is the pattern list, so an override raising the ceiling for the
+  // same patterns replaces the base rule rather than stacking a second one.
+  it('replaces a base max-file-size rule sharing its patterns', () => {
+    const config = createConfig({
+      rules: {
+        'max-file-size': [
+          { severity: 'error', patterns: ['**/*.svg'], maxSize: '200kb' },
+        ],
+      },
+      overrides: [
+        {
+          match: ['@acme/checkout'],
+          rules: {
+            'max-file-size': [
+              { severity: 'warn', patterns: ['**/*.svg'], maxSize: '500kb' },
+            ],
+          },
+        },
+      ],
+    });
+
+    const result = applyOverrides(config, repo('@acme/checkout'));
+
+    expect(result.rules['max-file-size']).toEqual([
+      { severity: 'warn', patterns: ['**/*.svg'], maxSize: 512000 },
+    ]);
+  });
+
+  it('cancels a base max-file-size rule via "off"', () => {
+    const config = createConfig({
+      rules: {
+        'max-file-size': [
+          { severity: 'error', patterns: ['**/*.svg'], maxSize: '200kb' },
+        ],
+      },
+      overrides: [
+        {
+          match: ['@acme/checkout'],
+          rules: {
+            'max-file-size': [
+              { severity: 'off', patterns: ['**/*.svg'], maxSize: '200kb' },
+            ],
+          },
+        },
+      ],
+    });
+
+    const result = applyOverrides(config, repo('@acme/checkout'));
+
+    expect(result.rules['max-file-size']).toEqual([]);
+  });
+
   it('merges require-engine-version', () => {
     const config = createConfig({
       rules: { 'require-engine-version': { severity: 'error', range: '>=18' } },

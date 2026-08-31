@@ -150,7 +150,7 @@ same set of strings), not a glob comparison — write the override's
 `patterns` identically to the base rule you want to replace or cancel.
 
 Every rule type supports this (`no-files`, `require-files`,
-`no-packages`, `require-packages`, `require-scripts`,
+`max-file-size`, `no-packages`, `require-packages`, `require-scripts`,
 `require-package-fields`, `no-package-fields`, `require-engine-version`). The
 exception is `require-codeowners`, which only ever holds a single rule — any
 matching override's `require-codeowners` replaces the base one outright, and
@@ -217,6 +217,36 @@ export default defineConfig({
   },
 });
 ```
+
+### File Size Limits
+
+`max-file-size` flags any file matching `patterns` that is bigger than
+`maxSize`. Sizes are written either as a plain byte count (`204800`) or with
+a unit — `'200kb'`, `'1.5mb'`, `'500b'`. Units are binary, so 1 KB is 1024 B
+(`kib`/`mib`/`gib` are accepted spellings of the same values). A file sitting
+exactly on the ceiling passes; only files strictly over it are reported.
+
+```ts
+export default defineConfig({
+  rules: {
+    'max-file-size': [
+      {
+        severity: 'error',
+        patterns: ['**/*.svg', '**/*.png'],
+        maxSize: '200kb',
+        message: 'Compress it or serve it from the CDN',
+      },
+      // Same rule, byte count instead of a unit — 50 KB.
+      { severity: 'warn', patterns: ['src/**/*.json'], maxSize: 51200 },
+    ],
+  },
+});
+```
+
+Each rule reports a single violation listing every file over its ceiling, so
+one pattern is one row in the rules table no matter how many assets it
+catches. Under `--format json` the violation also carries `maxSizeBytes` and
+an `oversizeFiles` array of `{ file, sizeBytes }`, largest first.
 
 ### Banned Packages
 
@@ -490,10 +520,10 @@ Severity is the only thing that decides which bucket a rule violation lands in; 
 | `packages` | Every package the repo owns — see below. Carries version, `declaredIn`, usage counts, and `releaseAge` when enrichment ran. |
 | `components` | Every component found, with its source package, usage count and the files using it. The one place component names live. |
 | `versus` | Head-to-head comparisons configured under `versus`. |
-| `ruleViolations` | **Every rule hit, in one list** — `no-files`, `require-files`, `require-packages`, `no-packages`, `require-scripts`, `require-package-fields`, `no-package-fields`, `require-engine-version`, `require-codeowners`. Filter on `ruleId`. |
+| `ruleViolations` | **Every rule hit, in one list** — `no-files`, `require-files`, `max-file-size`, `require-packages`, `no-packages`, `require-scripts`, `require-package-fields`, `no-package-fields`, `require-engine-version`, `require-codeowners`. Filter on `ruleId`. |
 | `compliance` | The canonical verdict — see above. |
 
-`ruleViolations` is the single source of truth for rule hits. Entries share a common shape (`ruleId`, `severity`, `patterns`, `message?`, `matchedFiles`) and add per-type fields where they apply: `packageName` for `no-packages`, `fieldPath`/`actualValue` for the package-field rules, `installedRange`/`requiredRange` for `require-engine-version`.
+`ruleViolations` is the single source of truth for rule hits. Entries share a common shape (`ruleId`, `severity`, `patterns`, `message?`, `matchedFiles`) and add per-type fields where they apply: `packageName` for `no-packages`, `fieldPath`/`actualValue` for the package-field rules, `maxSizeBytes`/`oversizeFiles` for `max-file-size`, `installedRange`/`requiredRange` for `require-engine-version`.
 
 #### Trimming the JSON with `output.*`
 
@@ -615,6 +645,9 @@ export default defineConfig({
       { severity: 'error', patterns: ['jest.config.*'], message: 'Use vitest' },
     ],
     'require-files': [{ severity: 'error', patterns: ['.nvmrc'] }],
+    'max-file-size': [
+      { severity: 'error', patterns: ['**/*.svg'], maxSize: '200kb' },
+    ],
     'no-packages': [
       { severity: 'warn', patterns: ['moment'], message: 'Use date-fns' },
     ],
