@@ -76,4 +76,26 @@ describe('loadConfig', () => {
       /[Uu]nrecognized|unknown/,
     );
   });
+
+  it('defaults parser to swc when the config does not set one', async () => {
+    const cwd = scratchDir();
+    const result = await loadConfig(cwd);
+    expect(result.parser).toBe('swc');
+  });
+
+  it('accepts parser: oxc-experimental', async () => {
+    const cwd = scratchDir();
+    const configPath = writeConfig(
+      cwd,
+      `export default { parser: 'oxc-experimental' };`,
+    );
+    const result = await loadConfig(cwd, configPath);
+    expect(result.parser).toBe('oxc-experimental');
+  });
+
+  it('rejects a parser name that is not a known front-end', async () => {
+    const cwd = scratchDir();
+    const configPath = writeConfig(cwd, `export default { parser: 'babel' };`);
+    await expect(loadConfig(cwd, configPath)).rejects.toThrow();
+  });
 });

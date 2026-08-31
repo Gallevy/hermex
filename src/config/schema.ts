@@ -52,6 +52,18 @@ const CodeownersRuleSchema = z
 
 const ThresholdSchema = z.union([z.number(), z.literal(false)]);
 
+/**
+ * Which AST front-end analyzes source files.
+ *
+ * 'swc' is the default and the supported one. 'oxc-experimental' swaps
+ * @swc/core for oxc-parser — a smaller install and a different native binding
+ * — and is opt-in while it proves itself. Both front-ends run the identical
+ * visitor, pattern analyzers and report generator (oxc's ESTree AST is
+ * normalized into SWC's node vocabulary first), so the analysis is the same
+ * either way; only the parse step differs.
+ */
+const ParserSchema = z.enum(['swc', 'oxc-experimental']);
+
 // Overrides use the same rule schemas as the base `rules` below (severity
 // 'off' included) — an override rule is resolved into the base the same
 // way `resolveRules` resolves the base config against itself.
@@ -88,6 +100,8 @@ export const HermexConfigSchema = z
     excludes: z
       .array(z.string())
       .default(['**/node_modules/**', '**/dist/**', '**/build/**']),
+
+    parser: ParserSchema.default('swc'),
 
     packages: z
       .object({
@@ -220,6 +234,7 @@ export type HermexConfigInput = z.input<typeof HermexConfigSchema>;
 
 // Sub-types derived from the output shape so they can never drift from the schema
 export type RuleSeverity = z.infer<typeof RuleSeveritySchema>;
+export type ParserName = z.infer<typeof ParserSchema>;
 export type RuleConfig = z.infer<typeof RuleConfigSchema>;
 export type PackageFieldRule = z.infer<typeof PackageFieldRuleSchema>;
 export type EngineVersionRule = z.infer<typeof EngineVersionRuleSchema>;

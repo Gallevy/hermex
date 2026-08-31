@@ -37,6 +37,38 @@ export default defineConfig({
 });
 ```
 
+## Parser (experimental)
+
+`parser` selects the AST front-end. It defaults to `'swc'`, the supported one;
+`'oxc-experimental'` swaps [@swc/core](https://swc.rs/) for
+[oxc-parser](https://oxc.rs/).
+
+```ts
+export default defineConfig({
+  parser: 'oxc-experimental',
+});
+```
+
+Only the parse step changes. oxc's ESTree AST is normalized into the node shape
+the analyzers already consume, so the same visitor, the same pattern analyzers
+and the same report generator run either way — every import, JSX usage, prop
+detail and advanced pattern comes out identical. `tests/oxc-parser/parity.test.ts`
+asserts that report-for-report against `swc` over the whole fixture corpus, and
+the e2e suite diffs a full `scan --format json` run between the two.
+
+Why it exists, measured on the fixture corpus:
+
+| | `swc` | `oxc-experimental` |
+| --- | --- | --- |
+| Installed size (parser + native binding) | ~27 MB | ~3 MB |
+| Parse step | 10.0 ms/pass | 1.8 ms/pass |
+| Parse + analysis | 11.7 ms/pass | 17.6 ms/pass |
+
+The install-size win is the reason to reach for it today. The parse itself is
+substantially faster, but the AST normalization pass currently costs more than
+that saves, so end-to-end scans are slower until the analyzers can read oxc's
+AST directly. It is opt-in for exactly that reason.
+
 ## Ignoring Packages
 
 Exclude packages from the packages table entirely:
@@ -601,6 +633,8 @@ import { defineConfig } from 'hermex';
 export default defineConfig({
   includes: ['src/**/*.{tsx,jsx,ts,js}'],
   excludes: ['**/node_modules/**', '**/dist/**', '**/*.test.*'],
+
+  parser: 'swc',
 
   packages: {
     ignore: [],

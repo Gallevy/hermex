@@ -173,7 +173,7 @@ Total: 272 patterns detected
 ## Tech Stack
 
 - **Runtime**: Node.js 24.11.1+
-- **Parser**: [@swc/core](https://swc.rs/)
+- **Parser**: [@swc/core](https://swc.rs/) — with an opt-in experimental [oxc-parser](https://oxc.rs/) front-end (`parser: 'oxc-experimental'`)
 - **CLI**: [Commander.js](https://github.com/tj/commander.js)
 - **Build**: [tsdown](https://tsdown.dev/)
 - **Language**: [TypeScript](https://www.typescriptlang.org/)
