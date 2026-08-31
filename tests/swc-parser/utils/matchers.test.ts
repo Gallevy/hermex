@@ -51,4 +51,37 @@ describe('matchers - isHOCFunction', () => {
     expect(isHOCFunction(null)).toBe(false);
     expect(isHOCFunction({ type: 'Identifier', value: 'render' })).toBe(false);
   });
+
+  test('matches an HOC-pattern name behind a member expression', () => {
+    expect(
+      isHOCFunction({
+        type: 'MemberExpression',
+        object: { type: 'Identifier', value: 'hocs' },
+        property: { value: 'withTheme' },
+      }),
+    ).toBe(true);
+  });
+
+  test('rejects a member expression whose property is not an HOC name', () => {
+    expect(
+      isHOCFunction({
+        type: 'MemberExpression',
+        object: { type: 'Identifier', value: 'lodash' },
+        property: { value: 'map' },
+      }),
+    ).toBe(false);
+  });
+
+  // NB: returns `undefined` rather than `false` — the `prop?.value &&`
+  // short-circuit yields the falsy operand, and `callee` being `any` hides it
+  // from the declared `boolean` return type.
+  test('is falsy for a member expression with an unnamed property', () => {
+    expect(
+      isHOCFunction({ type: 'MemberExpression', property: {} }),
+    ).toBeFalsy();
+  });
+
+  test('returns false for a callee that is neither identifier nor member', () => {
+    expect(isHOCFunction({ type: 'CallExpression' })).toBe(false);
+  });
 });
