@@ -14,59 +14,85 @@ _unchanged_
 
 **Ran** `hermex comply` in `fixtures/repos/compliant` → exit 0, as asserted
 
-**Config** [`fixtures/repos/compliant/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/e63434cf3c993e8af0504ce168fe312cf73a550c/fixtures/repos/compliant/hermex.config.ts) · **Fixture** [`fixtures/repos/compliant`](https://github.com/Gallevy/hermex/blob/e63434cf3c993e8af0504ce168fe312cf73a550c/fixtures/repos/compliant) ([overview](https://github.com/Gallevy/hermex/blob/e63434cf3c993e8af0504ce168fe312cf73a550c/fixtures/repos/compliant/README.md)) · **Case** [`comply-human-pass`](https://github.com/Gallevy/hermex/blob/e63434cf3c993e8af0504ce168fe312cf73a550c/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/e63434cf3c993e8af0504ce168fe312cf73a550c/fixtures/cases/comply-human-pass.md))
+**Config** [`fixtures/repos/compliant/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/ae6519994e240bbf5bf6bd64806e657c87299acb/fixtures/repos/compliant/hermex.config.ts) · **Fixture** [`fixtures/repos/compliant`](https://github.com/Gallevy/hermex/blob/ae6519994e240bbf5bf6bd64806e657c87299acb/fixtures/repos/compliant) ([overview](https://github.com/Gallevy/hermex/blob/ae6519994e240bbf5bf6bd64806e657c87299acb/fixtures/repos/compliant/README.md)) · **Case** [`comply-human-pass`](https://github.com/Gallevy/hermex/blob/ae6519994e240bbf5bf6bd64806e657c87299acb/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/ae6519994e240bbf5bf6bd64806e657c87299acb/fixtures/cases/comply-human-pass.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-human-pass`</sub>
 
 ## Config
 
-[`fixtures/repos/compliant/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/e63434cf3c993e8af0504ce168fe312cf73a550c/fixtures/repos/compliant/hermex.config.ts)
+[`fixtures/repos/compliant/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/ae6519994e240bbf5bf6bd64806e657c87299acb/fixtures/repos/compliant/hermex.config.ts) — resolved, as the loader sees it
 
-```ts
-import type { HermexConfigInput } from '../../../src/config/types.ts';
-
-/**
- * Deliberately the same rule set as `fixtures/hermex.config.ts` — the only
- * thing that differs is the repo underneath it. Keeping the rules identical
- * is what makes the `comply-pass` / `comply-fail` pair a real contrast:
- * every difference in their output comes from the repo, never from the
- * policy. If a rule is added to the primary config, add it here too and
- * satisfy it, or the pair stops proving anything.
- */
-export default {
-  rules: {
-    'no-files': [
+```json
+{
+  "rules": {
+    "no-files": [
       {
-        severity: 'error',
-        patterns: ['jest.config.*', '.babelrc'],
-        message: 'Use vitest + Vite',
-      },
+        "severity": "error",
+        "patterns": [
+          "jest.config.*",
+          ".babelrc"
+        ],
+        "message": "Use vitest + Vite"
+      }
     ],
-    'no-packages': [
-      { severity: 'error', patterns: ['moment'], message: 'Use date-fns or dayjs' },
-    ],
-    'require-files': [
-      { severity: 'error', patterns: ['.nvmrc'] },
-      { severity: 'warn', patterns: ['.editorconfig'] },
-    ],
-    'require-packages': [
+    "no-packages": [
       {
-        severity: 'error',
-        patterns: ['typescript'],
-        message: 'TypeScript is required',
-      },
+        "severity": "error",
+        "patterns": [
+          "moment"
+        ],
+        "message": "Use date-fns or dayjs"
+      }
     ],
-    'require-scripts': [
+    "require-files": [
       {
-        severity: 'error',
-        patterns: ['build', 'test'],
-        message: 'Required npm scripts',
+        "severity": "error",
+        "patterns": [
+          ".nvmrc"
+        ]
       },
+      {
+        "severity": "warn",
+        "patterns": [
+          ".editorconfig"
+        ]
+      }
     ],
-    'require-package-fields': [{ severity: 'warn', patterns: ['engines', 'license'] }],
-    'require-engine-version': { severity: 'warn', range: '>=20', message: 'Minimum Node 20 required' },
-  },
-} satisfies HermexConfigInput;
+    "require-packages": [
+      {
+        "severity": "error",
+        "patterns": [
+          "typescript"
+        ],
+        "message": "TypeScript is required"
+      }
+    ],
+    "require-scripts": [
+      {
+        "severity": "error",
+        "patterns": [
+          "build",
+          "test"
+        ],
+        "message": "Required npm scripts"
+      }
+    ],
+    "require-package-fields": [
+      {
+        "severity": "warn",
+        "patterns": [
+          "engines",
+          "license"
+        ]
+      }
+    ],
+    "require-engine-version": {
+      "severity": "warn",
+      "range": ">=20",
+      "message": "Minimum Node 20 required"
+    }
+  }
+}
 ```
 
 ## Full output
