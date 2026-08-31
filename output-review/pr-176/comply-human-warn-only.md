@@ -14,13 +14,13 @@ _unchanged_
 
 **Ran** `hermex comply --config configs/warn-only.config.ts` in `fixtures/` → exit 0, as asserted
 
-**Config** [`fixtures/configs/warn-only.config.ts`](https://github.com/Gallevy/hermex/blob/396bac3f00fae3f409c495bc3f4df42edcf8715b/fixtures/configs/warn-only.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/396bac3f00fae3f409c495bc3f4df42edcf8715b/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/396bac3f00fae3f409c495bc3f4df42edcf8715b/fixtures/README.md)) · **Case** [`comply-human-warn-only`](https://github.com/Gallevy/hermex/blob/396bac3f00fae3f409c495bc3f4df42edcf8715b/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/396bac3f00fae3f409c495bc3f4df42edcf8715b/fixtures/cases/comply-human-warn-only.md))
+**Config** [`fixtures/configs/warn-only.config.ts`](https://github.com/Gallevy/hermex/blob/f5e3daa7f5403e6571b3da57ad2c22fc3042c4b8/fixtures/configs/warn-only.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/f5e3daa7f5403e6571b3da57ad2c22fc3042c4b8/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/f5e3daa7f5403e6571b3da57ad2c22fc3042c4b8/fixtures/README.md)) · **Case** [`comply-human-warn-only`](https://github.com/Gallevy/hermex/blob/f5e3daa7f5403e6571b3da57ad2c22fc3042c4b8/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/f5e3daa7f5403e6571b3da57ad2c22fc3042c4b8/fixtures/cases/comply-human-warn-only.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-human-warn-only`</sub>
 
 ## Config
 
-[`fixtures/configs/warn-only.config.ts`](https://github.com/Gallevy/hermex/blob/396bac3f00fae3f409c495bc3f4df42edcf8715b/fixtures/configs/warn-only.config.ts) — resolved, as the loader sees it
+[`fixtures/configs/warn-only.config.ts`](https://github.com/Gallevy/hermex/blob/f5e3daa7f5403e6571b3da57ad2c22fc3042c4b8/fixtures/configs/warn-only.config.ts) — resolved, as the loader sees it
 
 ```json
 {
