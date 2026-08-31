@@ -5,6 +5,10 @@ import type {
   DeclaredPackages,
   DependencyBucket,
 } from '../utils/package-inventory';
+// Type-only: `RuleViolation` includes `PluginViolation` while
+// `PluginInventoryView` exposes `RuleViolation`. The cycle is legal for
+// types and erased at runtime.
+import type { PluginViolation } from '../plugins/types';
 
 interface BaseViolation<T extends string> {
   ruleId: T;
@@ -46,7 +50,11 @@ export interface RequireEngineVersionViolation extends BaseViolation<'require-en
   requiredRange?: string;
 }
 
-export type RuleViolation =
+/**
+ * hermex's own violations — the nine rules it implements itself. Each has a
+ * literal `ruleId` and may carry rule-specific fields.
+ */
+export type CoreRuleViolation =
   | NoFilesViolation
   | RequireFilesViolation
   | RequirePackagesViolation
@@ -56,6 +64,22 @@ export type RuleViolation =
   | NoPackageFieldsViolation
   | RequireEngineVersionViolation
   | RequireCodeownersViolation;
+
+/**
+ * Everything the rules table and the compliance verdict see, hermex's own
+ * rules and plugin-contributed findings alike (#102). Plugin violations are
+ * structurally uniform — hermex does not model the wrapped tool's domain —
+ * and carry a `plugin` field the core ones never have, which is the
+ * discriminant: narrow with `'plugin' in violation`.
+ */
+export type RuleViolation = CoreRuleViolation | PluginViolation;
+
+/** True for findings contributed by a plugin rather than by a hermex rule. */
+export function isPluginViolation(
+  violation: RuleViolation,
+): violation is PluginViolation {
+  return 'plugin' in violation;
+}
 
 export function toArray<T>(val: T | T[] | undefined): T[] {
   if (!val) return [];

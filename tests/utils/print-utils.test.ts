@@ -21,7 +21,11 @@ import { printComponents } from '../../src/utils/print-components';
 import { printPatterns } from '../../src/utils/print-patterns';
 import { printDetails } from '../../src/utils/print-details';
 import { printVersus } from '../../src/utils/print-versus';
-import { printRules, describeViolation } from '../../src/utils/print-rules';
+import {
+  printRules,
+  describeViolation,
+  formatRuleType,
+} from '../../src/utils/print-rules';
 import { printErrors } from '../../src/utils/print-errors';
 import { printJson } from '../../src/utils/print-json';
 import { printComplianceVerdict } from '../../src/utils/print-compliance';
@@ -1233,6 +1237,52 @@ describe('describeViolation', () => {
       matchedFiles: [],
     } as unknown as RuleViolation;
     expect(describeViolation(violation)).toBe('whatever not present');
+  });
+
+  describe('plugin violations', () => {
+    // Plugin findings carry a ready-made `message` from the wrapped tool and
+    // have no `patterns`, so they must be handled before anything reads it.
+    const base = {
+      ruleId: 'oxlint/no-debugger',
+      severity: 'error',
+      message: 'debugger statement',
+      plugin: 'oxlint',
+    } as const;
+
+    it('renders the message alone when there is no location or files', () => {
+      expect(describeViolation({ ...base })).toBe('debugger statement');
+    });
+
+    it('appends file:line when a location is given', () => {
+      const out = describeViolation({
+        ...base,
+        location: { file: 'src/a.tsx', line: 12 },
+      });
+      expect(stripAnsi(out)).toBe('debugger statement (src/a.tsx:12)');
+    });
+
+    it('omits the line when the location has none', () => {
+      const out = describeViolation({
+        ...base,
+        location: { file: 'src/a.tsx' },
+      });
+      expect(stripAnsi(out)).toBe('debugger statement (src/a.tsx)');
+    });
+
+    it('falls back to the file list when there is no location', () => {
+      const out = describeViolation({
+        ...base,
+        files: ['src/a.tsx', 'src/b.tsx'],
+      });
+      expect(stripAnsi(out)).toContain('debugger statement (');
+      expect(stripAnsi(out)).toContain('src/a.tsx');
+    });
+
+    it('renders the namespaced rule id as the rule column, unshortened', () => {
+      // hermex passes the wrapped tool's identifiers through rather than
+      // translating them (#102).
+      expect(formatRuleType({ ...base })).toBe('oxlint/no-debugger');
+    });
   });
 });
 

@@ -31,6 +31,23 @@ export function defineConfig(config: HermexConfigInput): HermexConfigInput {
   return config;
 }
 
+/**
+ * The plugin surface (#102). A plugin is inert data — a plain object with a
+ * canonical `name` and a `hooks` envelope — so it can be declared inline in
+ * `hermex.config.ts` with no import at all, which is what keeps a config
+ * loadable under `npx` in a repo that has not installed anything: only
+ * `node:` builtins and `import type` resolve there.
+ */
+export type {
+  HermexPlugin,
+  HermexPluginHooks,
+  PluginContext,
+  PluginInventoryView,
+  PluginViolation,
+  PluginViolationInput,
+  PluginViolationLocation,
+} from './plugins/types';
+
 export type { PatternCount } from './utils/pattern-counter';
 export type {
   ComponentUsage,

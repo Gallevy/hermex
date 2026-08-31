@@ -12,6 +12,7 @@ import { evaluateRules } from '../rules/evaluator';
 import { collectDeclaredPackages } from '../rules/shared';
 import { enrichWithReleaseAge } from '../npm-registry/enricher';
 import { applyOverrides } from '../config/overrides';
+import { runPlugins } from '../plugins';
 import type { HermexConfig } from '../config/types';
 
 const DECLARATION_FILE_RE = /\.d\.(ts|mts|cts)$/;
@@ -122,6 +123,43 @@ export async function runPipeline(
     spinner.succeed(
       chalk.blue(
         `Release age fetched${skipped > 0 ? chalk.gray(` (${skipped} packages skipped — registry unreachable or not found)`) : ''}`,
+      ),
+    );
+  }
+
+  // Plugins run last, once everything hermex computes itself is finished, so
+  // a plugin sees the complete picture — and still before rendering, so what
+  // it contributes reaches the rules table and the verdict (#102).
+  //
+  // The whole block is inert when no plugins are configured, which is the
+  // default: an unconfigured run prints exactly what it printed before.
+  if (resolvedConfig.plugins.length > 0) {
+    if (spinner.isEnabled) spinner.start('Running plugins...');
+
+    const pluginViolations = await runPlugins({
+      plugins: resolvedConfig.plugins,
+      aggregated,
+      config: resolvedConfig,
+      cwd: process.cwd(),
+      files,
+      quiet: isJson,
+    });
+
+    aggregated.ruleViolations = [
+      ...aggregated.ruleViolations,
+      ...pluginViolations,
+    ];
+
+    // Attribution: third-party code just executed in the user's repo, so
+    // name it. hermex does not sandbox plugins — the config that imports
+    // them already runs as arbitrary code — which makes visibility the
+    // obligation instead (#102).
+    spinner.succeed(
+      chalk.blue(
+        `Ran ${resolvedConfig.plugins.length} plugin(s): ${resolvedConfig.plugins.map((p) => p.name).join(', ')}` +
+          (pluginViolations.length > 0
+            ? chalk.gray(` — ${pluginViolations.length} finding(s)`)
+            : ''),
       ),
     );
   }
