@@ -450,6 +450,25 @@ describe('buildSite', () => {
     expect(alpha).toContain('<details markdown="1">');
   });
 
+  /**
+   * The index used to end with an "All cases" table repeating every changed
+   * case the "Changed" table above had just listed — the same case twice on
+   * one page, the second time with nothing to say about it.
+   */
+  it('lists only the unchanged cases below the changed ones', () => {
+    const index = buildSite(results, [], null).get('index.md') ?? '';
+    expect(index).toContain('## Unchanged (1)');
+    expect(index).not.toContain('## All cases');
+    // `beta` is the changed case: linked once, from the "Changed" table.
+    expect(index.split('(./beta.html)')).toHaveLength(2);
+    expect(index.split('(./alpha.html)')).toHaveLength(2);
+  });
+
+  it('drops the unchanged section entirely when every case changed', () => {
+    const index = buildSite([results[1]], [], null).get('index.md') ?? '';
+    expect(index).not.toContain('## Unchanged');
+  });
+
   it('says so plainly when a case runs on schema defaults', () => {
     const page =
       buildSite(
@@ -490,5 +509,65 @@ describe('SITE_STYLE dark mode', () => {
     const selectorIndex = SITE_STYLE.indexOf('.markdown-body .highlight pre {');
     expect(darkStart).toBeGreaterThan(-1);
     expect(selectorIndex).toBeGreaterThan(darkStart);
+  });
+
+  /**
+   * The background fix above only reaches text Rouge left untagged. Every
+   * token inside a block carries a class Primer colours for a light
+   * background, so the config block — JSON, and so almost entirely tokens —
+   * stayed navy-on-near-black after the page around it went dark.
+   */
+  it('recolours the syntax tokens a JSON block is made of', () => {
+    const dark = SITE_STYLE.slice(
+      SITE_STYLE.indexOf('prefers-color-scheme: dark'),
+    );
+    // Strings, numbers and object keys: what a resolved config consists of.
+    for (const token of ['.s2', '.mi', '.nt', '.p', '.kc']) {
+      const selector = `.markdown-body .highlight ${token}`;
+      // Either mid-list in a selector group, or last in one.
+      const declared =
+        dark.includes(`${selector},\n`) || dark.includes(`${selector} {`);
+      expect(declared, selector).toBe(true);
+    }
+  });
+});
+
+/**
+ * A unified diff has three kinds of line and only two are a change. Rouge
+ * tags the `---`/`+++` file headers with the same classes as a removed and
+ * an added line, so without these they read as content rather than as the
+ * signposts they are.
+ */
+describe('SITE_STYLE diff markers', () => {
+  const blue = (selector: string): string => {
+    const start = SITE_STYLE.indexOf(selector);
+    expect(start).toBeGreaterThan(-1);
+    return SITE_STYLE.slice(start, SITE_STYLE.indexOf('}', start));
+  };
+
+  it('colours the @@ hunk header blue rather than leaving it grey', () => {
+    expect(blue('.markdown-body .highlight .gu {')).toContain('color: #0550ae');
+  });
+
+  it('colours the --- and +++ file headers blue, not red and green', () => {
+    // Position is all that separates them from a real -/+ line: they are the
+    // first two spans of the block, and `renderHunks` always emits both.
+    const rule = blue('.markdown-body .highlight .gd:first-child,');
+    expect(rule).toContain('.gd:first-child + .gi');
+    expect(rule).toContain('color: #0550ae');
+    expect(rule).toContain('background-color: transparent');
+  });
+
+  it('keeps the markers blue in dark mode too', () => {
+    const dark = SITE_STYLE.slice(
+      SITE_STYLE.indexOf('prefers-color-scheme: dark'),
+    );
+    expect(dark).toContain('.markdown-body .highlight .gu {');
+    expect(dark).toContain('.markdown-body .highlight .gd:first-child,');
+    // Higher specificity than the plain `.markdown-body .gd` red above it,
+    // so source order cannot repaint the header.
+    expect(dark.indexOf('.markdown-body .gd {')).toBeLessThan(
+      dark.indexOf('.markdown-body .highlight .gd:first-child,'),
+    );
   });
 });
