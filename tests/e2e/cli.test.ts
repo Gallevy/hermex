@@ -1,8 +1,9 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { spawnSync, execSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
 import {
   mkdtempSync,
+  mkdirSync,
   rmSync,
   existsSync,
   readFileSync,
@@ -10,6 +11,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import packageJson from '../../package.json';
+import { stripAnsi } from '../../src/utils/severity-format';
 
 const ROOT = resolve(__dirname, '../..');
 const CLI = join(ROOT, 'dist', 'cli.mjs');
@@ -774,5 +776,164 @@ describe('parser: oxc-experimental (config)', () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+// The rule compares package.json "name" against the git remote, so it needs a
+// real .git/config on disk. That cannot be committed as a fixture (git refuses
+// to track any path containing a .git component), so these build the repo in a
+// temp directory instead — which is also the only way to exercise the CLI
+// wiring, since the evaluator runs in the spawned process.
+describe('require-repo-name-match (end to end)', () => {
+  const repoConfig = join(
+    ROOT,
+    'tests',
+    'e2e',
+    'hermex-repo-name-match.config.ts',
+  );
+
+  // `comply` refuses to run without a lockfile, so every temp repo gets a
+  // minimal one — the rule itself reads only package.json and .git/config.
+  const LOCKFILE = [
+    "lockfileVersion: '9.0'",
+    '',
+    'importers:',
+    '',
+    '  .:',
+    '    dependencies:',
+    '      react:',
+    '        specifier: ^18.3.0',
+    '        version: 18.3.1',
+    '',
+    'packages:',
+    '',
+    '  react@18.3.1:',
+    '    resolution: {integrity: sha512-mock}',
+    '',
+  ].join('\n');
+
+  function makeRepoDir(name: string): string {
+    const dir = mkdtempSync(join(tmpdir(), 'hermex-e2e-repo-name-'));
+    writeFileSync(
+      join(dir, 'package.json'),
+      JSON.stringify({
+        name,
+        version: '1.0.0',
+        private: true,
+        dependencies: { react: '^18.3.0' },
+      }),
+    );
+    writeFileSync(join(dir, 'pnpm-lock.yaml'), LOCKFILE);
+    // The scan aborts when `includes` matches nothing, so give it one file.
+    mkdirSync(join(dir, 'src'));
+    writeFileSync(
+      join(dir, 'src', 'index.ts'),
+      "import React from 'react';\nexport default React;\n",
+    );
+    tempRepos.push(dir);
+    return dir;
+  }
+
+  function makeGitRepo(name: string, remoteUrl: string): string {
+    const dir = makeRepoDir(name);
+    mkdirSync(join(dir, '.git'));
+    writeFileSync(
+      join(dir, '.git', 'config'),
+      ['[remote "origin"]', `\turl = ${remoteUrl}`, ''].join('\n'),
+    );
+    return dir;
+  }
+
+  const tempRepos: string[] = [];
+
+  afterAll(() => {
+    for (const dir of tempRepos) rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('fails comply when the manifest name does not match the repository', () => {
+    const cwd = makeGitRepo(
+      'legacy-cart',
+      'git@github.com:acme/checkout-web.git',
+    );
+    const result = run(
+      ['comply', '--config', repoConfig, '--format', 'json'],
+      cwd,
+    );
+
+    expect(result.status).toBe(1);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.ruleViolations).toEqual([
+      {
+        ruleId: 'require-repo-name-match',
+        severity: 'error',
+        patterns: [],
+        message: 'Rename the package to match its repository',
+        matchedFiles: [],
+        expectedName: 'checkout-web',
+        actualName: 'legacy-cart',
+      },
+    ]);
+  });
+
+  it('renders the mismatch in the human rules table', () => {
+    const cwd = makeGitRepo(
+      'legacy-cart',
+      'git@github.com:acme/checkout-web.git',
+    );
+    const result = run(['comply', '--config', repoConfig], cwd);
+
+    expect(result.status).toBe(1);
+    expect(stripAnsi(result.stdout)).toContain(
+      'package.json name is legacy-cart, repository is checkout-web',
+    );
+  });
+
+  it('passes when a scoped name matches the repository slug', () => {
+    const cwd = makeGitRepo(
+      '@acme/checkout-web',
+      'git@github.com:acme/checkout-web.git',
+    );
+    const result = run(
+      ['comply', '--config', repoConfig, '--format', 'json'],
+      cwd,
+    );
+
+    expect(result.status).toBe(0);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.ruleViolations).toEqual([]);
+  });
+
+  // Skipping silently rather than failing is deliberate: a checkout with no
+  // remote is an environment condition, not a policy breach.
+  it('skips silently in a directory with no .git', () => {
+    const dir = makeRepoDir('anything-at-all');
+
+    const result = run(
+      ['comply', '--config', repoConfig, '--format', 'json'],
+      dir,
+    );
+
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout).ruleViolations).toEqual([]);
+  });
+
+  it('lets a monorepo root switch the rule off via overrides', () => {
+    const offConfig = join(
+      ROOT,
+      'tests',
+      'e2e',
+      'hermex-repo-name-match-off.config.ts',
+    );
+    const cwd = makeGitRepo(
+      '@acme/platform-monorepo',
+      'git@github.com:acme/platform.git',
+    );
+    const result = run(
+      ['comply', '--config', offConfig, '--format', 'json'],
+      cwd,
+    );
+
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout).ruleViolations).toEqual([]);
   });
 });

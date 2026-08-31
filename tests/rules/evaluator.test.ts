@@ -25,6 +25,7 @@ const emptyRules: ResolvedRulesConfig = {
   'no-package-fields': [],
   'require-engine-version': [],
   'require-codeowners': undefined,
+  'require-repo-name-match': undefined,
 };
 
 beforeAll(() => {

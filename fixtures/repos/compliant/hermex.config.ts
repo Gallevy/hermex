@@ -7,6 +7,7 @@ import type { HermexConfigInput } from '../../../src/config/types.ts';
  * every difference in their output comes from the repo, never from the
  * policy. If a rule is added to the primary config, add it here too and
  * satisfy it, or the pair stops proving anything.
+
  */
 export default {
   rules: {

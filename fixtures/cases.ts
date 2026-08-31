@@ -132,17 +132,37 @@ export const cases: FixtureCase[] = [
   {
     name: 'comply-all-rule-types',
     proves:
-      'Every one of the nine rule types in one table, at three severities — the only case that renders require-engine-version, codeowners and both package-field shapes.',
+      'Every one of the ten rule types in one table, at three severities — the only case that renders require-engine-version, codeowners, require-repo-name-match and both package-field shapes.',
     cwd: 'repos/all-rule-types',
     args: ['comply'],
+    setup: {
+      // git silently refuses to track any path containing a `.git`
+      // component, so this is the only way a fixture can have a
+      // repository identity. The slug (`checkout-web`) deliberately
+      // differs from the manifest name, so require-repo-name-match fires.
+      '.git/config':
+        '[remote "origin"]\n\turl = git@github.com:acme/checkout-web.git\n',
+    },
+    notes:
+      'The target-branch side of this diff is a ZodError, not output: `rules` is a strict schema, so a build that predates `require-repo-name-match` rejects this fixture config outright. That is expected for any PR adding a rule key, and it is why the whole table reads as added rather than as one new row.',
     expectExit: 1,
   },
   {
     name: 'comply-all-rule-types-json',
     proves:
-      'The machine-readable shape of every rule type: fieldPath and actualValue on package-field hits, installedRange/requiredRange on require-engine-version, matchedFiles on codeowners. Also where #95 is visible — the two codeowners entries are byte-identical apart from matchedFiles.',
+      'The machine-readable shape of every rule type: fieldPath and actualValue on package-field hits, installedRange/requiredRange on require-engine-version, matchedFiles on codeowners, expectedName/actualName on require-repo-name-match. Also where #95 is visible — the two codeowners entries are byte-identical apart from matchedFiles.',
     cwd: 'repos/all-rule-types',
     args: ['comply', '--format', 'json'],
+    setup: {
+      // git silently refuses to track any path containing a `.git`
+      // component, so this is the only way a fixture can have a
+      // repository identity. The slug (`checkout-web`) deliberately
+      // differs from the manifest name, so require-repo-name-match fires.
+      '.git/config':
+        '[remote "origin"]\n\turl = git@github.com:acme/checkout-web.git\n',
+    },
+    notes:
+      'The target-branch side of this diff is a ZodError, not output: `rules` is a strict schema, so a build that predates `require-repo-name-match` rejects this fixture config outright. That is expected for any PR adding a rule key, and it is why the whole table reads as added rather than as one new row.',
     expectExit: 1,
   },
   {

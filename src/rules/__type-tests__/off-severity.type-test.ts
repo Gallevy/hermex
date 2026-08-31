@@ -21,6 +21,7 @@ import { evaluateScriptRules } from '../script-rules';
 import { evaluatePackageFieldRules } from '../package-field-rules';
 import { evaluateEngineVersion } from '../engine-version';
 import { evaluateCodeowners } from '../codeowners';
+import { evaluateRepoNameMatch } from '../repo-name-match';
 import { evaluateRules } from '../evaluator';
 import {
   detectForbiddenPackages,
@@ -40,6 +41,7 @@ evaluateScriptRules('.', resolvedRules);
 evaluatePackageFieldRules('.', resolvedRules);
 evaluateEngineVersion('.', resolvedRules);
 evaluateCodeowners('.', resolvedRules, []);
+evaluateRepoNameMatch('.', resolvedRules);
 evaluateRules('.', resolvedRules, []);
 detectForbiddenPackages([], resolvedConfig);
 detectRequiredPackages([], resolvedConfig);
@@ -59,6 +61,8 @@ evaluatePackageFieldRules('.', wideRules);
 evaluateEngineVersion('.', wideRules);
 // @ts-expect-error — evaluateCodeowners must require ResolvedRulesConfig
 evaluateCodeowners('.', wideRules, []);
+// @ts-expect-error — evaluateRepoNameMatch must require ResolvedRulesConfig
+evaluateRepoNameMatch('.', wideRules);
 // @ts-expect-error — evaluateRules must require ResolvedRulesConfig
 evaluateRules('.', wideRules, []);
 // @ts-expect-error — detectForbiddenPackages must require ResolvedHermexConfig
