@@ -42,7 +42,7 @@ function buildRulesSection(aggregated: AggregatedReport): string {
 
   for (const v of ruleViolations) {
     lines.push(
-      `| ${severityIcon(v.severity)} | ${formatRuleType(v.ruleId)} | ${describeViolation(v)} |`,
+      `| ${severityIcon(v.severity)} | ${formatRuleType(v)} | ${describeViolation(v)} |`,
     );
   }
 

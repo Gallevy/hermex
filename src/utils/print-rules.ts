@@ -2,6 +2,7 @@ import chalk from 'chalk';
 import Table from 'cli-table3';
 import type { AggregatedReport } from './aggregator';
 import type { RuleViolation } from '../rules/evaluator';
+import { isPluginViolation } from '../rules/shared';
 import { formatTruncatedList } from './format-utils';
 import {
   formatSeverityTally,
@@ -9,8 +10,13 @@ import {
   sortViolationsBySeverity,
 } from './severity-format';
 
-export function formatRuleType(ruleId: RuleViolation['ruleId']): string {
-  switch (ruleId) {
+export function formatRuleType(violation: RuleViolation): string {
+  // A plugin's rule id is its own namespace (`oxlint/no-unused-vars`) and
+  // hermex neither parses nor shortens it — orchestrating means passing the
+  // wrapped tool's identifiers through, not translating them (#102).
+  if (isPluginViolation(violation)) return violation.ruleId;
+
+  switch (violation.ruleId) {
     case 'no-files':
       return 'no-files';
     case 'require-files':
@@ -33,6 +39,18 @@ export function formatRuleType(ruleId: RuleViolation['ruleId']): string {
 }
 
 export function describeViolation(v: RuleViolation): string {
+  // Checked before anything reads `patterns`, which plugin violations do not
+  // have: they carry a ready-made `message` from the wrapped tool instead of
+  // hermex-authored prose about hermex's own rule shapes.
+  if (isPluginViolation(v)) {
+    const where = v.location
+      ? `${v.location.file}${v.location.line !== undefined ? `:${v.location.line}` : ''}`
+      : v.files && v.files.length > 0
+        ? formatTruncatedList(v.files, 'file')
+        : '';
+    return where ? `${v.message} ${chalk.gray(`(${where})`)}` : v.message;
+  }
+
   const patterns = v.patterns.join(', ');
   const suffix = v.message ? chalk.gray(` — ${v.message}`) : '';
 
@@ -95,7 +113,7 @@ export function printRules(aggregated: AggregatedReport): void {
 
   for (const v of sortViolationsBySeverity(ruleViolations)) {
     table.push([
-      formatRuleType(v.ruleId),
+      formatRuleType(v),
       `${severityIcon(v.severity)} ${describeViolation(v)}`,
     ]);
   }
