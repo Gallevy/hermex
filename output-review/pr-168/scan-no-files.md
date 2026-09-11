@@ -14,32 +14,110 @@ _unchanged_
 
 **Ran** `hermex scan --config configs/no-files.config.ts` in `fixtures/` → exit 0, as asserted
 
-**Config** [`fixtures/configs/no-files.config.ts`](https://github.com/Gallevy/hermex/blob/4b80a9aac91854bfad760d1d87bdf43bf8b10b76/fixtures/configs/no-files.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/4b80a9aac91854bfad760d1d87bdf43bf8b10b76/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/4b80a9aac91854bfad760d1d87bdf43bf8b10b76/fixtures/README.md)) · **Case** [`scan-no-files`](https://github.com/Gallevy/hermex/blob/4b80a9aac91854bfad760d1d87bdf43bf8b10b76/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/4b80a9aac91854bfad760d1d87bdf43bf8b10b76/fixtures/cases/scan-no-files.md))
+**Config** [`fixtures/configs/no-files.config.ts`](https://github.com/Gallevy/hermex/blob/acc1949a032d7ab66cff08bd44b5c4e7f664828c/fixtures/configs/no-files.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/acc1949a032d7ab66cff08bd44b5c4e7f664828c/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/acc1949a032d7ab66cff08bd44b5c4e7f664828c/fixtures/README.md)) · **Case** [`scan-no-files`](https://github.com/Gallevy/hermex/blob/acc1949a032d7ab66cff08bd44b5c4e7f664828c/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/acc1949a032d7ab66cff08bd44b5c4e7f664828c/fixtures/cases/scan-no-files.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter scan-no-files`</sub>
 
 ## Config
 
-[`fixtures/configs/no-files.config.ts`](https://github.com/Gallevy/hermex/blob/4b80a9aac91854bfad760d1d87bdf43bf8b10b76/fixtures/configs/no-files.config.ts)
+[`fixtures/configs/no-files.config.ts`](https://github.com/Gallevy/hermex/blob/acc1949a032d7ab66cff08bd44b5c4e7f664828c/fixtures/configs/no-files.config.ts) — resolved, as the loader sees it
 
-```ts
-import type { HermexConfigInput } from '../../src/config/types.ts';
-import base from '../hermex.config.ts';
-
-/**
- * `includes` that match nothing. The pipeline bails before analysis, which
- * `comply` reports as exit **2** — pipeline failure, distinct from exit 1
- * (non-compliant). A consumer that treats any non-zero exit as "policy
- * violation" would report a clean repo as failing, so the two codes need to
- * stay distinguishable and reviewed.
- *
- * `scan` takes the same path and exits 0. That asymmetry is deliberate but
- * easy to break, which is why both halves are cases.
- */
-export default {
-  ...base,
-  includes: ['no-such-directory/**/*.{tsx,jsx,ts,js}'],
-} satisfies HermexConfigInput;
+```json
+{
+  "excludes": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "cases.ts",
+    "configs/**",
+    "registry/**",
+    "repos/**"
+  ],
+  "versus": [
+    {
+      "name": "Design System Migration",
+      "packages": [
+        "@design-system/foundation",
+        "@new-system/arc"
+      ]
+    }
+  ],
+  "rules": {
+    "no-files": [
+      {
+        "severity": "error",
+        "patterns": [
+          "jest.config.*",
+          ".babelrc"
+        ],
+        "message": "Use vitest + Vite"
+      }
+    ],
+    "no-packages": [
+      {
+        "severity": "error",
+        "patterns": [
+          "moment"
+        ],
+        "message": "Use date-fns or dayjs"
+      }
+    ],
+    "require-files": [
+      {
+        "severity": "error",
+        "patterns": [
+          ".nvmrc"
+        ]
+      },
+      {
+        "severity": "warn",
+        "patterns": [
+          ".editorconfig"
+        ]
+      }
+    ],
+    "require-packages": [
+      {
+        "severity": "error",
+        "patterns": [
+          "typescript"
+        ],
+        "message": "TypeScript is required"
+      }
+    ],
+    "require-scripts": [
+      {
+        "severity": "error",
+        "patterns": [
+          "build",
+          "test"
+        ],
+        "message": "Required npm scripts"
+      }
+    ],
+    "require-package-fields": [
+      {
+        "severity": "warn",
+        "patterns": [
+          "engines",
+          "license"
+        ]
+      }
+    ],
+    "require-engine-version": {
+      "severity": "warn",
+      "range": ">=20",
+      "message": "Minimum Node 20 required"
+    }
+  },
+  "output": {
+    "details": false,
+    "patterns": false
+  },
+  "includes": [
+    "no-such-directory/**/*.{tsx,jsx,ts,js}"
+  ]
+}
 ```
 
 ## Full output
