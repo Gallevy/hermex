@@ -1560,7 +1560,7 @@ export const SITE_STYLE = [
   '  color: inherit;',
   '}',
   '',
-  '/* Case names in the "All cases" table are the short, structured column —',
+  '/* Case names in the case tables are the short, structured column —',
   '   let them stay on one line and leave wrapping to the "Proves" prose. */',
   '.markdown-body table td:first-child,',
   '.markdown-body table th:first-child {',
@@ -1577,6 +1577,27 @@ export const SITE_STYLE = [
   '.or-del {',
   '  color: #cf222e;',
   '  font-weight: 600;',
+  '}',
+  '',
+  '/* A unified diff has three kinds of line, and only two of them are a',
+  '   change: the `@@` hunk header and the `---`/`+++` file headers are',
+  '   signposts. Left to Rouge they come out red and green like the removals',
+  '   and additions around them, so blue — the third colour every diff viewer',
+  '   uses for them — is what says they are structure rather than content. */',
+  '.markdown-body .highlight .gu {',
+  '  color: #0550ae;',
+  '  background-color: transparent;',
+  '  font-weight: 600;',
+  '}',
+  '',
+  '/* Rouge tags the `---`/`+++` headers `.gd`/`.gi`, exactly as it tags a',
+  '   removed and an added line, so position is the only thing left to tell',
+  '   them apart: `renderHunks` always emits both, always first, so they are',
+  '   the first two spans of the block and nothing else can be. */',
+  '.markdown-body .highlight .gd:first-child,',
+  '.markdown-body .highlight .gd:first-child + .gi {',
+  '  color: #0550ae;',
+  '  background-color: transparent;',
   '}',
   '',
   '/* The broken-invariants callout. A class rather than an inline style, so',
@@ -1674,6 +1695,92 @@ export const SITE_STYLE = [
   '    color: #c9d1d9;',
   '  }',
   '',
+  '  /* The token classes Rouge tags the *contents* of a block with are',
+  '     coloured by Primer for a light background only, and unlike the',
+  '     background above nothing here inherits: a resolved config came out as',
+  '     navy strings and near-black punctuation on #161b22 — the block that',
+  '     answers "what policy produced this output" being the least readable',
+  "     thing on the page. These mirror GitHub's dark syntax palette, for the",
+  '     tokens the report can actually print: JSON in the config and artifact',
+  '     blocks, Markdown in the summary artifacts. */',
+  '  .markdown-body .highlight .p,',
+  '  .markdown-body .highlight .pi,',
+  '  .markdown-body .highlight .w {',
+  '    color: #c9d1d9;',
+  '  }',
+  '',
+  '  .markdown-body .highlight .na,',
+  '  .markdown-body .highlight .nt {',
+  '    color: #7ee787;',
+  '  }',
+  '',
+  '  .markdown-body .highlight .dl,',
+  '  .markdown-body .highlight .s,',
+  '  .markdown-body .highlight .s1,',
+  '  .markdown-body .highlight .s2,',
+  '  .markdown-body .highlight .sb,',
+  '  .markdown-body .highlight .sc,',
+  '  .markdown-body .highlight .sd,',
+  '  .markdown-body .highlight .se,',
+  '  .markdown-body .highlight .sh,',
+  '  .markdown-body .highlight .si,',
+  '  .markdown-body .highlight .sr,',
+  '  .markdown-body .highlight .ss,',
+  '  .markdown-body .highlight .sx {',
+  '    color: #a5d6ff;',
+  '  }',
+  '',
+  '  .markdown-body .highlight .il,',
+  '  .markdown-body .highlight .m,',
+  '  .markdown-body .highlight .mb,',
+  '  .markdown-body .highlight .mf,',
+  '  .markdown-body .highlight .mh,',
+  '  .markdown-body .highlight .mi,',
+  '  .markdown-body .highlight .mo,',
+  '  .markdown-body .highlight .nb,',
+  '  .markdown-body .highlight .nc,',
+  '  .markdown-body .highlight .nf,',
+  '  .markdown-body .highlight .nl,',
+  '  .markdown-body .highlight .nn,',
+  '  .markdown-body .highlight .no,',
+  '  .markdown-body .highlight .nv,',
+  '  .markdown-body .highlight .nx {',
+  '    color: #79c0ff;',
+  '  }',
+  '',
+  '  .markdown-body .highlight .k,',
+  '  .markdown-body .highlight .kc,',
+  '  .markdown-body .highlight .kd,',
+  '  .markdown-body .highlight .kn,',
+  '  .markdown-body .highlight .kp,',
+  '  .markdown-body .highlight .kr,',
+  '  .markdown-body .highlight .kt,',
+  '  .markdown-body .highlight .o,',
+  '  .markdown-body .highlight .ow {',
+  '    color: #ff7b72;',
+  '  }',
+  '',
+  '  .markdown-body .highlight .c,',
+  '  .markdown-body .highlight .c1,',
+  '  .markdown-body .highlight .cd,',
+  '  .markdown-body .highlight .cm,',
+  '  .markdown-body .highlight .cs {',
+  '    color: #8b949e;',
+  '  }',
+  '',
+  '  .markdown-body .highlight .ge,',
+  '  .markdown-body .highlight .gh,',
+  '  .markdown-body .highlight .gs {',
+  '    color: #e6edf3;',
+  '  }',
+  '',
+  '  /* Primer paints `.err` dark red on pale pink. A lexer hiccup inside a',
+  '     captured artifact is not a finding, and it should not look like one. */',
+  '  .markdown-body .highlight .err {',
+  '    color: #ffa198;',
+  '    background-color: transparent;',
+  '  }',
+  '',
   "  /* Rouge's diff-fence colours (`.gd` deletion, `.gi` addition) are also",
   '     hardcoded light, so a ```diff block would otherwise be the one',
   '     unreadable corner of an otherwise-dark page. */',
@@ -1685,6 +1792,16 @@ export const SITE_STYLE = [
   '  .markdown-body .gi {',
   '    background-color: rgba(63, 185, 80, 0.15);',
   '    color: #d2f6da;',
+  '  }',
+  '',
+  '  .markdown-body .highlight .gu {',
+  '    color: #58a6ff;',
+  '  }',
+  '',
+  '  .markdown-body .highlight .gd:first-child,',
+  '  .markdown-body .highlight .gd:first-child + .gi {',
+  '    color: #58a6ff;',
+  '    background-color: transparent;',
   '  }',
   '',
   '  .or-add {',
@@ -1715,6 +1832,59 @@ function frontMatter(title: string): string[] {
   ];
 }
 
+/**
+ * Effective config per source path, filled by `resolveConfigs` before any
+ * rendering. Keyed by the repo-relative path `sourcesOf` reports.
+ */
+const RESOLVED_CONFIGS = new Map<string, string>();
+
+/**
+ * The registry a fixture config falls back to is `process.env`-dependent and
+ * the offline one binds a random port, so neither is stable enough to print.
+ * Importing under a fixed placeholder makes the rendered value deterministic
+ * without pretending the config hard-codes a URL.
+ */
+const REGISTRY_PLACEHOLDER = '<fixture registry>';
+
+/**
+ * Imports every config a selected case loads and records it fully resolved.
+ *
+ * The point of printing a config at all is to answer "what policy produced
+ * this output", and the fixture configs compose — nearly all of them spread
+ * `fixtures/hermex.config.ts` and override a field or two. Printing the
+ * source alone answers the question with `...base`, which is no answer;
+ * printing nine literal copies of the same 67-line base instead would be
+ * worse. Resolving it keeps the fixtures composed and the report readable.
+ */
+export async function resolveConfigs(fixtures: FixtureCase[]): Promise<void> {
+  const previous = process.env['HERMEX_FIXTURE_REGISTRY'];
+  process.env['HERMEX_FIXTURE_REGISTRY'] = REGISTRY_PLACEHOLDER;
+  try {
+    for (const fixture of fixtures) {
+      const source = sourcesOf(fixture).config;
+      if (!source || RESOLVED_CONFIGS.has(source)) continue;
+      const absolute = join(ROOT, source);
+      if (!existsSync(absolute)) continue;
+      try {
+        const loaded = (await import(pathToFileURL(absolute).href)) as {
+          default?: unknown;
+        };
+        RESOLVED_CONFIGS.set(
+          source,
+          JSON.stringify(loaded.default ?? null, null, 2),
+        );
+      } catch {
+        // A config that cannot be imported is not worth failing the review
+        // over — the raw source is still linked, and the CLI run itself
+        // already reported whatever the loader made of it.
+      }
+    }
+  } finally {
+    if (previous === undefined) delete process.env['HERMEX_FIXTURE_REGISTRY'];
+    else process.env['HERMEX_FIXTURE_REGISTRY'] = previous;
+  }
+}
+
 /** The config a case actually loaded, inlined so the policy is on the page. */
 function configBlock(fixture: FixtureCase, base: string | null): string[] {
   const sources = sourcesOf(fixture);
@@ -1727,19 +1897,22 @@ function configBlock(fixture: FixtureCase, base: string | null): string[] {
     ];
   }
 
-  const absolute = join(ROOT, sources.config);
-  const contents = existsSync(absolute) ? readFileSync(absolute, 'utf8') : null;
+  const resolved = RESOLVED_CONFIGS.get(sources.config);
   return [
     '## Config',
     '',
     // Inlined rather than only linked. "What policy produced this output?"
     // is the question a diff cannot answer, and a reviewer who has to open
     // another tab to answer it mostly does not answer it.
-    `${fileLink(sources.config, base)}`,
+    //
+    // Fully resolved, not as authored: the fixture configs compose, so the
+    // source of most of them is a spread plus an override and answers the
+    // question with `...base`.
+    `${fileLink(sources.config, base)} — resolved, as the loader sees it`,
     '',
-    ...(contents
-      ? ['```ts', contents.trimEnd(), '```', '']
-      : ['_Not readable at report time._', '']),
+    ...(resolved
+      ? ['```json', resolved, '```', '']
+      : ['_Not resolvable at report time._', '']),
   ];
 }
 
@@ -1803,6 +1976,7 @@ export function buildSite(
 ): Map<string, string> {
   const pages = new Map<string, string>();
   const differing = results.filter((result) => !isClean(result));
+  const clean = results.filter(isClean);
 
   const index = [
     ...frontMatter('Output Review'),
@@ -1815,9 +1989,12 @@ export function buildSite(
     ...(differing.length > 0
       ? ['## Changed', '', ...statusTable(differing)]
       : ['Every case matches the target branch.', '']),
-    '## All cases',
-    '',
-    ...statusTable(results),
+    // The cases the "Changed" table does not already list, rather than all
+    // of them: a case in both tables reads as two entries to review, and the
+    // duplicate is the copy with nothing to say about it.
+    ...(clean.length > 0
+      ? [`## Unchanged (${clean.length})`, '', ...statusTable(clean)]
+      : []),
     RAW_CLOSE,
   ];
   pages.set('index.md', index.join('\n'));
@@ -1894,6 +2071,9 @@ async function main(): Promise<void> {
   // there is no cost to always leaving the tree in a state
   // `no-orphaned-case-docs` already agrees with.
   writeCaseDocs(module.cases);
+
+  // Before any rendering: every report surface prints a config block.
+  await resolveConfigs(selected);
 
   const referenceCli = buildReference(against);
 

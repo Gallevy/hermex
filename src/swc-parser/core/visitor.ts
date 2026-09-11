@@ -163,8 +163,8 @@ function visitChildren(
   state: ParserState,
   context: VisitorContext,
 ): void {
-  if (!node) return;
-
+  // No null guard: both call sites (`visitNode` and `analyzeCallExpression`)
+  // sit behind `visitNode`'s own `if (!node) return`.
   for (const key in node) {
     const value = node[key];
 

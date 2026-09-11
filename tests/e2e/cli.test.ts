@@ -820,3 +820,67 @@ describe('plugins (end to end)', () => {
     rmSync(dir, { recursive: true, force: true });
   });
 });
+
+// The experimental oxc front-end is a swap of the parse step only. The claim
+// worth checking end to end is that a whole real CLI run — file discovery,
+// parsing, aggregation, rules, compliance, JSON rendering — produces the same
+// answer either way, on a fixture repo that deliberately exercises every
+// pattern the analyzer knows about.
+describe('parser: oxc-experimental (config)', () => {
+  const parserConfig = (parser: 'swc' | 'oxc-experimental') =>
+    join(
+      ROOT,
+      'tests',
+      'e2e',
+      `hermex-parser-${parser === 'swc' ? 'swc' : 'oxc'}.config.ts`,
+    );
+
+  it('produces JSON identical to the default swc parser over the fixture repo', () => {
+    const swc = run(['scan', '--config', parserConfig('swc')]);
+    const oxc = run(['scan', '--config', parserConfig('oxc-experimental')]);
+
+    expect(swc.status).toBe(0);
+    expect(oxc.status).toBe(0);
+    // Compare parsed objects first: a mismatch renders as a readable diff
+    // rather than two walls of minified JSON.
+    expect(JSON.parse(oxc.stdout)).toEqual(JSON.parse(swc.stdout));
+    expect(oxc.stdout).toBe(swc.stdout);
+  });
+
+  it('reports the same parse failures as swc', () => {
+    const configPath = join(
+      ROOT,
+      'fixtures',
+      'configs',
+      'parse-errors.config.ts',
+    );
+    const swc = run(['scan', '--config', configPath]);
+    const oxc = run(['scan', '--config', configPath, '--format', 'json']);
+
+    // Both front-ends must find the same file unparseable; only the message
+    // wording is parser-specific.
+    expect(swc.stdout + swc.stderr).toMatch(/1 file\(s\) failed to parse/);
+    expect(oxc.stdout + oxc.stderr).toMatch(/failed to parse/);
+  });
+
+  it('announces the experimental parser, and the default run stays silent about parsers', () => {
+    const oxc = run(['scan', '--config', parserConfig('oxc-experimental')]);
+    const swc = run(['scan', '--config', parserConfig('swc')]);
+
+    expect(oxc.stderr).toMatch(/experimental parser: oxc-experimental/);
+    expect(swc.stderr).not.toMatch(/experimental parser/);
+  });
+
+  it('rejects an unknown parser name', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'hermex-parser-'));
+    try {
+      const configPath = join(dir, 'hermex.config.ts');
+      writeFileSync(configPath, `export default { parser: 'babel' };`, 'utf8');
+      const result = run(['scan', '--config', configPath]);
+      expect(result.status).not.toBe(0);
+      expect(result.stderr).toMatch(/parser/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});

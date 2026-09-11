@@ -744,7 +744,9 @@ describe('formatUpgradeCell — stale 0.x minor line beneath a compliant newer m
       enabled: true,
       registry: 'https://registry.npmjs.org',
       thresholds: { patch: 30, minor: 45, major: 60 },
-      enforceOn: [],
+      // Named explicitly: severity follows `enforceOn` alone, so the 🔴 this
+      // case asserts requires the package to actually be enforced.
+      enforceOn: ['some-lib'],
       scope: 'root',
       scopeExceptions: [],
     });
@@ -1044,6 +1046,23 @@ describe('printRules', () => {
     expect(output).toContain('no-packages');
     expect(output).toContain('moment is forbidden');
     expect(output).toContain('🟡');
+  });
+
+  // `packageName` is set by `detectForbiddenPackages`, but the rule's own
+  // patterns are the fallback for a violation raised without one.
+  it('falls back to the rule patterns when a no-packages violation has no packageName', () => {
+    const violation: RuleViolation = {
+      ruleId: 'no-packages',
+      severity: 'error',
+      patterns: ['@legacy/*'],
+      matchedFiles: [],
+    };
+    const aggregated = makeAggregated({ ruleViolations: [violation] });
+    printRules(aggregated);
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('@legacy/* is forbidden');
   });
 
   it('renders a require-files violation as "not found"', () => {

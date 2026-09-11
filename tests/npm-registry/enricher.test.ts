@@ -41,13 +41,14 @@ describe('enrichWithReleaseAge â€” skipped packages', () => {
     expect(enriched[0].releaseAge).toBeUndefined();
   });
 
-  // #78 made `packages[]` every package the repo owns rather than only the
-  // used ones. Enrichment must NOT follow it there: one registry request per
-  // declared dependency is a large traffic increase, and — because an empty
-  // `enforceOn` marks every fetched package severity 'error' — every
-  // newly-visible overdue dependency would become a mandatory violation,
-  // failing `comply` for repos that pass today.
-  it('does not look up a declared-but-unused package when enforceOn is empty', async () => {
+  // #171: enrichment follows `packages[]` (#78) exactly. It used to gate on
+  // `usageCount > 0`, which counts JSX component rendering — irrelevant to
+  // whether an installed version is stale, and so a silent exemption for
+  // every dependency consumed as functions or hooks.
+  //
+  // Severity still follows `enforceOn`, which is empty here — so the newly
+  // visible package is advisory, not a new mandatory failure.
+  it('looks up a declared-but-unused package even when enforceOn is empty', async () => {
     const used = createMockPackage('react', {
       version: '18.0.0',
       usageCount: 3,
@@ -58,7 +59,7 @@ describe('enrichWithReleaseAge â€” skipped packages', () => {
     });
     mockFetch.mockResolvedValue({
       name: 'pkg',
-      time: { created: daysAgo(500), modified: daysAgo(1) },
+      time: { created: daysAgo(500), '9.0.0': daysAgo(400) },
       versions: {},
     });
 
@@ -67,11 +68,24 @@ describe('enrichWithReleaseAge â€” skipped packages', () => {
       BASE_CONFIG,
     );
 
-    expect(mockFetch).toHaveBeenCalledTimes(1);
-    expect(mockFetch.mock.calls[0][0]).toBe('react');
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(mockFetch.mock.calls.map((c) => c[0])).toEqual(['react', 'eslint']);
     expect(
-      enriched.find((p) => p.packageName === 'eslint')?.releaseAge,
-    ).toBeUndefined();
+      enriched.find((p) => p.packageName === 'eslint')?.releaseAge?.severity,
+    ).toBe('warn');
+  });
+
+  // A package with no installed version is the one real exemption: there is
+  // no release date to check without one.
+  it('does not look up a declared-but-uninstalled package', async () => {
+    const uninstalled = createMockPackage('eslint', {
+      version: null,
+      usageCount: 0,
+    });
+
+    await enrichWithReleaseAge([uninstalled], BASE_CONFIG);
+
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 
   it('looks up an unused package that enforceOn names explicitly', async () => {
@@ -91,6 +105,42 @@ describe('enrichWithReleaseAge â€” skipped packages', () => {
     });
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  // #171: usage counts JSX component rendering, so a package imported only
+  // as functions/hooks reads 0 and used to get a blank Target cell next to
+  // its JSX siblings' advisory rows. With enforceOn set, everything it does
+  // not name is severity 'warn', so enriching those costs nothing but a
+  // lookup and the verdict can't move.
+  it('looks up an owned function-only package when enforceOn is non-empty', async () => {
+    const jsx = createMockPackage('@acme/ui', {
+      version: '18.3.1',
+      usageCount: 4,
+    });
+    const functionOnly = createMockPackage('@acme/toolkit', {
+      version: '2.11.2',
+      usageCount: 0,
+    });
+    mockFetch.mockResolvedValue({
+      name: 'pkg',
+      time: { created: daysAgo(500), '2.11.2': daysAgo(400) },
+      versions: {},
+    });
+
+    const { enriched } = await enrichWithReleaseAge([jsx, functionOnly], {
+      ...BASE_CONFIG,
+      enforceOn: ['@other/*'],
+    });
+
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(mockFetch.mock.calls.map((c) => c[0])).toEqual([
+      '@acme/ui',
+      '@acme/toolkit',
+    ]);
+    expect(
+      enriched.find((p) => p.packageName === '@acme/toolkit')?.releaseAge
+        ?.severity,
+    ).toBe('warn');
   });
 
   it('increments skipped counter when registry returns null', async () => {
@@ -571,7 +621,10 @@ describe('enrichWithReleaseAge â€” enforceOn severity scoping (#18)', () =>
     expect(external?.releaseAge?.severity).toBe('warn');
   });
 
-  it('defaults everything to error severity when enforceOn is not set', async () => {
+  // `enforceOn` is a plain glob list naming the mandatory packages, with no
+  // special case for the empty one — it matches nothing, so it enforces
+  // nothing. Everything is still fetched and reported, just advisory.
+  it('enforces nothing when enforceOn is empty', async () => {
     const packages = [
       createMockPackage('@my-org/internal-pkg', { version: '1.0.0' }),
       createMockPackage('react', { version: '17.0.0' }),
@@ -583,8 +636,53 @@ describe('enrichWithReleaseAge â€” enforceOn severity scoping (#18)', () =>
     });
     const { enriched } = await enrichWithReleaseAge(packages, BASE_CONFIG);
     for (const pkg of enriched) {
+      expect(pkg.releaseAge?.severity).toBe('warn');
+    }
+  });
+
+  // '**' is the "everything" pattern, not '*' — a single star stops at the
+  // '/' in a scoped name, so it would silently leave @my-org/* advisory.
+  it("enforces everything under ['**'], including scoped names", async () => {
+    const packages = [
+      createMockPackage('@my-org/internal-pkg', { version: '1.0.0' }),
+      createMockPackage('react', { version: '17.0.0' }),
+    ];
+    mockFetch.mockResolvedValue({
+      name: 'pkg',
+      time: { '2.0.0': daysAgo(90) },
+      versions: {},
+    });
+
+    const { enriched } = await enrichWithReleaseAge(packages, {
+      ...BASE_CONFIG,
+      enforceOn: ['**'],
+    });
+
+    for (const pkg of enriched) {
       expect(pkg.releaseAge?.severity).toBe('error');
     }
+  });
+
+  it("['*'] does not reach scoped packages", async () => {
+    const packages = [
+      createMockPackage('@my-org/internal-pkg', { version: '1.0.0' }),
+      createMockPackage('react', { version: '17.0.0' }),
+    ];
+    mockFetch.mockResolvedValue({
+      name: 'pkg',
+      time: { '2.0.0': daysAgo(90) },
+      versions: {},
+    });
+
+    const { enriched } = await enrichWithReleaseAge(packages, {
+      ...BASE_CONFIG,
+      enforceOn: ['*'],
+    });
+
+    const byName = (n: string) =>
+      enriched.find((p) => p.packageName === n)?.releaseAge?.severity;
+    expect(byName('react')).toBe('error');
+    expect(byName('@my-org/internal-pkg')).toBe('warn');
   });
 });
 

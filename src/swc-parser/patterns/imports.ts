@@ -1,5 +1,6 @@
 import type { ImportDeclaration } from '@swc/core';
 import type { ParserState } from '../types';
+import { lineOf } from '../utils/span';
 
 /**
  * Analyzes import declarations and tracks all types:
@@ -42,7 +43,7 @@ function analyzeDefaultImport(
   state.usagePatterns.defaultImports.add({
     name,
     source,
-    line: node.span?.start || 0,
+    line: lineOf(node),
   });
 
   state.componentNames.add(name);
@@ -59,7 +60,7 @@ function analyzeNamespaceImport(
   state.usagePatterns.namespaceImports.add({
     name,
     source,
-    line: node.span?.start || 0,
+    line: lineOf(node),
   });
 
   state.allIdentifiers.add(name);
@@ -77,7 +78,7 @@ function analyzeNamedImport(
   state.usagePatterns.namedImports.add({
     name: importedName,
     source,
-    line: node.span?.start || 0,
+    line: lineOf(node),
   });
 
   // Track aliases
@@ -86,7 +87,7 @@ function analyzeNamedImport(
       imported: importedName,
       local: localName,
       source,
-      line: node.span?.start || 0,
+      line: lineOf(node),
     });
   }
 

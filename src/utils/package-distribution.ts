@@ -113,12 +113,11 @@ export function findComponentSource(
  * nobody. Dropping it here would silently exempt it from compliance, so it
  * is surfaced with zero usage.
  *
- * Note this is deliberately NOT the set release-age enrichment operates on —
- * see `isReleaseAgeTarget`. Enriching every owned package would fire a
- * registry request per declared dependency, and (with the default empty
- * `enforceOn`, which marks every fetched package `severity: 'error'`) would
- * turn newly-visible overdue dependencies into mandatory compliance
- * failures for repos that pass today.
+ * This is also exactly the set release-age enrichment operates on: every
+ * package here with an installed version is looked up. It was once narrower
+ * — gated on `usageCount > 0` plus `enforceOn` matches — but usage counts
+ * JSX component rendering, which has nothing to do with whether an
+ * installed dependency is stale (#171).
  */
 export function calculatePackageDistribution(
   inventory: PackageInventoryEntry[],
@@ -166,30 +165,4 @@ export function calculatePackageDistribution(
   // self-contained rather than silently depending on that. Equal usage keeps
   // insertion order, so the zero-usage tail stays in discovery order.
   return distribution.sort((a, b) => b.usageCount - a.usageCount);
-}
-
-/**
- * Whether release-age enrichment should look this package up in the
- * registry. Deliberately narrower than `packages[]` itself (#78): that array
- * is now every package the repo owns, and enriching all of them would
- * - fire one registry request per declared dependency rather than per
- *   *used* one, and
- * - with the default empty `enforceOn` — which `enricher.ts` reads as
- *   "everything is severity `error`" — promote every newly-visible overdue
- *   dependency to a mandatory violation, flipping `comply` to a failure for
- *   repos that pass today.
- *
- * So the target set is exactly what it was before `packages[]` expanded:
- * packages with measured usage, plus `enforceOn` matches (which can be
- * installed and explicitly enforced yet never imported as a component — a
- * side-effect-only `import '@acme-ui/pulse-styles/button.css'` has no
- * specifiers, so the usage scan never sees it, and skipping it would
- * silently exempt it from compliance).
- */
-export function isReleaseAgeTarget(
-  pkg: Pick<PackageDistribution, 'packageName' | 'usageCount'>,
-  enforceOn: string[],
-): boolean {
-  if (pkg.usageCount > 0) return true;
-  return enforceOn.length > 0 && micromatch.isMatch(pkg.packageName, enforceOn);
 }

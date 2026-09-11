@@ -37,6 +37,55 @@ export default defineConfig({
 });
 ```
 
+## Parser (experimental)
+
+`parser` selects the AST front-end. It defaults to `'swc'`, the supported one;
+`'oxc-experimental'` swaps [@swc/core](https://swc.rs/) for
+[oxc-parser](https://oxc.rs/).
+
+```ts
+export default defineConfig({
+  parser: 'oxc-experimental',
+});
+```
+
+Only the parse step changes. oxc's ESTree AST is normalized into the node shape
+the analyzers already consume, so the same visitor, the same pattern analyzers
+and the same report generator run either way — every import, JSX usage, prop
+detail and advanced pattern comes out identical. `tests/oxc-parser/parity.test.ts`
+asserts that report-for-report against `swc` over the whole fixture corpus, and
+the e2e suite diffs a full `scan --format json` run between the two.
+
+Why it exists, and what it costs today. Measured on the fixture corpus
+(41 files, 200 rounds, ms per pass):
+
+| | `swc` | `oxc-experimental` |
+| --- | --- | --- |
+| Installed size (parser + native binding) | ~27 MB | **~3 MB** |
+| Parse, to a usable JS AST | 11.7 | **7.7** |
+| AST normalization | — | +7.0 |
+| Analysis walk | +2.3 | +3.6 |
+| **Total** | **14.0** | **18.3** |
+
+The install-size win — about 9x smaller — is the reason to reach for it today.
+
+Scans are currently *slower* end to end, and the breakdown says exactly why.
+oxc's parse is genuinely faster (7.7 vs 11.7 ms, ~1.5x), but normalizing its
+AST into the analyzers' node shape costs 7.0 ms, more than that saves. The
+analysis walk is then a further 1.3 ms slower because the normalized tree
+carries more fields than SWC's native one (63.3k vs 51.9k) and `visitChildren`
+iterates every field of every node. Net: +4.3 ms.
+
+Both costs come from normalization being an eager deep copy; removing it means
+teaching the analyzers to read oxc's AST directly. That is why the option is
+experimental and opt-in.
+
+> A note on benchmarking oxc: `parseSync().program` is a **lazy getter**.
+> Timing a parse without reading `program` measures ~2.4 ms and is not
+> comparable to SWC, which always materializes its AST — the deserialization
+> cost simply lands on whoever touches the tree first. The 7.7 ms above
+> includes materializing the AST.
+
 ## Ignoring Packages
 
 Exclude packages from the packages table entirely:
@@ -255,9 +304,9 @@ no need to spell it out as `'no-package-fields': ['dependencies.x', 'devDependen
 Purely transitive dependencies are never flagged: they arrive through another package, so removing one
 isn't something your repo can do. Packages excluded by `packages.ignore` are never flagged either.
 
-Every banned package appears in the Rules and Compliance sections. Those with measured usage also get a
-`[BANNED]` or `[RESTRICTED]` badge in the packages table, which since #78 lists every package the repo
-owns — so a declared-but-unimported banned package now has a row there too.
+Every banned package appears in the Rules and Compliance sections, and also gets a `[BANNED]` or
+`[RESTRICTED]` badge in the packages table. Since #78 that table lists every package the repo owns, so a
+declared-but-unimported banned package has a row — and a badge on it — just like an imported one.
 
 In the JSON output, each hit is an ordinary entry in `ruleViolations` with `ruleId: "no-packages"` —
 `patterns` carries the rule's globs, `packageName` the package that matched, and `matchedFiles` is empty
@@ -398,9 +447,21 @@ export default defineConfig({
 });
 ```
 
-If `enforceOn` is omitted, every package's release age counts toward compliance (current behavior).
+`enforceOn` is a plain glob list of the packages that are mandatory, with no special case for the empty one:
+
+| `enforceOn` | Mandatory (`error`) | Advisory (`warn`) |
+| --- | --- | --- |
+| `[]` (the default) | nothing | every installed package |
+| `['**']` | every installed package | nothing |
+| `['@my-org/*']` | `@my-org/…` | everything else |
+
+Note `['**']`, not `['*']`, for "everything": these are micromatch globs, and a single `*` stops at the `/` in a scoped name — `['*']` would enforce `react` while leaving `@my-org/ui` advisory.
+
+Release age never blocks `comply` until you name something here. Everything is still fetched and reported either way; `enforceOn` only decides which rows can fail the build.
 
 `enforceOn` matches are checked against the lockfile directly, not just packages hermex found imported as components — so a CSS-only or side-effect-only dependency (e.g. `import '@my-org/styles/button.css'`) still gets checked and can still fail `hermex comply`, even though it never shows up in component usage.
+
+`enforceOn` decides *severity*, never *whether a package is checked*. Every package in the packages table with an installed version gets its release age looked up, so a dependency imported purely as functions or hooks (`@my-org/toolkit`) shows a Target like any other — advisory `[not enforced]` when `enforceOn` doesn't name it, mandatory when it does. Before v3 that lookup was gated on JSX component usage, which had nothing to do with whether an installed version is stale and silently exempted every function-only dependency ([#171](https://github.com/Gallevy/hermex/issues/171)). The cost is one registry request per installed dependency rather than per rendered one.
 
 `enforceOn` only decides *severity* (mandatory vs. advisory) for a package that's already being enforced under the current `scope` — it doesn't override `scope` itself. Under `scope: 'root'` (the default), a package matching `enforceOn` that's only ever pulled in transitively (never a direct dependency in your `package.json`) still can't fail `comply` — there's no root copy to hold accountable. It still shows up as advisory context (see below), it just doesn't block the build.
 
@@ -589,6 +650,8 @@ import { defineConfig } from 'hermex';
 export default defineConfig({
   includes: ['src/**/*.{tsx,jsx,ts,js}'],
   excludes: ['**/node_modules/**', '**/dist/**', '**/*.test.*'],
+
+  parser: 'swc',
 
   packages: {
     ignore: [],

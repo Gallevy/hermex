@@ -1,4 +1,5 @@
 import type { ParserState } from '../types';
+import { lineOf } from '../utils/span';
 
 /**
  * Analyzes React.lazy() imports
@@ -15,7 +16,7 @@ export function analyzeLazyImport(node: any, state: ParserState): void {
       if (source) {
         state.usagePatterns.lazyImports.add({
           source,
-          line: node.span?.start || 0,
+          line: lineOf(node),
         });
       }
     }
@@ -30,7 +31,7 @@ export function analyzeDynamicImport(node: any, state: ParserState): void {
   if (source) {
     state.usagePatterns.dynamicImports.add({
       source,
-      line: node.span?.start || 0,
+      line: lineOf(node),
     });
   }
 }

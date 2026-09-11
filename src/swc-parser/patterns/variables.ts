@@ -1,5 +1,6 @@
 import type { ParserState } from '../types';
 import { isKnownComponent } from '../utils/matchers';
+import { lineOf } from '../utils/span';
 
 /**
  * Analyzes variable declarations for component assignments
@@ -20,7 +21,7 @@ export function analyzeVariableDeclaration(
         if (assignment && isKnownComponent(assignment, state)) {
           state.usagePatterns.variableAssignments.set(varName, {
             assignment,
-            line: node.span?.start || 0,
+            line: lineOf(node),
           });
           state.componentNames.add(varName);
         }
@@ -55,7 +56,7 @@ export function analyzeDestructuringPattern(
         state.usagePatterns.destructuredUsage.add({
           property: propName,
           source: init.value,
-          line: pattern.span?.start || 0,
+          line: lineOf(pattern),
         });
         state.componentNames.add(propName);
       }

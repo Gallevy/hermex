@@ -3,6 +3,7 @@ export type {
   HermexConfig,
   HermexConfigInput,
   RuleSeverity,
+  ParserName,
   RuleConfig,
   PackageFieldRule,
   EngineVersionRule,

@@ -282,6 +282,32 @@ describe('applyOverrides', () => {
     ]);
   });
 
+  // Rules are keyed on an exact, order-independent match of `patterns`. A
+  // differing pattern *count* is a different rule, so it is appended rather
+  // than replacing the base entry.
+  it('appends rather than replaces when the pattern counts differ', () => {
+    const config = createConfig({
+      rules: { 'no-packages': [{ severity: 'error', patterns: ['moment'] }] },
+      overrides: [
+        {
+          match: ['@acme/checkout'],
+          rules: {
+            'no-packages': [
+              { severity: 'warn', patterns: ['moment', 'lodash'] },
+            ],
+          },
+        },
+      ],
+    });
+
+    const result = applyOverrides(config, repo('@acme/checkout'));
+
+    expect(result.rules['no-packages']).toEqual([
+      { severity: 'error', patterns: ['moment'] },
+      { severity: 'warn', patterns: ['moment', 'lodash'] },
+    ]);
+  });
+
   it('merges require-files', () => {
     const config = createConfig({
       rules: { 'require-files': [{ severity: 'error', patterns: ['.nvmrc'] }] },
