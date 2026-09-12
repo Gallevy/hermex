@@ -53,7 +53,11 @@ function buildRulesSection(aggregated: AggregatedReport): string {
     );
   }
 
-  lines.push('', formatSeverityTally(ruleViolations));
+  // Tallies `rows`, not `ruleViolations` — same reasoning as `printRules`:
+  // the count must equal what's rendered above it (#88), and release-age
+  // never renders a row here even though it's still an (info-filtered-out)
+  // member of `ruleViolations`.
+  lines.push('', formatSeverityTally(rows));
 
   return lines.join('\n') + '\n';
 }

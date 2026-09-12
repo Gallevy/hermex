@@ -281,7 +281,7 @@ function printPackagesTable(
     }
   }
 
-  console.log(chalk.gray(`\nTotal: ${formatCount(packages.length)} packages`));
+  console.log(chalk.gray(`\n${formatCount(packages.length)} packages total`));
 }
 
 // Only ever called via printPackages, which already guarantees a non-empty

@@ -110,20 +110,26 @@ export function sortViolationsBySeverity<T extends RuleViolation>(
 }
 
 /**
- * Buckets violations by severity in one pass — the single place that knows
- * how to partition a violations array, so `printRules`, `--summary-file`,
+ * Buckets items by severity in one pass — the single place that knows how
+ * to partition a severity-bearing array, so `printRules`, `--summary-file`,
  * and `computeCompliance`'s error/warn buckets all derive from the same
- * grouping instead of each re-filtering `ruleViolations` independently (#88).
+ * grouping instead of each re-filtering independently (#88). Generic over
+ * anything with a `severity` field, not just `RuleViolation` — `printRules`
+ * and `buildRulesSection` (`write-summary-file.ts`) tally `Row[]` (what
+ * actually got rendered) rather than the raw, pre-grouping violation list,
+ * since `release-age` violations count toward compliance but never render
+ * as a Rules-table row (their display is the Packages table) — tallying the
+ * raw list would disagree with the table above it (#88's own invariant).
  */
-export function groupBySeverity<T extends RuleViolation>(
-  violations: T[],
-): Record<RuleViolation['severity'], T[]> {
+export function groupBySeverity<
+  T extends { severity: RuleViolation['severity'] },
+>(items: T[]): Record<RuleViolation['severity'], T[]> {
   const groups: Record<RuleViolation['severity'], T[]> = {
     error: [],
     warn: [],
     info: [],
   };
-  for (const v of violations) groups[v.severity].push(v);
+  for (const v of items) groups[v.severity].push(v);
   return groups;
 }
 
@@ -137,7 +143,7 @@ export function groupBySeverity<T extends RuleViolation>(
  * its tally stays untouched (#88).
  */
 export function formatSeverityTally(
-  violations: RuleViolation[],
+  violations: { severity: RuleViolation['severity'] }[],
   options?: { includeInfo?: boolean },
 ): string {
   const groups = groupBySeverity(violations);

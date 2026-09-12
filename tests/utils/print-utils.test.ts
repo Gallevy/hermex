@@ -192,7 +192,7 @@ describe('printPackages', () => {
     const output = consoleSpy.mock.calls
       .map((call) => call.join(' '))
       .join('\n');
-    expect(output).toContain('Total: 2 packages');
+    expect(output).toContain('2 packages total');
     expect(output).not.toContain('unique components');
     expect(output).not.toContain('total usages');
   });

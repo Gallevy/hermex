@@ -281,16 +281,13 @@ export function printRules(aggregated: AggregatedReport): void {
 
   console.log(table.toString());
 
-  // Sums the full atomic list, not the rendered rows — a fold that reads as
-  // one row is still N things wrong, and the tally below the table must
-  // reflect that (this is the whole point of moving to atomic violations:
-  // `ruleViolations.length` is finally a comparable "things wrong" count).
-  // Note this can differ from what's visibly listed above when release-age
-  // violations are present, since those contribute to the tally but never
-  // render as rows here — their detail lives in the Packages table instead.
+  // Tallies `rows`, not the raw `ruleViolations` list — the count below the
+  // table must always equal what's rendered above it (#88's invariant).
+  // release-age violations count toward compliance and the overall verdict
+  // (printComplianceVerdict), but never render a row here — their detail is
+  // the Packages table — so they're deliberately excluded from this
+  // section-local tally, not just folded away by grouping.
   console.log(
-    chalk.gray(
-      `\n${formatSeverityTally(ruleViolations, { includeInfo: true })}`,
-    ),
+    chalk.gray(`\n${formatSeverityTally(rows, { includeInfo: true })}`),
   );
 }
