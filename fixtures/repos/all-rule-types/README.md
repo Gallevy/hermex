@@ -1,11 +1,11 @@
 # `repos/all-rule-types/`
 
-A repo engineered so **every one of the ten rule types fires at once**, at
+A repo engineered so **every one of the eleven rule types fires at once**, at
 three different severities.
 
 ## What it proves
 
-The primary fixture repo only ever trips three of the ten. Without this
+The primary fixture repo only ever trips three of the eleven. Without this
 repo the rules table has never been reviewed with a `max-file-size` row, an
 `require-engine-version` row, a `codeowners` row, or either of the two
 package-field shapes in it — so nothing would catch a renderer that
@@ -50,18 +50,19 @@ belongs to a team outside `requiredOwners`:
 | `src/legacy.tsx` | `@org/legacy` | owned, but by the **wrong** team |
 | `src/orphan.tsx` | — | matches nothing, **unowned** |
 
-**Known-wrong baseline.** The recorded output describes both violations as
-"have no owner", which is false for `src/legacy.tsx` — it has an owner, just
-not a required one. That is [#95](https://github.com/Gallevy/hermex/issues/95),
-left unfixed on purpose: the recorded output is the evidence, and refreshing
-this baseline is how the fix gets reviewed. A diff here that collapses the
-two rows into one distinct wording is the fix landing, not a regression.
+**[#95](https://github.com/Gallevy/hermex/issues/95) fixed.** The recorded
+output used to describe both violations as "have no owner", which was false
+for `src/legacy.tsx` — it has an owner, just not a required one. Giving each
+atomic codeowners violation its own `reason` (`'unowned'` vs. `'wrong-owner'`)
+— needed so `require-codeowners`'s two violation groups have distinct
+grouping keys — fixed the wording as a side effect: `src/legacy.tsx` now
+reads "have the wrong owner".
 
 ## Cases that use it
 
 | Case | Command | Expects |
 | --- | --- | --- |
-| `comply-all-rule-types` | `hermex comply` | exit 1, all ten rows in the human table |
+| `comply-all-rule-types` | `hermex comply` | exit 1, all eleven rows in the human table |
 | `comply-all-rule-types-json` | `hermex comply --format json` | exit 1, the machine-readable shape of each rule type |
 
 ## Layout
@@ -70,7 +71,7 @@ two rows into one distinct wording is the fix landing, not a regression.
 .babelrc                 no-files hit
 .github/CODEOWNERS       two of three src files covered
 assets/logo.svg          1410 B, over the 1 KB max-file-size ceiling
-hermex.config.ts         all ten rules, three severities
+hermex.config.ts         all eleven rules, three severities
 jest.config.js           no-files hit
 package.json             engines >=16, no license, publishConfig.registry, moment
 src/legacy.tsx           owned by the wrong team

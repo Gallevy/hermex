@@ -2,11 +2,14 @@ import type { HermexConfigInput } from '../../../src/config/types.ts';
 
 /**
  * Every rule type hermex has, all firing at once, at three different
- * severities. The primary fixture repo only ever trips three of the ten —
+ * severities. The primary fixture repo only ever trips three of the eleven —
  * so without this repo the rules table has never been reviewed with an
  * `require-engine-version` row, a `require-codeowners` row, or either of the
  * package-field shapes in it, and nothing would catch a renderer that
  * mishandles `fieldPath` / `installedRange` / a long `matchedFiles` list.
+ * `release-age` is the eleventh and only rule that never renders a Rules-table
+ * row at all (its display is the Packages table) — this is the only case
+ * that exercises it alongside the other ten in one run.
  *
  * Scoped to `src/` so `jest.config.js` is found by `no-files` without
  * also being parsed as source — and so `assets/logo.svg`, which exists
@@ -14,7 +17,16 @@ import type { HermexConfigInput } from '../../../src/config/types.ts';
  */
 export default {
   includes: ['src/**/*.{tsx,jsx,ts,js}'],
+  releaseAge: {
+    cacheDisabled: true,
+  },
   rules: {
+    // react@18.3.1 is overdue on a major (19.0.0, breached) with a genuine
+    // compliant target still in-window (19.1.0) — the eleventh rule type,
+    // and the only one whose display lives in the Packages table rather
+    // than the Rules table (see src/utils/print-rules.ts's renderer
+    // dispatch).
+    'release-age': [{ severity: 'error', patterns: ['react'] }],
     'no-files': [
       {
         severity: 'error',
@@ -60,12 +72,11 @@ export default {
     'require-engine-version': { severity: 'error', range: '>=20', message: 'Minimum Node 20 required' },
     // CODEOWNERS covers two of the three scanned files, and one of those
     // belongs to a team outside `requiredOwners` — so this produces both
-    // codeowners violations, unowned and wrong-owner.
-    //
-    // The baseline currently describes both as "have no owner", which is
-    // wrong for src/legacy.tsx: it has an owner, just not a required one.
-    // That is #95, left unfixed on purpose — the recorded output is the
-    // evidence, and refreshing this baseline is how the fix gets reviewed.
+    // codeowners violations, unowned and wrong-owner, worded distinctly
+    // ("have no owner" vs. "have the wrong owner"). #95 — both used to
+    // print as "have no owner" regardless, since the old folded violation
+    // shape had no field to distinguish them — was fixed as a side effect
+    // of giving each atomic codeowners violation its own `reason`.
     'require-codeowners': {
       severity: 'info',
       requiredOwners: ['@org/platform'],
@@ -73,7 +84,6 @@ export default {
     },
   },
   output: {
-    packages: false,
     components: false,
     patterns: false,
     versus: false,

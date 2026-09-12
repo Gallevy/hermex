@@ -131,35 +131,44 @@ export function findComponentSource(
  *
  * Purely transitive dependencies stay out: `isOwnedByRepo` excludes them, so
  * this is still the repo's own dependency surface rather than the whole
- * lockfile. The one exception is a transitive package explicitly named by
- * `releaseAge.enforceOn` — installed and deliberately enforced, yet owned by
- * nobody. Dropping it here would silently exempt it from compliance, so it
- * is surfaced with zero usage.
+ * lockfile. The one exception is a transitive package explicitly matched by
+ * an `error`-severity `rules['release-age']` entry — installed and
+ * deliberately made mandatory, yet owned by nobody. Dropping it here would
+ * silently exempt it from compliance, so it is surfaced with zero usage.
+ * Deliberately narrower than "any non-off entry": a `warn`/`info` catch-all
+ * like `{ severity: 'warn', patterns: ['**'] }` (or the implicit `['**']`
+ * baseline itself, `resolveReleaseAgeRule` in `src/config/overrides.ts`)
+ * must not reach into the whole transitive lockfile and flood this table
+ * with every package nobody owns — only a pattern the author wrote
+ * specifically to make something mandatory does that.
  *
  * This is also exactly the set release-age enrichment operates on: every
- * package here with an installed version is looked up. It was once narrower
- * — gated on `usageCount > 0` plus `enforceOn` matches — but usage counts
- * JSX component rendering, which has nothing to do with whether an
- * installed dependency is stale (#171).
+ * package here with an installed version is looked up when release-age is
+ * on for this repo. It was once narrower — gated on `usageCount > 0` plus
+ * `enforceOn` matches — but usage counts JSX component rendering, which has
+ * nothing to do with whether an installed dependency is stale (#171).
  */
 export function calculatePackageDistribution(
   inventory: PackageInventoryEntry[],
   config?: ResolvedHermexConfig,
 ): PackageDistribution[] {
-  const enforceOnPatterns = config?.releaseAge.enforceOn ?? [];
-  const enforcesUnownedPackages =
-    (config?.releaseAge.enabled ?? false) && enforceOnPatterns.length > 0;
+  const releaseAgeRules = config?.rules['release-age'] ?? [];
+  const releaseAgePatterns = releaseAgeRules
+    .filter((r) => r.severity === 'error')
+    .flatMap((r) => r.patterns);
+  const enforcesUnownedPackages = releaseAgePatterns.length > 0;
 
   const distribution = inventory
     .filter((entry) => {
       if (entry.ignored) return false;
       if (isOwnedByRepo(entry)) return true;
-      // Transitive, but explicitly enforced. Requires an installed version:
-      // there is no release date to check without one.
+      // Transitive, but explicitly named by an authored release-age rule.
+      // Requires an installed version: there is no release date to check
+      // without one.
       return (
         enforcesUnownedPackages &&
         isInstalled(entry) &&
-        micromatch.isMatch(entry.packageName, enforceOnPatterns)
+        micromatch.isMatch(entry.packageName, releaseAgePatterns)
       );
     })
     .map((entry) => ({

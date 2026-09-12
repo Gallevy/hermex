@@ -60,7 +60,6 @@ export function evaluatePackageFieldRules(
         severity: rule.severity,
         patterns: rule.patterns,
         message: rule.message,
-        matchedFiles: [],
         fieldPath: mismatch?.path,
         actualValue:
           mismatch && typeof mismatch.value !== 'object'
@@ -82,7 +81,6 @@ export function evaluatePackageFieldRules(
           severity: rule.severity,
           patterns: rule.patterns,
           message: rule.message,
-          matchedFiles: [],
           fieldPath: pattern,
           actualValue:
             lookup.value !== null && typeof lookup.value !== 'object'

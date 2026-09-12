@@ -3,7 +3,7 @@
 
 # `comply-all-rule-types-json`
 
-The machine-readable shape of every rule type: fieldPath and actualValue on package-field hits, maxSizeBytes/oversizeFiles on max-file-size, installedRange/requiredRange on require-engine-version, matchedFiles on codeowners. Also where #95 is visible — the two codeowners entries are byte-identical apart from matchedFiles.
+The machine-readable shape of every rule type: fieldPath and actualValue on package-field hits, maxSizeBytes/oversizeFile on max-file-size, installedRange/requiredRange on require-engine-version, matchedFile on codeowners, packageName/worstLevel/scope on release-age. Also where #95 is visible — the two codeowners entries are byte-identical apart from matchedFile.
 
 ## What runs
 
@@ -14,6 +14,7 @@ The machine-readable shape of every rule type: fieldPath and actualValue on pack
 | **Config** | [`fixtures/repos/all-rule-types/hermex.config.ts`](../repos/all-rule-types/hermex.config.ts) |
 | **Fixture** | [`fixtures/repos/all-rule-types`](../repos/all-rule-types) — [overview](../repos/all-rule-types/README.md) |
 | **Asserted exit code** | `1` |
+| **Registry** | offline, served from [`fixtures/registry/timelines.ts`](../registry/timelines.ts) — never the network |
 
 ## Recorded output
 

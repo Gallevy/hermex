@@ -4,11 +4,12 @@ import base from '../hermex.config.ts';
 export default {
   ...base,
   releaseAge: {
-    enabled: true,
-    registry:
-      process.env['HERMEX_FIXTURE_REGISTRY'] ?? 'https://registry.npmjs.org',
     cacheDisabled: true,
-    thresholds: { patch: 30, minor: 45, major: 60 },
-    enforceOn: ['moment', 'react-dom'],
+  },
+  rules: {
+    ...base.rules,
+    // Everything else installed still gets checked, advisory-only, via the
+    // implicit `['**']` baseline — no need to author it explicitly.
+    'release-age': [{ severity: 'error', patterns: ['moment', 'react-dom'] }],
   },
 } satisfies HermexConfigInput;

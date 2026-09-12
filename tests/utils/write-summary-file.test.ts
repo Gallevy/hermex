@@ -14,6 +14,7 @@ import { formatUpgradeCell } from '../../src/utils/print-packages';
 import {
   createMockPackage,
   createMockReleaseAge,
+  createMockReleaseAgeViolation,
 } from '../helpers/mock-reports';
 
 /** A no-packages hit, the shape `detectForbiddenPackages` emits (#77). */
@@ -27,7 +28,6 @@ function forbidViolation(
     severity,
     patterns: [packageName],
     message,
-    matchedFiles: [],
     packageName,
   };
 }
@@ -95,7 +95,6 @@ describe('writeSummaryFile', () => {
       ruleId: 'require-files',
       severity: 'error',
       patterns: ['.nvmrc'],
-      matchedFiles: [],
     };
     const content = write(makeAggregated({ ruleViolations: [violation] }));
     // oxlint-disable-next-line no-control-regex -- asserting the ANSI escape byte is absent
@@ -110,12 +109,11 @@ describe('writeSummaryFile', () => {
         ruleId: 'require-files',
         severity: 'error',
         patterns: ['.nvmrc'],
-        matchedFiles: [],
       };
       const content = write(makeAggregated({ ruleViolations: [violation] }));
-      expect(content).toContain('| | Rule | Description |');
-      expect(content).toContain('|---|---|---|');
-      expect(content).toContain('| 🔴 | require-files | .nvmrc not found |');
+      expect(content).toContain('| Rule | Description |');
+      expect(content).toContain('|---|---|');
+      expect(content).toContain('| require-files | 🔴 .nvmrc not found |');
       expect(content).not.toContain('- 🔴 require-files —');
     });
 
@@ -124,13 +122,12 @@ describe('writeSummaryFile', () => {
         ruleId: 'require-files',
         severity: 'error',
         patterns: ['.nvmrc'],
-        matchedFiles: [],
       };
       const infoViolation: RuleViolation = {
         ruleId: 'no-files',
         severity: 'info',
         patterns: ['.env'],
-        matchedFiles: ['.env'],
+        matchedFile: '.env',
       };
       const content = write(
         makeAggregated({ ruleViolations: [errorViolation, infoViolation] }),
@@ -146,13 +143,11 @@ describe('writeSummaryFile', () => {
         ruleId: 'require-files',
         severity: 'error',
         patterns: ['.nvmrc'],
-        matchedFiles: [],
       };
       const warnViolation: RuleViolation = {
         ruleId: 'require-files',
         severity: 'warn',
         patterns: ['.editorconfig'],
-        matchedFiles: [],
       };
       const content = write(
         makeAggregated({ ruleViolations: [errorViolation, warnViolation] }),
@@ -168,7 +163,7 @@ describe('writeSummaryFile', () => {
         ruleId: 'no-files',
         severity: 'info',
         patterns: ['.env'],
-        matchedFiles: ['.env'],
+        matchedFile: '.env',
       };
       const content = write(
         makeAggregated({ ruleViolations: [infoViolation] }),
@@ -190,7 +185,7 @@ describe('writeSummaryFile', () => {
         }),
       );
       expect(content).toContain(
-        '| 🔴 | no-packages | moment is forbidden — Use date-fns or dayjs |',
+        '| no-packages | 🔴 moment is forbidden — Use date-fns or dayjs |',
       );
     });
 
@@ -198,7 +193,7 @@ describe('writeSummaryFile', () => {
       const content = write(
         makeAggregated({ ruleViolations: [forbidViolation('moment')] }),
       );
-      expect(content).toContain('| 🔴 | no-packages | moment is forbidden |');
+      expect(content).toContain('| no-packages | 🔴 moment is forbidden |');
     });
 
     it('shows only a warning count when there are no errors', () => {
@@ -206,7 +201,6 @@ describe('writeSummaryFile', () => {
         ruleId: 'require-files',
         severity: 'warn',
         patterns: ['.editorconfig'],
-        matchedFiles: [],
       };
       const content = write(makeAggregated({ ruleViolations: [violation] }));
       expect(content).toContain('1 warning');
@@ -219,13 +213,11 @@ describe('writeSummaryFile', () => {
           ruleId: 'require-files',
           severity: 'error',
           patterns: ['a'],
-          matchedFiles: [],
         },
         {
           ruleId: 'require-files',
           severity: 'error',
           patterns: ['b'],
-          matchedFiles: [],
         },
       ];
       const content = write(
@@ -308,7 +300,15 @@ describe('writeSummaryFile', () => {
         }),
       });
       const content = write(
-        makeAggregated({ packageDistribution: [overdueError] }),
+        makeAggregated({
+          packageDistribution: [overdueError],
+          ruleViolations: [
+            createMockReleaseAgeViolation('my-internal-pkg', {
+              worstLevel: 'major_overdue',
+              severity: 'error',
+            }),
+          ],
+        }),
       );
       expect(content).toContain('### Packages');
       expect(content).toContain('| | Package | Installed | Target |');
@@ -335,7 +335,17 @@ describe('writeSummaryFile', () => {
           ],
         }),
       });
-      const content = write(makeAggregated({ packageDistribution: [both] }));
+      const content = write(
+        makeAggregated({
+          packageDistribution: [both],
+          ruleViolations: [
+            createMockReleaseAgeViolation('my-internal-pkg', {
+              worstLevel: 'major_overdue',
+              severity: 'error',
+            }),
+          ],
+        }),
+      );
       const line = content
         .split('\n')
         .find((l) => l.includes('my-internal-pkg'));
@@ -356,7 +366,15 @@ describe('writeSummaryFile', () => {
         }),
       });
       const content = write(
-        makeAggregated({ packageDistribution: [deprecatedOnlyBreach] }),
+        makeAggregated({
+          packageDistribution: [deprecatedOnlyBreach],
+          ruleViolations: [
+            createMockReleaseAgeViolation('my-internal-pkg', {
+              worstLevel: 'major_overdue',
+              severity: 'error',
+            }),
+          ],
+        }),
       );
       const line = content
         .split('\n')
@@ -375,7 +393,7 @@ describe('writeSummaryFile', () => {
         }),
       );
       expect(content).not.toContain('### Packages');
-      expect(content).toContain('| no-packages | moment is forbidden');
+      expect(content).toContain('| no-packages | 🔴 moment is forbidden');
     });
 
     it('omits the Packages heading entirely when there are no mandatory release-age violations', () => {
@@ -402,7 +420,15 @@ describe('writeSummaryFile', () => {
         }),
       });
       const content = write(
-        makeAggregated({ packageDistribution: [overdueError] }),
+        makeAggregated({
+          packageDistribution: [overdueError],
+          ruleViolations: [
+            createMockReleaseAgeViolation('my-internal-pkg', {
+              worstLevel: 'major_overdue',
+              severity: 'error',
+            }),
+          ],
+        }),
       );
       expect(content).toContain('### Packages\n');
       expect(content).not.toContain('(issues only)');
@@ -433,7 +459,17 @@ describe('writeSummaryFile', () => {
           ],
         }),
       });
-      const content = write(makeAggregated({ packageDistribution: [pkg] }));
+      const content = write(
+        makeAggregated({
+          packageDistribution: [pkg],
+          ruleViolations: [
+            createMockReleaseAgeViolation('some-lib', {
+              worstLevel: 'minor_overdue',
+              severity: 'error',
+            }),
+          ],
+        }),
+      );
       expect(content).toContain('major 1.0.0 (155 days overdue)');
       expect(content).not.toContain('no compliant release available');
     });
@@ -462,7 +498,17 @@ describe('writeSummaryFile', () => {
         ],
       });
       const pkg = createMockPackage('some-lib', { releaseAge });
-      const content = write(makeAggregated({ packageDistribution: [pkg] }));
+      const content = write(
+        makeAggregated({
+          packageDistribution: [pkg],
+          ruleViolations: [
+            createMockReleaseAgeViolation('some-lib', {
+              worstLevel: 'minor_overdue',
+              severity: 'error',
+            }),
+          ],
+        }),
+      );
 
       const tableCell = formatUpgradeCell(releaseAge);
       // formatUpgradeCell is "<icon> <description>[suffix]" — extract just
@@ -529,7 +575,17 @@ describe('writeSummaryFile', () => {
           advisoryBreaches: [{ version: '2.0.0', level: 'major_overdue' }],
         }),
       });
-      const content = write(makeAggregated({ packageDistribution: [both] }));
+      const content = write(
+        makeAggregated({
+          packageDistribution: [both],
+          ruleViolations: [
+            createMockReleaseAgeViolation('multi-version-lib', {
+              worstLevel: 'major_overdue',
+              severity: 'error',
+            }),
+          ],
+        }),
+      );
       const tableLine = content.split('\n').find((l) => l.startsWith('| 🔴 |'));
       expect(tableLine).toBe(
         '| 🔴 | `multi-version-lib` | 1.0.0 | major 2.0.0 (340 days overdue) |',
@@ -586,7 +642,6 @@ describe('writeSummaryFile', () => {
       ruleId: 'require-files',
       severity: 'error',
       patterns: ['.nvmrc'],
-      matchedFiles: [],
     };
     const content = write(makeAggregated({ ruleViolations: [violation] }));
     expect(content).toContain('Not compliant');
@@ -601,7 +656,6 @@ describe('writeSummaryFile', () => {
       ruleId: 'require-files',
       severity: 'error',
       patterns: ['.nvmrc'],
-      matchedFiles: [],
     };
     const content = write(
       makeAggregated({

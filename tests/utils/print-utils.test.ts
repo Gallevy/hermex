@@ -33,6 +33,7 @@ import { computeCompliance } from '../../src/utils/compliance';
 import {
   createMockPackage,
   createMockReleaseAge,
+  createMockReleaseAgeViolation,
 } from '../helpers/mock-reports';
 
 // Drive the "user report" test end-to-end through the real enricher, so it
@@ -59,7 +60,6 @@ function forbidViolation(
     severity,
     patterns: [packageName],
     message,
-    matchedFiles: [],
     packageName,
   };
 }
@@ -740,16 +740,18 @@ describe('formatUpgradeCell — stale 0.x minor line beneath a compliant newer m
       versions: {},
     });
 
-    const { enriched } = await enrichWithReleaseAge([pkg], {
-      enabled: true,
-      registry: 'https://registry.npmjs.org',
-      thresholds: { patch: 30, minor: 45, major: 60 },
-      // Named explicitly: severity follows `enforceOn` alone, so the 🔴 this
-      // case asserts requires the package to actually be enforced.
-      enforceOn: ['some-lib'],
-      scope: 'root',
-      scopeExceptions: [],
-    });
+    const { enriched } = await enrichWithReleaseAge(
+      [pkg],
+      { cacheDisabled: false },
+      // Named explicitly: severity follows the resolved policy alone, so
+      // the 🔴 this case asserts requires the package to actually be
+      // enforced ('error').
+      () => ({
+        severity: 'error',
+        thresholds: { patch: 30, minor: 45, major: 60 },
+        scope: 'root',
+      }),
+    );
 
     const cell = formatUpgradeCell(enriched[0].releaseAge);
 
@@ -883,7 +885,6 @@ describe('printRules', () => {
       ruleId: 'require-files',
       severity: 'error',
       patterns: ['.nvmrc'],
-      matchedFiles: [],
     };
     const aggregated = makeAggregated({
       ruleViolations: [
@@ -919,7 +920,6 @@ describe('printRules', () => {
       severity: 'error',
       patterns: ['eslint'],
       message: 'eslint is required',
-      matchedFiles: [],
     };
     const aggregated = makeAggregated({ ruleViolations: [violation] });
     expect(() => printRules(aggregated)).not.toThrow();
@@ -937,7 +937,7 @@ describe('printRules', () => {
       severity: 'info',
       patterns: ['orbis.config.*'],
       message: 'Orbis detected',
-      matchedFiles: ['orbis.config.ts'],
+      matchedFile: 'orbis.config.ts',
     };
     const aggregated = makeAggregated({ ruleViolations: [infoViolation] });
     expect(() => printRules(aggregated)).not.toThrow();
@@ -953,7 +953,7 @@ describe('printRules', () => {
       ruleId: 'no-files',
       severity: 'info',
       patterns: ['orbis.config.*'],
-      matchedFiles: ['orbis.config.ts'],
+      matchedFile: 'orbis.config.ts',
     };
     const aggregated = makeAggregated({ ruleViolations: [infoViolation] });
     printRules(aggregated);
@@ -973,13 +973,12 @@ describe('printRules', () => {
       ruleId: 'require-files',
       severity: 'error',
       patterns: ['.nvmrc'],
-      matchedFiles: [],
     };
     const infoViolation: RuleViolation = {
       ruleId: 'no-files',
       severity: 'info',
       patterns: ['orbis.config.*'],
-      matchedFiles: ['orbis.config.ts'],
+      matchedFile: 'orbis.config.ts',
     };
     const aggregated = makeAggregated({
       ruleViolations: [
@@ -1000,7 +999,6 @@ describe('printRules', () => {
       ruleId: 'require-package-fields',
       severity: 'warn',
       patterns: ['license'],
-      matchedFiles: [],
     };
     const aggregated = makeAggregated({ ruleViolations: [violation] });
     printRules(aggregated);
@@ -1012,19 +1010,20 @@ describe('printRules', () => {
   });
 
   it('truncates a no-files violation with many matched files instead of listing them all', () => {
-    const violation: RuleViolation = {
+    const files = [
+      'cypress.config.js',
+      'tsconfig.json',
+      'webpack.config.js',
+      'babel.config.js',
+      'jest.config.js',
+    ];
+    const violations: RuleViolation[] = files.map((matchedFile) => ({
       ruleId: 'no-files',
       severity: 'error',
       patterns: ['*.config.js'],
-      matchedFiles: [
-        'cypress.config.js',
-        'tsconfig.json',
-        'webpack.config.js',
-        'babel.config.js',
-        'jest.config.js',
-      ],
-    };
-    const aggregated = makeAggregated({ ruleViolations: [violation] });
+      matchedFile,
+    }));
+    const aggregated = makeAggregated({ ruleViolations: violations });
     printRules(aggregated);
     const output = consoleSpy.mock.calls
       .map((call) => call.join(' '))
@@ -1055,7 +1054,6 @@ describe('printRules', () => {
       ruleId: 'no-packages',
       severity: 'error',
       patterns: ['@legacy/*'],
-      matchedFiles: [],
     };
     const aggregated = makeAggregated({ ruleViolations: [violation] });
     printRules(aggregated);
@@ -1070,7 +1068,6 @@ describe('printRules', () => {
       ruleId: 'require-files',
       severity: 'error',
       patterns: ['.nvmrc'],
-      matchedFiles: [],
     };
     const aggregated = makeAggregated({ ruleViolations: [violation] });
     printRules(aggregated);
@@ -1085,7 +1082,6 @@ describe('printRules', () => {
       ruleId: 'require-scripts',
       severity: 'error',
       patterns: ['test'],
-      matchedFiles: [],
     };
     const aggregated = makeAggregated({ ruleViolations: [violation] });
     printRules(aggregated);
@@ -1100,7 +1096,6 @@ describe('printRules', () => {
       ruleId: 'require-package-fields',
       severity: 'error',
       patterns: ['license'],
-      matchedFiles: [],
       fieldPath: 'license',
       actualValue: 'UNLICENSED',
     };
@@ -1119,7 +1114,6 @@ describe('printRules', () => {
       ruleId: 'no-package-fields',
       severity: 'error',
       patterns: ['scripts.postinstall'],
-      matchedFiles: [],
       fieldPath: 'scripts.postinstall',
     };
     const aggregated = makeAggregated({ ruleViolations: [violation] });
@@ -1135,7 +1129,6 @@ describe('printRules', () => {
       ruleId: 'no-package-fields',
       severity: 'error',
       patterns: ['scripts.postinstall'],
-      matchedFiles: [],
     };
     const aggregated = makeAggregated({ ruleViolations: [violation] });
     printRules(aggregated);
@@ -1146,25 +1139,24 @@ describe('printRules', () => {
   });
 
   it('renders a max-file-size violation with the ceiling and the worst offender', () => {
-    const violation: RuleViolation = {
+    const violations: RuleViolation[] = [
+      { file: 'assets/hero.svg', sizeBytes: 412000 },
+      { file: 'assets/logo.svg', sizeBytes: 262144 },
+    ].map((oversizeFile) => ({
       ruleId: 'max-file-size',
       severity: 'error',
       patterns: ['**/*.svg'],
-      matchedFiles: ['assets/hero.svg', 'assets/logo.svg'],
       maxSizeBytes: 204800,
-      oversizeFiles: [
-        { file: 'assets/hero.svg', sizeBytes: 412000 },
-        { file: 'assets/logo.svg', sizeBytes: 262144 },
-      ],
-    };
-    const aggregated = makeAggregated({ ruleViolations: [violation] });
+      oversizeFile,
+    }));
+    const aggregated = makeAggregated({ ruleViolations: violations });
     printRules(aggregated);
     const output = consoleSpy.mock.calls
       .map((call) => call.join(' '))
       .join('\n');
     expect(output).toContain('max-file-size');
     expect(output).toContain('**/*.svg over 200 KB');
-    // Basenames, like no-files — the full paths are in matchedFiles.
+    // Basenames, like no-files.
     expect(output).toContain('hero.svg, logo.svg');
     expect(output).toContain('largest 402.3 KB');
   });
@@ -1174,9 +1166,8 @@ describe('printRules', () => {
       ruleId: 'max-file-size',
       severity: 'warn',
       patterns: ['assets/**/*.svg'],
-      matchedFiles: ['assets/logo.svg'],
       maxSizeBytes: 1024,
-      oversizeFiles: [{ file: 'assets/logo.svg', sizeBytes: 1410 }],
+      oversizeFile: { file: 'assets/logo.svg', sizeBytes: 1410 },
     };
     const aggregated = makeAggregated({ ruleViolations: [violation] });
     printRules(aggregated);
@@ -1187,19 +1178,18 @@ describe('printRules', () => {
   });
 
   it('truncates a long max-file-size file list', () => {
-    const violation: RuleViolation = {
+    const violations: RuleViolation[] = [
+      { file: 'a.png', sizeBytes: 4096 },
+      { file: 'b.png', sizeBytes: 2048 },
+      { file: 'c.png', sizeBytes: 1536 },
+    ].map((oversizeFile) => ({
       ruleId: 'max-file-size',
       severity: 'warn',
       patterns: ['**/*.png'],
-      matchedFiles: ['a.png', 'b.png', 'c.png'],
       maxSizeBytes: 1024,
-      oversizeFiles: [
-        { file: 'a.png', sizeBytes: 4096 },
-        { file: 'b.png', sizeBytes: 2048 },
-        { file: 'c.png', sizeBytes: 1536 },
-      ],
-    };
-    const aggregated = makeAggregated({ ruleViolations: [violation] });
+      oversizeFile,
+    }));
+    const aggregated = makeAggregated({ ruleViolations: violations });
     printRules(aggregated);
     const output = consoleSpy.mock.calls
       .map((call) => call.join(' '))
@@ -1212,7 +1202,6 @@ describe('printRules', () => {
       ruleId: 'require-engine-version',
       severity: 'error',
       patterns: [],
-      matchedFiles: [],
       installedRange: '>=14',
       requiredRange: '>=18',
     };
@@ -1232,7 +1221,6 @@ describe('printRules', () => {
       ruleId: 'require-engine-version',
       severity: 'error',
       patterns: [],
-      matchedFiles: [],
       requiredRange: '>=18',
     };
     const aggregated = makeAggregated({ ruleViolations: [violation] });
@@ -1249,7 +1237,7 @@ describe('printRules', () => {
       ruleId: 'require-codeowners',
       severity: 'error',
       patterns: ['CODEOWNERS'],
-      matchedFiles: [],
+      reason: 'missing-file',
     };
     const aggregated = makeAggregated({ ruleViolations: [violation] });
     printRules(aggregated);
@@ -1260,13 +1248,16 @@ describe('printRules', () => {
   });
 
   it('renders a codeowners violation listing unowned files when matched files are present', () => {
-    const violation: RuleViolation = {
-      ruleId: 'require-codeowners',
-      severity: 'error',
-      patterns: ['CODEOWNERS'],
-      matchedFiles: ['src/foo.ts', 'src/bar.ts'],
-    };
-    const aggregated = makeAggregated({ ruleViolations: [violation] });
+    const violations: RuleViolation[] = ['src/foo.ts', 'src/bar.ts'].map(
+      (matchedFile) => ({
+        ruleId: 'require-codeowners',
+        severity: 'error',
+        patterns: ['CODEOWNERS'],
+        reason: 'unowned',
+        matchedFile,
+      }),
+    );
+    const aggregated = makeAggregated({ ruleViolations: violations });
     printRules(aggregated);
     const output = consoleSpy.mock.calls
       .map((call) => call.join(' '))
@@ -1280,13 +1271,11 @@ describe('printRules', () => {
         ruleId: 'require-files',
         severity: 'error',
         patterns: ['a'],
-        matchedFiles: [],
       },
       {
         ruleId: 'require-files',
         severity: 'error',
         patterns: ['b'],
-        matchedFiles: [],
       },
     ];
     const aggregated = makeAggregated({
@@ -1313,7 +1302,6 @@ describe('describeViolation', () => {
       ruleId: 'some-future-rule-type',
       severity: 'error',
       patterns: ['whatever'],
-      matchedFiles: [],
     } as unknown as RuleViolation;
     expect(describeViolation(violation)).toBe('whatever not present');
   });
@@ -1371,7 +1359,6 @@ describe('printComplianceVerdict', () => {
       ruleId: 'require-files',
       severity: 'error',
       patterns: ['.nvmrc'],
-      matchedFiles: [],
     };
     const aggregated = makeAggregated({ ruleViolations: [violation] });
     const compliance = computeCompliance(aggregated);
@@ -1398,27 +1385,13 @@ describe('printComplianceVerdict', () => {
       ruleId: 'require-files',
       severity: 'error',
       patterns: ['.nvmrc'],
-      matchedFiles: [],
     };
-    const pkg = createMockPackage('@my-org/internal', {
-      releaseAge: createMockReleaseAge({
-        worstLevel: 'major_overdue',
-        severity: 'error',
-        upgrades: [
-          {
-            version: '2.0.0',
-            releasedDaysAgo: 90,
-            breachReleasedDaysAgo: 90,
-            semverBump: 'major',
-            level: 'major_overdue',
-            thresholdDays: 60,
-          },
-        ],
-      }),
-    });
+    const releaseAgeViolation = createMockReleaseAgeViolation(
+      '@my-org/internal',
+      { worstLevel: 'major_overdue', severity: 'error' },
+    );
     const aggregated = makeAggregated({
-      ruleViolations: [errorViolation],
-      packageDistribution: [pkg],
+      ruleViolations: [errorViolation, releaseAgeViolation],
     });
     const compliance = computeCompliance(aggregated);
     expect(compliance.compliant).toBe(false);
@@ -1443,7 +1416,6 @@ describe('printComplianceVerdict', () => {
       ruleId: 'require-files',
       severity: 'error',
       patterns: ['.nvmrc'],
-      matchedFiles: [],
     };
     const compliance = computeCompliance(
       makeAggregated({
@@ -1680,7 +1652,6 @@ describe('printJson', () => {
       compliant: true,
       counts: {
         errorRuleViolations: 0,
-        releaseAgeViolations: 0,
         warningRuleViolations: 0,
       },
     });
@@ -1703,7 +1674,6 @@ describe('printJson', () => {
         severity: 'error',
         patterns: ['moment'],
         message: 'Use dayjs',
-        matchedFiles: [],
         packageName: 'moment',
       },
     ]);
@@ -1722,7 +1692,6 @@ describe('printJson', () => {
             ruleId: 'require-files',
             severity: 'error',
             patterns: ['.nvmrc'],
-            matchedFiles: [],
           },
         ],
       }),
@@ -1740,7 +1709,6 @@ describe('printJson', () => {
           ruleId: 'require-files',
           severity: 'warn',
           patterns: ['.editorconfig'],
-          matchedFiles: [],
         },
       ],
     });
@@ -1786,10 +1754,8 @@ describe('printJson', () => {
           ruleId: 'require-files',
           severity: 'error',
           patterns: ['.nvmrc'],
-          matchedFiles: [],
         },
       ],
-      releaseAgeViolations: [],
       warningRuleViolations: [],
     });
 

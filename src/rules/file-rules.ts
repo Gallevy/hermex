@@ -10,14 +10,13 @@ export function evaluateFileRules(
   const violations: RuleViolation[] = [];
 
   for (const rule of rulesConfig['no-files']) {
-    const matches = findMatches(rule.patterns, repoPath, excludes);
-    if (matches.length > 0) {
+    for (const matchedFile of findMatches(rule.patterns, repoPath, excludes)) {
       violations.push({
         ruleId: 'no-files',
         severity: rule.severity,
         patterns: rule.patterns,
         message: rule.message,
-        matchedFiles: matches,
+        matchedFile,
       });
     }
   }
@@ -30,7 +29,6 @@ export function evaluateFileRules(
         severity: rule.severity,
         patterns: rule.patterns,
         message: rule.message,
-        matchedFiles: [],
       });
     }
   }

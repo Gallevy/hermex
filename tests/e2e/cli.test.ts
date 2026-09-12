@@ -600,7 +600,6 @@ describe('package inventory axes (end to end)', () => {
         severity: 'error',
         patterns: ['moment'],
         message: 'Use date-fns',
-        matchedFiles: [],
         packageName: 'moment',
       },
     ]);
@@ -707,7 +706,6 @@ describe('package inventory axes (end to end)', () => {
     const parsed = JSON.parse(result.stdout);
     expect(parsed.compliance.counts).toEqual({
       errorRuleViolations: 2,
-      releaseAgeViolations: 0,
       warningRuleViolations: 0,
     });
   });

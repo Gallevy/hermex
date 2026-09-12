@@ -29,6 +29,5 @@ export function evaluateScriptRules(
       severity: rule.severity,
       patterns: rule.patterns,
       message: rule.message,
-      matchedFiles: [],
     }));
 }

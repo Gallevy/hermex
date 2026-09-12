@@ -88,6 +88,37 @@ const CodeownersRuleSchema = z
 const ThresholdSchema = z.union([z.number(), z.literal(false)]);
 
 /**
+ * A release-age policy for the packages matching `patterns` — same shape
+ * family as every other rule (severity/patterns/message from
+ * `RuleConfigSchema`), extended with the age-check knobs. Each entry is
+ * fully self-contained (its own defaulted `thresholds`/`scope`) rather than
+ * falling back to a separate global default, so there's exactly one place
+ * to look for a given package's policy. See `resolveReleaseAgeRule` in
+ * `src/config/overrides.ts` for how multiple entries resolve to one
+ * governing entry per package (last-match-wins).
+ */
+const ReleaseAgeRuleConfigSchema = RuleConfigSchema.extend({
+  thresholds: z
+    .object({
+      patch: ThresholdSchema.default(30),
+      minor: ThresholdSchema.default(45),
+      major: ThresholdSchema.default(60),
+    })
+    .strict()
+    .default(() => ({ patch: 30, minor: 45, major: 60 })),
+  // 'root' checks only the package's direct/root-installed version; 'tree'
+  // checks every resolved copy in the lockfile, failing if any is overdue.
+  // Nested duplicates are always visible as advisory data regardless of
+  // scope — this only decides what's mandatory (#57).
+  scope: z.enum(['root', 'tree']).default('root'),
+}).strict();
+
+const ReleaseAgeRuleOrArraySchema = z.union([
+  ReleaseAgeRuleConfigSchema,
+  z.array(ReleaseAgeRuleConfigSchema),
+]);
+
+/**
  * Which AST front-end analyzes source files.
  *
  * 'swc' is the default and the supported one. 'oxc-experimental' swaps
@@ -116,6 +147,7 @@ const OverrideRulesSchema = z
       .union([EngineVersionRuleSchema, z.array(EngineVersionRuleSchema)])
       .optional(),
     'require-codeowners': CodeownersRuleSchema.optional(),
+    'release-age': ReleaseAgeRuleOrArraySchema.optional(),
   })
   .strict()
   .default(() => ({}));
@@ -274,6 +306,7 @@ export const HermexConfigSchema = z
           .union([EngineVersionRuleSchema, z.array(EngineVersionRuleSchema)])
           .optional(),
         'require-codeowners': CodeownersRuleSchema.optional(),
+        'release-age': ReleaseAgeRuleOrArraySchema.default([]),
       })
       .strict()
       .default(() => ({
@@ -285,6 +318,7 @@ export const HermexConfigSchema = z
         'require-scripts': [] as RuleConfig[],
         'require-package-fields': [] as PackageFieldRule[],
         'no-package-fields': [] as PackageFieldRule[],
+        'release-age': [] as ReleaseAgeRuleConfig[],
       })),
 
     output: z
@@ -316,42 +350,23 @@ export const HermexConfigSchema = z
         format: 'human' as const,
       })),
 
+    /**
+     * Connection/infra settings for the `release-age` rule (`rules['release-age']`
+     * above) — nothing policy-related lives here. Whether release-age runs
+     * at all is decided by whether `rules['release-age']` resolves to a
+     * non-empty array for a repo, not a flag here — same as every other
+     * rule, where an empty rule list means "does nothing." Only npm is
+     * supported today, so the registry URL isn't configurable; add it back
+     * if/when a second registry is actually needed.
+     */
     releaseAge: z
       .object({
-        enabled: z.boolean().default(false),
-        registry: z.string().default('https://registry.npmjs.org'),
         authToken: z.string().optional(),
-        thresholds: z
-          .object({
-            patch: ThresholdSchema.default(30),
-            minor: ThresholdSchema.default(45),
-            major: ThresholdSchema.default(60),
-          })
-          .strict()
-          .default(() => ({ patch: 30, minor: 45, major: 60 })),
-        enforceOn: z.array(z.string()).default([]),
         cacheTtlMs: z.number().int().positive().optional(),
         cacheDisabled: z.boolean().default(false),
-        // 'root' checks only each package's direct/root-installed version;
-        // 'tree' checks every resolved copy in the lockfile, failing if any
-        // is overdue. Nested duplicates are always visible as advisory data
-        // regardless of scope — this only decides what's mandatory (#57).
-        scope: z.enum(['root', 'tree']).default('root'),
-        // Glob-matched (like enforceOn): packages matching here use the
-        // OPPOSITE of `scope`, letting one global policy carve out
-        // exceptions for specific packages.
-        scopeExceptions: z.array(z.string()).default([]),
       })
       .strict()
-      .default(() => ({
-        enabled: false,
-        registry: 'https://registry.npmjs.org',
-        thresholds: { patch: 30, minor: 45, major: 60 },
-        enforceOn: [],
-        cacheDisabled: false,
-        scope: 'root' as const,
-        scopeExceptions: [],
-      })),
+      .default(() => ({ cacheDisabled: false })),
   })
   .strict();
 
@@ -372,11 +387,13 @@ export type PackageFieldRule = z.infer<typeof PackageFieldRuleSchema>;
 export type MaxFileSizeRule = z.infer<typeof MaxFileSizeRuleSchema>;
 export type EngineVersionRule = z.infer<typeof EngineVersionRuleSchema>;
 export type CodeownersRule = z.infer<typeof CodeownersRuleSchema>;
+export type ReleaseAgeRuleConfig = z.infer<typeof ReleaseAgeRuleConfigSchema>;
 export type PackagesConfig = HermexConfig['packages'];
 export type VersusConfig = HermexConfig['versus'][number];
 export type RulesConfig = HermexConfig['rules'];
 export type OverrideConfig = HermexConfig['overrides'][number];
 export type OutputConfig = HermexConfig['output'];
 export type PluginsConfig = HermexConfig['plugins'];
+/** Connection/infra settings only — policy lives on each `ReleaseAgeRuleConfig` entry instead. */
 export type ReleaseAgeConfig = HermexConfig['releaseAge'];
-export type ReleaseAgeThresholds = HermexConfig['releaseAge']['thresholds'];
+export type ReleaseAgeThresholds = ReleaseAgeRuleConfig['thresholds'];

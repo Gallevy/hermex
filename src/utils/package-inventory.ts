@@ -26,7 +26,7 @@ export interface ComponentUsage {
  * - **declared** — listed in this repo's `package.json` (`declaredIn`).
  * - **installed** — present in the lockfile, as a direct dependency
  *   (`rootVersion`) and/or as one or more resolved copies (`allVersions`).
- *   This is the `root` vs `tree` distinction `releaseAge.scope` already
+ *   This is the `root` vs `tree` distinction the release-age rule's `scope` field already
  *   exposes to users.
  * - **used** — imported by scanned source (`usageCount` > 0).
  *
@@ -225,7 +225,7 @@ export function isUsed(entry: PackageInventoryEntry): boolean {
 /**
  * Present in the lockfile. `root` counts only direct dependencies; `tree`
  * counts any resolved copy, including purely transitive ones — the same
- * axis `releaseAge.scope` exposes.
+ * axis the release-age rule's `scope` field exposes.
  */
 export function isInstalled(
   entry: PackageInventoryEntry,

@@ -82,7 +82,6 @@ export function printJson(
       compliant: compliance.compliant,
       counts: {
         errorRuleViolations: compliance.errorRuleViolations.length,
-        releaseAgeViolations: compliance.releaseAgeViolations.length,
         warningRuleViolations: compliance.warningRuleViolations.length,
       },
     },

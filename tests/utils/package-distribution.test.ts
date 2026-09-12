@@ -510,11 +510,15 @@ describe('calculatePackageDistribution', () => {
   });
 });
 
-describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => {
-  it('surfaces a lockfile package with zero usage when it matches releaseAge.enforceOn', () => {
+describe('calculatePackageDistribution — lockfile-only release-age rule matches', () => {
+  it('surfaces a lockfile package with zero usage when it matches an authored release-age rule', () => {
     const componentUsageMap = new Map<string, ComponentUsage>();
     const config = createConfig({
-      releaseAge: { enabled: true, enforceOn: ['@acme-ui/pulse-styles'] },
+      rules: {
+        'release-age': [
+          { severity: 'error', patterns: ['@acme-ui/pulse-styles'] },
+        ],
+      },
     });
 
     const distribution = buildDistribution(
@@ -541,7 +545,7 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
   it('surfaces a declared-but-uninstalled package with a null version', () => {
     const componentUsageMap = new Map<string, ComponentUsage>();
     const config = createConfig({
-      releaseAge: { enabled: true, enforceOn: ['eslint'] },
+      rules: { 'release-age': [{ severity: 'error', patterns: ['eslint'] }] },
     });
 
     const distribution = buildDistribution(
@@ -562,11 +566,9 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
     });
   });
 
-  it('does not surface lockfile-only packages when releaseAge is disabled', () => {
+  it('does not surface lockfile-only packages when release-age is off (no rule entries)', () => {
     const componentUsageMap = new Map<string, ComponentUsage>();
-    const config = createConfig({
-      releaseAge: { enabled: false, enforceOn: ['@acme-ui/pulse-styles'] },
-    });
+    const config = createConfig({ rules: { 'release-age': [] } });
 
     const distribution = buildDistribution(
       componentUsageMap,
@@ -577,9 +579,13 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
     expect(distribution).toEqual([]);
   });
 
-  it('does not surface lockfile-only packages when enforceOn is left empty (avoids pulling in the whole lockfile)', () => {
+  it('does not surface lockfile-only packages that no authored rule pattern names (avoids pulling in the whole lockfile)', () => {
     const componentUsageMap = new Map<string, ComponentUsage>();
-    const config = createConfig({ releaseAge: { enabled: true } });
+    const config = createConfig({
+      rules: {
+        'release-age': [{ severity: 'error', patterns: ['unrelated-package'] }],
+      },
+    });
 
     const distribution = buildDistribution(
       componentUsageMap,
@@ -595,7 +601,11 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
       ['Button', makeComponent('Button', '@acme-ui/pulse-styles', 3)],
     ]);
     const config = createConfig({
-      releaseAge: { enabled: true, enforceOn: ['@acme-ui/pulse-styles'] },
+      rules: {
+        'release-age': [
+          { severity: 'error', patterns: ['@acme-ui/pulse-styles'] },
+        ],
+      },
     });
 
     const distribution = buildDistribution(
@@ -609,11 +619,15 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
     expect(distribution[0].usageCount).toBe(3);
   });
 
-  it('respects a configured ignore pattern for a lockfile-only enforceOn match', () => {
+  it('respects a configured ignore pattern for a lockfile-only release-age rule match', () => {
     const componentUsageMap = new Map<string, ComponentUsage>();
     const config = createConfig({
       packages: { ignore: ['@acme-ui/pulse-styles'] },
-      releaseAge: { enabled: true, enforceOn: ['@acme-ui/pulse-styles'] },
+      rules: {
+        'release-age': [
+          { severity: 'error', patterns: ['@acme-ui/pulse-styles'] },
+        ],
+      },
     });
 
     const distribution = buildDistribution(
@@ -625,10 +639,14 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
     expect(distribution).toEqual([]);
   });
 
-  it('flags hasVersionConflict/allVersions for a lockfile-only enforceOn match', () => {
+  it('flags hasVersionConflict/allVersions for a lockfile-only release-age rule match', () => {
     const componentUsageMap = new Map<string, ComponentUsage>();
     const config = createConfig({
-      releaseAge: { enabled: true, enforceOn: ['@acme-ui/pulse-styles'] },
+      rules: {
+        'release-age': [
+          { severity: 'error', patterns: ['@acme-ui/pulse-styles'] },
+        ],
+      },
     });
 
     const distribution = buildDistribution(
@@ -649,10 +667,12 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
   // (the highest resolved copy, so `scan` has something to show), but
   // `rootVersion` must come through as `null` — that's the signal
   // `scope: 'root'` needs to correctly decline to enforce it.
-  it('sets rootVersion to null for a lockfile-only enforceOn match with no true root resolution', () => {
+  it('sets rootVersion to null for a lockfile-only release-age rule match with no true root resolution', () => {
     const componentUsageMap = new Map<string, ComponentUsage>();
     const config = createConfig({
-      releaseAge: { enabled: true, enforceOn: ['@acme-ui/dio'] },
+      rules: {
+        'release-age': [{ severity: 'error', patterns: ['@acme-ui/dio'] }],
+      },
     });
 
     const distribution = buildDistribution(
@@ -667,10 +687,12 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
     expect(distribution[0].rootVersion).toBeNull();
   });
 
-  it('sets rootVersion to the real root value for a lockfile-only enforceOn match that IS a direct dependency', () => {
+  it('sets rootVersion to the real root value for a lockfile-only release-age rule match that IS a direct dependency', () => {
     const componentUsageMap = new Map<string, ComponentUsage>();
     const config = createConfig({
-      releaseAge: { enabled: true, enforceOn: ['@acme-ui/dio'] },
+      rules: {
+        'release-age': [{ severity: 'error', patterns: ['@acme-ui/dio'] }],
+      },
     });
 
     const distribution = buildDistribution(
@@ -684,10 +706,14 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
     expect(distribution[0].rootVersion).toBe('1.0.0');
   });
 
-  it('only surfaces lockfile packages matching enforceOn, leaving unmatched deps out', () => {
+  it('only surfaces lockfile packages matching an authored release-age rule, leaving unmatched deps out', () => {
     const componentUsageMap = new Map<string, ComponentUsage>();
     const config = createConfig({
-      releaseAge: { enabled: true, enforceOn: ['@acme-ui/pulse-styles'] },
+      rules: {
+        'release-age': [
+          { severity: 'error', patterns: ['@acme-ui/pulse-styles'] },
+        ],
+      },
     });
 
     const distribution = buildDistribution(
@@ -706,7 +732,11 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
       ['DatePicker', makeComponent('DatePicker', 'moment', 1)],
     ]);
     const config = createConfig({
-      releaseAge: { enabled: true, enforceOn: ['@acme-ui/pulse-styles'] },
+      rules: {
+        'release-age': [
+          { severity: 'error', patterns: ['@acme-ui/pulse-styles'] },
+        ],
+      },
     });
 
     const distribution = buildDistribution(

@@ -8,6 +8,7 @@ import type {
   MaxFileSizeRule,
   EngineVersionRule,
   CodeownersRule,
+  ReleaseAgeRuleConfig,
 } from './schema';
 
 /**
@@ -25,6 +26,21 @@ export type ResolvedPackageFieldRule = Resolved<PackageFieldRule>;
 export type ResolvedMaxFileSizeRule = Resolved<MaxFileSizeRule>;
 export type ResolvedEngineVersionRule = Resolved<EngineVersionRule>;
 export type ResolvedCodeownersRule = Resolved<CodeownersRule>;
+/**
+ * NOT `Resolved<ReleaseAgeRuleConfig>` — unlike every other rule, release-age
+ * needs `'off'` to survive resolution as a real, matchable entry rather than
+ * being dropped. Every other rule fires independently per matching entry, so
+ * a dropped 'off' entry simply never fires — correct. Release-age instead
+ * picks exactly one governing entry per package via pattern matching
+ * against the whole resolved array plus an implicit `['**']` baseline
+ * (`resolveReleaseAgeRule` below); if an 'off' entry were dropped the way
+ * `upsertPatternRules` drops it for other rules, a package meant to be
+ * exempted would just fall through to the next-best match (often the
+ * baseline) instead of being exempted — the opposite of what 'off' means.
+ * `upsertReleaseAgeRules` (below) is `upsertPatternRules` without the
+ * `isEnabled` filter, so 'off' entries are upserted like any other.
+ */
+export type ResolvedReleaseAgeRuleConfig = ReleaseAgeRuleConfig;
 
 /** The shape `RulesConfig` resolves to after `applyOverrides` — see `ResolvedRuleConfig`. */
 export interface ResolvedRulesConfig {
@@ -38,6 +54,7 @@ export interface ResolvedRulesConfig {
   'no-package-fields': ResolvedPackageFieldRule[];
   'require-engine-version': ResolvedEngineVersionRule[];
   'require-codeowners': ResolvedCodeownersRule | undefined;
+  'release-age': ResolvedReleaseAgeRuleConfig[];
 }
 
 /** What `applyOverrides` returns: `HermexConfig` with `rules` resolved. */
@@ -71,6 +88,24 @@ function upsertPatternRules<T extends { severity: string; patterns: string[] }>(
     if (isEnabled(rule)) {
       result = [...result, rule];
     }
+  }
+  return result;
+}
+
+/**
+ * Same identity/replacement semantics as {@link upsertPatternRules}
+ * (keyed by `patterns`), but never drops an 'off' entry — see
+ * `ResolvedReleaseAgeRuleConfig` above for why release-age needs 'off' to
+ * remain a real, resolvable entry instead of vanishing from the array.
+ */
+function upsertReleaseAgeRules(
+  base: ReleaseAgeRuleConfig[],
+  overrides: ReleaseAgeRuleConfig[],
+): ReleaseAgeRuleConfig[] {
+  let result = base;
+  for (const rule of overrides) {
+    result = result.filter((r) => !patternsMatch(r.patterns, rule.patterns));
+    result = [...result, rule];
   }
   return result;
 }
@@ -137,6 +172,7 @@ function resolveRules(rules: RulesConfig): ResolvedRulesConfig {
       toArray(rules['require-engine-version']),
     ),
     'require-codeowners': resolveCodeowners(rules['require-codeowners']),
+    'release-age': upsertReleaseAgeRules([], toArray(rules['release-age'])),
   };
 }
 
@@ -228,9 +264,61 @@ export function applyOverrides(
             o['require-codeowners'],
           );
         }
+        if (o['release-age'] !== undefined) {
+          rules['release-age'] = upsertReleaseAgeRules(
+            rules['release-age'],
+            toArray(o['release-age']),
+          );
+        }
       }
     }
   }
 
   return { ...config, rules };
+}
+
+/**
+ * The default policy for any package no authored `rules['release-age']`
+ * entry matches: checked, advisory-only, at the schema's own default
+ * thresholds/scope. This is what makes "check everything" the zero-config
+ * behavior once release-age is on for a repo (i.e. `rules['release-age']`
+ * is non-empty) — an author only needs a `['**']` entry of their own to
+ * override this, never to opt into checking in the first place.
+ */
+const RELEASE_AGE_BASELINE: ResolvedReleaseAgeRuleConfig = {
+  severity: 'warn',
+  patterns: ['**'],
+  thresholds: { patch: 30, minor: 45, major: 60 },
+  scope: 'root',
+};
+
+/**
+ * Resolves which single `release-age` rule entry governs `packageName`,
+ * among `resolvedRules` (from `ResolvedRulesConfig['release-age']`, already
+ * upserted through `resolveRules`/`applyOverrides` above) plus the implicit
+ * `['**']` baseline. Unlike every other rule family — where every matching
+ * entry fires independently — release-age needs exactly one governing
+ * entry per package (a package can't be simultaneously 'error' under one
+ * entry and 'warn' under another), so this picks a winner: **last match
+ * wins**, mirroring ESLint's `overrides`/flat-config semantics. This falls
+ * out of the same upsert mechanic every other rule already uses: an
+ * override always lands at the end of the resolved array (see
+ * `upsertPatternRules`), so it naturally wins here with no extra
+ * machinery — the same array position that means "replaces the base rule"
+ * for `no-packages` etc. means "governs this package" here.
+ *
+ * Only call this once you've confirmed release-age is actually on for the
+ * repo (`resolvedRules.length > 0`) — the baseline is not itself a reason
+ * to run release-age; an empty `rules['release-age']` means off, not "check
+ * everything by default."
+ */
+export function resolveReleaseAgeRule(
+  packageName: string,
+  resolvedRules: ResolvedReleaseAgeRuleConfig[],
+): ResolvedReleaseAgeRuleConfig {
+  let winner = RELEASE_AGE_BASELINE;
+  for (const rule of [RELEASE_AGE_BASELINE, ...resolvedRules]) {
+    if (micromatch.isMatch(packageName, rule.patterns)) winner = rule;
+  }
+  return winner;
 }

@@ -76,11 +76,14 @@ describe('evaluateFileRules', () => {
     expect(result).toHaveLength(1);
     expect(result[0].ruleId).toBe('no-files');
     expect(result[0].severity).toBe('error');
-    expect(result[0].matchedFiles.length).toBeGreaterThan(0);
-    for (const file of result[0].matchedFiles) {
-      expect(isAbsolute(file)).toBe(false);
+    for (const v of result) {
+      expect(isAbsolute((v as { matchedFile: string }).matchedFile)).toBe(
+        false,
+      );
     }
-    expect(result[0].matchedFiles).toContain('src/legacy.js');
+    expect(
+      result.map((v) => (v as { matchedFile: string }).matchedFile),
+    ).toContain('src/legacy.js');
   });
 
   it('no violation when require-files pattern matches a file', () => {
@@ -106,7 +109,6 @@ describe('evaluateFileRules', () => {
     );
     expect(result).toHaveLength(1);
     expect(result[0].ruleId).toBe('require-files');
-    expect(result[0].matchedFiles).toHaveLength(0);
   });
 
   it('excludes files matching the excludes list', () => {
@@ -139,7 +141,9 @@ describe('evaluateFileRules', () => {
     expect(result).toHaveLength(1);
     expect(result[0].ruleId).toBe('no-files');
     expect(result[0].severity).toBe('info');
-    expect(result[0].matchedFiles).toContain('src/legacy.js');
+    expect((result[0] as { matchedFile: string }).matchedFile).toBe(
+      'src/legacy.js',
+    );
   });
 
   it('no-files produces nothing when the file is absent', () => {
@@ -506,35 +510,38 @@ describe('evaluateMaxFileSize', () => {
     expect(result).toHaveLength(0);
   });
 
-  // One row per rule, not per file — a pattern matching hundreds of oversize
-  // assets must not flood the rules table.
-  it('reports one violation per rule, listing every oversize file', () => {
+  // One atomic violation per oversize file — `print-rules.ts`'s default
+  // fold renderer is what turns these back into one readable row so a
+  // pattern matching hundreds of oversize assets doesn't flood the table.
+  it('reports one violation per oversize file', () => {
     const result = evaluateMaxFileSize(tempDir, rules({ maxSize: 1024 }), []);
-    expect(result).toHaveLength(1);
-    expect(result[0].ruleId).toBe('max-file-size');
-    expect(result[0].severity).toBe('error');
-    expect(result[0].matchedFiles).toEqual([
-      'assets/huge.svg',
-      'assets/big.svg',
-    ]);
-    for (const file of result[0].matchedFiles) {
-      expect(isAbsolute(file)).toBe(false);
+    expect(result).toHaveLength(2);
+    for (const v of result) {
+      expect(v.ruleId).toBe('max-file-size');
+      expect(v.severity).toBe('error');
+      expect(
+        isAbsolute((v as { oversizeFile: { file: string } }).oversizeFile.file),
+      ).toBe(false);
     }
+    expect(
+      result.map(
+        (v) => (v as { oversizeFile: { file: string } }).oversizeFile.file,
+      ),
+    ).toEqual(['assets/huge.svg', 'assets/big.svg']);
   });
 
-  it('carries the ceiling and each file size, largest first', () => {
-    const [violation] = evaluateMaxFileSize(
-      tempDir,
-      rules({ maxSize: 1024 }),
-      [],
-    );
-    expect(violation).toMatchObject({
-      maxSizeBytes: 1024,
-      oversizeFiles: [
-        { file: 'assets/huge.svg', sizeBytes: 4096 },
-        { file: 'assets/big.svg', sizeBytes: 2048 },
-      ],
-    });
+  it('carries the ceiling and each file size', () => {
+    const result = evaluateMaxFileSize(tempDir, rules({ maxSize: 1024 }), []);
+    expect(result).toMatchObject([
+      {
+        maxSizeBytes: 1024,
+        oversizeFile: { file: 'assets/huge.svg', sizeBytes: 4096 },
+      },
+      {
+        maxSizeBytes: 1024,
+        oversizeFile: { file: 'assets/big.svg', sizeBytes: 2048 },
+      },
+    ]);
   });
 
   // Strictly greater-than: a file sitting exactly on the ceiling is allowed,
@@ -548,7 +555,10 @@ describe('evaluateMaxFileSize', () => {
     const result = evaluateMaxFileSize(tempDir, rules({ maxSize: 1024 }), [
       '**/huge.svg',
     ]);
-    expect(result[0].matchedFiles).toEqual(['assets/big.svg']);
+    expect(result).toHaveLength(1);
+    expect(
+      (result[0] as { oversizeFile: { file: string } }).oversizeFile.file,
+    ).toBe('assets/big.svg');
   });
 
   it('evaluates each rule independently', () => {

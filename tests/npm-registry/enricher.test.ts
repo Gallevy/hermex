@@ -1,9 +1,13 @@
 ﻿import { beforeEach, describe, expect, it, vi } from 'vitest';
 import semver from 'semver';
+import micromatch from 'micromatch';
 import {
   enrichWithReleaseAge,
-  resolveReleaseAgeScope,
+  type ReleaseAgeConnection,
+  type ReleaseAgePolicy,
 } from '../../src/npm-registry/enricher';
+import type { PackageDistribution } from '../../src/utils/aggregator';
+import type { ReleaseAgeThresholds } from '../../src/config/types';
 import { createMockPackage } from '../helpers/mock-reports';
 
 // Mock the cache module â€” no network or disk I/O in tests
@@ -16,14 +20,53 @@ import { getPackageInfo } from '../../src/npm-registry/cache';
 const mockFetch = getPackageInfo as ReturnType<typeof vi.fn>;
 
 const DEFAULT_THRESHOLDS = { patch: 30, minor: 45, major: 60 };
+
+/**
+ * Adapts this file's pre-rule-ification config shape (enforceOn/scope/
+ * scopeExceptions as a flat global object) onto the current
+ * `enrichWithReleaseAge(packages, connection, resolvePolicy)` signature —
+ * `resolvePolicy` here replicates exactly what `enrichWithReleaseAge` used
+ * to compute internally before policy resolution moved to
+ * `resolveReleaseAgeRule` (`src/config/overrides.ts`): severity from a
+ * plain `enforceOn` glob match (no special-casing empty — `#173`), scope
+ * flipped by a `scopeExceptions` glob match. Kept local to this test file
+ * rather than changed at the call sites so the (still-relevant) pure
+ * timeline-math assertions below don't need touching.
+ */
 const BASE_CONFIG = {
   enabled: true,
   registry: 'https://registry.npmjs.org',
   thresholds: DEFAULT_THRESHOLDS,
-  enforceOn: [],
-  scope: 'root' as const,
-  scopeExceptions: [],
+  enforceOn: [] as string[],
+  scope: 'root' as 'root' | 'tree',
+  scopeExceptions: [] as string[],
 };
+
+function callEnrich(
+  packages: PackageDistribution[],
+  config: {
+    thresholds: ReleaseAgeThresholds;
+    enforceOn: string[];
+    scope: 'root' | 'tree';
+    scopeExceptions: string[];
+  } = BASE_CONFIG,
+  connection: ReleaseAgeConnection = { cacheDisabled: false },
+) {
+  const resolvePolicy = (packageName: string): ReleaseAgePolicy => {
+    const severity = micromatch.isMatch(packageName, config.enforceOn)
+      ? 'error'
+      : 'warn';
+    const scope =
+      config.scopeExceptions.length > 0 &&
+      micromatch.isMatch(packageName, config.scopeExceptions)
+        ? config.scope === 'root'
+          ? 'tree'
+          : 'root'
+        : config.scope;
+    return { severity, thresholds: config.thresholds, scope };
+  };
+  return enrichWithReleaseAge(packages, connection, resolvePolicy);
+}
 
 function daysAgo(n: number): string {
   return new Date(Date.now() - n * 24 * 60 * 60 * 1000).toISOString();
@@ -36,7 +79,7 @@ beforeEach(() => {
 describe('enrichWithReleaseAge â€” skipped packages', () => {
   it('skips packages with no version', async () => {
     const pkg = createMockPackage('react', { version: null });
-    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const { enriched } = await callEnrich([pkg], BASE_CONFIG);
     expect(mockFetch).not.toHaveBeenCalled();
     expect(enriched[0].releaseAge).toBeUndefined();
   });
@@ -63,10 +106,7 @@ describe('enrichWithReleaseAge â€” skipped packages', () => {
       versions: {},
     });
 
-    const { enriched } = await enrichWithReleaseAge(
-      [used, declaredOnly],
-      BASE_CONFIG,
-    );
+    const { enriched } = await callEnrich([used, declaredOnly], BASE_CONFIG);
 
     expect(mockFetch).toHaveBeenCalledTimes(2);
     expect(mockFetch.mock.calls.map((c) => c[0])).toEqual(['react', 'eslint']);
@@ -83,7 +123,7 @@ describe('enrichWithReleaseAge â€” skipped packages', () => {
       usageCount: 0,
     });
 
-    await enrichWithReleaseAge([uninstalled], BASE_CONFIG);
+    await callEnrich([uninstalled], BASE_CONFIG);
 
     expect(mockFetch).not.toHaveBeenCalled();
   });
@@ -99,7 +139,7 @@ describe('enrichWithReleaseAge â€” skipped packages', () => {
       versions: {},
     });
 
-    await enrichWithReleaseAge([enforced], {
+    await callEnrich([enforced], {
       ...BASE_CONFIG,
       enforceOn: ['@acme-ui/*'],
     });
@@ -127,7 +167,7 @@ describe('enrichWithReleaseAge â€” skipped packages', () => {
       versions: {},
     });
 
-    const { enriched } = await enrichWithReleaseAge([jsx, functionOnly], {
+    const { enriched } = await callEnrich([jsx, functionOnly], {
       ...BASE_CONFIG,
       enforceOn: ['@other/*'],
     });
@@ -146,7 +186,7 @@ describe('enrichWithReleaseAge â€” skipped packages', () => {
   it('increments skipped counter when registry returns null', async () => {
     const pkg = createMockPackage('react', { version: '18.0.0' });
     mockFetch.mockResolvedValueOnce(null);
-    const { skipped } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const { skipped } = await callEnrich([pkg], BASE_CONFIG);
     expect(skipped).toBe(1);
   });
 
@@ -157,7 +197,7 @@ describe('enrichWithReleaseAge â€” skipped packages', () => {
       time: null,
       versions: {},
     });
-    const { skipped } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const { skipped } = await callEnrich([pkg], BASE_CONFIG);
     expect(skipped).toBe(1);
   });
 });
@@ -170,7 +210,7 @@ describe('enrichWithReleaseAge â€” upgrade detection', () => {
       time: { '18.0.0': daysAgo(100), '18.0.1': daysAgo(10) },
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const { enriched } = await callEnrich([pkg], BASE_CONFIG);
     expect(enriched[0].releaseAge?.worstLevel).toBeNull();
     expect(enriched[0].releaseAge?.upgrades).toHaveLength(0);
   });
@@ -182,7 +222,7 @@ describe('enrichWithReleaseAge â€” upgrade detection', () => {
       time: { '18.0.0': daysAgo(200), '18.0.1': daysAgo(35) },
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const { enriched } = await callEnrich([pkg], BASE_CONFIG);
     expect(enriched[0].releaseAge?.worstLevel).toBe('minor_overdue');
     expect(enriched[0].releaseAge?.upgrades[0].semverBump).toBe('patch');
     expect(enriched[0].releaseAge?.upgrades[0].thresholdDays).toBe(30);
@@ -195,7 +235,7 @@ describe('enrichWithReleaseAge â€” upgrade detection', () => {
       time: { '17.0.0': daysAgo(500), '18.0.0': daysAgo(90) },
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const { enriched } = await callEnrich([pkg], BASE_CONFIG);
     expect(enriched[0].releaseAge?.worstLevel).toBe('major_overdue');
     expect(enriched[0].releaseAge?.upgrades[0].thresholdDays).toBe(60);
   });
@@ -208,7 +248,7 @@ describe('enrichWithReleaseAge â€” upgrade detection', () => {
       time: { '1.5.0': daysAgo(200), '1.6.0': daysAgo(33) },
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const { enriched } = await callEnrich([pkg], BASE_CONFIG);
     expect(enriched[0].releaseAge?.worstLevel).toBeNull();
     expect(enriched[0].releaseAge?.pendingUpgrade).toEqual({
       version: '1.6.0',
@@ -232,7 +272,7 @@ describe('enrichWithReleaseAge â€” upgrade detection', () => {
       },
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const { enriched } = await callEnrich([pkg], BASE_CONFIG);
     expect(enriched[0].releaseAge?.worstLevel).toBe('major_overdue');
     expect(enriched[0].releaseAge?.pendingUpgrade).toBeUndefined();
   });
@@ -244,7 +284,7 @@ describe('enrichWithReleaseAge â€” upgrade detection', () => {
       time: { '1.0.0': daysAgo(500) },
       versions: { '1.0.0': { deprecated: 'Use new-pkg instead' } },
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const { enriched } = await callEnrich([pkg], BASE_CONFIG);
     expect(enriched[0].releaseAge?.deprecated).toBe('Use new-pkg instead');
   });
 });
@@ -260,10 +300,7 @@ describe('enrichWithReleaseAge â€” batching', () => {
       time: { created: daysAgo(500), modified: daysAgo(1) },
       versions: {},
     });
-    const { enriched, skipped } = await enrichWithReleaseAge(
-      packages,
-      BASE_CONFIG,
-    );
+    const { enriched, skipped } = await callEnrich(packages, BASE_CONFIG);
     expect(enriched).toHaveLength(2);
     expect(skipped).toBe(0);
     expect(mockFetch).toHaveBeenCalledTimes(2);
@@ -284,7 +321,7 @@ describe('enrichWithReleaseAge â€” latest version reporting (#14)', () => {
       'dist-tags': { latest: '6.30.1' },
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const { enriched } = await callEnrich([pkg], BASE_CONFIG);
     const upgrade = enriched[0].releaseAge?.upgrades.find(
       (u) => u.semverBump === 'major',
     );
@@ -305,7 +342,7 @@ describe('enrichWithReleaseAge â€” latest version reporting (#14)', () => {
       'dist-tags': { latest: '1.2.0' },
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const { enriched } = await callEnrich([pkg], BASE_CONFIG);
     expect(enriched[0].releaseAge?.latestVersion).toBe('1.2.0');
     expect(enriched[0].releaseAge?.latestReleasedDaysAgo).toBe(2);
   });
@@ -322,7 +359,7 @@ describe('enrichWithReleaseAge â€” latest version reporting (#14)', () => {
       'dist-tags': { latest: '19.0.0' },
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const { enriched } = await callEnrich([pkg], BASE_CONFIG);
     const entry = enriched[0].releaseAge!;
     for (const upgrade of entry.upgrades) {
       expect(semver.gte(entry.latestVersion!, upgrade.version)).toBe(true);
@@ -342,7 +379,7 @@ describe('enrichWithReleaseAge â€” prerelease exclusion (#20)', () => {
       },
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const { enriched } = await callEnrich([pkg], BASE_CONFIG);
     expect(enriched[0].releaseAge?.minCompliantVersion).toBe('4.1.16');
     expect(enriched[0].releaseAge?.minCompliantReleasedDaysAgo).toBe(10);
   });
@@ -358,7 +395,7 @@ describe('enrichWithReleaseAge â€” prerelease exclusion (#20)', () => {
       },
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const { enriched } = await callEnrich([pkg], BASE_CONFIG);
     const upgrade = enriched[0].releaseAge?.upgrades.find(
       (u) => u.semverBump === 'patch',
     );
@@ -375,7 +412,7 @@ describe('enrichWithReleaseAge â€” prerelease exclusion (#20)', () => {
       },
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const { enriched } = await callEnrich([pkg], BASE_CONFIG);
     expect(enriched[0].releaseAge?.minCompliantVersion).toBeUndefined();
     expect(enriched[0].releaseAge?.minCompliantReleasedDaysAgo).toBeUndefined();
   });
@@ -402,7 +439,7 @@ describe('enrichWithReleaseAge â€” minCompliantVersion for all bump tiers (
       'dist-tags': { latest: '13.5.5' },
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const { enriched } = await callEnrich([pkg], BASE_CONFIG);
     expect(enriched[0].releaseAge?.worstLevel).toBe('major_overdue');
     expect(enriched[0].releaseAge?.minCompliantVersion).toBe('12.0.0');
     expect(enriched[0].releaseAge?.minCompliantReleasedDaysAgo).toBe(55);
@@ -419,7 +456,7 @@ describe('enrichWithReleaseAge â€” minCompliantVersion for all bump tiers (
       'dist-tags': { latest: '18.0.0' },
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const { enriched } = await callEnrich([pkg], BASE_CONFIG);
     // 18.0.0 is the only thing that has ever existed to upgrade to, and it's
     // latest, so minCompliantVersion falls back to it as the closest
     // achievable display target â€” but the package is still genuinely overdue
@@ -442,7 +479,7 @@ describe('enrichWithReleaseAge â€” minCompliantVersion for all bump tiers (
       },
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const { enriched } = await callEnrich([pkg], BASE_CONFIG);
     expect(enriched[0].releaseAge?.worstLevel).toBe('major_overdue');
     expect(enriched[0].releaseAge?.minCompliantVersion).toBe('1.5.0');
     expect(enriched[0].releaseAge?.minCompliantReleasedDaysAgo).toBe(55);
@@ -459,7 +496,7 @@ describe('enrichWithReleaseAge â€” minCompliantVersion for all bump tiers (
       },
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const { enriched } = await callEnrich([pkg], BASE_CONFIG);
     expect(enriched[0].releaseAge?.worstLevel).toBe('minor_overdue');
     expect(enriched[0].releaseAge?.minCompliantVersion).toBe('2.3.0');
     expect(enriched[0].releaseAge?.minCompliantReleasedDaysAgo).toBe(40);
@@ -483,7 +520,7 @@ describe('enrichWithReleaseAge â€” minCompliantVersion for all bump tiers (
       },
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const { enriched } = await callEnrich([pkg], BASE_CONFIG);
     expect(enriched[0].releaseAge?.worstLevel).toBe('major_overdue');
     expect(enriched[0].releaseAge?.minCompliantVersion).toBe('2.0.0');
     expect(enriched[0].releaseAge?.minCompliantReleasedDaysAgo).toBe(55);
@@ -499,7 +536,7 @@ describe('enrichWithReleaseAge â€” minCompliantVersion for all bump tiers (
       },
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], {
+    const { enriched } = await callEnrich([pkg], {
       ...BASE_CONFIG,
       thresholds: { ...DEFAULT_THRESHOLDS, minor: false },
     });
@@ -520,7 +557,7 @@ describe('enrichWithReleaseAge â€” minCompliantVersion falls back to latest
       'dist-tags': { latest: '2.0.0' },
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const { enriched } = await callEnrich([pkg], BASE_CONFIG);
     expect(enriched[0].releaseAge?.worstLevel).toBe('major_overdue');
     expect(enriched[0].releaseAge?.minCompliantVersion).toBe('2.0.0');
     expect(enriched[0].releaseAge?.minCompliantReleasedDaysAgo).toBe(90);
@@ -538,7 +575,7 @@ describe('enrichWithReleaseAge â€” minCompliantVersion falls back to latest
       'dist-tags': { latest: '1.5.0' },
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const { enriched } = await callEnrich([pkg], BASE_CONFIG);
     expect(enriched[0].releaseAge?.worstLevel).toBe('minor_overdue');
     expect(enriched[0].releaseAge?.minCompliantVersion).toBe('1.5.0');
     expect(enriched[0].releaseAge?.minCompliantReleasedDaysAgo).toBe(90);
@@ -561,7 +598,7 @@ describe('enrichWithReleaseAge â€” minCompliantVersion falls back to latest
       'dist-tags': { latest: '2.0.0' },
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const { enriched } = await callEnrich([pkg], BASE_CONFIG);
     expect(enriched[0].releaseAge?.worstLevel).toBe('major_overdue');
     expect(enriched[0].releaseAge?.minCompliantVersion).toBe('1.5.0');
     expect(enriched[0].releaseAge?.minCompliantReleasedDaysAgo).toBe(40);
@@ -577,7 +614,7 @@ describe('enrichWithReleaseAge â€” minCompliantVersion falls back to latest
       'dist-tags': { latest: '18.2.0' },
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const { enriched } = await callEnrich([pkg], BASE_CONFIG);
     expect(enriched[0].releaseAge?.worstLevel).toBeNull();
     expect(enriched[0].releaseAge?.minCompliantVersion).toBeUndefined();
   });
@@ -593,7 +630,7 @@ describe('enrichWithReleaseAge â€” minCompliantVersion falls back to latest
       'dist-tags': { latest: '2.0.0-rc.0' },
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const { enriched } = await callEnrich([pkg], BASE_CONFIG);
     expect(enriched[0].releaseAge?.minCompliantVersion).toBeUndefined();
   });
 });
@@ -609,7 +646,7 @@ describe('enrichWithReleaseAge â€” enforceOn severity scoping (#18)', () =>
       time: { '2.0.0': daysAgo(90) },
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge(packages, {
+    const { enriched } = await callEnrich(packages, {
       ...BASE_CONFIG,
       enforceOn: ['@my-org/*'],
     });
@@ -634,7 +671,7 @@ describe('enrichWithReleaseAge â€” enforceOn severity scoping (#18)', () =>
       time: { '2.0.0': daysAgo(90) },
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge(packages, BASE_CONFIG);
+    const { enriched } = await callEnrich(packages, BASE_CONFIG);
     for (const pkg of enriched) {
       expect(pkg.releaseAge?.severity).toBe('warn');
     }
@@ -653,7 +690,7 @@ describe('enrichWithReleaseAge â€” enforceOn severity scoping (#18)', () =>
       versions: {},
     });
 
-    const { enriched } = await enrichWithReleaseAge(packages, {
+    const { enriched } = await callEnrich(packages, {
       ...BASE_CONFIG,
       enforceOn: ['**'],
     });
@@ -674,7 +711,7 @@ describe('enrichWithReleaseAge â€” enforceOn severity scoping (#18)', () =>
       versions: {},
     });
 
-    const { enriched } = await enrichWithReleaseAge(packages, {
+    const { enriched } = await callEnrich(packages, {
       ...BASE_CONFIG,
       enforceOn: ['*'],
     });
@@ -707,7 +744,7 @@ describe('enrichWithReleaseAge â€” overdue basis uses oldest breach, not ne
       'dist-tags': { latest: '4.0.16' },
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const { enriched } = await callEnrich([pkg], BASE_CONFIG);
     const entry = enriched[0].releaseAge!;
     expect(entry.worstLevel).toBe('major_overdue');
 
@@ -734,7 +771,7 @@ describe('enrichWithReleaseAge â€” overdue basis uses oldest breach, not ne
       },
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const { enriched } = await callEnrich([pkg], BASE_CONFIG);
     const entry = enriched[0].releaseAge!;
 
     const minor = entry.upgrades.find((u) => u.semverBump === 'minor');
@@ -747,43 +784,13 @@ describe('enrichWithReleaseAge â€” overdue basis uses oldest breach, not ne
   });
 });
 
-describe('resolveReleaseAgeScope (#57)', () => {
-  it('returns the configured scope when there are no exceptions', () => {
-    expect(
-      resolveReleaseAgeScope('react', { ...BASE_CONFIG, scope: 'root' }),
-    ).toBe('root');
-    expect(
-      resolveReleaseAgeScope('react', { ...BASE_CONFIG, scope: 'tree' }),
-    ).toBe('tree');
-  });
-
-  it('flips root -> tree for a package matching scopeExceptions', () => {
-    const scope = resolveReleaseAgeScope('@vendor/pinned-lib', {
-      ...BASE_CONFIG,
-      scope: 'root',
-      scopeExceptions: ['@vendor/pinned-*'],
-    });
-    expect(scope).toBe('tree');
-  });
-
-  it('flips tree -> root for a package matching scopeExceptions', () => {
-    const scope = resolveReleaseAgeScope('@vendor/pinned-lib', {
-      ...BASE_CONFIG,
-      scope: 'tree',
-      scopeExceptions: ['@vendor/pinned-*'],
-    });
-    expect(scope).toBe('root');
-  });
-
-  it('does not flip a package that does not match scopeExceptions', () => {
-    const scope = resolveReleaseAgeScope('react', {
-      ...BASE_CONFIG,
-      scope: 'tree',
-      scopeExceptions: ['@vendor/pinned-*'],
-    });
-    expect(scope).toBe('tree');
-  });
-});
+// `resolveReleaseAgeScope` (a global `scope` + `scopeExceptions` glob-flip)
+// no longer exists — scope is now a plain field on whichever
+// `rules['release-age']` entry governs a package (`resolveReleaseAgeRule`,
+// src/config/overrides.ts). Equivalent per-package scope-resolution
+// coverage, including the old flip-by-pattern scenarios reframed as
+// "a more specific rule entry sets its own scope", lives in
+// tests/rules/release-age.test.ts.
 
 describe('enrichWithReleaseAge â€” scope (#57)', () => {
   // Shared fixture: relative to '1.0.0', both '2.0.0' (400d old) and '3.0.0'
@@ -808,7 +815,7 @@ describe('enrichWithReleaseAge â€” scope (#57)', () => {
       time: MULTI_VERSION_TIME,
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const { enriched } = await callEnrich([pkg], BASE_CONFIG);
     const entry = enriched[0].releaseAge!;
     expect(entry.scope).toBe('root');
     expect(entry.worstLevel).toBeNull();
@@ -843,7 +850,7 @@ describe('enrichWithReleaseAge â€” scope (#57)', () => {
       'dist-tags': { latest: '2.0.0' },
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], {
+    const { enriched } = await callEnrich([pkg], {
       ...BASE_CONFIG,
       enforceOn: ['@acme-ui/*'],
     });
@@ -876,7 +883,7 @@ describe('enrichWithReleaseAge â€” scope (#57)', () => {
       'dist-tags': { latest: '2.0.0' },
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], {
+    const { enriched } = await callEnrich([pkg], {
       ...BASE_CONFIG,
       enforceOn: ['@acme-ui/*'],
     });
@@ -901,7 +908,7 @@ describe('enrichWithReleaseAge â€” scope (#57)', () => {
       'dist-tags': { latest: '2.0.0' },
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], {
+    const { enriched } = await callEnrich([pkg], {
       ...BASE_CONFIG,
       scope: 'tree',
       enforceOn: ['@acme-ui/*'],
@@ -923,7 +930,7 @@ describe('enrichWithReleaseAge â€” scope (#57)', () => {
       time: MULTI_VERSION_TIME,
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const { enriched } = await callEnrich([pkg], BASE_CONFIG);
     const entry = enriched[0].releaseAge!;
     expect(entry.scope).toBe('root');
     expect(entry.worstLevel).toBe('major_overdue');
@@ -941,7 +948,7 @@ describe('enrichWithReleaseAge â€” scope (#57)', () => {
       time: MULTI_VERSION_TIME,
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], {
+    const { enriched } = await callEnrich([pkg], {
       ...BASE_CONFIG,
       scope: 'tree',
     });
@@ -969,7 +976,7 @@ describe('enrichWithReleaseAge â€” scope (#57)', () => {
       time: MULTI_VERSION_TIME,
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], {
+    const { enriched } = await callEnrich([pkg], {
       ...BASE_CONFIG,
       scope: 'tree',
     });
@@ -993,7 +1000,7 @@ describe('enrichWithReleaseAge â€” scope (#57)', () => {
       time: MULTI_VERSION_TIME,
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], {
+    const { enriched } = await callEnrich([pkg], {
       ...BASE_CONFIG,
       scope: 'tree',
     });
@@ -1017,7 +1024,7 @@ describe('enrichWithReleaseAge â€” scope (#57)', () => {
       time: MULTI_VERSION_TIME,
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], {
+    const { enriched } = await callEnrich([pkg], {
       ...BASE_CONFIG,
       scope: 'tree',
     });
@@ -1041,7 +1048,7 @@ describe('enrichWithReleaseAge â€” scope (#57)', () => {
       time: MULTI_VERSION_TIME,
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const { enriched } = await callEnrich([pkg], BASE_CONFIG);
     const entry = enriched[0].releaseAge!;
     expect(entry.scope).toBe('root');
     expect(entry.worstLevel).toBe('major_overdue');
@@ -1064,7 +1071,7 @@ describe('enrichWithReleaseAge â€” scope (#57)', () => {
       time: { '1.0.0': daysAgo(500), '2.0.0': daysAgo(10) },
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], {
+    const { enriched } = await callEnrich([pkg], {
       ...BASE_CONFIG,
       scope: 'tree',
     });
@@ -1080,7 +1087,7 @@ describe('enrichWithReleaseAge â€” scope (#57)', () => {
       time: { '18.0.0': daysAgo(100), '18.0.1': daysAgo(10) },
       versions: {},
     });
-    const { enriched } = await enrichWithReleaseAge([pkg], BASE_CONFIG);
+    const { enriched } = await callEnrich([pkg], BASE_CONFIG);
     const entry = enriched[0].releaseAge!;
     expect(entry.scope).toBe('root');
     expect(entry.evaluatedVersions).toBeUndefined();

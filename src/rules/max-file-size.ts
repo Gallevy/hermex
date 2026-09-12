@@ -19,9 +19,10 @@ function fileSizeBytes(filePath: string): number | null {
 }
 
 /**
- * Flags files that exceed their rule's `maxSize`. One violation per rule
- * rather than per file — mirrors `no-files`, so a pattern matching 200
- * oversize assets stays one row in the rules table instead of 200.
+ * Flags files that exceed their rule's `maxSize` — one violation per
+ * oversize file. `print-rules.ts`'s default fold renderer groups these back
+ * into one row (largest first, truncated), same display as before this rule
+ * type became atomic.
  */
 export function evaluateMaxFileSize(
   repoPath: string,
@@ -31,30 +32,20 @@ export function evaluateMaxFileSize(
   const violations: RuleViolation[] = [];
 
   for (const rule of rulesConfig['max-file-size']) {
-    const oversizeFiles: OversizeFile[] = [];
-
     for (const file of findMatches(rule.patterns, repoPath, excludes)) {
       const sizeBytes = fileSizeBytes(path.join(repoPath, file));
-      if (sizeBytes !== null && sizeBytes > rule.maxSize) {
-        oversizeFiles.push({ file, sizeBytes });
-      }
+      if (sizeBytes === null || sizeBytes <= rule.maxSize) continue;
+
+      const oversizeFile: OversizeFile = { file, sizeBytes };
+      violations.push({
+        ruleId: 'max-file-size',
+        severity: rule.severity,
+        patterns: rule.patterns,
+        message: rule.message,
+        maxSizeBytes: rule.maxSize,
+        oversizeFile,
+      });
     }
-
-    if (oversizeFiles.length === 0) continue;
-
-    // Largest first: the worst offender is the one worth naming, and
-    // `describeViolation` only ever shows the head of the list.
-    oversizeFiles.sort((a, b) => b.sizeBytes - a.sizeBytes);
-
-    violations.push({
-      ruleId: 'max-file-size',
-      severity: rule.severity,
-      patterns: rule.patterns,
-      message: rule.message,
-      matchedFiles: oversizeFiles.map((f) => f.file),
-      maxSizeBytes: rule.maxSize,
-      oversizeFiles,
-    });
   }
 
   return violations;

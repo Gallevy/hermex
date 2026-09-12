@@ -2,7 +2,7 @@ import { writeFileSync } from 'node:fs';
 import type { AggregatedReport } from './aggregator';
 import type { ComplianceResult } from './compliance';
 import { countMandatoryViolations } from './compliance';
-import { describeViolation, formatRuleType } from './print-rules';
+import { buildRuleRows } from './print-rules';
 import {
   describeUpgradeTarget,
   resolveCompliantTarget,
@@ -33,17 +33,21 @@ function buildRulesSection(aggregated: AggregatedReport): string {
     return '';
   }
 
+  const rows = buildRuleRows(ruleViolations);
+  if (rows.length === 0) return '';
+
   const lines: string[] = [
     '### Rules',
     '',
-    '| | Rule | Description |',
-    '|---|---|---|',
+    '| Rule | Description |',
+    '|---|---|',
   ];
 
-  for (const v of ruleViolations) {
-    lines.push(
-      `| ${severityIcon(v.severity)} | ${formatRuleType(v)} | ${describeViolation(v)} |`,
-    );
+  // buildRuleRows already prefixes each description with a severity icon
+  // (needed for the terminal table's single description column) — reused
+  // here rather than re-deriving per-row severity into its own column.
+  for (const row of rows) {
+    lines.push(`| ${row.rule} | ${row.description} |`);
   }
 
   lines.push('', formatSeverityTally(ruleViolations));
@@ -51,23 +55,37 @@ function buildRulesSection(aggregated: AggregatedReport): string {
   return lines.join('\n') + '\n';
 }
 
-// Built directly from compliance.releaseAgeViolations rather than a
-// separately-derived filter — that's already exactly "release-age packages
-// that are mandatory failures" (src/utils/compliance.ts), so the row list
-// can never drift from the verdict's mandatory-violation count. Banned and
-// deprecated-only/not-enforced packages don't get a row here: banned ones
-// are already shown in Rules as a no-packages line, and
-// deprecated-only or not-enforced-overdue packages are info-level, not
-// enforceable (#31).
+// Mandatory release-age failures, found by filtering `ruleViolations` for
+// error-severity `release-age` hits and joining back to
+// `packageDistribution` by `packageName` for the rich upgrade-target detail
+// — the same join `findForbidViolation` (`print-packages.ts`) already uses
+// for `no-packages`. Release-age violations no longer have their own bucket
+// on `ComplianceResult` (#93 superseded — they're ordinary `RuleViolation`s
+// now), so this is the direct replacement for the old
+// `compliance.releaseAgeViolations` read. Banned and deprecated-only/
+// not-enforced packages don't get a row here: banned ones are already shown
+// in Rules as a no-packages line, and deprecated-only or not-enforced
+// overdue packages are info-level, not enforceable (#31).
 //
 // Bundle-impact (multiple resolved copies) and advisory nested breaches are
 // deliberately NOT included here — they're non-blocking context, and a
 // summary meant for a PR comment or CI check reads any colored row/line as
 // something that needs attention. That context belongs in the human
 // `--format human` table (stdout), not in a surface used for gating (#59).
-function buildPackagesSection(compliance: ComplianceResult): string {
-  const mandatory = compliance.releaseAgeViolations;
-  if (mandatory.length === 0) return '';
+function buildPackagesSection(aggregated: AggregatedReport): string {
+  const failingPackageNames = new Set(
+    aggregated.ruleViolations
+      .filter(
+        (v): v is Extract<typeof v, { ruleId: 'release-age' }> =>
+          v.ruleId === 'release-age' && v.severity === 'error',
+      )
+      .map((v) => v.packageName),
+  );
+  if (failingPackageNames.size === 0) return '';
+
+  const mandatory = aggregated.packageDistribution.filter((pkg) =>
+    failingPackageNames.has(pkg.packageName),
+  );
 
   const lines: string[] = [
     '### Packages',
@@ -118,7 +136,7 @@ export function writeSummaryFile(
   const sections = [
     `# ${title}\n`,
     buildRulesSection(aggregated),
-    buildPackagesSection(compliance),
+    buildPackagesSection(aggregated),
     buildVerdictSection(compliance),
   ].filter((section) => section.length > 0);
 
