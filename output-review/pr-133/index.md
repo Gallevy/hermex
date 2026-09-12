@@ -8,7 +8,7 @@ title: "Output Review"
 
 27 cases · 0 changed · 0 invariant breach(es)
 
-Reference: `17ede5f` — reused from cache.
+Reference: `75b3033` — reused from cache.
 
 Every case matches the target branch.
 
@@ -29,8 +29,8 @@ Every case matches the target branch.
 | [`comply-summary-file`](./comply-summary-file.html) | unchanged | The markdown a consumer pastes into a PR comment or job summary — ANSI-free, rules + flagged packages + verdict. |
 | [`comply-release-age`](./comply-release-age.html) | unchanged | The flagged-packages table, against a recorded registry: an overdue package with no in-window target (#26), one with a real target, and one merely coming due. enforceOn names two of them, so the same three packages split across both severity tiers — pair it with comply-release-age-unscoped, where the identical repo is checked with nothing enforced. |
 | [`comply-release-age-unscoped`](./comply-release-age-unscoped.html) | unchanged | An empty enforceOn names no mandatory packages and so enforces none, rather than enforcing everything: every installed package is still fetched and reported, every release-age row is advisory, and the exit code comes from rule violations alone. Includes moment — declared, installed, never imported — which release age never even looked up before #171. The only case covering the empty-enforceOn path, which is the one path where #171 can move a verdict. |
-| [`comply-all-rule-types`](./comply-all-rule-types.html) | unchanged | Every one of the nine rule types in one table, at three severities — the only case that renders require-engine-version, codeowners and both package-field shapes. |
-| [`comply-all-rule-types-json`](./comply-all-rule-types-json.html) | unchanged | The machine-readable shape of every rule type: fieldPath and actualValue on package-field hits, installedRange/requiredRange on require-engine-version, matchedFiles on codeowners. Also where #95 is visible — the two codeowners entries are byte-identical apart from matchedFiles. |
+| [`comply-all-rule-types`](./comply-all-rule-types.html) | unchanged | Every one of the ten rule types in one table, at three severities — the only case that renders max-file-size, require-engine-version, codeowners and both package-field shapes. |
+| [`comply-all-rule-types-json`](./comply-all-rule-types-json.html) | unchanged | The machine-readable shape of every rule type: fieldPath and actualValue on package-field hits, maxSizeBytes/oversizeFiles on max-file-size, installedRange/requiredRange on require-engine-version, matchedFiles on codeowners. Also where #95 is visible — the two codeowners entries are byte-identical apart from matchedFiles. |
 | [`comply-summary-title`](./comply-summary-title.html) | unchanged | --summary-title replaces the default heading, so a consumer embedding the markdown can name it after the policy rather than the tool. |
 | [`comply-exit-2`](./comply-exit-2.html) | unchanged | A pipeline failure (nothing matched `includes`) exits 2, not 1 — a consumer must be able to tell "could not run" from "not compliant". |
 | [`scan-no-files`](./scan-no-files.html) | unchanged | The same pipeline failure under `scan` reports the problem and exits 0 — the deliberate asymmetry with comply-exit-2, kept visible so it cannot drift unnoticed. |

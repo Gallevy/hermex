@@ -10,17 +10,17 @@ title: "comply-all-rule-types — Output Review"
 
 _unchanged_
 
-**Asserts** — Every one of the nine rule types in one table, at three severities — the only case that renders require-engine-version, codeowners and both package-field shapes.
+**Asserts** — Every one of the ten rule types in one table, at three severities — the only case that renders max-file-size, require-engine-version, codeowners and both package-field shapes.
 
 **Ran** `hermex comply` in `fixtures/repos/all-rule-types` → exit 1, as asserted
 
-**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/880e0ffe7ef36de9f4837620868bf570c81a0b4e/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/880e0ffe7ef36de9f4837620868bf570c81a0b4e/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/880e0ffe7ef36de9f4837620868bf570c81a0b4e/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types`](https://github.com/Gallevy/hermex/blob/880e0ffe7ef36de9f4837620868bf570c81a0b4e/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/880e0ffe7ef36de9f4837620868bf570c81a0b4e/fixtures/cases/comply-all-rule-types.md))
+**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/ac82177b58b19fd0de0669245c31c209b0b4b32f/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/ac82177b58b19fd0de0669245c31c209b0b4b32f/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/ac82177b58b19fd0de0669245c31c209b0b4b32f/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types`](https://github.com/Gallevy/hermex/blob/ac82177b58b19fd0de0669245c31c209b0b4b32f/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/ac82177b58b19fd0de0669245c31c209b0b4b32f/fixtures/cases/comply-all-rule-types.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-all-rule-types`</sub>
 
 ## Config
 
-[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/880e0ffe7ef36de9f4837620868bf570c81a0b4e/fixtures/repos/all-rule-types/hermex.config.ts) — resolved, as the loader sees it
+[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/ac82177b58b19fd0de0669245c31c209b0b4b32f/fixtures/repos/all-rule-types/hermex.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -44,6 +44,16 @@ _unchanged_
         "patterns": [
           ".nvmrc"
         ]
+      }
+    ],
+    "max-file-size": [
+      {
+        "severity": "warn",
+        "patterns": [
+          "assets/**/*.svg"
+        ],
+        "maxSize": "1kb",
+        "message": "Compress it or serve it from the CDN"
       }
     ],
     "no-packages": [
@@ -141,6 +151,8 @@ hermex v<version>
 ├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
 │ require-engine-version │ 🔴 engines.node is >=16, required >=20 — Minimum Node 20 required                             │
 ├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ max-file-size          │ 🟡 assets/**/*.svg over 1 KB (logo.svg at 1.4 KB) — Compress it or serve it from the CDN      │
+├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
 │ package-fields         │ 🟡 field license missing in package.json                                                      │
 ├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
 │ package-fields         │ 🟡 field publishConfig.registry is forbidden in package.json — Publish to the public registry │
@@ -150,7 +162,7 @@ hermex v<version>
 │ require-codeowners     │ 🔵 1 scanned file(s) have no owner: src/legacy.tsx — Every file needs a platform owner        │
 └────────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────┘
 
-6 errors, 2 warnings, 2 info
+6 errors, 3 warnings, 2 info
 
 🔴 Not compliant
   6 mandatory violations found

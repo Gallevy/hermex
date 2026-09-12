@@ -10,17 +10,17 @@ title: "comply-all-rule-types-json — Output Review"
 
 _unchanged_
 
-**Asserts** — The machine-readable shape of every rule type: fieldPath and actualValue on package-field hits, installedRange/requiredRange on require-engine-version, matchedFiles on codeowners. Also where #95 is visible — the two codeowners entries are byte-identical apart from matchedFiles.
+**Asserts** — The machine-readable shape of every rule type: fieldPath and actualValue on package-field hits, maxSizeBytes/oversizeFiles on max-file-size, installedRange/requiredRange on require-engine-version, matchedFiles on codeowners. Also where #95 is visible — the two codeowners entries are byte-identical apart from matchedFiles.
 
 **Ran** `hermex comply --format json` in `fixtures/repos/all-rule-types` → exit 1, as asserted
 
-**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/880e0ffe7ef36de9f4837620868bf570c81a0b4e/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/880e0ffe7ef36de9f4837620868bf570c81a0b4e/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/880e0ffe7ef36de9f4837620868bf570c81a0b4e/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types-json`](https://github.com/Gallevy/hermex/blob/880e0ffe7ef36de9f4837620868bf570c81a0b4e/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/880e0ffe7ef36de9f4837620868bf570c81a0b4e/fixtures/cases/comply-all-rule-types-json.md))
+**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/ac82177b58b19fd0de0669245c31c209b0b4b32f/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/ac82177b58b19fd0de0669245c31c209b0b4b32f/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/ac82177b58b19fd0de0669245c31c209b0b4b32f/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types-json`](https://github.com/Gallevy/hermex/blob/ac82177b58b19fd0de0669245c31c209b0b4b32f/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/ac82177b58b19fd0de0669245c31c209b0b4b32f/fixtures/cases/comply-all-rule-types-json.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-all-rule-types-json`</sub>
 
 ## Config
 
-[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/880e0ffe7ef36de9f4837620868bf570c81a0b4e/fixtures/repos/all-rule-types/hermex.config.ts) — resolved, as the loader sees it
+[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/ac82177b58b19fd0de0669245c31c209b0b4b32f/fixtures/repos/all-rule-types/hermex.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -44,6 +44,16 @@ _unchanged_
         "patterns": [
           ".nvmrc"
         ]
+      }
+    ],
+    "max-file-size": [
+      {
+        "severity": "warn",
+        "patterns": [
+          "assets/**/*.svg"
+        ],
+        "maxSize": "1kb",
+        "message": "Compress it or serve it from the CDN"
       }
     ],
     "no-packages": [
@@ -187,6 +197,24 @@ _unchanged_
       "requiredRange": ">=20"
     },
     {
+      "ruleId": "max-file-size",
+      "severity": "warn",
+      "patterns": [
+        "assets/**/*.svg"
+      ],
+      "message": "Compress it or serve it from the CDN",
+      "matchedFiles": [
+        "assets/logo.svg"
+      ],
+      "maxSizeBytes": 1024,
+      "oversizeFiles": [
+        {
+          "file": "assets/logo.svg",
+          "sizeBytes": 1410
+        }
+      ]
+    },
+    {
       "ruleId": "require-package-fields",
       "severity": "warn",
       "patterns": [
@@ -234,7 +262,7 @@ _unchanged_
     "counts": {
       "errorRuleViolations": 6,
       "releaseAgeViolations": 0,
-      "warningRuleViolations": 2
+      "warningRuleViolations": 3
     }
   }
 }
