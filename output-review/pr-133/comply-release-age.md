@@ -14,7 +14,7 @@ _unchanged_
 
 **Ran** `hermex comply --config configs/release-age.config.ts` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/configs/release-age.config.ts`](https://github.com/Gallevy/hermex/blob/ac82177b58b19fd0de0669245c31c209b0b4b32f/fixtures/configs/release-age.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/ac82177b58b19fd0de0669245c31c209b0b4b32f/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/ac82177b58b19fd0de0669245c31c209b0b4b32f/fixtures/README.md)) · **Case** [`comply-release-age`](https://github.com/Gallevy/hermex/blob/ac82177b58b19fd0de0669245c31c209b0b4b32f/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/ac82177b58b19fd0de0669245c31c209b0b4b32f/fixtures/cases/comply-release-age.md))
+**Config** [`fixtures/configs/release-age.config.ts`](https://github.com/Gallevy/hermex/blob/011e3949aeec5821b29326319e0ec1803274b4d5/fixtures/configs/release-age.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/011e3949aeec5821b29326319e0ec1803274b4d5/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/011e3949aeec5821b29326319e0ec1803274b4d5/fixtures/README.md)) · **Case** [`comply-release-age`](https://github.com/Gallevy/hermex/blob/011e3949aeec5821b29326319e0ec1803274b4d5/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/011e3949aeec5821b29326319e0ec1803274b4d5/fixtures/cases/comply-release-age.md))
 
 **Registry** offline, served from `fixtures/registry/timelines.ts` — no network
 
@@ -22,7 +22,7 @@ _unchanged_
 
 ## Config
 
-[`fixtures/configs/release-age.config.ts`](https://github.com/Gallevy/hermex/blob/ac82177b58b19fd0de0669245c31c209b0b4b32f/fixtures/configs/release-age.config.ts) — resolved, as the loader sees it
+[`fixtures/configs/release-age.config.ts`](https://github.com/Gallevy/hermex/blob/011e3949aeec5821b29326319e0ec1803274b4d5/fixtures/configs/release-age.config.ts) — resolved, as the loader sees it
 
 ```json
 {
