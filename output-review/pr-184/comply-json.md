@@ -14,13 +14,13 @@ _changed_
 
 **Ran** `hermex comply --format json` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/e9c52e1ea3750fbc1eebc813cfa864330c1358c3/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/e9c52e1ea3750fbc1eebc813cfa864330c1358c3/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/e9c52e1ea3750fbc1eebc813cfa864330c1358c3/fixtures/README.md)) · **Case** [`comply-json`](https://github.com/Gallevy/hermex/blob/e9c52e1ea3750fbc1eebc813cfa864330c1358c3/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/e9c52e1ea3750fbc1eebc813cfa864330c1358c3/fixtures/cases/comply-json.md))
+**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/98b63e83d66c35ab6f60b206b2cb1cccb37514a3/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/98b63e83d66c35ab6f60b206b2cb1cccb37514a3/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/98b63e83d66c35ab6f60b206b2cb1cccb37514a3/fixtures/README.md)) · **Case** [`comply-json`](https://github.com/Gallevy/hermex/blob/98b63e83d66c35ab6f60b206b2cb1cccb37514a3/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/98b63e83d66c35ab6f60b206b2cb1cccb37514a3/fixtures/cases/comply-json.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-json`</sub>
 
 ## Config
 
-[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/e9c52e1ea3750fbc1eebc813cfa864330c1358c3/fixtures/hermex.config.ts) — resolved, as the loader sees it
+[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/98b63e83d66c35ab6f60b206b2cb1cccb37514a3/fixtures/hermex.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -248,13 +248,14 @@ _changed_
      }
    ],
    "components": [
-@@ -398,16 +435,40 @@
+@@ -398,16 +435,44 @@
        "entries": [
          {
            "packageName": "@design-system/foundation",
 -          "count": 33,
 -          "percentage": 100
 +          "count": 8,
++          "renderCount": 33,
 +          "percentage": 100,
 +          "present": true
          },
@@ -262,6 +263,7 @@ _changed_
            "packageName": "@new-system/arc",
            "count": 0,
 -          "percentage": 0
++          "renderCount": 0,
 +          "percentage": 0,
 +          "present": false
          }
@@ -279,12 +281,14 @@ _changed_
 +        {
 +          "packageName": "lodash",
 +          "count": 3,
++          "renderCount": 0,
 +          "percentage": 75,
 +          "present": true
 +        },
 +        {
 +          "packageName": "es-toolkit",
 +          "count": 1,
++          "renderCount": 0,
 +          "percentage": 25,
 +          "present": true
 +        }
@@ -715,7 +719,7 @@ _changed_
       "count": 1,
       "files": [
         "patterns/09-jsx-in-attributes.tsx"
-… 115 more line(s) — re-run locally for the full text.
+… 119 more line(s) — re-run locally for the full text.
 ```
 
 </details>

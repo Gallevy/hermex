@@ -14,7 +14,7 @@ _changed_
 
 **Ran** `hermex comply` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/e9c52e1ea3750fbc1eebc813cfa864330c1358c3/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/e9c52e1ea3750fbc1eebc813cfa864330c1358c3/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/e9c52e1ea3750fbc1eebc813cfa864330c1358c3/fixtures/README.md)) · **Case** [`comply-color`](https://github.com/Gallevy/hermex/blob/e9c52e1ea3750fbc1eebc813cfa864330c1358c3/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/e9c52e1ea3750fbc1eebc813cfa864330c1358c3/fixtures/cases/comply-color.md))
+**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/98b63e83d66c35ab6f60b206b2cb1cccb37514a3/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/98b63e83d66c35ab6f60b206b2cb1cccb37514a3/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/98b63e83d66c35ab6f60b206b2cb1cccb37514a3/fixtures/README.md)) · **Case** [`comply-color`](https://github.com/Gallevy/hermex/blob/98b63e83d66c35ab6f60b206b2cb1cccb37514a3/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/98b63e83d66c35ab6f60b206b2cb1cccb37514a3/fixtures/cases/comply-color.md))
 
 **Environment** `NO_COLOR` unset, `FORCE_COLOR=3`
 
@@ -22,7 +22,7 @@ _changed_
 
 ## Config
 
-[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/e9c52e1ea3750fbc1eebc813cfa864330c1358c3/fixtures/hermex.config.ts) — resolved, as the loader sees it
+[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/98b63e83d66c35ab6f60b206b2cb1cccb37514a3/fixtures/hermex.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -151,7 +151,7 @@ _changed_
    ──────────────────────────────────────────────────
 -  @design-system/foundation  ██████████████████████████████ 100.0% (33 usages)
 -  @new-system/arc            ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0.0% (0 usages)
-+  @design-system/foundation  ██████████████████████████████ 100.0% (8 files)
++  @design-system/foundation  ██████████████████████████████ 100.0% (8 files, 33 renders)
 +  @new-system/arc            ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0.0% (not found in this repo)
  
 +  Utility Library Migration
@@ -184,7 +184,7 @@ _changed_
  [90m  ──────────────────────────────────────────────────[39m
 -  @design-system/foundation  [36m██████████████████████████████[39m [1m100.0%[22m [90m(33 usages)[39m
 -  @new-system/arc            [90m░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░[39m [1m0.0%[22m [90m(0 usages)[39m
-+  @design-system/foundation  [36m██████████████████████████████[39m [1m100.0%[22m [90m(8 files)[39m
++  @design-system/foundation  [36m██████████████████████████████[39m [1m100.0%[22m [90m(8 files, 33 renders)[39m
 +  @new-system/arc            [90m░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░[39m [1m0.0%[22m [90m(not found in this repo)[39m
  
 +[1m  Utility Library Migration[22m
@@ -241,7 +241,7 @@ Caused by:
 
   Design System Migration
   ──────────────────────────────────────────────────
-  @design-system/foundation  ██████████████████████████████ 100.0% (8 files)
+  @design-system/foundation  ██████████████████████████████ 100.0% (8 files, 33 renders)
   @new-system/arc            ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0.0% (not found in this repo)
 
   Utility Library Migration
@@ -306,7 +306,7 @@ Caused by:
 [95m[1m[22m[39m
 [1m  Design System Migration[22m
 [90m  ──────────────────────────────────────────────────[39m
-  @design-system/foundation  [36m██████████████████████████████[39m [1m100.0%[22m [90m(8 files)[39m
+  @design-system/foundation  [36m██████████████████████████████[39m [1m100.0%[22m [90m(8 files, 33 renders)[39m
   @new-system/arc            [90m░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░[39m [1m0.0%[22m [90m(not found in this repo)[39m
 
 [1m  Utility Library Migration[22m

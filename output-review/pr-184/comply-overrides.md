@@ -14,13 +14,13 @@ _changed_
 
 **Ran** `hermex comply --config configs/overrides.config.ts` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/configs/overrides.config.ts`](https://github.com/Gallevy/hermex/blob/e9c52e1ea3750fbc1eebc813cfa864330c1358c3/fixtures/configs/overrides.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/e9c52e1ea3750fbc1eebc813cfa864330c1358c3/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/e9c52e1ea3750fbc1eebc813cfa864330c1358c3/fixtures/README.md)) · **Case** [`comply-overrides`](https://github.com/Gallevy/hermex/blob/e9c52e1ea3750fbc1eebc813cfa864330c1358c3/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/e9c52e1ea3750fbc1eebc813cfa864330c1358c3/fixtures/cases/comply-overrides.md))
+**Config** [`fixtures/configs/overrides.config.ts`](https://github.com/Gallevy/hermex/blob/98b63e83d66c35ab6f60b206b2cb1cccb37514a3/fixtures/configs/overrides.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/98b63e83d66c35ab6f60b206b2cb1cccb37514a3/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/98b63e83d66c35ab6f60b206b2cb1cccb37514a3/fixtures/README.md)) · **Case** [`comply-overrides`](https://github.com/Gallevy/hermex/blob/98b63e83d66c35ab6f60b206b2cb1cccb37514a3/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/98b63e83d66c35ab6f60b206b2cb1cccb37514a3/fixtures/cases/comply-overrides.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-overrides`</sub>
 
 ## Config
 
-[`fixtures/configs/overrides.config.ts`](https://github.com/Gallevy/hermex/blob/e9c52e1ea3750fbc1eebc813cfa864330c1358c3/fixtures/configs/overrides.config.ts) — resolved, as the loader sees it
+[`fixtures/configs/overrides.config.ts`](https://github.com/Gallevy/hermex/blob/98b63e83d66c35ab6f60b206b2cb1cccb37514a3/fixtures/configs/overrides.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -171,7 +171,7 @@ _changed_
    ──────────────────────────────────────────────────
 -  @design-system/foundation  ██████████████████████████████ 100.0% (33 usages)
 -  @new-system/arc            ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0.0% (0 usages)
-+  @design-system/foundation  ██████████████████████████████ 100.0% (8 files)
++  @design-system/foundation  ██████████████████████████████ 100.0% (8 files, 33 renders)
 +  @new-system/arc            ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0.0% (not found in this repo)
  
 +  Utility Library Migration
@@ -227,7 +227,7 @@ Caused by:
 
   Design System Migration
   ──────────────────────────────────────────────────
-  @design-system/foundation  ██████████████████████████████ 100.0% (8 files)
+  @design-system/foundation  ██████████████████████████████ 100.0% (8 files, 33 renders)
   @new-system/arc            ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0.0% (not found in this repo)
 
   Utility Library Migration

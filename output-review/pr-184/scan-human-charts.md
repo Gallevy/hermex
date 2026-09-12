@@ -14,13 +14,13 @@ _changed_
 
 **Ran** `hermex scan --config configs/charts.config.ts` in `fixtures/` → exit 0, as asserted
 
-**Config** [`fixtures/configs/charts.config.ts`](https://github.com/Gallevy/hermex/blob/e9c52e1ea3750fbc1eebc813cfa864330c1358c3/fixtures/configs/charts.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/e9c52e1ea3750fbc1eebc813cfa864330c1358c3/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/e9c52e1ea3750fbc1eebc813cfa864330c1358c3/fixtures/README.md)) · **Case** [`scan-human-charts`](https://github.com/Gallevy/hermex/blob/e9c52e1ea3750fbc1eebc813cfa864330c1358c3/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/e9c52e1ea3750fbc1eebc813cfa864330c1358c3/fixtures/cases/scan-human-charts.md))
+**Config** [`fixtures/configs/charts.config.ts`](https://github.com/Gallevy/hermex/blob/98b63e83d66c35ab6f60b206b2cb1cccb37514a3/fixtures/configs/charts.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/98b63e83d66c35ab6f60b206b2cb1cccb37514a3/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/98b63e83d66c35ab6f60b206b2cb1cccb37514a3/fixtures/README.md)) · **Case** [`scan-human-charts`](https://github.com/Gallevy/hermex/blob/98b63e83d66c35ab6f60b206b2cb1cccb37514a3/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/98b63e83d66c35ab6f60b206b2cb1cccb37514a3/fixtures/cases/scan-human-charts.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter scan-human-charts`</sub>
 
 ## Config
 
-[`fixtures/configs/charts.config.ts`](https://github.com/Gallevy/hermex/blob/e9c52e1ea3750fbc1eebc813cfa864330c1358c3/fixtures/configs/charts.config.ts) — resolved, as the loader sees it
+[`fixtures/configs/charts.config.ts`](https://github.com/Gallevy/hermex/blob/98b63e83d66c35ab6f60b206b2cb1cccb37514a3/fixtures/configs/charts.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -154,7 +154,7 @@ _changed_
    ──────────────────────────────────────────────────
 -  @design-system/foundation  ██████████████████████████████ 100.0% (33 usages)
 -  @new-system/arc            ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0.0% (0 usages)
-+  @design-system/foundation  ██████████████████████████████ 100.0% (8 files)
++  @design-system/foundation  ██████████████████████████████ 100.0% (8 files, 33 renders)
 +  @new-system/arc            ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0.0% (not found in this repo)
  
 +  Utility Library Migration
@@ -231,7 +231,7 @@ react                     ████░░░░░░░░░░░░░░
 
   Design System Migration
   ──────────────────────────────────────────────────
-  @design-system/foundation  ██████████████████████████████ 100.0% (8 files)
+  @design-system/foundation  ██████████████████████████████ 100.0% (8 files, 33 renders)
   @new-system/arc            ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0.0% (not found in this repo)
 
   Utility Library Migration
