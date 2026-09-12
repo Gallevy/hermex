@@ -8,12 +8,14 @@ title: "Output Review"
 
 27 cases · 2 changed · 0 invariant breach(es)
 
+Reference: `75b3033` — reused from cache.
+
 ## Changed
 
 | Case | Status | Proves |
 | --- | --- | --- |
-| [`comply-all-rule-types`](./comply-all-rule-types.html) | **changed** <span class="or-add">+40</span> <span class="or-del">−22</span> | Every one of the ten rule types in one table, at three severities — the only case that renders require-engine-version, codeowners, require-repo-name-match and both package-field shapes. |
-| [`comply-all-rule-types-json`](./comply-all-rule-types-json.html) | **changed** <span class="or-add">+135</span> <span class="or-del">−21</span> | The machine-readable shape of every rule type: fieldPath and actualValue on package-field hits, installedRange/requiredRange on require-engine-version, matchedFiles on codeowners, expectedName/actualName on require-repo-name-match. Also where #95 is visible — the two codeowners entries are byte-identical apart from matchedFiles. |
+| [`comply-all-rule-types`](./comply-all-rule-types.html) | **changed** <span class="or-add">+28</span> <span class="or-del">−26</span> | Every one of the eleven rule types in one table, at three severities — the only case that renders max-file-size, require-engine-version, codeowners, require-repo-name-match and both package-field shapes. |
+| [`comply-all-rule-types-json`](./comply-all-rule-types-json.html) | **changed** <span class="or-add">+10</span> <span class="or-del">−1</span> | The machine-readable shape of every rule type: fieldPath and actualValue on package-field hits, maxSizeBytes/oversizeFiles on max-file-size, installedRange/requiredRange on require-engine-version, matchedFiles on codeowners, expectedName/actualName on require-repo-name-match. Also where #95 is visible — the two codeowners entries are byte-identical apart from matchedFiles. |
 
 ## Unchanged (25)
 

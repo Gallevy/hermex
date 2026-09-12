@@ -10,11 +10,11 @@ title: "comply-all-rule-types — Output Review"
 
 _changed_
 
-**Asserts** — Every one of the ten rule types in one table, at three severities — the only case that renders require-engine-version, codeowners, require-repo-name-match and both package-field shapes.
+**Asserts** — Every one of the eleven rule types in one table, at three severities — the only case that renders max-file-size, require-engine-version, codeowners, require-repo-name-match and both package-field shapes.
 
 **Ran** `hermex comply` in `fixtures/repos/all-rule-types` → exit 1, as asserted
 
-**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types`](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/cases/comply-all-rule-types.md))
+**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/8f0a324120d79e36e9a0f876bfbc6c6b6f4f89b3/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/8f0a324120d79e36e9a0f876bfbc6c6b6f4f89b3/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/8f0a324120d79e36e9a0f876bfbc6c6b6f4f89b3/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types`](https://github.com/Gallevy/hermex/blob/8f0a324120d79e36e9a0f876bfbc6c6b6f4f89b3/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/8f0a324120d79e36e9a0f876bfbc6c6b6f4f89b3/fixtures/cases/comply-all-rule-types.md))
 
 **Sandboxed** — runs against a copy of the fixture directory with `.git/config` created first, because git cannot track those paths
 
@@ -22,7 +22,7 @@ _changed_
 
 ## Config
 
-[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/repos/all-rule-types/hermex.config.ts) — resolved, as the loader sees it
+[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/8f0a324120d79e36e9a0f876bfbc6c6b6f4f89b3/fixtures/repos/all-rule-types/hermex.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -46,6 +46,16 @@ _changed_
         "patterns": [
           ".nvmrc"
         ]
+      }
+    ],
+    "max-file-size": [
+      {
+        "severity": "warn",
+        "patterns": [
+          "assets/**/*.svg"
+        ],
+        "maxSize": "1kb",
+        "message": "Compress it or serve it from the CDN"
       }
     ],
     "no-packages": [
@@ -126,15 +136,35 @@ _changed_
 ```diff
 --- target/stdout.txt
 +++ current/stdout.txt
-@@ -0,0 +1,40 @@
-+hermex v<version>
-+- Parsing lockfile...
-+✔ Found pnpm lockfile (supports: v5, v6, v9) - 2 packages
-+✔ Found 3 files
-+✔ Analysis complete! Analyzed 3/3 files
-+
-+🔍 Rules
-+
+@@ -6,33 +6,35 @@
+ 
+ 🔍 Rules
+ 
+-┌────────────────────────┬───────────────────────────────────────────────────────────────────────────────────────────────┐
+-│ Rule                   │ Description                                                                                   │
+-├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+-│ no-packages            │ 🔴 moment is forbidden — Use date-fns or dayjs                                                │
+-├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+-│ require-packages       │ 🔴 typescript not installed — TypeScript is required                                          │
+-├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+-│ no-files               │ 🔴 jest.config.*, .babelrc detected (jest.config.js, .babelrc) — Use vitest + Vite            │
+-├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+-│ require-files          │ 🔴 .nvmrc not found                                                                           │
+-├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+-│ require-scripts        │ 🔴 script build, test missing in package.json — Required npm scripts                          │
+-├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+-│ require-engine-version │ 🔴 engines.node is >=16, required >=20 — Minimum Node 20 required                             │
+-├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+-│ max-file-size          │ 🟡 assets/**/*.svg over 1 KB (logo.svg at 1.4 KB) — Compress it or serve it from the CDN      │
+-├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+-│ package-fields         │ 🟡 field license missing in package.json                                                      │
+-├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+-│ package-fields         │ 🟡 field publishConfig.registry is forbidden in package.json — Publish to the public registry │
+-├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+-│ require-codeowners     │ 🔵 1 scanned file(s) have no owner: src/orphan.tsx — Every file needs a platform owner        │
+-├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+-│ require-codeowners     │ 🔵 1 scanned file(s) have no owner: src/legacy.tsx — Every file needs a platform owner        │
+-└────────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────┘
 +┌─────────────────────────┬────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 +│ Rule                    │ Description                                                                                                                │
 +├─────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
@@ -150,6 +180,8 @@ _changed_
 +├─────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
 +│ require-engine-version  │ 🔴 engines.node is >=16, required >=20 — Minimum Node 20 required                                                          │
 +├─────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
++│ max-file-size           │ 🟡 assets/**/*.svg over 1 KB (logo.svg at 1.4 KB) — Compress it or serve it from the CDN                                   │
++├─────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
 +│ package-fields          │ 🟡 field license missing in package.json                                                                                   │
 +├─────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
 +│ package-fields          │ 🟡 field publishConfig.registry is forbidden in package.json — Publish to the public registry                              │
@@ -160,39 +192,12 @@ _changed_
 +├─────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
 +│ require-codeowners      │ 🔵 1 scanned file(s) have no owner: src/legacy.tsx — Every file needs a platform owner                                     │
 +└─────────────────────────┴────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-+
-+6 errors, 3 warnings, 2 info
-+
-+🔴 Not compliant
-+  6 mandatory violations found
-+
-+
-
---- target/stderr.txt
-+++ current/stderr.txt
-@@ -1,22 +0,0 @@
--file://<repo>/.output-review/reference/a36ae3d0fb5d7664d092c045ab56751d6799a942/dist/cli.mjs:824
--		return HermexConfigSchema.parse(mod.default);
--		                          ^
--
--ZodError: [
--  {
--    "code": "unrecognized_keys",
--    "keys": [
--      "require-repo-name-match"
--    ],
--    "path": [
--      "rules"
--    ],
--    "message": "Unrecognized key: /"require-repo-name-match/""
--  }
--]
--    at loadConfig (file://<repo>/.output-review/reference/a36ae3d0fb5d7664d092c045ab56751d6799a942/dist/cli.mjs:824:29)
--    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
--    at async Command.<anonymous> (file://<repo>/.output-review/reference/a36ae3d0fb5d7664d092c045ab56751d6799a942/dist/cli.mjs:2495:23)
--
--Node.js v26.8.1
--
+ 
+-6 errors, 3 warnings, 2 info
++6 errors, 4 warnings, 2 info
+ 
+ 🔴 Not compliant
+   6 mandatory violations found
 ```
 
 ## Full output
@@ -223,6 +228,8 @@ hermex v<version>
 ├─────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ require-engine-version  │ 🔴 engines.node is >=16, required >=20 — Minimum Node 20 required                                                          │
 ├─────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ max-file-size           │ 🟡 assets/**/*.svg over 1 KB (logo.svg at 1.4 KB) — Compress it or serve it from the CDN                                   │
+├─────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ package-fields          │ 🟡 field license missing in package.json                                                                                   │
 ├─────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ package-fields          │ 🟡 field publishConfig.registry is forbidden in package.json — Publish to the public registry                              │
@@ -234,7 +241,7 @@ hermex v<version>
 │ require-codeowners      │ 🔵 1 scanned file(s) have no owner: src/legacy.tsx — Every file needs a platform owner                                     │
 └─────────────────────────┴────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
-6 errors, 3 warnings, 2 info
+6 errors, 4 warnings, 2 info
 
 🔴 Not compliant
   6 mandatory violations found

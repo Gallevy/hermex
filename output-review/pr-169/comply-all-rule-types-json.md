@@ -10,11 +10,11 @@ title: "comply-all-rule-types-json — Output Review"
 
 _changed_
 
-**Asserts** — The machine-readable shape of every rule type: fieldPath and actualValue on package-field hits, installedRange/requiredRange on require-engine-version, matchedFiles on codeowners, expectedName/actualName on require-repo-name-match. Also where #95 is visible — the two codeowners entries are byte-identical apart from matchedFiles.
+**Asserts** — The machine-readable shape of every rule type: fieldPath and actualValue on package-field hits, maxSizeBytes/oversizeFiles on max-file-size, installedRange/requiredRange on require-engine-version, matchedFiles on codeowners, expectedName/actualName on require-repo-name-match. Also where #95 is visible — the two codeowners entries are byte-identical apart from matchedFiles.
 
 **Ran** `hermex comply --format json` in `fixtures/repos/all-rule-types` → exit 1, as asserted
 
-**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types-json`](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/cases/comply-all-rule-types-json.md))
+**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/8f0a324120d79e36e9a0f876bfbc6c6b6f4f89b3/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/8f0a324120d79e36e9a0f876bfbc6c6b6f4f89b3/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/8f0a324120d79e36e9a0f876bfbc6c6b6f4f89b3/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types-json`](https://github.com/Gallevy/hermex/blob/8f0a324120d79e36e9a0f876bfbc6c6b6f4f89b3/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/8f0a324120d79e36e9a0f876bfbc6c6b6f4f89b3/fixtures/cases/comply-all-rule-types-json.md))
 
 **Sandboxed** — runs against a copy of the fixture directory with `.git/config` created first, because git cannot track those paths
 
@@ -22,7 +22,7 @@ _changed_
 
 ## Config
 
-[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/9d2870727e95cde1b1e21c72833e7f3258e98429/fixtures/repos/all-rule-types/hermex.config.ts) — resolved, as the loader sees it
+[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/8f0a324120d79e36e9a0f876bfbc6c6b6f4f89b3/fixtures/repos/all-rule-types/hermex.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -46,6 +46,16 @@ _changed_
         "patterns": [
           ".nvmrc"
         ]
+      }
+    ],
+    "max-file-size": [
+      {
+        "severity": "warn",
+        "patterns": [
+          "assets/**/*.svg"
+        ],
+        "maxSize": "1kb",
+        "message": "Compress it or serve it from the CDN"
       }
     ],
     "no-packages": [
@@ -126,95 +136,10 @@ _changed_
 ```diff
 --- target/stdout.json
 +++ current/stdout.json
-@@ -0,0 +1,130 @@
-+{
-+  "version": "<version>",
-+  "summary": {
-+    "filesAnalyzed": 3,
-+    "totalImports": 3,
-+    "totalComponents": 1,
-+    "totalUsagePatterns": 5
-+  },
-+  "ruleViolations": [
-+    {
-+      "ruleId": "no-packages",
-+      "severity": "error",
-+      "patterns": [
-+        "moment"
-+      ],
-+      "message": "Use date-fns or dayjs",
-+      "matchedFiles": [],
-+      "packageName": "moment"
-+    },
-+    {
-+      "ruleId": "require-packages",
-+      "severity": "error",
-+      "patterns": [
-+        "typescript"
-+      ],
-+      "message": "TypeScript is required",
-+      "matchedFiles": []
-+    },
-+    {
-+      "ruleId": "no-files",
-+      "severity": "error",
-+      "patterns": [
-+        "jest.config.*",
-+        ".babelrc"
-+      ],
-+      "message": "Use vitest + Vite",
-+      "matchedFiles": [
-+        "jest.config.js",
-+        ".babelrc"
-+      ]
-+    },
-+    {
-+      "ruleId": "require-files",
-+      "severity": "error",
-+      "patterns": [
-+        ".nvmrc"
-+      ],
-+      "matchedFiles": []
-+    },
-+    {
-+      "ruleId": "require-scripts",
-+      "severity": "error",
-+      "patterns": [
-+        "build",
-+        "test"
-+      ],
-+      "message": "Required npm scripts",
-+      "matchedFiles": []
-+    },
-+    {
-+      "ruleId": "require-engine-version",
-+      "severity": "error",
-+      "patterns": [],
-+      "message": "Minimum Node 20 required",
-+      "matchedFiles": [],
-+      "installedRange": ">=16",
-+      "requiredRange": ">=20"
-+    },
-+    {
-+      "ruleId": "require-package-fields",
-+      "severity": "warn",
-+      "patterns": [
-+        "license"
-+      ],
-+      "matchedFiles": []
-+    },
-+    {
-+      "ruleId": "no-package-fields",
-+      "severity": "warn",
-+      "patterns": [
-+        "publishConfig.registry"
-+      ],
-+      "message": "Publish to the public registry",
-+      "matchedFiles": [],
-+      "fieldPath": "publishConfig.registry",
-+      "actualValue": "https://npm.internal.example.com"
-+    },
-+    {
+@@ -104,6 +104,15 @@
+       "actualValue": "https://npm.internal.example.com"
+     },
+     {
 +      "ruleId": "require-repo-name-match",
 +      "severity": "warn",
 +      "patterns": [],
@@ -224,72 +149,18 @@ _changed_
 +      "actualName": "hermex-fixture-all-rule-types"
 +    },
 +    {
-+      "ruleId": "require-codeowners",
-+      "severity": "info",
-+      "patterns": [
-+        "CODEOWNERS"
-+      ],
-+      "message": "Every file needs a platform owner",
-+      "matchedFiles": [
-+        "src/orphan.tsx"
-+      ]
-+    },
-+    {
-+      "ruleId": "require-codeowners",
-+      "severity": "info",
-+      "patterns": [
-+        "CODEOWNERS"
-+      ],
-+      "message": "Every file needs a platform owner",
-+      "matchedFiles": [
-+        "src/legacy.tsx"
-+      ]
-+    }
-+  ],
-+  "compliance": {
-+    "status": "non-compliant",
-+    "compliant": false,
-+    "counts": {
-+      "errorRuleViolations": 6,
-+      "releaseAgeViolations": 0,
-+      "warningRuleViolations": 3
-+    }
-+  }
-+}
-+
-
---- target/stderr.txt
-+++ current/stderr.txt
-@@ -1,22 +1,6 @@
--file://<repo>/.output-review/reference/a36ae3d0fb5d7664d092c045ab56751d6799a942/dist/cli.mjs:824
--		return HermexConfigSchema.parse(mod.default);
--		                          ^
--
--ZodError: [
--  {
--    "code": "unrecognized_keys",
--    "keys": [
--      "require-repo-name-match"
--    ],
--    "path": [
--      "rules"
--    ],
--    "message": "Unrecognized key: /"require-repo-name-match/""
--  }
--]
--    at loadConfig (file://<repo>/.output-review/reference/a36ae3d0fb5d7664d092c045ab56751d6799a942/dist/cli.mjs:824:29)
--    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
--    at async Command.<anonymous> (file://<repo>/.output-review/reference/a36ae3d0fb5d7664d092c045ab56751d6799a942/dist/cli.mjs:2495:23)
--
--Node.js v26.8.1
-+hermex v<version>
-+- Parsing lockfile...
-+✔ Found pnpm lockfile (supports: v5, v6, v9) - 2 packages
-+✔ Found 3 files
-+✔ Analysis complete! Analyzed 3/3 files
- 
-
-
+       "ruleId": "require-codeowners",
+       "severity": "info",
+       "patterns": [
+@@ -132,7 +141,7 @@
+     "counts": {
+       "errorRuleViolations": 6,
+       "releaseAgeViolations": 0,
+-      "warningRuleViolations": 3
++      "warningRuleViolations": 4
+     }
+   }
+ }
 ```
 
 ## Full output
@@ -366,6 +237,24 @@ _changed_
       "requiredRange": ">=20"
     },
     {
+      "ruleId": "max-file-size",
+      "severity": "warn",
+      "patterns": [
+        "assets/**/*.svg"
+      ],
+      "message": "Compress it or serve it from the CDN",
+      "matchedFiles": [
+        "assets/logo.svg"
+      ],
+      "maxSizeBytes": 1024,
+      "oversizeFiles": [
+        {
+          "file": "assets/logo.svg",
+          "sizeBytes": 1410
+        }
+      ]
+    },
+    {
       "ruleId": "require-package-fields",
       "severity": "warn",
       "patterns": [
@@ -422,7 +311,7 @@ _changed_
     "counts": {
       "errorRuleViolations": 6,
       "releaseAgeViolations": 0,
-      "warningRuleViolations": 3
+      "warningRuleViolations": 4
     }
   }
 }
