@@ -67,6 +67,15 @@
   margin: 1rem 0;
 }
 
+/* A missing baseline is not a defect — it is the expected consequence of
+   adding a config key the target branch has never seen. Red would put it
+   in the same visual class as a broken invariant, which is exactly the
+   distinction the reader needs. */
+.or-callout.or-note {
+  border-left-color: #0969da;
+  background: #ddf4ff;
+}
+
 /* jekyll-theme-primer is a light-only theme with every colour hardcoded,
    so a reader on a dark system gets a stark white page next to every
    other tab. This mirrors GitHub's own dark palette rather than
@@ -260,5 +269,9 @@
   .or-callout {
     background: rgba(248, 81, 73, 0.1);
     color: #c9d1d9;
+  }
+
+  .or-callout.or-note {
+    background: rgba(56, 139, 253, 0.15);
   }
 }
