@@ -8,6 +8,7 @@ import {
 import {
   createMockPackage,
   createMockReleaseAge,
+  createMockReleaseAgeViolation,
 } from '../helpers/mock-reports';
 
 function makeAggregated(
@@ -34,7 +35,6 @@ describe('computeCompliance', () => {
     const result = computeCompliance(makeAggregated());
     expect(result.compliant).toBe(true);
     expect(result.errorRuleViolations).toHaveLength(0);
-    expect(result.releaseAgeViolations).toHaveLength(0);
   });
 
   it('is non-compliant when an error-severity rule violation is present', () => {
@@ -42,7 +42,6 @@ describe('computeCompliance', () => {
       ruleId: 'require-files',
       severity: 'error',
       patterns: ['.nvmrc'],
-      matchedFiles: [],
     };
     const result = computeCompliance(
       makeAggregated({ ruleViolations: [violation] }),
@@ -56,13 +55,12 @@ describe('computeCompliance', () => {
       ruleId: 'require-files',
       severity: 'warn',
       patterns: ['.editorconfig'],
-      matchedFiles: [],
     };
     const infoViolation: RuleViolation = {
       ruleId: 'no-files',
       severity: 'info',
       patterns: ['orbis.config.*'],
-      matchedFiles: ['orbis.config.ts'],
+      matchedFile: 'orbis.config.ts',
     };
     const result = computeCompliance(
       makeAggregated({ ruleViolations: [warnViolation, infoViolation] }),
@@ -76,7 +74,6 @@ describe('computeCompliance', () => {
       severity: 'error',
       patterns: ['moment'],
       message: 'Use date-fns',
-      matchedFiles: [],
       packageName: 'moment',
     };
     const result = computeCompliance(
@@ -91,7 +88,6 @@ describe('computeCompliance', () => {
       ruleId: 'no-packages',
       severity: 'warn',
       patterns: ['lodash'],
-      matchedFiles: [],
       packageName: 'lodash',
     };
     const result = computeCompliance(
@@ -109,14 +105,12 @@ describe('computeCompliance', () => {
       ruleId: 'no-packages',
       severity: 'error',
       patterns: ['moment'],
-      matchedFiles: [],
       packageName: 'moment',
     };
     const missingFile: RuleViolation = {
       ruleId: 'require-files',
       severity: 'error',
       patterns: ['.nvmrc'],
-      matchedFiles: [],
     };
     const result = computeCompliance(
       makeAggregated({ ruleViolations: [forbidden, missingFile] }),
@@ -141,14 +135,12 @@ describe('computeCompliance', () => {
         ruleId: 'no-packages',
         severity,
         patterns: ['moment'],
-        matchedFiles: [],
         packageName: 'moment',
       };
       const sameSeverityFileRule: RuleViolation = {
         ruleId: 'require-files',
         severity,
         patterns: ['.nvmrc'],
-        matchedFiles: [],
       };
       const result = computeCompliance(
         makeAggregated({ ruleViolations: [forbidden, sameSeverityFileRule] }),
@@ -165,7 +157,6 @@ describe('computeCompliance', () => {
       ruleId: 'no-packages',
       severity: 'info',
       patterns: ['moment'],
-      matchedFiles: [],
       packageName: 'moment',
     };
     const result = computeCompliance(
@@ -177,56 +168,51 @@ describe('computeCompliance', () => {
     expect(result.status).toBe('compliant');
   });
 
+  // release-age violations are ordinary RuleViolations now (#93 superseded)
+  // — no special bucket, no packageDistribution reads. computeCompliance
+  // sorts them by severity exactly like every other rule.
   it('is non-compliant when an enforced package has a major_overdue breach', () => {
-    const pkg = createMockPackage('@my-org/internal', {
-      releaseAge: createMockReleaseAge({
-        worstLevel: 'major_overdue',
-        severity: 'error',
-      }),
+    const violation = createMockReleaseAgeViolation('@my-org/internal', {
+      worstLevel: 'major_overdue',
+      severity: 'error',
     });
     const result = computeCompliance(
-      makeAggregated({ packageDistribution: [pkg] }),
+      makeAggregated({ ruleViolations: [violation] }),
     );
     expect(result.compliant).toBe(false);
-    expect(result.releaseAgeViolations).toEqual([pkg]);
+    expect(result.errorRuleViolations).toEqual([violation]);
   });
 
   it('a major_overdue on a warn-severity (not enforced) package does not affect compliance', () => {
-    const pkg = createMockPackage('react', {
-      releaseAge: createMockReleaseAge({
-        worstLevel: 'major_overdue',
-        severity: 'warn',
-      }),
+    const violation = createMockReleaseAgeViolation('react', {
+      worstLevel: 'major_overdue',
+      severity: 'warn',
     });
     const result = computeCompliance(
-      makeAggregated({ packageDistribution: [pkg] }),
+      makeAggregated({ ruleViolations: [violation] }),
     );
     expect(result.compliant).toBe(true);
   });
 
   it('is non-compliant when an enforced package has a minor_overdue breach', () => {
-    const pkg = createMockPackage('@my-org/internal', {
-      releaseAge: createMockReleaseAge({
-        worstLevel: 'minor_overdue',
-        severity: 'error',
-      }),
+    const violation = createMockReleaseAgeViolation('@my-org/internal', {
+      worstLevel: 'minor_overdue',
+      severity: 'error',
     });
     const result = computeCompliance(
-      makeAggregated({ packageDistribution: [pkg] }),
+      makeAggregated({ ruleViolations: [violation] }),
     );
     expect(result.compliant).toBe(false);
-    expect(result.releaseAgeViolations).toEqual([pkg]);
+    expect(result.errorRuleViolations).toEqual([violation]);
   });
 
   it('a minor_overdue on a warn-severity (not enforced) package does not affect compliance', () => {
-    const pkg = createMockPackage('react', {
-      releaseAge: createMockReleaseAge({
-        worstLevel: 'minor_overdue',
-        severity: 'warn',
-      }),
+    const violation = createMockReleaseAgeViolation('react', {
+      worstLevel: 'minor_overdue',
+      severity: 'warn',
     });
     const result = computeCompliance(
-      makeAggregated({ packageDistribution: [pkg] }),
+      makeAggregated({ ruleViolations: [violation] }),
     );
     expect(result.compliant).toBe(true);
   });
@@ -244,7 +230,6 @@ describe('computeCompliance — status (#55)', () => {
       ruleId: 'require-files',
       severity: 'error',
       patterns: ['.nvmrc'],
-      matchedFiles: [],
     };
     const result = computeCompliance(
       makeAggregated({ ruleViolations: [violation] }),
@@ -254,22 +239,18 @@ describe('computeCompliance — status (#55)', () => {
   });
 
   it("status is 'non-compliant' when an enforced package is overdue, regardless of any warn-severity rules present", () => {
-    const pkg = createMockPackage('@my-org/internal', {
-      releaseAge: createMockReleaseAge({
-        worstLevel: 'major_overdue',
-        severity: 'error',
-      }),
-    });
+    const releaseAgeViolation = createMockReleaseAgeViolation(
+      '@my-org/internal',
+      { worstLevel: 'major_overdue', severity: 'error' },
+    );
     const warnRule: RuleViolation = {
       ruleId: 'require-files',
       severity: 'warn',
       patterns: ['.editorconfig'],
-      matchedFiles: [],
     };
     const result = computeCompliance(
       makeAggregated({
-        packageDistribution: [pkg],
-        ruleViolations: [warnRule],
+        ruleViolations: [releaseAgeViolation, warnRule],
       }),
     );
     // Error trumps warn — an error-level release-age breach is non-compliant,
@@ -282,7 +263,6 @@ describe('computeCompliance — status (#55)', () => {
       ruleId: 'require-files',
       severity: 'warn',
       patterns: ['.editorconfig'],
-      matchedFiles: [],
     };
     const result = computeCompliance(
       makeAggregated({ ruleViolations: [violation] }),
@@ -297,7 +277,6 @@ describe('computeCompliance — status (#55)', () => {
       ruleId: 'no-packages',
       severity: 'warn',
       patterns: ['lodash'],
-      matchedFiles: [],
       packageName: 'lodash',
     };
     const result = computeCompliance(
@@ -314,24 +293,19 @@ describe('computeCompliance — status (#55)', () => {
     // (not enforced), and pending-only @acme-ui/* entries (worstLevel null).
     // None of these are warn-severity *rules*, so the
     // official status must remain 'compliant'.
+    // A pending-only package (worstLevel: null — nothing has breached yet)
+    // never becomes a `ReleaseAgeViolation` at all (see
+    // `evaluateReleaseAge`, src/rules/release-age.ts) — `pendingUpgrade` is
+    // pure Packages-table display data, so it can't appear in
+    // `ruleViolations` no matter its severity. Only the info-severity
+    // no-files signal is a real violation here, and info never demotes
+    // `compliant` → `warning` on its own.
     const infoSignal: RuleViolation = {
       ruleId: 'no-files',
       severity: 'info',
       patterns: ['orbis.config.*'],
-      matchedFiles: ['orbis.config.ts'],
+      matchedFile: 'orbis.config.ts',
     };
-    const nonEnforcedOverdue = createMockPackage('react-instantsearch', {
-      releaseAge: createMockReleaseAge({
-        worstLevel: 'major_overdue',
-        severity: 'warn',
-      }),
-    });
-    const anotherNonEnforcedOverdue = createMockPackage('react-router-dom', {
-      releaseAge: createMockReleaseAge({
-        worstLevel: 'minor_overdue',
-        severity: 'warn',
-      }),
-    });
     const pendingOnly = createMockPackage('@acme-ui/pulse', {
       releaseAge: createMockReleaseAge({
         worstLevel: null,
@@ -349,17 +323,32 @@ describe('computeCompliance — status (#55)', () => {
     const result = computeCompliance(
       makeAggregated({
         ruleViolations: [infoSignal],
-        packageDistribution: [
-          nonEnforcedOverdue,
-          anotherNonEnforcedOverdue,
-          pendingOnly,
-        ],
+        packageDistribution: [pendingOnly],
       }),
     );
 
     expect(result.status).toBe('compliant');
     expect(result.compliant).toBe(true);
     expect(result.warningRuleViolations).toHaveLength(0);
-    expect(result.releaseAgeViolations).toHaveLength(0);
+  });
+
+  // Intentional behavior change from the pre-rule-ification design: a
+  // warn-severity (not enforced) overdue package used to be invisible to
+  // the warning bucket entirely — release-age had its own compliance path
+  // that only ever looked at error severity. Now that release-age
+  // violations are ordinary RuleViolations, a warn-severity breach behaves
+  // exactly like a warn-severity `no-packages` hit: it demotes `compliant`
+  // → `warning`, consistent with every other rule.
+  it("status is 'warning' when a non-enforced (warn-severity) release-age breach is the only violation present", () => {
+    const violation = createMockReleaseAgeViolation('react-instantsearch', {
+      worstLevel: 'major_overdue',
+      severity: 'warn',
+    });
+    const result = computeCompliance(
+      makeAggregated({ ruleViolations: [violation] }),
+    );
+    expect(result.status).toBe('warning');
+    expect(result.compliant).toBe(true);
+    expect(result.warningRuleViolations).toEqual([violation]);
   });
 });

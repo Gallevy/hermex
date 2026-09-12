@@ -1,6 +1,5 @@
 import type { AggregatedReport } from './aggregator';
 import type { RuleViolation } from '../rules/evaluator';
-import type { PackageDistribution } from './package-distribution';
 import { groupBySeverity } from './severity-format';
 
 /**
@@ -19,41 +18,39 @@ export type ComplianceStatus = 'compliant' | 'warning' | 'non-compliant';
 export interface ComplianceResult {
   compliant: boolean;
   status: ComplianceStatus;
-  /** Every error-severity rule violation, whatever its `type`. */
+  /** Every error-severity rule violation, whatever its `type` — release-age
+   * included, now that it's a rule like any other (#93 superseded). */
   errorRuleViolations: RuleViolation[];
-  releaseAgeViolations: PackageDistribution[];
   /** Every warn-severity rule violation, whatever its `type`. */
   warningRuleViolations: RuleViolation[];
 }
 
 /**
- * A package is a compliance failure when its releaseAge severity is 'error'
- * (i.e. it's in scope per `releaseAge.enforceOn`) AND it has any breached
- * threshold at all (worstLevel is non-null) — both 'minor_overdue' and
- * 'major_overdue' fail comply for an enforced package; only severity
- * decides mandatory vs advisory, not which tier breached (#28).
+ * A package is a compliance failure when its governing `release-age` rule
+ * entry resolves to severity 'error' AND it has any breached threshold at
+ * all (worstLevel is non-null) — both 'minor_overdue' and 'major_overdue'
+ * fail comply for an enforced package; only severity decides mandatory vs
+ * advisory, not which tier breached (#28). This is no longer special-cased
+ * here at all: `ReleaseAgeViolation`s are ordinary `RuleViolation`s in
+ * `aggregated.ruleViolations` (`src/rules/release-age.ts`), so they fall
+ * out of the same severity grouping as every other rule.
  *
  * The `warning` tier is deliberately narrow: it covers only warn-severity
  * *rule* violations — signals the policy author opted into. Severity alone
  * decides the bucket; the rule's `type` never does. A non-enforced
- * (severity 'warn') overdue
- * release-age package or a not-yet-due `pendingUpgrade` is advisory data,
- * not a warning, and must not on its own demote `compliant` → `warning`.
- * Consumers that treated any non-blocking outdated row as Warning disagreed
- * with `comply`; reading `status` here is the fix (#55).
+ * (severity 'warn') overdue release-age package or a not-yet-due
+ * `pendingUpgrade` is advisory data, not a warning, and must not on its own
+ * demote `compliant` → `warning`. Consumers that treated any non-blocking
+ * outdated row as Warning disagreed with `comply`; reading `status` here is
+ * the fix (#55).
  */
 export function computeCompliance(
   aggregated: AggregatedReport,
 ): ComplianceResult {
   const { error: errorRuleViolations, warn: warningRuleViolations } =
     groupBySeverity(aggregated.ruleViolations);
-  const releaseAgeViolations = aggregated.packageDistribution.filter(
-    (p) =>
-      p.releaseAge?.severity === 'error' && p.releaseAge?.worstLevel !== null,
-  );
 
-  const compliant =
-    errorRuleViolations.length === 0 && releaseAgeViolations.length === 0;
+  const compliant = errorRuleViolations.length === 0;
 
   const status: ComplianceStatus = !compliant
     ? 'non-compliant'
@@ -65,7 +62,6 @@ export function computeCompliance(
     compliant,
     status,
     errorRuleViolations,
-    releaseAgeViolations,
     warningRuleViolations,
   };
 }
@@ -75,12 +71,7 @@ export function computeCompliance(
  * verdict and `--summary-file` print — a display concern, which is why it
  * lives here rather than in the emitted JSON (consumers read `compliant`, or
  * add the buckets themselves; they're disjoint).
- *
- * Shared by those two renderers because they had this sum copied between
- * them, and both got it wrong the same way when `no-packages` moved into
- * `ruleViolations` (#77): each was still adding a separate banned-package
- * bucket that now overlapped, double-reporting every forbidden package.
  */
 export function countMandatoryViolations(result: ComplianceResult): number {
-  return result.errorRuleViolations.length + result.releaseAgeViolations.length;
+  return result.errorRuleViolations.length;
 }

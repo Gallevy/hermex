@@ -9,6 +9,7 @@ export type {
   MaxFileSizeRule,
   EngineVersionRule,
   CodeownersRule,
+  ReleaseAgeRuleConfig,
   PackagesConfig,
   VersusConfig,
   RulesConfig,
@@ -26,6 +27,7 @@ export type {
   ResolvedMaxFileSizeRule,
   ResolvedEngineVersionRule,
   ResolvedCodeownersRule,
+  ResolvedReleaseAgeRuleConfig,
   ResolvedRulesConfig,
   ResolvedHermexConfig,
 } from './overrides';

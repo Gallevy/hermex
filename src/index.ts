@@ -12,6 +12,7 @@ export type {
   MaxFileSizeRule,
   EngineVersionRule,
   CodeownersRule,
+  ReleaseAgeRuleConfig,
   PackagesConfig,
   VersusConfig,
   RulesConfig,
@@ -123,7 +124,6 @@ export interface HermexScanResult {
     compliant: boolean;
     counts: {
       errorRuleViolations: number;
-      releaseAgeViolations: number;
       warningRuleViolations: number;
     };
   };

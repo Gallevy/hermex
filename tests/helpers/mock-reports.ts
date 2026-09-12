@@ -4,6 +4,7 @@ import type {
   PackageInventoryEntry,
 } from '../../src/utils/aggregator';
 import type { ReleaseAgeEntry } from '../../src/npm-registry/types';
+import type { ReleaseAgeViolation } from '../../src/rules/evaluator';
 
 /**
  * Creates a minimal UsageReport with all required fields.
@@ -109,6 +110,28 @@ export function createMockReleaseAge(
     upgrades: [],
     worstLevel: null,
     severity: 'error',
+    scope: 'root',
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a minimal `ReleaseAgeViolation` — release-age is a rule like any
+ * other now (#93 superseded), so this is what a mandatory/warn-severity
+ * overdue package looks like in `ruleViolations`, alongside its richer
+ * `createMockReleaseAge` display counterpart on `packageDistribution`.
+ */
+export function createMockReleaseAgeViolation(
+  packageName: string,
+  overrides: Partial<ReleaseAgeViolation> = {},
+): ReleaseAgeViolation {
+  return {
+    ruleId: 'release-age',
+    severity: 'error',
+    patterns: [packageName],
+    packageName,
+    installedVersion: '1.0.0',
+    worstLevel: 'major_overdue',
     scope: 'root',
     ...overrides,
   };

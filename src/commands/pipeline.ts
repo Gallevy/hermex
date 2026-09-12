@@ -9,7 +9,7 @@ import { findFiles } from '../utils/file-utils';
 import { findAndParseLockfile } from '../lock-parser';
 import { evaluateRules } from '../rules/evaluator';
 import { collectDeclaredPackages } from '../rules/shared';
-import { enrichWithReleaseAge } from '../npm-registry/enricher';
+import { evaluateReleaseAge } from '../rules/release-age';
 import { applyOverrides } from '../config/overrides';
 import { runPlugins } from '../plugins';
 import type { HermexConfig } from '../config/types';
@@ -122,14 +122,18 @@ export async function runPipeline(
     ...evaluatorViolations,
   ];
 
-  if (resolvedConfig.releaseAge.enabled) {
+  // `rules['release-age']` being non-empty IS "release-age enabled" — no
+  // separate flag (see src/config/schema.ts's releaseAge block comment).
+  if (resolvedConfig.rules['release-age'].length > 0) {
     if (spinner.isEnabled)
       spinner.start('Fetching release age from registry...');
-    const { enriched, skipped } = await enrichWithReleaseAge(
+    const { enriched, violations, skipped } = await evaluateReleaseAge(
       aggregated.packageDistribution,
       resolvedConfig.releaseAge,
+      resolvedConfig.rules['release-age'],
     );
     aggregated.packageDistribution = enriched;
+    aggregated.ruleViolations = [...aggregated.ruleViolations, ...violations];
     spinner.succeed(
       chalk.blue(
         `Release age fetched${skipped > 0 ? chalk.gray(` (${skipped} packages skipped — registry unreachable or not found)`) : ''}`,

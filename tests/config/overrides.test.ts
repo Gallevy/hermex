@@ -2,7 +2,10 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { applyOverrides } from '../../src/config/overrides';
+import {
+  applyOverrides,
+  resolveReleaseAgeRule,
+} from '../../src/config/overrides';
 import { HermexConfigSchema } from '../../src/config/schema';
 import type { HermexConfigInput } from '../../src/config/schema';
 
@@ -921,5 +924,161 @@ describe('overrides schema validation', () => {
         },
       }),
     ).not.toThrow();
+  });
+
+  // release-age's 'off' entries must survive resolution as real, matchable
+  // entries (unlike every other rule, where 'off' just vanishes) — the
+  // whole point being that a package it matches is genuinely exempted, not
+  // silently handed back to a broader entry or the implicit baseline.
+  it('keeps a release-age "off" entry in the resolved rules array, unlike every other rule', () => {
+    const dir = makeRepo('some-app');
+    try {
+      const config = createConfig({
+        rules: {
+          'release-age': [{ severity: 'off', patterns: ['@internal/*'] }],
+        },
+      });
+      const result = applyOverrides(config, dir);
+      expect(result.rules['release-age']).toEqual([
+        {
+          severity: 'off',
+          patterns: ['@internal/*'],
+          thresholds: { patch: 30, minor: 45, major: 60 },
+          scope: 'root',
+        },
+      ]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('upserts a release-age override on top of the base by patterns identity, same as every other rule', () => {
+    const dir = makeRepo('@acme/internal-tools-x');
+    try {
+      const config = createConfig({
+        rules: {
+          'release-age': [{ severity: 'warn', patterns: ['@acme/*'] }],
+        },
+        overrides: [
+          {
+            match: ['@acme/internal-tools-*'],
+            rules: {
+              'release-age': [{ severity: 'off', patterns: ['@acme/*'] }],
+            },
+          },
+        ],
+      });
+      const result = applyOverrides(config, dir);
+      expect(result.rules['release-age']).toEqual([
+        {
+          severity: 'off',
+          patterns: ['@acme/*'],
+          thresholds: { patch: 30, minor: 45, major: 60 },
+          scope: 'root',
+        },
+      ]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('resolveReleaseAgeRule', () => {
+  const DEFAULT_THRESHOLDS = { patch: 30, minor: 45, major: 60 };
+
+  it('falls back to the implicit ["**"] baseline (severity warn) when no rule entry is authored', () => {
+    const winner = resolveReleaseAgeRule('react', []);
+    expect(winner).toEqual({
+      severity: 'warn',
+      patterns: ['**'],
+      thresholds: DEFAULT_THRESHOLDS,
+      scope: 'root',
+    });
+  });
+
+  it('a matching authored entry beats the implicit baseline', () => {
+    const winner = resolveReleaseAgeRule('react', [
+      {
+        severity: 'error',
+        patterns: ['react'],
+        thresholds: DEFAULT_THRESHOLDS,
+        scope: 'root',
+      },
+    ]);
+    expect(winner.severity).toBe('error');
+  });
+
+  it('last match wins when two entries both match the same package', () => {
+    const winner = resolveReleaseAgeRule('@acme/widget', [
+      {
+        severity: 'warn',
+        patterns: ['@acme/*'],
+        thresholds: DEFAULT_THRESHOLDS,
+        scope: 'root',
+      },
+      {
+        severity: 'error',
+        patterns: ['@acme/widget'],
+        thresholds: DEFAULT_THRESHOLDS,
+        scope: 'tree',
+      },
+    ]);
+    expect(winner.severity).toBe('error');
+    expect(winner.scope).toBe('tree');
+  });
+
+  it('an entry listed earlier does not win over one listed later, even if it is the more specific pattern', () => {
+    // Order, not specificity, decides — same as ESLint overrides. A config
+    // author who wants the specific entry to win must list it last.
+    const winner = resolveReleaseAgeRule('@acme/widget', [
+      {
+        severity: 'error',
+        patterns: ['@acme/widget'],
+        thresholds: DEFAULT_THRESHOLDS,
+        scope: 'root',
+      },
+      {
+        severity: 'warn',
+        patterns: ['@acme/*'],
+        thresholds: DEFAULT_THRESHOLDS,
+        scope: 'root',
+      },
+    ]);
+    expect(winner.severity).toBe('warn');
+  });
+
+  it('an "off" entry governs and is returned as the winner — never silently skipped', () => {
+    const winner = resolveReleaseAgeRule('@internal/tool', [
+      {
+        severity: 'warn',
+        patterns: ['**'],
+        thresholds: DEFAULT_THRESHOLDS,
+        scope: 'root',
+      },
+      {
+        severity: 'off',
+        patterns: ['@internal/*'],
+        thresholds: DEFAULT_THRESHOLDS,
+        scope: 'root',
+      },
+    ]);
+    expect(winner.severity).toBe('off');
+  });
+
+  it('a non-matching package falls through unmatched entries to the baseline', () => {
+    const winner = resolveReleaseAgeRule('lodash', [
+      {
+        severity: 'error',
+        patterns: ['@acme/*'],
+        thresholds: DEFAULT_THRESHOLDS,
+        scope: 'root',
+      },
+    ]);
+    expect(winner).toEqual({
+      severity: 'warn',
+      patterns: ['**'],
+      thresholds: DEFAULT_THRESHOLDS,
+      scope: 'root',
+    });
   });
 });

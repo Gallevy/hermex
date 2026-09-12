@@ -151,7 +151,7 @@ describe('evaluateCodeowners', () => {
     );
     expect(result).toHaveLength(1);
     expect(result[0].ruleId).toBe('require-codeowners');
-    expect(result[0].matchedFiles).toEqual([]);
+    expect((result[0] as { reason: string }).reason).toBe('missing-file');
   });
 
   it('no violation when full coverage via `* @org/frontend`', () => {
@@ -176,7 +176,7 @@ describe('evaluateCodeowners', () => {
       ['src/App.tsx', 'lib/x.ts'],
     );
     expect(result).toHaveLength(1);
-    expect(result[0].matchedFiles).toEqual(['lib/x.ts']);
+    expect((result[0] as { matchedFile: string }).matchedFile).toBe('lib/x.ts');
   });
 
   it('no violation when the rule is not configured, even without a CODEOWNERS file', () => {
@@ -237,7 +237,9 @@ describe('evaluateCodeowners — requiredOwners', () => {
       ['src/App.tsx'],
     );
     expect(result).toHaveLength(1);
-    expect(result[0].matchedFiles).toEqual(['src/App.tsx']);
+    expect((result[0] as { matchedFile: string }).matchedFile).toBe(
+      'src/App.tsx',
+    );
   });
 
   it('does not flag a file owned by a required owner', () => {
@@ -277,15 +279,18 @@ describe('evaluateCodeowners — requiredOwners', () => {
       ['src/App.tsx', 'lib/x.ts'],
     );
     expect(result).toHaveLength(2);
-    const unownedViolation = result.find((v) =>
-      v.matchedFiles.includes('lib/x.ts'),
+    const unownedViolation = result.find(
+      (v) => (v as { matchedFile?: string }).matchedFile === 'lib/x.ts',
     );
-    const wrongOwnerViolation = result.find((v) =>
-      v.matchedFiles.includes('src/App.tsx'),
+    const wrongOwnerViolation = result.find(
+      (v) => (v as { matchedFile?: string }).matchedFile === 'src/App.tsx',
     );
     expect(unownedViolation).toBeDefined();
     expect(wrongOwnerViolation).toBeDefined();
-    expect(unownedViolation).not.toBe(wrongOwnerViolation);
+    expect((unownedViolation as { reason: string }).reason).toBe('unowned');
+    expect((wrongOwnerViolation as { reason: string }).reason).toBe(
+      'wrong-owner',
+    );
   });
 
   it('uses a custom message for a wrong-owner violation when one is configured', () => {

@@ -3,7 +3,7 @@
 
 # `comply-all-rule-types`
 
-Every one of the ten rule types in one table, at three severities — the only case that renders max-file-size, require-engine-version, codeowners and both package-field shapes.
+Every one of the eleven rule types in one run, at three severities — the only case that renders max-file-size, require-engine-version, codeowners, both package-field shapes, and release-age together. release-age itself never gets a Rules-table row (its display is the Packages table) — that split is what this case pins.
 
 ## What runs
 
@@ -14,6 +14,7 @@ Every one of the ten rule types in one table, at three severities — the only c
 | **Config** | [`fixtures/repos/all-rule-types/hermex.config.ts`](../repos/all-rule-types/hermex.config.ts) |
 | **Fixture** | [`fixtures/repos/all-rule-types`](../repos/all-rule-types) — [overview](../repos/all-rule-types/README.md) |
 | **Asserted exit code** | `1` |
+| **Registry** | offline, served from [`fixtures/registry/timelines.ts`](../registry/timelines.ts) — never the network |
 
 ## Recorded output
 

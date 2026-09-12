@@ -53,7 +53,6 @@ describe('detectForbiddenPackages', () => {
         severity: 'error',
         patterns: ['moment'],
         message: 'Use dayjs',
-        matchedFiles: [],
         packageName: 'moment',
       },
     ]);
@@ -98,21 +97,6 @@ describe('detectForbiddenPackages', () => {
       '@legacy/widget',
       '@legacy/table',
     ]);
-  });
-
-  // A package is not a file. The inventory carries no file paths at all, and
-  // a declared-but-unimported hit (#75) has none to carry — so matchedFiles
-  // stays empty rather than being repurposed to hold the package name.
-  it('leaves matchedFiles empty', () => {
-    const config = createConfig({
-      rules: {
-        'no-packages': [{ severity: 'error', patterns: ['moment'] }],
-      },
-    });
-
-    const violations = detectForbiddenPackages([used('moment')], config);
-
-    expect(violations[0].matchedFiles).toEqual([]);
   });
 
   it('uses the first matching rule when a package matches two forbid rules', () => {
@@ -179,7 +163,6 @@ describe('detectForbiddenPackages', () => {
         severity: 'error',
         patterns: ['@acme/coverager'],
         message: 'Remove deprecated internal package',
-        matchedFiles: [],
         packageName: '@acme/coverager',
       },
     ]);
@@ -350,7 +333,7 @@ describe('detectRequiredPackages', () => {
     expect(violations).toHaveLength(1);
   });
 
-  it('yields a require-packages violation with the rule patterns and empty matchedFiles when unsatisfied', () => {
+  it('yields a require-packages violation with the rule patterns when unsatisfied', () => {
     const config = createConfig({
       rules: {
         'require-packages': [
@@ -367,7 +350,6 @@ describe('detectRequiredPackages', () => {
         severity: 'error',
         patterns: ['react'],
         message: 'Need react',
-        matchedFiles: [],
       },
     ]);
   });

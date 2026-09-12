@@ -19,8 +19,7 @@ import { isInstalled, isOwnedByRepo, isUsed } from './package-inventory';
  * Returns `RuleViolation`s like every other rule (#77). One violation per
  * matched package, so a glob rule (`@legacy/*`) hitting three packages
  * yields three entries sharing `patterns` and differing on `packageName` —
- * `matchedFiles` stays empty because the inventory carries no file paths,
- * and a hit can be declared-only with no files at all (#75).
+ * a hit can be declared-only with no files involved at all (#75).
  */
 export function detectForbiddenPackages(
   inventory: PackageInventoryEntry[],
@@ -42,7 +41,6 @@ export function detectForbiddenPackages(
           severity: rule.severity,
           patterns: rule.patterns,
           message: rule.message,
-          matchedFiles: [],
           packageName: entry.packageName,
         });
         break;
@@ -84,7 +82,6 @@ export function detectRequiredPackages(
         severity: rule.severity,
         patterns: rule.patterns,
         message: rule.message,
-        matchedFiles: [],
       });
     }
   }

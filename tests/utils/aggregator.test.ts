@@ -257,13 +257,17 @@ describe('aggregateReports — package distribution', () => {
     expect(result.totalComponents).toBe(2);
   });
 
-  it('surfaces a lockfile-only, side-effect-imported package that matches releaseAge.enforceOn', () => {
+  it('surfaces a lockfile-only, side-effect-imported package matched by a release-age rule', () => {
     // No component ever imports '@acme-ui/pulse-styles' — it's a CSS
     // package pulled in only via `import '@acme-ui/pulse-styles/button.css'`,
     // which has no specifiers and never shows up in JSX/import usage.
     const report = reportWithNamedImport('Button', 'react');
     const config = createConfig({
-      releaseAge: { enabled: true, enforceOn: ['@acme-ui/pulse-styles'] },
+      rules: {
+        'release-age': [
+          { severity: 'error', patterns: ['@acme-ui/pulse-styles'] },
+        ],
+      },
     });
 
     const result = aggregateReports(
@@ -301,7 +305,6 @@ describe('aggregateReports — forbidden packages', () => {
       severity: 'error',
       patterns: ['moment'],
       message: 'Use dayjs',
-      matchedFiles: [],
       packageName: 'moment',
     });
   });
@@ -361,7 +364,6 @@ describe('aggregateReports — forbidden packages', () => {
         severity: 'error',
         patterns: ['jest'],
         message: 'Use vitest',
-        matchedFiles: [],
         packageName: 'jest',
       },
     ]);

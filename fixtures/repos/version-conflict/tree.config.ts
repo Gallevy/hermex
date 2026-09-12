@@ -3,5 +3,8 @@ import base from './hermex.config.ts';
 
 export default {
   ...base,
-  releaseAge: { ...base.releaseAge, scope: 'tree' },
+  rules: {
+    ...base.rules,
+    'release-age': [{ severity: 'error', patterns: ['react'], scope: 'tree' }],
+  },
 } satisfies HermexConfigInput;
