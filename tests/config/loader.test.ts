@@ -69,6 +69,45 @@ describe('loadConfig', () => {
     await expect(loadConfig(cwd, configPath)).rejects.toThrow();
   });
 
+  // `maxSize` is the one config value that is normalized on parse rather
+  // than passed through — everything downstream reads whole bytes.
+  it('normalizes a max-file-size maxSize string into bytes', async () => {
+    const cwd = scratchDir();
+    const configPath = writeConfig(
+      cwd,
+      `export default { rules: { 'max-file-size': { severity: 'error', patterns: ['**/*.svg'], maxSize: '200kb' } } };`,
+    );
+    const result = await loadConfig(cwd, configPath);
+    expect(result.rules['max-file-size']).toEqual({
+      severity: 'error',
+      patterns: ['**/*.svg'],
+      maxSize: 204800,
+    });
+  });
+
+  it('leaves a numeric max-file-size maxSize as bytes', async () => {
+    const cwd = scratchDir();
+    const configPath = writeConfig(
+      cwd,
+      `export default { rules: { 'max-file-size': [{ severity: 'warn', patterns: ['**/*.png'], maxSize: 4096 }] } };`,
+    );
+    const result = await loadConfig(cwd, configPath);
+    expect(result.rules['max-file-size']).toEqual([
+      { severity: 'warn', patterns: ['**/*.png'], maxSize: 4096 },
+    ]);
+  });
+
+  it('throws, naming the value, when maxSize is not a valid size', async () => {
+    const cwd = scratchDir();
+    const configPath = writeConfig(
+      cwd,
+      `export default { rules: { 'max-file-size': { severity: 'error', patterns: ['**/*.svg'], maxSize: '200 gigabytes' } } };`,
+    );
+    await expect(loadConfig(cwd, configPath)).rejects.toThrow(
+      /Invalid file size .*200 gigabytes/,
+    );
+  });
+
   it('throws when the config has an unrecognized key', async () => {
     const cwd = scratchDir();
     const configPath = writeConfig(cwd, `export default { rulez: {} };`);

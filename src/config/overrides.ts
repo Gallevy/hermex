@@ -5,6 +5,7 @@ import type {
   RulesConfig,
   RuleConfig,
   PackageFieldRule,
+  MaxFileSizeRule,
   EngineVersionRule,
   CodeownersRule,
 } from './schema';
@@ -21,6 +22,7 @@ type Resolved<T extends { severity: string }> = T & {
 
 export type ResolvedRuleConfig = Resolved<RuleConfig>;
 export type ResolvedPackageFieldRule = Resolved<PackageFieldRule>;
+export type ResolvedMaxFileSizeRule = Resolved<MaxFileSizeRule>;
 export type ResolvedEngineVersionRule = Resolved<EngineVersionRule>;
 export type ResolvedCodeownersRule = Resolved<CodeownersRule>;
 
@@ -28,6 +30,7 @@ export type ResolvedCodeownersRule = Resolved<CodeownersRule>;
 export interface ResolvedRulesConfig {
   'no-files': ResolvedRuleConfig[];
   'require-files': ResolvedRuleConfig[];
+  'max-file-size': ResolvedMaxFileSizeRule[];
   'no-packages': ResolvedRuleConfig[];
   'require-packages': ResolvedRuleConfig[];
   'require-scripts': ResolvedRuleConfig[];
@@ -111,6 +114,7 @@ function resolveRules(rules: RulesConfig): ResolvedRulesConfig {
   return {
     'no-files': upsertPatternRules([], toArray(rules['no-files'])),
     'require-files': upsertPatternRules([], toArray(rules['require-files'])),
+    'max-file-size': upsertPatternRules([], toArray(rules['max-file-size'])),
     'no-packages': upsertPatternRules([], toArray(rules['no-packages'])),
     'require-packages': upsertPatternRules(
       [],
@@ -175,6 +179,12 @@ export function applyOverrides(
           rules['require-files'] = upsertPatternRules(
             rules['require-files'],
             toArray(o['require-files']),
+          );
+        }
+        if (o['max-file-size'] !== undefined) {
+          rules['max-file-size'] = upsertPatternRules(
+            rules['max-file-size'],
+            toArray(o['max-file-size']),
           );
         }
         if (o['no-packages'] !== undefined) {

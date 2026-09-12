@@ -14,6 +14,7 @@ import type { CodeownersEntry } from '../../src/rules/codeowners';
 const emptyRules: ResolvedRulesConfig = {
   'no-files': [],
   'require-files': [],
+  'max-file-size': [],
   'no-packages': [],
   'require-packages': [],
   'require-scripts': [],

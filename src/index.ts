@@ -9,6 +9,7 @@ export type {
   ParserName,
   RuleConfig,
   PackageFieldRule,
+  MaxFileSizeRule,
   EngineVersionRule,
   CodeownersRule,
   PackagesConfig,
