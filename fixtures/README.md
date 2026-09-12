@@ -32,7 +32,7 @@ case does not silently add rows to the primary repo's output.
 | --- | --- |
 | `patterns/` | Every import and usage shape the parser recognizes: direct usage, variable assignment, object mapping, lazy loading, namespace imports, JSX in attributes, and a kitchen-sink file combining them. |
 | `aliasing/` | The same component imported under three names still aggregates to one canonical component (#67). |
-| `versus/` | Two packages exporting the same component name stay attributed to their own source instead of collapsing into whichever file was parsed first. |
+| `versus/` | Two packages exporting the same component name stay attributed to their own source instead of collapsing into whichever file was parsed first (`01-`, `02-`). And the **function-only** half of a versus group (`03-`–`06-`): four files that import `lodash`/`es-toolkit` and render nothing, so `usageCount` is 0 for both while the group still has a real split to report (#174). Covers a named import, a subpath import, a dynamic `import()`, and the migrated side. |
 | `declarations/` | `.d.ts` files are skipped, not parsed and not reported as parse errors (#22). |
 | `broken/` | An unparseable file is reported as a parse error without taking the run down (#13). |
 
@@ -40,8 +40,16 @@ The primary `package.json` and `pnpm-lock.yaml` are paired to cover every
 package-inventory axis at once: declared + installed + used, declared and
 installed but never imported (`moment` — the `no-packages` case from
 #75), declared but not installed (`eslint`), installed as a root dependency
-the manifest omits (`react-dom`), and installed transitively only
-(`js-tokens`).
+the manifest omits (`react-dom`), installed transitively only
+(`js-tokens`), and imported purely as functions (`lodash`, `es-toolkit`).
+
+That last pair is the one the corpus was missing before #174. Every versus
+group here used to be a component-library pair, which is the only shape the
+feature worked for — a function-only pair read 0 vs 0 however far its
+migration had got, and no fixture made that visible. `@new-system/arc` covers
+the other half of the same issue: it is named by a versus group and exists
+nowhere in the lockfile, so it must read as *absent* rather than as a real
+dependency sitting at 0%.
 
 ## The secondary repos
 

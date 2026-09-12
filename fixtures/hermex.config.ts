@@ -23,9 +23,24 @@ export default {
     'repos/**',
   ],
   versus: [
+    // Two groups on purpose, because they fail in opposite directions.
+    //
+    // The component pair is the shape versus was built for and the only one
+    // the fixtures covered — which is why #174 went unnoticed. `@new-system/arc`
+    // is deliberately absent from the lockfile: it is the "not a dependency at
+    // all" half of #174, which an exact-name lookup cannot tell from a real
+    // dependency nobody has imported yet, and both used to print a confident 0.
     {
       name: 'Design System Migration',
       packages: ['@design-system/foundation', '@new-system/arc'],
+    },
+    // The function-only pair — the migrations versus is actually used for.
+    // Neither package renders anything, so on the JSX axis this group read
+    // 0 vs 0 no matter how far the migration had got (#174). See
+    // `versus/03-` … `06-function-only-*.ts`.
+    {
+      name: 'Utility Library Migration',
+      packages: ['lodash', 'es-toolkit'],
     },
   ],
   rules: {

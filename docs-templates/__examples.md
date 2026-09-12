@@ -104,7 +104,7 @@ table and is never flagged by `forbid_packages`, but it still counts as installe
 
 ## Versus — Migration Tracking
 
-Track usage split between competing packages:
+Track how a migration between competing packages is going:
 
 ```ts
 export default defineConfig({
@@ -114,14 +114,48 @@ export default defineConfig({
       packages: ['@old/foundation', '@new/arc'],
     },
     {
-      name: 'Icon Library',
-      packages: ['@icons/heroicons', '@icons/feather'],
+      name: 'Date Library',
+      packages: ['moment', 'date-fns'],
     },
   ],
 });
 ```
 
-Output shows a neutral bar split per group — no directional assumption, just usage percentages.
+Output shows a neutral bar split per group — no directional assumption, just the share each
+package holds.
+
+**What the number counts.** Each package's score is **how many scanned files import it** — not
+how many times it is rendered. That matters because most migrations worth tracking are
+function-only (`moment` → `date-fns`, `lodash` → `es-toolkit`, `redux` → `zustand`), and those
+packages never appear in JSX at all. Counting files also keeps the two sides comparable: a file
+that imports three helpers from one package still depends on it once, so consolidating an import
+does not read as migration progress.
+
+A file importing both packages counts for both — percentages are a share of the group, not of
+your file count.
+
+**A package that isn't there.** A group can name a package this repo does not have — a typo, one
+under `packages.ignore`, or one that was never installed. That is reported as *not found in this
+repo* rather than as 0%, because "nobody has migrated yet" and "hermex cannot see this package"
+call for opposite reactions:
+
+```
+  Date Library
+  ──────────────────────────────────────────────────
+  moment      ███████████████████████░░░░░░░ 75.0% (3 files)
+  date-fns    ████████░░░░░░░░░░░░░░░░░░░░░░ 25.0% (1 file)
+
+  Icon Library
+  ──────────────────────────────────────────────────
+  @icons/heroicons  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0.0% (not found in this repo)
+  @icons/feather    ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0.0% (not found in this repo)
+  None of these packages was found in this repo.
+```
+
+In `--format json`, the same split is under `versus[].entries[]` as `count`, `percentage` and
+`present`. The per-package count is also on every row of `packages[]` as `importingFileCount`,
+beside `usageCount` — the first is imports, the second is JSX renders, and for a package used
+only as a function the second is always 0.
 
 ## Compliance Rules
 

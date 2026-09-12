@@ -60,6 +60,11 @@ export function createMockPackage(
     rootVersion: version,
     componentCount: 1,
     usageCount: 1,
+    // Defaults to 1 alongside `usageCount`: the default mock is a package
+    // present on every axis, and a component rendered once came from a file
+    // that imported it once. Override to 0 for the function-only /
+    // never-imported cases (#174).
+    importingFileCount: 1,
     percentage: 100,
     declaredIn: ['dependencies'],
     hasVersionConflict: false,
@@ -76,8 +81,10 @@ export function createMockPackage(
  * Creates a minimal PackageInventoryEntry — by default a package that is
  * declared, installed as a direct dependency, and used once, i.e. present
  * on all three axes. Override to test a single axis in isolation (e.g.
- * `{ usageCount: 0, componentCount: 0 }` for declared-but-never-imported,
- * or `{ declaredIn: [], rootVersion: null }` for purely transitive).
+ * `{ usageCount: 0, componentCount: 0, importingFileCount: 0 }` for
+ * declared-but-never-imported, or `{ declaredIn: [], rootVersion: null }` for
+ * purely transitive). `{ usageCount: 0, componentCount: 0 }` alone leaves the
+ * function-only case: imported, never rendered (#174).
  */
 export function createMockInventoryEntry(
   packageName: string,
@@ -94,6 +101,7 @@ export function createMockInventoryEntry(
     ignored: false,
     usageCount: 1,
     componentCount: 1,
+    importingFileCount: 1,
     ...overrides,
   };
 }

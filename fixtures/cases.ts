@@ -19,7 +19,7 @@ export const cases: FixtureCase[] = [
   {
     name: 'scan-human-default',
     proves:
-      'Baseline human output: the sections a repo gets with no output config of its own.',
+      'Baseline human output: the sections a repo gets with no output config of its own. Includes both Versus groups — a component pair and a function-only one — which is where #174 is visible: the function-only group reports a real split off files-that-import, where it used to read 0 vs 0 off JSX renders, and the package named by no lockfile entry says so instead of reporting a confident 0%.',
     cwd: '.',
     args: ['scan'],
     expectExit: 0,
@@ -56,7 +56,7 @@ export const cases: FixtureCase[] = [
   {
     name: 'scan-json',
     proves:
-      'The full JSON contract: summary.patternCounts (#80), every owned package in packages[], de-duplicated components (#78, #79), and the compliance block (#55).',
+      'The full JSON contract: summary.patternCounts (#80), every owned package in packages[], de-duplicated components (#78, #79), and the compliance block (#55). Also the imported axis (#174): packages[].importingFileCount beside usageCount — lodash and es-toolkit read non-zero on the first and 0 on the second — and versus[].count keyed on it, with present:false marking a configured package the repo does not have.',
     cwd: '.',
     args: ['scan', '--format', 'json'],
     expectExit: 0,

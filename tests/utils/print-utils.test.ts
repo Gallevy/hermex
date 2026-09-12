@@ -1490,8 +1490,9 @@ describe('printVersus', () => {
               packageName: 'react',
               count: 3,
               percentage: 100,
+              present: true,
             },
-            { packageName: 'vue', count: 0, percentage: 0 },
+            { packageName: 'vue', count: 0, percentage: 0, present: true },
           ],
           totalCount: 3,
         },
@@ -1517,8 +1518,9 @@ describe('printVersus', () => {
               packageName: 'react',
               count: 3,
               percentage: 100,
+              present: true,
             },
-            { packageName: 'vue', count: 0, percentage: 0 },
+            { packageName: 'vue', count: 0, percentage: 0, present: true },
           ],
           totalCount: 3,
         },
@@ -1532,7 +1534,41 @@ describe('printVersus', () => {
     expect(output).not.toContain('Input');
   });
 
-  it('shows a "no usage detected" note when a versus group has zero total usage', () => {
+  it('counts each entry in files, singular at one — the unit is files that import the package, not renders (#174)', () => {
+    printVersus(
+      makeAggregated({
+        versusResults: [
+          {
+            name: 'date-libraries',
+            packages: ['moment', 'date-fns'],
+            entries: [
+              {
+                packageName: 'moment',
+                count: 3,
+                percentage: 75,
+                present: true,
+              },
+              {
+                packageName: 'date-fns',
+                count: 1,
+                percentage: 25,
+                present: true,
+              },
+            ],
+            totalCount: 4,
+          },
+        ],
+      }),
+    );
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('(3 files)');
+    expect(output).toContain('(1 file)');
+    expect(output).not.toContain('usages');
+  });
+
+  it('says no imports were detected when the group is real dependencies nobody imports', () => {
     printVersus(
       makeAggregated({
         versusResults: [
@@ -1540,8 +1576,8 @@ describe('printVersus', () => {
             name: 'ui-kits',
             packages: ['react', 'vue'],
             entries: [
-              { packageName: 'react', count: 0, percentage: 0 },
-              { packageName: 'vue', count: 0, percentage: 0 },
+              { packageName: 'react', count: 0, percentage: 0, present: true },
+              { packageName: 'vue', count: 0, percentage: 0, present: true },
             ],
             totalCount: 0,
           },
@@ -1551,7 +1587,71 @@ describe('printVersus', () => {
     const output = consoleSpy.mock.calls
       .map((call) => call.join(' '))
       .join('\n');
-    expect(output).toContain('No usage detected for any package in this group');
+    expect(output).toContain(
+      'No imports detected for any package in this group',
+    );
+  });
+
+  // The other half of #174: the lookup behind the count is an exact-name
+  // match, so a misspelled, ignored or purely transitive package reads 0
+  // exactly like a dependency nobody has imported yet. One sentence for both
+  // is the "confident number that happens to be wrong" the issue is about.
+  it('says the packages are not dependencies at all when none of them is in the distribution', () => {
+    printVersus(
+      makeAggregated({
+        versusResults: [
+          {
+            name: 'ui-kits',
+            packages: ['raect', 'voo'],
+            entries: [
+              { packageName: 'raect', count: 0, percentage: 0, present: false },
+              { packageName: 'voo', count: 0, percentage: 0, present: false },
+            ],
+            totalCount: 0,
+          },
+        ],
+      }),
+    );
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('None of these packages was found in this repo');
+  });
+
+  // The footer above never fires here — the group total is non-zero — so the
+  // absent package has to name itself on its own row or nothing does.
+  it('marks an absent package on its own row when the other side of the group is a real dependency', () => {
+    printVersus(
+      makeAggregated({
+        versusResults: [
+          {
+            name: 'date-libraries',
+            packages: ['moment', 'dat-fns'],
+            entries: [
+              {
+                packageName: 'moment',
+                count: 4,
+                percentage: 100,
+                present: true,
+              },
+              {
+                packageName: 'dat-fns',
+                count: 0,
+                percentage: 0,
+                present: false,
+              },
+            ],
+            totalCount: 4,
+          },
+        ],
+      }),
+    );
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('(not found in this repo)');
+    expect(output).toContain('(4 files)');
+    expect(output).not.toContain('None of these packages');
   });
 
   it('prints the header with a single space after the emoji, matching every other section header', () => {
