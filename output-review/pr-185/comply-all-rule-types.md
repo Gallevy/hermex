@@ -1,0 +1,206 @@
+---
+layout: default
+title: "comply-all-rule-types — Output Review"
+---
+
+{% raw %}
+[← all cases](./index.html)
+
+# `comply-all-rule-types`
+
+_unchanged_
+
+**Asserts** — Every one of the eleven rule types in one run, at three severities — the only case that renders max-file-size, require-engine-version, codeowners, both package-field shapes, and release-age together. release-age itself never gets a Rules-table row (its display is the Packages table) — that split is what this case pins.
+
+**Ran** `hermex comply` in `fixtures/repos/all-rule-types` → exit 1, as asserted
+
+**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/5c7e24bc22ae58d09730c77baad9ddacd3e08228/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/5c7e24bc22ae58d09730c77baad9ddacd3e08228/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/5c7e24bc22ae58d09730c77baad9ddacd3e08228/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types`](https://github.com/Gallevy/hermex/blob/5c7e24bc22ae58d09730c77baad9ddacd3e08228/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/5c7e24bc22ae58d09730c77baad9ddacd3e08228/fixtures/cases/comply-all-rule-types.md))
+
+**Registry** offline, served from `fixtures/registry/timelines.ts` — no network
+
+<sub>Reproduce locally: `pnpm run test:output -- --filter comply-all-rule-types`</sub>
+
+## Config
+
+[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/5c7e24bc22ae58d09730c77baad9ddacd3e08228/fixtures/repos/all-rule-types/hermex.config.ts) — resolved, as the loader sees it
+
+```json
+{
+  "includes": [
+    "src/**/*.{tsx,jsx,ts,js}"
+  ],
+  "releaseAge": {
+    "cacheDisabled": true
+  },
+  "rules": {
+    "release-age": [
+      {
+        "severity": "error",
+        "patterns": [
+          "react"
+        ]
+      }
+    ],
+    "no-files": [
+      {
+        "severity": "error",
+        "patterns": [
+          "jest.config.*",
+          ".babelrc"
+        ],
+        "message": "Use vitest + Vite"
+      }
+    ],
+    "require-files": [
+      {
+        "severity": "error",
+        "patterns": [
+          ".nvmrc"
+        ]
+      }
+    ],
+    "max-file-size": [
+      {
+        "severity": "warn",
+        "patterns": [
+          "assets/**/*.svg"
+        ],
+        "maxSize": "1kb",
+        "message": "Compress it or serve it from the CDN"
+      }
+    ],
+    "no-packages": [
+      {
+        "severity": "error",
+        "patterns": [
+          "moment"
+        ],
+        "message": "Use date-fns or dayjs"
+      }
+    ],
+    "require-packages": [
+      {
+        "severity": "error",
+        "patterns": [
+          "typescript"
+        ],
+        "message": "TypeScript is required"
+      }
+    ],
+    "require-scripts": [
+      {
+        "severity": "error",
+        "patterns": [
+          "build",
+          "test"
+        ],
+        "message": "Required npm scripts"
+      }
+    ],
+    "require-package-fields": [
+      {
+        "severity": "warn",
+        "patterns": [
+          "license"
+        ]
+      }
+    ],
+    "no-package-fields": [
+      {
+        "severity": "warn",
+        "patterns": [
+          "publishConfig.registry"
+        ],
+        "message": "Publish to the public registry"
+      }
+    ],
+    "require-engine-version": {
+      "severity": "error",
+      "range": ">=20",
+      "message": "Minimum Node 20 required"
+    },
+    "require-codeowners": {
+      "severity": "info",
+      "requiredOwners": [
+        "@org/platform"
+      ],
+      "message": "Every file needs a platform owner"
+    }
+  },
+  "output": {
+    "components": false,
+    "patterns": false,
+    "versus": false
+  }
+}
+```
+
+## Full output
+
+<details markdown="1"><summary><code>stdout.txt</code></summary>
+
+```text
+hermex v<version>
+- Parsing lockfile...
+✔ Found pnpm lockfile (supports: v5, v6, v9) - 2 packages
+✔ Found 3 files
+✔ Analysis complete! Analyzed 3/3 files
+✔ Release age fetched
+
+🔍 Rules
+
+┌────────────────────────┬───────────────────────────────────────────────────────────────────────────────────────────────┐
+│ Rule                   │ Description                                                                                   │
+├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ no-packages            │ 🔴 moment is forbidden — Use date-fns or dayjs                                                │
+├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ require-packages       │ 🔴 typescript not installed — TypeScript is required                                          │
+├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ no-files               │ 🔴 jest.config.*, .babelrc detected (jest.config.js, .babelrc) — Use vitest + Vite            │
+├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ require-files          │ 🔴 .nvmrc not found                                                                           │
+├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ require-scripts        │ 🔴 script build, test missing in package.json — Required npm scripts                          │
+├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ require-engine-version │ 🔴 engines.node is >=16, required >=20 — Minimum Node 20 required                             │
+├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ max-file-size          │ 🟡 assets/**/*.svg over 1 KB (logo.svg at 1.4 KB) — Compress it or serve it from the CDN      │
+├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ package-fields         │ 🟡 field license missing in package.json                                                      │
+├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ package-fields         │ 🟡 field publishConfig.registry is forbidden in package.json — Publish to the public registry │
+├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ require-codeowners     │ 🔵 1 scanned file(s) have no owner: src/orphan.tsx — Every file needs a platform owner        │
+├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ require-codeowners     │ 🔵 1 scanned file(s) have the wrong owner: src/legacy.tsx — Every file needs a platform owner │
+└────────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────┘
+
+6 errors, 3 warnings, 2 info
+
+📦 Packages
+
+┌──────────────────────────────┬───────────┬─────────────────────────────────────────────────────────────────┐
+│ Package                      │ Installed │ Target                                                          │
+├──────────────────────────────┼───────────┼─────────────────────────────────────────────────────────────────┤
+│ react                        │ 18.3.1    │ 🔴 major 19.1.0 (340 days overdue)                              │
+├──────────────────────────────┼───────────┼─────────────────────────────────────────────────────────────────┤
+│ [DEPRECATED] [BANNED] moment │ 2.29.4    │ 🟡 minor 2.30.1 (no compliant release available) [not enforced] │
+└──────────────────────────────┴───────────┴─────────────────────────────────────────────────────────────────┘
+
+1 error, 1 warning
+
+🔴 Not compliant
+  8 mandatory violations found
+```
+
+</details>
+
+<details markdown="1"><summary><code>stderr.txt</code></summary>
+
+```text
+
+```
+
+</details>
+
+{% endraw %}
