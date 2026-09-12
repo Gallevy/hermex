@@ -10,24 +10,37 @@ title: "comply-all-rule-types-json — Output Review"
 
 _unchanged_
 
-**Asserts** — The machine-readable shape of every rule type: fieldPath and actualValue on package-field hits, maxSizeBytes/oversizeFiles on max-file-size, installedRange/requiredRange on require-engine-version, matchedFiles on codeowners. Also where #95 is visible — the two codeowners entries are byte-identical apart from matchedFiles.
+**Asserts** — The machine-readable shape of every rule type: fieldPath and actualValue on package-field hits, maxSizeBytes/oversizeFile on max-file-size, installedRange/requiredRange on require-engine-version, matchedFile on codeowners, packageName/worstLevel/scope on release-age. Also where the #95 fix is visible — the two codeowners entries now differ by `reason` ('unowned' vs 'wrong-owner'), not just matchedFile.
 
 **Ran** `hermex comply --format json` in `fixtures/repos/all-rule-types` → exit 1, as asserted
 
-**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/011e3949aeec5821b29326319e0ec1803274b4d5/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/011e3949aeec5821b29326319e0ec1803274b4d5/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/011e3949aeec5821b29326319e0ec1803274b4d5/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types-json`](https://github.com/Gallevy/hermex/blob/011e3949aeec5821b29326319e0ec1803274b4d5/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/011e3949aeec5821b29326319e0ec1803274b4d5/fixtures/cases/comply-all-rule-types-json.md))
+**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types-json`](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures/cases/comply-all-rule-types-json.md))
+
+**Registry** offline, served from `fixtures/registry/timelines.ts` — no network
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-all-rule-types-json`</sub>
 
 ## Config
 
-[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/011e3949aeec5821b29326319e0ec1803274b4d5/fixtures/repos/all-rule-types/hermex.config.ts) — resolved, as the loader sees it
+[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures/repos/all-rule-types/hermex.config.ts) — resolved, as the loader sees it
 
 ```json
 {
   "includes": [
     "src/**/*.{tsx,jsx,ts,js}"
   ],
+  "releaseAge": {
+    "cacheDisabled": true
+  },
   "rules": {
+    "release-age": [
+      {
+        "severity": "error",
+        "patterns": [
+          "react"
+        ]
+      }
+    ],
     "no-files": [
       {
         "severity": "error",
@@ -115,7 +128,6 @@ _unchanged_
     }
   },
   "output": {
-    "packages": false,
     "components": false,
     "patterns": false,
     "versus": false
@@ -136,6 +148,84 @@ _unchanged_
     "totalComponents": 1,
     "totalUsagePatterns": 5
   },
+  "packages": [
+    {
+      "packageName": "react",
+      "version": "18.3.1",
+      "rootVersion": "18.3.1",
+      "declaredIn": [
+        "dependencies"
+      ],
+      "componentCount": 1,
+      "usageCount": 1,
+      "percentage": 100,
+      "hasVersionConflict": false,
+      "allVersions": [
+        "18.3.1"
+      ],
+      "releaseAge": {
+        "installedVersion": "18.3.1",
+        "upgrades": [
+          {
+            "version": "19.1.0",
+            "releasedDaysAgo": 10,
+            "breachReleasedDaysAgo": 400,
+            "semverBump": "major",
+            "level": "major_overdue",
+            "thresholdDays": 60,
+            "isLatest": true
+          }
+        ],
+        "worstLevel": "major_overdue",
+        "latestVersion": "19.1.0",
+        "latestReleasedDaysAgo": 10,
+        "minCompliantVersion": "19.1.0",
+        "minCompliantReleasedDaysAgo": 10,
+        "minCompliantInWindow": true,
+        "minCompliantBump": "major",
+        "severity": "error",
+        "scope": "root"
+      }
+    },
+    {
+      "packageName": "moment",
+      "version": "2.29.4",
+      "rootVersion": "2.29.4",
+      "declaredIn": [
+        "dependencies"
+      ],
+      "componentCount": 0,
+      "usageCount": 0,
+      "percentage": 0,
+      "hasVersionConflict": false,
+      "allVersions": [
+        "2.29.4"
+      ],
+      "releaseAge": {
+        "installedVersion": "2.29.4",
+        "upgrades": [
+          {
+            "version": "2.30.1",
+            "releasedDaysAgo": 500,
+            "breachReleasedDaysAgo": 500,
+            "semverBump": "minor",
+            "level": "minor_overdue",
+            "thresholdDays": 45,
+            "isLatest": true
+          }
+        ],
+        "worstLevel": "minor_overdue",
+        "deprecated": "Moment is in maintenance mode — prefer date-fns or dayjs",
+        "latestVersion": "2.30.1",
+        "latestReleasedDaysAgo": 500,
+        "minCompliantVersion": "2.30.1",
+        "minCompliantReleasedDaysAgo": 500,
+        "minCompliantInWindow": false,
+        "severity": "warn",
+        "scope": "root"
+      }
+    }
+  ],
   "ruleViolations": [
     {
       "ruleId": "no-packages",
@@ -144,7 +234,6 @@ _unchanged_
         "moment"
       ],
       "message": "Use date-fns or dayjs",
-      "matchedFiles": [],
       "packageName": "moment"
     },
     {
@@ -153,8 +242,7 @@ _unchanged_
       "patterns": [
         "typescript"
       ],
-      "message": "TypeScript is required",
-      "matchedFiles": []
+      "message": "TypeScript is required"
     },
     {
       "ruleId": "no-files",
@@ -164,18 +252,24 @@ _unchanged_
         ".babelrc"
       ],
       "message": "Use vitest + Vite",
-      "matchedFiles": [
-        "jest.config.js",
+      "matchedFile": "jest.config.js"
+    },
+    {
+      "ruleId": "no-files",
+      "severity": "error",
+      "patterns": [
+        "jest.config.*",
         ".babelrc"
-      ]
+      ],
+      "message": "Use vitest + Vite",
+      "matchedFile": ".babelrc"
     },
     {
       "ruleId": "require-files",
       "severity": "error",
       "patterns": [
         ".nvmrc"
-      ],
-      "matchedFiles": []
+      ]
     },
     {
       "ruleId": "require-scripts",
@@ -184,17 +278,26 @@ _unchanged_
         "build",
         "test"
       ],
-      "message": "Required npm scripts",
-      "matchedFiles": []
+      "message": "Required npm scripts"
     },
     {
       "ruleId": "require-engine-version",
       "severity": "error",
       "patterns": [],
       "message": "Minimum Node 20 required",
-      "matchedFiles": [],
       "installedRange": ">=16",
       "requiredRange": ">=20"
+    },
+    {
+      "ruleId": "release-age",
+      "severity": "error",
+      "patterns": [
+        "react"
+      ],
+      "packageName": "react",
+      "installedVersion": "18.3.1",
+      "worstLevel": "major_overdue",
+      "scope": "root"
     },
     {
       "ruleId": "max-file-size",
@@ -203,24 +306,18 @@ _unchanged_
         "assets/**/*.svg"
       ],
       "message": "Compress it or serve it from the CDN",
-      "matchedFiles": [
-        "assets/logo.svg"
-      ],
       "maxSizeBytes": 1024,
-      "oversizeFiles": [
-        {
-          "file": "assets/logo.svg",
-          "sizeBytes": 1410
-        }
-      ]
+      "oversizeFile": {
+        "file": "assets/logo.svg",
+        "sizeBytes": 1410
+      }
     },
     {
       "ruleId": "require-package-fields",
       "severity": "warn",
       "patterns": [
         "license"
-      ],
-      "matchedFiles": []
+      ]
     },
     {
       "ruleId": "no-package-fields",
@@ -229,20 +326,20 @@ _unchanged_
         "publishConfig.registry"
       ],
       "message": "Publish to the public registry",
-      "matchedFiles": [],
       "fieldPath": "publishConfig.registry",
       "actualValue": "https://npm.internal.example.com"
     },
     {
-      "ruleId": "require-codeowners",
-      "severity": "info",
+      "ruleId": "release-age",
+      "severity": "warn",
       "patterns": [
-        "CODEOWNERS"
+        "**"
       ],
-      "message": "Every file needs a platform owner",
-      "matchedFiles": [
-        "src/orphan.tsx"
-      ]
+      "packageName": "moment",
+      "installedVersion": "2.29.4",
+      "worstLevel": "minor_overdue",
+      "scope": "root",
+      "deprecated": "Moment is in maintenance mode — prefer date-fns or dayjs"
     },
     {
       "ruleId": "require-codeowners",
@@ -251,18 +348,26 @@ _unchanged_
         "CODEOWNERS"
       ],
       "message": "Every file needs a platform owner",
-      "matchedFiles": [
-        "src/legacy.tsx"
-      ]
+      "reason": "unowned",
+      "matchedFile": "src/orphan.tsx"
+    },
+    {
+      "ruleId": "require-codeowners",
+      "severity": "info",
+      "patterns": [
+        "CODEOWNERS"
+      ],
+      "message": "Every file needs a platform owner",
+      "reason": "wrong-owner",
+      "matchedFile": "src/legacy.tsx"
     }
   ],
   "compliance": {
     "status": "non-compliant",
     "compliant": false,
     "counts": {
-      "errorRuleViolations": 6,
-      "releaseAgeViolations": 0,
-      "warningRuleViolations": 3
+      "errorRuleViolations": 8,
+      "warningRuleViolations": 4
     }
   }
 }
@@ -278,6 +383,7 @@ hermex v<version>
 ✔ Found pnpm lockfile (supports: v5, v6, v9) - 2 packages
 ✔ Found 3 files
 ✔ Analysis complete! Analyzed 3/3 files
+✔ Release age fetched
 ```
 
 </details>
