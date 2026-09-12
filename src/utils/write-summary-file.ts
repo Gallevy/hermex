@@ -39,15 +39,18 @@ function buildRulesSection(aggregated: AggregatedReport): string {
   const lines: string[] = [
     '### Rules',
     '',
-    '| Rule | Description |',
-    '|---|---|',
+    '| | Rule | Description |',
+    '|---|---|---|',
   ];
 
-  // buildRuleRows already prefixes each description with a severity icon
-  // (needed for the terminal table's single description column) — reused
-  // here rather than re-deriving per-row severity into its own column.
+  // `buildRuleRows`'s `description` never includes the icon — kept in its
+  // own leading column here, same as the Packages table below, rather than
+  // embedded inline the way the terminal table (single Description column)
+  // renders it.
   for (const row of rows) {
-    lines.push(`| ${row.rule} | ${row.description} |`);
+    lines.push(
+      `| ${severityIcon(row.severity)} | ${row.rule} | ${row.description} |`,
+    );
   }
 
   lines.push('', formatSeverityTally(ruleViolations));

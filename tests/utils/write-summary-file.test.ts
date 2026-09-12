@@ -111,9 +111,9 @@ describe('writeSummaryFile', () => {
         patterns: ['.nvmrc'],
       };
       const content = write(makeAggregated({ ruleViolations: [violation] }));
-      expect(content).toContain('| Rule | Description |');
-      expect(content).toContain('|---|---|');
-      expect(content).toContain('| require-files | 🔴 .nvmrc not found |');
+      expect(content).toContain('| | Rule | Description |');
+      expect(content).toContain('|---|---|---|');
+      expect(content).toContain('| 🔴 | require-files | .nvmrc not found |');
       expect(content).not.toContain('- 🔴 require-files —');
     });
 
@@ -185,7 +185,7 @@ describe('writeSummaryFile', () => {
         }),
       );
       expect(content).toContain(
-        '| no-packages | 🔴 moment is forbidden — Use date-fns or dayjs |',
+        '| 🔴 | no-packages | moment is forbidden — Use date-fns or dayjs |',
       );
     });
 
@@ -193,7 +193,7 @@ describe('writeSummaryFile', () => {
       const content = write(
         makeAggregated({ ruleViolations: [forbidViolation('moment')] }),
       );
-      expect(content).toContain('| no-packages | 🔴 moment is forbidden |');
+      expect(content).toContain('| 🔴 | no-packages | moment is forbidden |');
     });
 
     it('shows only a warning count when there are no errors', () => {
@@ -393,7 +393,7 @@ describe('writeSummaryFile', () => {
         }),
       );
       expect(content).not.toContain('### Packages');
-      expect(content).toContain('| no-packages | 🔴 moment is forbidden');
+      expect(content).toContain('| 🔴 | no-packages | moment is forbidden');
     });
 
     it('omits the Packages heading entirely when there are no mandatory release-age violations', () => {

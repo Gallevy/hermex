@@ -166,6 +166,10 @@ const ONE_ROW_PER_VIOLATION = new Set<CoreRuleViolation['ruleId']>([
 
 export interface Row {
   rule: string;
+  /** Never includes the severity icon — callers render it themselves
+   * (`printRules` embeds it in this same cell; `write-summary-file.ts`
+   * puts it in its own leading column), since the two surfaces use
+   * different table shapes for it. */
   description: string;
   severity: RuleViolation['severity'];
 }
@@ -210,7 +214,7 @@ export function buildRuleRows(violations: RuleViolation[]): Row[] {
       // model — one row each, as always.
       rows.push({
         rule: formatRuleType(v),
-        description: `${severityIcon(v.severity)} ${describePlugin(v)}`,
+        description: describePlugin(v),
         severity: v.severity,
       });
       continue;
@@ -225,7 +229,7 @@ export function buildRuleRows(violations: RuleViolation[]): Row[] {
     if (ONE_ROW_PER_VIOLATION.has(v.ruleId)) {
       rows.push({
         rule: formatRuleType(v),
-        description: `${severityIcon(v.severity)} ${describeIndividual(v)}`,
+        description: describeIndividual(v),
         severity: v.severity,
       });
       continue;
@@ -241,7 +245,7 @@ export function buildRuleRows(violations: RuleViolation[]): Row[] {
 
     rows.push({
       rule: formatRuleType(v),
-      description: `${severityIcon(v.severity)} ${describeGroup(group)}`,
+      description: describeGroup(group),
       severity: v.severity,
     });
   }
@@ -272,7 +276,7 @@ export function printRules(aggregated: AggregatedReport): void {
   });
 
   for (const row of rows) {
-    table.push([row.rule, row.description]);
+    table.push([row.rule, `${severityIcon(row.severity)} ${row.description}`]);
   }
 
   console.log(table.toString());
