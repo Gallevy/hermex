@@ -157,11 +157,67 @@ export function parseRemoteUrl(content: string, remote: string): string | null {
     if (eq === -1) continue;
     if (line.slice(0, eq).trim().toLowerCase() !== 'url') continue;
 
-    const value = line.slice(eq + 1).trim();
+    const value = decodeConfigValue(line.slice(eq + 1));
     return value || null;
   }
 
   return null;
+}
+
+/**
+ * Decodes a git config value: unescapes `\\`, `\"`, `\n`, `\t` and `\b`,
+ * honours double quotes, and drops a trailing `#`/`;` comment outside them.
+ *
+ * Not cosmetic. git *writes* escaped values, so a local-path remote on
+ * Windows is stored as `C:\\Users\\me\\repo` and read back by git as
+ * `C:\Users\me\repo`. Returning the raw text would hand `remoteSlug` a
+ * string git never produced — and a wrong slug is a false violation, the one
+ * failure this rule must not have. `tests/rules/git-context.differential.test.ts`
+ * pins this against real `git remote get-url` output.
+ */
+function decodeConfigValue(raw: string): string {
+  let out = '';
+  // Length of `out` up to the last significant character. Unquoted trailing
+  // whitespace never advances it, so it falls off at the end — which is how
+  // git trims outside quotes while preserving spaces inside them.
+  let end = 0;
+  let inQuotes = false;
+
+  for (let i = 0; i < raw.length; i++) {
+    const ch = raw[i];
+
+    if (ch === '\\') {
+      const next = raw[++i];
+      if (next === undefined) break;
+      if (next === 'n') out += '\n';
+      else if (next === 't') out += '\t';
+      else if (next === 'b') out += '\b';
+      // `\\` and `\"` (and anything else git tolerates) are literal.
+      else out += next;
+      end = out.length;
+      continue;
+    }
+
+    if (ch === '"') {
+      inQuotes = !inQuotes;
+      continue;
+    }
+
+    // A comment runs to end of line, but only outside quotes.
+    if (!inQuotes && (ch === '#' || ch === ';')) break;
+
+    if (!inQuotes && (ch === ' ' || ch === '\t')) {
+      // Leading whitespace is dropped; interior whitespace is kept but does
+      // not count as significant until a real character follows.
+      if (out.length > 0) out += ch;
+      continue;
+    }
+
+    out += ch;
+    end = out.length;
+  }
+
+  return out.slice(0, end);
 }
 
 /**
@@ -180,13 +236,20 @@ export function remoteSlug(url: string): string | null {
     rest = stripTrailingSlashes(rest.slice(0, -4));
   }
 
-  const cut = Math.max(rest.lastIndexOf('/'), rest.lastIndexOf(':'));
+  // `\` counts alongside `/` because a local-path remote on Windows is a real
+  // remote (`git submodule add ..\dep`, `git clone C:\src\repo`), and `:`
+  // because the scp-like form `git@host:org/repo` has no scheme to split on.
+  const cut = Math.max(
+    rest.lastIndexOf('/'),
+    rest.lastIndexOf('\\'),
+    rest.lastIndexOf(':'),
+  );
   const slug = cut === -1 ? rest : rest.slice(cut + 1);
   return slug || null;
 }
 
 function stripTrailingSlashes(value: string): string {
   let end = value.length;
-  while (end > 0 && value[end - 1] === '/') end--;
+  while (end > 0 && (value[end - 1] === '/' || value[end - 1] === '\\')) end--;
   return value.slice(0, end);
 }

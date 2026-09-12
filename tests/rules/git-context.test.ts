@@ -129,6 +129,58 @@ describe('parseRemoteUrl', () => {
     ).toBe('git@h:a/b.git');
   });
 
+  // git *writes* escaped values, so these are the forms actually found on
+  // disk — not hypotheticals. A local-path remote on Windows is stored with
+  // every backslash doubled, and returning the raw text would hand
+  // `remoteSlug` a string git never produced.
+  describe('git config value escaping', () => {
+    it('unescapes a doubled backslash, as git stores a Windows path remote', () => {
+      const config =
+        '[remote "origin"]\n\turl = C:\\\\Users\\\\me\\\\my-repo\n';
+      expect(parseRemoteUrl(config, 'origin')).toBe('C:\\Users\\me\\my-repo');
+    });
+
+    it('derives the right slug from an unescaped Windows path', () => {
+      const config =
+        '[remote "origin"]\n\turl = C:\\\\Users\\\\me\\\\my-repo\n';
+      expect(remoteSlug(parseRemoteUrl(config, 'origin')!)).toBe('my-repo');
+    });
+
+    it('honours double quotes around a value', () => {
+      const config =
+        '[remote "origin"]\n\turl = "https://example.com/acme/app.git"\n';
+      expect(parseRemoteUrl(config, 'origin')).toBe(
+        'https://example.com/acme/app.git',
+      );
+    });
+
+    it('unescapes an escaped quote inside a quoted value', () => {
+      const config = '[remote "origin"]\n\turl = "https://example.com/a\\"b"\n';
+      expect(parseRemoteUrl(config, 'origin')).toBe('https://example.com/a"b');
+    });
+
+    it('drops a trailing comment outside quotes', () => {
+      const config =
+        '[remote "origin"]\n\turl = https://example.com/acme/app.git # the canonical one\n';
+      expect(parseRemoteUrl(config, 'origin')).toBe(
+        'https://example.com/acme/app.git',
+      );
+    });
+
+    it('keeps a # that is inside quotes', () => {
+      const config = '[remote "origin"]\n\turl = "https://example.com/a#b"\n';
+      expect(parseRemoteUrl(config, 'origin')).toBe('https://example.com/a#b');
+    });
+
+    it('leaves an ordinary URL untouched', () => {
+      const config =
+        '[remote "origin"]\n\turl = git@github.com:acme/checkout-web.git\n';
+      expect(parseRemoteUrl(config, 'origin')).toBe(
+        'git@github.com:acme/checkout-web.git',
+      );
+    });
+  });
+
   it('returns null for a url key with an empty value', () => {
     expect(
       parseRemoteUrl('[remote "origin"]\n\turl = \n', 'origin'),

@@ -34,6 +34,7 @@ field reports the offending value.
 | `require-package-fields` | warn | `license` is missing |
 | `no-package-fields` | warn | `publishConfig.registry` points at an internal registry |
 | `require-engine-version` | error | `engines.node` is `>=16`, below the required `>=20` |
+| `require-repo-name-match` | warn | name is `hermex-fixture-all-rule-types`, the remote's slug is `checkout-web` |
 | `codeowners` | info | fires **twice** — see below |
 
 `includes` is scoped to `src/` so `jest.config.js` is found by
