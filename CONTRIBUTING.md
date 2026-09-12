@@ -121,19 +121,23 @@ sooner, hit "Update branch" or push anything.
 ### When a case says `no baseline`
 
 Sometimes a case is marked `no baseline` instead of `+N −M`. That means the
-target branch's build of hermex could not run that case at all and printed
-nothing, so there is no left-hand side: every added line in its diff is the
-whole output *appearing*, not changing.
+target branch's build of hermex produced no output for that case at all, so
+there is no left-hand side: every added line in its diff is the whole output
+*appearing*, not changing.
 
-Adding a rule does this every time. The config schema is `.strict()`, the
-fixture config gains a key for your new rule, and the target branch's hermex
-has never heard of it — so it throws before printing. It is legitimate, it
-fixes itself the moment you merge, and the case page shows the reference
-build's error so you can confirm that's all it is.
+In practice this means one thing: **the case is new in your branch.** The
+target branch has no `fixtures/` directory for it, so nothing over there
+could have run it, and there is genuinely nothing to compare against. Read
+its output on its own merits and apply `output:approved` as usual.
 
-It is not a failure and it does not block the check. What it does mean is
-that the diff for those cases cannot be read as a comparison: judge their
-output on its own terms instead, then apply `output:approved` as usual.
+Adding a rule used to do this too, and no longer does. Each build runs
+against the config it shipped with, so the target branch's hermex reads the
+target branch's config — one it understands — rather than choking on a
+`.strict()` schema rejection of your new rule's key. A rule addition now
+shows what it should: the row appearing in a table that is otherwise
+unchanged.
+
+It is not a failure and it does not block the check.
 
 ### Adding a case
 
