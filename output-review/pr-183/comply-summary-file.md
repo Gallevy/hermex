@@ -8,13 +8,13 @@ title: "comply-summary-file — Output Review"
 
 # `comply-summary-file`
 
-_changed_
+_unchanged_
 
 **Asserts** — The markdown a consumer pastes into a PR comment or job summary — ANSI-free, rules + flagged packages + verdict.
 
 **Ran** `hermex comply --summary-file $OUT/summary.md` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/7ec7d99d6decdc5043bc276986936aafcf9fc6f9/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/7ec7d99d6decdc5043bc276986936aafcf9fc6f9/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/7ec7d99d6decdc5043bc276986936aafcf9fc6f9/fixtures/README.md)) · **Case** [`comply-summary-file`](https://github.com/Gallevy/hermex/blob/7ec7d99d6decdc5043bc276986936aafcf9fc6f9/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/7ec7d99d6decdc5043bc276986936aafcf9fc6f9/fixtures/cases/comply-summary-file.md))
+**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/1a3dc3b5f2c132d64304ce7a73008e292111b1b3/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/1a3dc3b5f2c132d64304ce7a73008e292111b1b3/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/1a3dc3b5f2c132d64304ce7a73008e292111b1b3/fixtures/README.md)) · **Case** [`comply-summary-file`](https://github.com/Gallevy/hermex/blob/1a3dc3b5f2c132d64304ce7a73008e292111b1b3/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/1a3dc3b5f2c132d64304ce7a73008e292111b1b3/fixtures/cases/comply-summary-file.md))
 
 **Writes** `summary.md` into `$OUT` — captured and diffed the same as stdout
 
@@ -22,7 +22,7 @@ _changed_
 
 ## Config
 
-[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/7ec7d99d6decdc5043bc276986936aafcf9fc6f9/fixtures/hermex.config.ts) — resolved, as the loader sees it
+[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/1a3dc3b5f2c132d64304ce7a73008e292111b1b3/fixtures/hermex.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -119,34 +119,6 @@ _changed_
 }
 ```
 
-## Diff against the target branch
-
-<sub>Diffs are unified format: `-` is the target branch, `+` is this run. `@@ -12,7 +12,9 @@` is a hunk header — unchanged lines were skipped, and the hunk below covers 7 lines from line 12 of the target branch and 9 lines from line 12 of this run.</sub>
-
-```diff
---- target/summary.md
-+++ current/summary.md
-@@ -2,12 +2,12 @@
- 
- ### Rules
- 
--| | Rule | Description |
--|---|---|---|
--| 🔴 | no-packages | moment is forbidden — Use date-fns or dayjs |
--| 🔴 | require-packages | typescript not installed — TypeScript is required |
--| 🔴 | require-files | .nvmrc not found |
--| 🟡 | require-files | .editorconfig not found |
-+| Rule | Description |
-+|---|---|
-+| no-packages | 🔴 moment is forbidden — Use date-fns or dayjs |
-+| require-packages | 🔴 typescript not installed — TypeScript is required |
-+| require-files | 🔴 .nvmrc not found |
-+| require-files | 🟡 .editorconfig not found |
- 
- 3 errors, 1 warning
- 
-```
-
 ## Full output
 
 <details markdown="1"><summary><code>stdout.txt</code></summary>
@@ -216,12 +188,12 @@ Caused by:
 
 ### Rules
 
-| Rule | Description |
-|---|---|
-| no-packages | 🔴 moment is forbidden — Use date-fns or dayjs |
-| require-packages | 🔴 typescript not installed — TypeScript is required |
-| require-files | 🔴 .nvmrc not found |
-| require-files | 🟡 .editorconfig not found |
+| | Rule | Description |
+|---|---|---|
+| 🔴 | no-packages | moment is forbidden — Use date-fns or dayjs |
+| 🔴 | require-packages | typescript not installed — TypeScript is required |
+| 🔴 | require-files | .nvmrc not found |
+| 🟡 | require-files | .editorconfig not found |
 
 3 errors, 1 warning
 
