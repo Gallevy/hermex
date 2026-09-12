@@ -14,13 +14,13 @@ _unchanged_
 
 **Ran** `hermex comply` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/5c7e24bc22ae58d09730c77baad9ddacd3e08228/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/5c7e24bc22ae58d09730c77baad9ddacd3e08228/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/5c7e24bc22ae58d09730c77baad9ddacd3e08228/fixtures/README.md)) · **Case** [`comply-human-fail`](https://github.com/Gallevy/hermex/blob/5c7e24bc22ae58d09730c77baad9ddacd3e08228/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/5c7e24bc22ae58d09730c77baad9ddacd3e08228/fixtures/cases/comply-human-fail.md))
+**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/ab0c640a09701cd9927002b53704a43417547c5a/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/ab0c640a09701cd9927002b53704a43417547c5a/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/ab0c640a09701cd9927002b53704a43417547c5a/fixtures/README.md)) · **Case** [`comply-human-fail`](https://github.com/Gallevy/hermex/blob/ab0c640a09701cd9927002b53704a43417547c5a/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/ab0c640a09701cd9927002b53704a43417547c5a/fixtures/cases/comply-human-fail.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-human-fail`</sub>
 
 ## Config
 
-[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/5c7e24bc22ae58d09730c77baad9ddacd3e08228/fixtures/hermex.config.ts) — resolved, as the loader sees it
+[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/ab0c640a09701cd9927002b53704a43417547c5a/fixtures/hermex.config.ts) — resolved, as the loader sees it
 
 ```json
 {
