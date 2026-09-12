@@ -14,8 +14,8 @@ Reference: `78a9e27` — reused from cache.
 
 | Case | Status | Proves |
 | --- | --- | --- |
-| [`scan-human-default`](./scan-human-default.html) | **changed** <span class="or-add">+1</span> <span class="or-del">−1</span> | Baseline human output: the sections a repo gets with no output config of its own. |
-| [`scan-human-all-sections`](./scan-human-all-sections.html) | **changed** <span class="or-add">+1</span> <span class="or-del">−1</span> | Every human section rendered at once, including details and patterns, which the default config leaves off. |
+| [`scan-human-default`](./scan-human-default.html) | **changed** <span class="or-add">+0</span> <span class="or-del">−2</span> | Baseline human output: the sections a repo gets with no output config of its own. |
+| [`scan-human-all-sections`](./scan-human-all-sections.html) | **changed** <span class="or-add">+0</span> <span class="or-del">−2</span> | Every human section rendered at once, including details and patterns, which the default config leaves off. |
 | [`scan-json`](./scan-json.html) | **changed** <span class="or-add">+3</span> <span class="or-del">−8</span> | The full JSON contract: summary.patternCounts (#80), every owned package in packages[], de-duplicated components (#78, #79), and the compliance block (#55). |
 | [`scan-json-toggles`](./scan-json-toggles.html) | **changed** <span class="or-add">+3</span> <span class="or-del">−8</span> | What output.* toggles do to --format json: today, nothing (#91). The payload below is emitted with every section switched off, yet still carries packages, components, versus and ruleViolations in full. Pair it with scan-human-minimal to see the two formats diverge; when #91 lands, this baseline shrinking is the proof. |
 | [`comply-json`](./comply-json.html) | **changed** <span class="or-add">+3</span> <span class="or-del">−8</span> | The compliance block as machine-readable output on a failing repo. |

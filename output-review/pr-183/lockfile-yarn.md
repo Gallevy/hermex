@@ -14,7 +14,7 @@ _changed_
 
 **Ran** `hermex scan --format json` in `fixtures/repos/lockfile-yarn` → exit 0, as asserted
 
-**Config** _none — the loader found no `hermex.config.ts` in the cwd, so this ran on schema defaults_ · **Fixture** [`fixtures/repos/lockfile-yarn`](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/repos/lockfile-yarn) ([overview](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/repos/lockfile-yarn/README.md)) · **Case** [`lockfile-yarn`](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/cases/lockfile-yarn.md))
+**Config** _none — the loader found no `hermex.config.ts` in the cwd, so this ran on schema defaults_ · **Fixture** [`fixtures/repos/lockfile-yarn`](https://github.com/Gallevy/hermex/blob/75d369edb73abc463673e8a23dc17572bcf44370/fixtures/repos/lockfile-yarn) ([overview](https://github.com/Gallevy/hermex/blob/75d369edb73abc463673e8a23dc17572bcf44370/fixtures/repos/lockfile-yarn/README.md)) · **Case** [`lockfile-yarn`](https://github.com/Gallevy/hermex/blob/75d369edb73abc463673e8a23dc17572bcf44370/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/75d369edb73abc463673e8a23dc17572bcf44370/fixtures/cases/lockfile-yarn.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter lockfile-yarn`</sub>
 

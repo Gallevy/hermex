@@ -14,7 +14,7 @@ _changed_
 
 **Ran** `hermex comply` in `fixtures/repos/version-conflict` → exit 1, as asserted
 
-**Config** [`fixtures/repos/version-conflict/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/repos/version-conflict/hermex.config.ts) · **Fixture** [`fixtures/repos/version-conflict`](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/repos/version-conflict) ([overview](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/repos/version-conflict/README.md)) · **Case** [`release-age-root-scope`](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/cases/release-age-root-scope.md))
+**Config** [`fixtures/repos/version-conflict/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/75d369edb73abc463673e8a23dc17572bcf44370/fixtures/repos/version-conflict/hermex.config.ts) · **Fixture** [`fixtures/repos/version-conflict`](https://github.com/Gallevy/hermex/blob/75d369edb73abc463673e8a23dc17572bcf44370/fixtures/repos/version-conflict) ([overview](https://github.com/Gallevy/hermex/blob/75d369edb73abc463673e8a23dc17572bcf44370/fixtures/repos/version-conflict/README.md)) · **Case** [`release-age-root-scope`](https://github.com/Gallevy/hermex/blob/75d369edb73abc463673e8a23dc17572bcf44370/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/75d369edb73abc463673e8a23dc17572bcf44370/fixtures/cases/release-age-root-scope.md))
 
 **Registry** offline, served from `fixtures/registry/timelines.ts` — no network
 
@@ -22,7 +22,7 @@ _changed_
 
 ## Config
 
-[`fixtures/repos/version-conflict/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/repos/version-conflict/hermex.config.ts) — resolved, as the loader sees it
+[`fixtures/repos/version-conflict/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/75d369edb73abc463673e8a23dc17572bcf44370/fixtures/repos/version-conflict/hermex.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -60,7 +60,7 @@ _changed_
    🔵 react → 2 versions installed (bundle impact): 17.0.2, 18.3.1 → 1 nested copy overdue, not enforced but recommended to resolve
  
 -Total: 2 packages
-+2 packages total
++1 error, 1 warning
  
  🔴 Not compliant
    1 mandatory violation found
@@ -91,7 +91,7 @@ hermex v<version>
 Notes:
   🔵 react → 2 versions installed (bundle impact): 17.0.2, 18.3.1 → 1 nested copy overdue, not enforced but recommended to resolve
 
-2 packages total
+1 error, 1 warning
 
 🔴 Not compliant
   1 mandatory violation found

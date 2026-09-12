@@ -14,7 +14,7 @@ _unchanged_
 
 **Ran** `hermex comply --no-color` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/README.md)) · **Case** [`comply-no-color-flag`](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/cases/comply-no-color-flag.md))
+**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/75d369edb73abc463673e8a23dc17572bcf44370/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/75d369edb73abc463673e8a23dc17572bcf44370/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/75d369edb73abc463673e8a23dc17572bcf44370/fixtures/README.md)) · **Case** [`comply-no-color-flag`](https://github.com/Gallevy/hermex/blob/75d369edb73abc463673e8a23dc17572bcf44370/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/75d369edb73abc463673e8a23dc17572bcf44370/fixtures/cases/comply-no-color-flag.md))
 
 **Environment** `NO_COLOR` unset, `FORCE_COLOR=3`
 
@@ -22,7 +22,7 @@ _unchanged_
 
 ## Config
 
-[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/hermex.config.ts) — resolved, as the loader sees it
+[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/75d369edb73abc463673e8a23dc17572bcf44370/fixtures/hermex.config.ts) — resolved, as the loader sees it
 
 ```json
 {

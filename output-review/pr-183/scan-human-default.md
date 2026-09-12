@@ -14,13 +14,13 @@ _changed_
 
 **Ran** `hermex scan` in `fixtures/` → exit 0, as asserted
 
-**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/README.md)) · **Case** [`scan-human-default`](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/cases/scan-human-default.md))
+**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/75d369edb73abc463673e8a23dc17572bcf44370/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/75d369edb73abc463673e8a23dc17572bcf44370/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/75d369edb73abc463673e8a23dc17572bcf44370/fixtures/README.md)) · **Case** [`scan-human-default`](https://github.com/Gallevy/hermex/blob/75d369edb73abc463673e8a23dc17572bcf44370/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/75d369edb73abc463673e8a23dc17572bcf44370/fixtures/cases/scan-human-default.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter scan-human-default`</sub>
 
 ## Config
 
-[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/hermex.config.ts) — resolved, as the loader sees it
+[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/75d369edb73abc463673e8a23dc17572bcf44370/fixtures/hermex.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -124,15 +124,15 @@ _changed_
 ```diff
 --- target/stdout.txt
 +++ current/stdout.txt
-@@ -33,7 +33,7 @@
+@@ -33,8 +33,6 @@
  │ react-dom                 │ 18.3.1  │
  └───────────────────────────┴─────────┘
  
 -Total: 5 packages
-+5 packages total
- 
+-
  ⚖️ Versus
  
+   Design System Migration
 ```
 
 ## Full output
@@ -174,8 +174,6 @@ Caused by:
 ├───────────────────────────┼─────────┤
 │ react-dom                 │ 18.3.1  │
 └───────────────────────────┴─────────┘
-
-5 packages total
 
 ⚖️ Versus
 
