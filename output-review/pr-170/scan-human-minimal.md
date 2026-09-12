@@ -14,7 +14,7 @@ _unchanged_
 
 **Ran** `hermex scan --config configs/minimal.config.ts` in `fixtures/` → exit 0, as asserted
 
-**Config** [`fixtures/configs/minimal.config.ts`](https://github.com/Gallevy/hermex/blob/8711e732c74ada2e469f633eb8958e91786af6ac/fixtures/configs/minimal.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/8711e732c74ada2e469f633eb8958e91786af6ac/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/8711e732c74ada2e469f633eb8958e91786af6ac/fixtures/README.md)) · **Case** [`scan-human-minimal`](https://github.com/Gallevy/hermex/blob/8711e732c74ada2e469f633eb8958e91786af6ac/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/8711e732c74ada2e469f633eb8958e91786af6ac/fixtures/cases/scan-human-minimal.md))
+**Config** [`fixtures/configs/minimal.config.ts`](https://github.com/Gallevy/hermex/blob/2eaf0168302e865a532070bfbf9cd58e9e94233f/fixtures/configs/minimal.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/2eaf0168302e865a532070bfbf9cd58e9e94233f/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/2eaf0168302e865a532070bfbf9cd58e9e94233f/fixtures/README.md)) · **Case** [`scan-human-minimal`](https://github.com/Gallevy/hermex/blob/2eaf0168302e865a532070bfbf9cd58e9e94233f/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/2eaf0168302e865a532070bfbf9cd58e9e94233f/fixtures/cases/scan-human-minimal.md))
 
 **Must not appear anywhere in stdout** `📦 Packages`, `⚛️ Components`, `🔍 Rules`, `⚖️ Versus`
 
@@ -22,30 +22,106 @@ _unchanged_
 
 ## Config
 
-[`fixtures/configs/minimal.config.ts`](https://github.com/Gallevy/hermex/blob/8711e732c74ada2e469f633eb8958e91786af6ac/fixtures/configs/minimal.config.ts)
+[`fixtures/configs/minimal.config.ts`](https://github.com/Gallevy/hermex/blob/2eaf0168302e865a532070bfbf9cd58e9e94233f/fixtures/configs/minimal.config.ts) — resolved, as the loader sees it
 
-```ts
-import type { HermexConfigInput } from '../../src/config/types.ts';
-import base from '../hermex.config.ts';
-
-/**
- * Every output section off except the summary. Regression cover for #63:
- * a section that is switched off must actually be absent, not rendered
- * empty or rendered anyway. Used twice — once as human output, once as
- * `--format json`, since the JSON payload has to honour the same toggles.
- */
-export default {
-  ...base,
-  output: {
-    summary: 'log',
-    packages: false,
-    components: false,
-    patterns: false,
-    details: false,
-    versus: false,
-    rules: false,
+```json
+{
+  "excludes": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "cases.ts",
+    "configs/**",
+    "registry/**",
+    "repos/**"
+  ],
+  "versus": [
+    {
+      "name": "Design System Migration",
+      "packages": [
+        "@design-system/foundation",
+        "@new-system/arc"
+      ]
+    }
+  ],
+  "rules": {
+    "no-files": [
+      {
+        "severity": "error",
+        "patterns": [
+          "jest.config.*",
+          ".babelrc"
+        ],
+        "message": "Use vitest + Vite"
+      }
+    ],
+    "no-packages": [
+      {
+        "severity": "error",
+        "patterns": [
+          "moment"
+        ],
+        "message": "Use date-fns or dayjs"
+      }
+    ],
+    "require-files": [
+      {
+        "severity": "error",
+        "patterns": [
+          ".nvmrc"
+        ]
+      },
+      {
+        "severity": "warn",
+        "patterns": [
+          ".editorconfig"
+        ]
+      }
+    ],
+    "require-packages": [
+      {
+        "severity": "error",
+        "patterns": [
+          "typescript"
+        ],
+        "message": "TypeScript is required"
+      }
+    ],
+    "require-scripts": [
+      {
+        "severity": "error",
+        "patterns": [
+          "build",
+          "test"
+        ],
+        "message": "Required npm scripts"
+      }
+    ],
+    "require-package-fields": [
+      {
+        "severity": "warn",
+        "patterns": [
+          "engines",
+          "license"
+        ]
+      }
+    ],
+    "require-engine-version": {
+      "severity": "warn",
+      "range": ">=20",
+      "message": "Minimum Node 20 required"
+    }
   },
-} satisfies HermexConfigInput;
+  "output": {
+    "summary": "log",
+    "packages": false,
+    "components": false,
+    "patterns": false,
+    "details": false,
+    "versus": false,
+    "rules": false
+  }
+}
 ```
 
 ## Full output

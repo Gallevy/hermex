@@ -14,96 +14,113 @@ _changed_
 
 **Ran** `hermex comply --format json` in `fixtures/repos/all-rule-types` → exit 1, as asserted
 
-**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/8711e732c74ada2e469f633eb8958e91786af6ac/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/8711e732c74ada2e469f633eb8958e91786af6ac/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/8711e732c74ada2e469f633eb8958e91786af6ac/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types-json`](https://github.com/Gallevy/hermex/blob/8711e732c74ada2e469f633eb8958e91786af6ac/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/8711e732c74ada2e469f633eb8958e91786af6ac/fixtures/cases/comply-all-rule-types-json.md))
+**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/2eaf0168302e865a532070bfbf9cd58e9e94233f/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/2eaf0168302e865a532070bfbf9cd58e9e94233f/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/2eaf0168302e865a532070bfbf9cd58e9e94233f/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types-json`](https://github.com/Gallevy/hermex/blob/2eaf0168302e865a532070bfbf9cd58e9e94233f/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/2eaf0168302e865a532070bfbf9cd58e9e94233f/fixtures/cases/comply-all-rule-types-json.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-all-rule-types-json`</sub>
 
 ## Config
 
-[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/8711e732c74ada2e469f633eb8958e91786af6ac/fixtures/repos/all-rule-types/hermex.config.ts)
+[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/2eaf0168302e865a532070bfbf9cd58e9e94233f/fixtures/repos/all-rule-types/hermex.config.ts) — resolved, as the loader sees it
 
-```ts
-import type { HermexConfigInput } from '../../../src/config/types.ts';
-
-/**
- * Every rule type hermex has, all firing at once, at three different
- * severities. The primary fixture repo only ever trips three of the ten —
- * so without this repo the rules table has never been reviewed with an
- * `require-engine-version` row, a `require-codeowners` row, or either of the
- * package-field shapes in it, and nothing would catch a renderer that
- * mishandles `fieldPath` / `installedRange` / a long `matchedFiles` list.
- *
- * Scoped to `src/` so `jest.config.js` is found by `no-files` without
- * also being parsed as source — and so `assets/logo.svg`, which exists
- * purely to breach `max-file-size`, is never parsed either.
- */
-export default {
-  includes: ['src/**/*.{tsx,jsx,ts,js}'],
-  rules: {
-    'no-files': [
+```json
+{
+  "includes": [
+    "src/**/*.{tsx,jsx,ts,js}"
+  ],
+  "rules": {
+    "no-files": [
       {
-        severity: 'error',
-        patterns: ['jest.config.*', '.babelrc'],
-        message: 'Use vitest + Vite',
-      },
+        "severity": "error",
+        "patterns": [
+          "jest.config.*",
+          ".babelrc"
+        ],
+        "message": "Use vitest + Vite"
+      }
     ],
-    'require-files': [{ severity: 'error', patterns: ['.nvmrc'] }],
-    // assets/logo.svg is 1410 bytes, so it clears the 1 KB ceiling. It is
-    // written as a single line with no newline, which keeps its byte count
-    // — and therefore the recorded size in this baseline — identical on
-    // every checkout.
-    'max-file-size': [
+    "require-files": [
       {
-        severity: 'warn',
-        patterns: ['assets/**/*.svg'],
-        maxSize: '1kb',
-        message: 'Compress it or serve it from the CDN',
-      },
+        "severity": "error",
+        "patterns": [
+          ".nvmrc"
+        ]
+      }
     ],
-    'no-packages': [
-      { severity: 'error', patterns: ['moment'], message: 'Use date-fns or dayjs' },
-    ],
-    'require-packages': [
-      { severity: 'error', patterns: ['typescript'], message: 'TypeScript is required' },
-    ],
-    'require-scripts': [
-      { severity: 'error', patterns: ['build', 'test'], message: 'Required npm scripts' },
-    ],
-    // Missing outright, so the violation reports the absence.
-    'require-package-fields': [{ severity: 'warn', patterns: ['license'] }],
-    // Present, so the violation reports the offending value — the other
-    // half of the package-field renderer.
-    'no-package-fields': [
+    "max-file-size": [
       {
-        severity: 'warn',
-        patterns: ['publishConfig.registry'],
-        message: 'Publish to the public registry',
-      },
+        "severity": "warn",
+        "patterns": [
+          "assets/**/*.svg"
+        ],
+        "maxSize": "1kb",
+        "message": "Compress it or serve it from the CDN"
+      }
     ],
-    // engines.node is ">=16", so this reports both ranges rather than the
-    // "not specified" shape.
-    'require-engine-version': { severity: 'error', range: '>=20', message: 'Minimum Node 20 required' },
-    // CODEOWNERS covers two of the three scanned files, and one of those
-    // belongs to a team outside `requiredOwners` — so this produces both
-    // codeowners violations, unowned and wrong-owner.
-    //
-    // The baseline currently describes both as "have no owner", which is
-    // wrong for src/legacy.tsx: it has an owner, just not a required one.
-    // That is #95, left unfixed on purpose — the recorded output is the
-    // evidence, and refreshing this baseline is how the fix gets reviewed.
-    'require-codeowners': {
-      severity: 'info',
-      requiredOwners: ['@org/platform'],
-      message: 'Every file needs a platform owner',
+    "no-packages": [
+      {
+        "severity": "error",
+        "patterns": [
+          "moment"
+        ],
+        "message": "Use date-fns or dayjs"
+      }
+    ],
+    "require-packages": [
+      {
+        "severity": "error",
+        "patterns": [
+          "typescript"
+        ],
+        "message": "TypeScript is required"
+      }
+    ],
+    "require-scripts": [
+      {
+        "severity": "error",
+        "patterns": [
+          "build",
+          "test"
+        ],
+        "message": "Required npm scripts"
+      }
+    ],
+    "require-package-fields": [
+      {
+        "severity": "warn",
+        "patterns": [
+          "license"
+        ]
+      }
+    ],
+    "no-package-fields": [
+      {
+        "severity": "warn",
+        "patterns": [
+          "publishConfig.registry"
+        ],
+        "message": "Publish to the public registry"
+      }
+    ],
+    "require-engine-version": {
+      "severity": "error",
+      "range": ">=20",
+      "message": "Minimum Node 20 required"
     },
+    "require-codeowners": {
+      "severity": "info",
+      "requiredOwners": [
+        "@org/platform"
+      ],
+      "message": "Every file needs a platform owner"
+    }
   },
-  output: {
-    packages: false,
-    components: false,
-    patterns: false,
-    versus: false,
-  },
-} satisfies HermexConfigInput;
+  "output": {
+    "packages": false,
+    "components": false,
+    "patterns": false,
+    "versus": false
+  }
+}
 ```
 
 ## Diff against the target branch
@@ -257,7 +274,7 @@ export default {
 --- target/stderr.txt
 +++ current/stderr.txt
 @@ -1,22 +1,6 @@
--file://<repo>/.output-review/reference/99f0b37ed2b5e274d4a1fc8910e83e4da1acf41d/dist/cli.mjs:813
+-file://<repo>/.output-review/reference/dd78b0600bccbcf0b1344519f4bb91e52e401c0d/dist/cli.mjs:958
 -		return HermexConfigSchema.parse(mod.default);
 -		                          ^
 -
@@ -273,11 +290,11 @@ export default {
 -    "message": "Unrecognized key: /"max-file-size/""
 -  }
 -]
--    at loadConfig (file://<repo>/.output-review/reference/99f0b37ed2b5e274d4a1fc8910e83e4da1acf41d/dist/cli.mjs:813:29)
+-    at loadConfig (file://<repo>/.output-review/reference/dd78b0600bccbcf0b1344519f4bb91e52e401c0d/dist/cli.mjs:958:29)
 -    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
--    at async Command.<anonymous> (file://<repo>/.output-review/reference/99f0b37ed2b5e274d4a1fc8910e83e4da1acf41d/dist/cli.mjs:3130:23)
+-    at async Command.<anonymous> (file://<repo>/.output-review/reference/dd78b0600bccbcf0b1344519f4bb91e52e401c0d/dist/cli.mjs:2678:23)
 -
--Node.js v26.7.0
+-Node.js v26.8.2
 +hermex v<version>
 +- Parsing lockfile...
 +✔ Found pnpm lockfile (supports: v5, v6, v9) - 2 packages
