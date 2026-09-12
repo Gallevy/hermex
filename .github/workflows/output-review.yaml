@@ -87,10 +87,6 @@ jobs:
         with:
           runtime: node@26
           cache: true
-          install: false
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
 
       # The commit the reference is built from, resolved once here so the
       # cache key and the script name the same thing.
