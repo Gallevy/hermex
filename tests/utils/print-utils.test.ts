@@ -1489,10 +1489,17 @@ describe('printVersus', () => {
             {
               packageName: 'react',
               count: 3,
+              renderCount: 9,
               percentage: 100,
               present: true,
             },
-            { packageName: 'vue', count: 0, percentage: 0, present: true },
+            {
+              packageName: 'vue',
+              count: 0,
+              renderCount: 0,
+              percentage: 0,
+              present: true,
+            },
           ],
           totalCount: 3,
         },
@@ -1517,10 +1524,17 @@ describe('printVersus', () => {
             {
               packageName: 'react',
               count: 3,
+              renderCount: 9,
               percentage: 100,
               present: true,
             },
-            { packageName: 'vue', count: 0, percentage: 0, present: true },
+            {
+              packageName: 'vue',
+              count: 0,
+              renderCount: 0,
+              percentage: 0,
+              present: true,
+            },
           ],
           totalCount: 3,
         },
@@ -1545,12 +1559,14 @@ describe('printVersus', () => {
               {
                 packageName: 'moment',
                 count: 3,
+                renderCount: 0,
                 percentage: 75,
                 present: true,
               },
               {
                 packageName: 'date-fns',
                 count: 1,
+                renderCount: 0,
                 percentage: 25,
                 present: true,
               },
@@ -1568,6 +1584,74 @@ describe('printVersus', () => {
     expect(output).not.toContain('usages');
   });
 
+  // Renders are kept beside files, not replaced by them: files are how much
+  // of the migration is done, renders are how much editing is left, and a
+  // package used densely in a few files looks very different on the two.
+  it('shows renders beside files for a package that renders, and omits them for one that does not', () => {
+    printVersus(
+      makeAggregated({
+        versusResults: [
+          {
+            name: 'mixed',
+            packages: ['@acme/ui', 'lodash'],
+            entries: [
+              {
+                packageName: '@acme/ui',
+                count: 8,
+                renderCount: 33,
+                percentage: 80,
+                present: true,
+              },
+              {
+                packageName: 'lodash',
+                count: 2,
+                renderCount: 0,
+                percentage: 20,
+                present: true,
+              },
+            ],
+            totalCount: 10,
+          },
+        ],
+      }),
+    );
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('(8 files, 33 renders)');
+    // Not '(2 files, 0 renders)' — a zero there reads as a finding rather
+    // than as "this package renders nothing, so the axis does not apply".
+    expect(output).toContain('(2 files)');
+    expect(output).not.toContain('0 renders');
+  });
+
+  it('uses the singular for a lone file and a lone render', () => {
+    printVersus(
+      makeAggregated({
+        versusResults: [
+          {
+            name: 'mixed',
+            packages: ['@acme/ui'],
+            entries: [
+              {
+                packageName: '@acme/ui',
+                count: 1,
+                renderCount: 1,
+                percentage: 100,
+                present: true,
+              },
+            ],
+            totalCount: 1,
+          },
+        ],
+      }),
+    );
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('(1 file, 1 render)');
+  });
+
   it('says no imports were detected when the group is real dependencies nobody imports', () => {
     printVersus(
       makeAggregated({
@@ -1576,8 +1660,20 @@ describe('printVersus', () => {
             name: 'ui-kits',
             packages: ['react', 'vue'],
             entries: [
-              { packageName: 'react', count: 0, percentage: 0, present: true },
-              { packageName: 'vue', count: 0, percentage: 0, present: true },
+              {
+                packageName: 'react',
+                count: 0,
+                renderCount: 0,
+                percentage: 0,
+                present: true,
+              },
+              {
+                packageName: 'vue',
+                count: 0,
+                renderCount: 0,
+                percentage: 0,
+                present: true,
+              },
             ],
             totalCount: 0,
           },
@@ -1604,8 +1700,20 @@ describe('printVersus', () => {
             name: 'ui-kits',
             packages: ['raect', 'voo'],
             entries: [
-              { packageName: 'raect', count: 0, percentage: 0, present: false },
-              { packageName: 'voo', count: 0, percentage: 0, present: false },
+              {
+                packageName: 'raect',
+                count: 0,
+                renderCount: 0,
+                percentage: 0,
+                present: false,
+              },
+              {
+                packageName: 'voo',
+                count: 0,
+                renderCount: 0,
+                percentage: 0,
+                present: false,
+              },
             ],
             totalCount: 0,
           },
@@ -1631,12 +1739,14 @@ describe('printVersus', () => {
               {
                 packageName: 'moment',
                 count: 4,
+                renderCount: 0,
                 percentage: 100,
                 present: true,
               },
               {
                 packageName: 'dat-fns',
                 count: 0,
+                renderCount: 0,
                 percentage: 0,
                 present: false,
               },
@@ -1665,6 +1775,7 @@ describe('printVersus', () => {
               {
                 packageName: 'react',
                 count: 1,
+                renderCount: 2,
                 percentage: 100,
               },
             ],

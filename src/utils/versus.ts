@@ -25,6 +25,22 @@ export interface VersusEntry {
   count: number;
   percentage: number;
   /**
+   * How many times this package's components are rendered — `usageCount`,
+   * the number `count` used to be.
+   *
+   * Kept beside `count` rather than replaced by it, because the two measure
+   * different things and a migration owner wants both. Files are progress:
+   * 7 of 15 converted is about half done. Renders are effort: the same repo
+   * can be half converted by file and still have most of the call sites left,
+   * because the old library is used densely in the files nobody has touched.
+   *
+   * The *split* is driven by `count` alone and never by this, because this
+   * axis is 0 for anything not rendered as a component — a group with a hook
+   * or function library on one side would produce a confident percentage
+   * measured one way on the left and another on the right (#174).
+   */
+  renderCount: number;
+  /**
    * Whether hermex found this package in the repo at all — on any axis.
    *
    * `count: 0` conflates two answers that call for opposite reactions: a
@@ -78,6 +94,7 @@ export function calculateVersusResults(
       return {
         packageName: pkgName,
         count: pkg?.importingFileCount ?? 0,
+        renderCount: pkg?.usageCount ?? 0,
         percentage: 0,
         present: pkg !== undefined,
       };

@@ -124,15 +124,28 @@ export default defineConfig({
 Output shows a neutral bar split per group — no directional assumption, just the share each
 package holds.
 
-**What the number counts.** Each package's score is **how many scanned files import it** — not
-how many times it is rendered. That matters because most migrations worth tracking are
-function-only (`moment` → `date-fns`, `lodash` → `es-toolkit`, `redux` → `zustand`), and those
-packages never appear in JSX at all. Counting files also keeps the two sides comparable: a file
-that imports three helpers from one package still depends on it once, so consolidating an import
-does not read as migration progress.
+**What the split is measured in.** Each package's share is **how many scanned files import it**.
+That matters because most migrations worth tracking are function-only (`moment` → `date-fns`,
+`lodash` → `es-toolkit`, `redux` → `zustand`), and those packages never appear in JSX at all —
+scored on renders, both sides of such a group read 0 forever. One unit for every group also keeps
+the two sides comparable: a group with a component library on one side and a hook library on the
+other would otherwise be measured one way on the left and another on the right.
 
-A file importing both packages counts for both — percentages are a share of the group, not of
-your file count.
+A file importing three helpers from one package still depends on it once, so consolidating an
+import does not read as progress. A file importing both packages counts for both — percentages
+are a share of the group, not of your file count.
+
+**Renders are shown too.** For a package that renders components, the render count appears beside
+the file count, because the two answer different questions:
+
+```
+  @design-system/foundation  ██████████████████████████████ 100.0% (8 files, 33 renders)
+```
+
+Files are **progress** — 7 of 15 files converted is about half done. Renders are **effort** — the
+same repo can be half converted by file and still have most of its call sites left, because the
+old library is used densely in the files nobody has touched. A package that renders nothing shows
+files alone rather than a `0 renders` that would read as a finding.
 
 **A package that isn't there.** A group can name a package this repo does not have — a typo, one
 under `packages.ignore`, or one that was never installed. That is reported as *not found in this
@@ -152,8 +165,8 @@ call for opposite reactions:
   None of these packages was found in this repo.
 ```
 
-In `--format json`, the same split is under `versus[].entries[]` as `count`, `percentage` and
-`present`. The per-package count is also on every row of `packages[]` as `importingFileCount`,
+In `--format json`, the same split is under `versus[].entries[]` as `count`, `renderCount`,
+`percentage` and `present`. The per-package count is also on every row of `packages[]` as `importingFileCount`,
 beside `usageCount` — the first is imports, the second is JSX renders, and for a package used
 only as a function the second is always 0.
 

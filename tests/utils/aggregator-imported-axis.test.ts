@@ -137,12 +137,14 @@ describe('aggregateReports — the imported axis, through the full parse pipelin
       {
         packageName: 'lodash',
         count: 3,
+        renderCount: 0,
         percentage: 75,
         present: true,
       },
       {
         packageName: 'es-toolkit',
         count: 1,
+        renderCount: 0,
         percentage: 25,
         present: true,
       },

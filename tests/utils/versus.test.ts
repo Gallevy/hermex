@@ -79,6 +79,39 @@ describe('calculateVersusResults', () => {
     });
   });
 
+  // The number the old implementation used as `count`. It is carried through
+  // so a component migration keeps the figure that was most useful for it,
+  // but the split is measured in files regardless — otherwise a group with a
+  // hook or function library on one side would be measured one way on the
+  // left and another on the right.
+  it('carries usageCount through as renderCount without letting it drive the split', () => {
+    const chakra = createMockInventoryEntry('@chakra-ui/react', {
+      usageCount: 90,
+      importingFileCount: 1,
+    });
+    const mui = createMockInventoryEntry('@mui/material', {
+      usageCount: 2,
+      importingFileCount: 3,
+    });
+
+    const [result] = calculateVersusResults(
+      [chakra, mui],
+      [{ name: 'UI', packages: ['@chakra-ui/react', '@mui/material'] }],
+    );
+
+    const byName = new Map(result.entries.map((e) => [e.packageName, e]));
+    expect(byName.get('@chakra-ui/react')).toMatchObject({
+      count: 1,
+      renderCount: 90,
+    });
+    expect(byName.get('@mui/material')).toMatchObject({
+      count: 3,
+      renderCount: 2,
+    });
+    // 3 of 4 files, not 2 of 92 renders.
+    expect(byName.get('@mui/material')?.percentage).toBeCloseTo(75);
+  });
+
   it('gives a configured package absent from the distribution a zero count', () => {
     const moment = createMockInventoryEntry('moment', {
       importingFileCount: 5,

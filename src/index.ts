@@ -110,9 +110,12 @@ export interface HermexScanResult {
    */
   components?: HermexScanComponent[];
   /**
-   * Each configured versus group's split. `count` is how many scanned files
-   * import the package (`importingFileCount`), not how many times it is
-   * rendered — see `VersusEntry` (#174). Omitted when `output.versus: false`.
+   * Each configured versus group's split. `count` — the field the
+   * percentages are computed from — is how many scanned files import the
+   * package (`importingFileCount`); `renderCount` carries the JSX render
+   * count (`usageCount`) alongside it, since files measure how much of a
+   * migration is done and renders measure how much editing is left. See
+   * `VersusEntry` (#174). Omitted when `output.versus: false`.
    */
   versus?: import('./utils/versus').VersusResult[];
   /**
