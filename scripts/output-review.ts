@@ -15,7 +15,8 @@
  * A real diff is just informational here — `pnpm run test:output` reports
  * it but does not fail because of it, since a changed output isn't
  * necessarily a bug. Whether it's an *approved* change is a separate,
- * human question — see `.github/workflows/output-approval.yaml`.
+ * human question — see the `output-approval` job in
+ * `.github/workflows/output-review.yaml`.
  *
  *   pnpm run test:output                    compare against origin/main
  *   pnpm run test:output -- --against beta  compare against another branch
@@ -103,6 +104,12 @@ export interface CaseResult {
   raw: RawCapture;
   /** Set when the process exit code did not match `expectExit`. */
   exitMismatch?: { expected: number; actual: number };
+  /**
+   * What the target branch's build did with this case. Kept so the report can
+   * tell "the output changed" from "there was no baseline at all" — see
+   * `hasNoBaseline`. Absent only in unit tests, which build results directly.
+   */
+  reference?: { status: number; raw: RawCapture };
   changed: string[];
   added: string[];
   removed: string[];
@@ -191,6 +198,12 @@ export function scrub(text: string): string {
       // backslash — table borders are box-drawing characters and colour is
       // real escape bytes, not text.
       .replace(/\\/g, '/')
+      // The reference worktree is named after the commit it was built from,
+      // so a stack trace out of the reference CLI carries a SHA that changes
+      // every time the target branch moves. Left alone it marks `stderr.txt`
+      // as changed for a reason that is not a code change — the same class of
+      // noise as the version below.
+      .replace(/(<repo>\/\.output-review\/reference\/)[0-9a-f]{40}/g, '$1<sha>')
       // hermex's own version, which changes on every release and would
       // otherwise mark all 19 cases as changed. Package versions in the
       // tables and in `packages[]` are fixture data and stay untouched; the
@@ -398,16 +411,46 @@ function run(command: string, args: string[], cwd: string): void {
  * clone whose remote-tracking branches are stale.
  */
 function resolveRef(ref: string): string {
+  // An exact commit already in this clone needs no remote at all, and both
+  // CI jobs now name one: the warm job passes `github.sha`, the PR job passes
+  // the `origin/<base>` tip it resolved to build the cache key from. Without
+  // this the fetch below fires for a SHA that is already here.
+  //
+  // `^{commit}` is load-bearing, not decoration: `rev-parse --verify`
+  // short-circuits full hex and succeeds for objects that are *not* present.
+  // Peeling is what forces the object to actually exist.
+  if (/^[0-9a-f]{40}$/i.test(ref)) {
+    const local = spawnSync(
+      'git',
+      ['rev-parse', '--verify', `${ref}^{commit}`],
+      { cwd: ROOT, encoding: 'utf8' },
+    );
+    if (local.status === 0) return local.stdout.trim();
+  }
+
+  // Deliberately not generalised to any ref: bare `main` resolves to the
+  // *local* branch, which may lag origin, and silently changing what the
+  // reference is is exactly what the `origin/<ref>`-first ordering prevents.
   const direct = spawnSync('git', ['rev-parse', `origin/${ref}`], {
     cwd: ROOT,
     encoding: 'utf8',
   });
   if (direct.status === 0) return direct.stdout.trim();
 
-  const fetch = spawnSync('git', ['fetch', '--depth=1', 'origin', ref], {
-    cwd: ROOT,
-    encoding: 'utf8',
-  });
+  // `--depth=1` only when the clone is already shallow. Against a full clone
+  // it writes `.git/shallow` and shallows it for the rest of the process,
+  // which breaks anything downstream that wanted history — including the
+  // `git worktree add` this exists to feed.
+  const shallow =
+    spawnSync('git', ['rev-parse', '--is-shallow-repository'], {
+      cwd: ROOT,
+      encoding: 'utf8',
+    }).stdout.trim() === 'true';
+  const fetch = spawnSync(
+    'git',
+    shallow ? ['fetch', '--depth=1', 'origin', ref] : ['fetch', 'origin', ref],
+    { cwd: ROOT, encoding: 'utf8' },
+  );
   if (fetch.status !== 0) {
     throw new Error(
       `Could not resolve "${ref}" to a commit, and fetching it from origin failed:\n${fetch.stderr}`,
@@ -423,21 +466,56 @@ function resolveRef(ref: string): string {
   return afterFetch.stdout.trim();
 }
 
+/** Where the reference CLI came from, and whether it had to be built. */
+export interface Reference {
+  sha: string;
+  cli: string;
+  /** False when this run paid for the worktree, the install and the build. */
+  reused: boolean;
+}
+
 /**
  * Builds `ref` in an isolated git worktree and returns its `dist/cli.mjs`.
  * Cached by resolved commit SHA under `.output-review/reference/` — a
  * worktree, an install and a build are not cheap, and `--filter` runs
  * against the same `--against` commit far more often than that commit
- * changes.
+ * changes. In CI that directory also arrives pre-seeded from the Actions
+ * cache the push-side job warms (`output-review-reference.yaml`).
  */
-function buildReference(ref: string): string {
+function buildReference(ref: string): Reference {
   const sha = resolveRef(ref);
   const worktree = join(REFERENCE_DIR, sha);
   const cli = join(worktree, 'dist', 'cli.mjs');
-  if (existsSync(cli)) return cli;
+
+  // Not `existsSync(cli)` alone, because this directory can now arrive from
+  // a cache rather than from a build this machine performed. `dist/cli.mjs`
+  // is not self-contained — tsdown externalises everything in
+  // `dependencies`, so it resolves `commander`, `@swc/core` and the rest at
+  // runtime — and Node resolution walks *up* from the worktree, reaching
+  // `<ROOT>/node_modules`: this branch's tree. A restore that lost
+  // `node_modules` therefore does not fail. It runs the target branch's
+  // source against this branch's dependencies and prints a plausible, wrong
+  // baseline. One `--version` spawn rules that out; the cost of being wrong
+  // here is every diff in the report.
+  if (existsSync(cli) && existsSync(join(worktree, 'node_modules', '.pnpm'))) {
+    const probe = spawnSync(process.execPath, [cli, '--version'], {
+      cwd: worktree,
+      encoding: 'utf8',
+    });
+    if (probe.status === 0) return { sha, cli, reused: true };
+    process.stderr.write(
+      `Reference build at ${sha} did not run; rebuilding it.\n`,
+    );
+  }
 
   rmSync(worktree, { recursive: true, force: true });
   mkdirSync(REFERENCE_DIR, { recursive: true });
+
+  // A worktree whose directory was removed stays registered in
+  // `.git/worktrees/`, and `add` then fails with "is a missing but already
+  // registered worktree". Reachable whenever the `rmSync` above fires on a
+  // half-built directory — which the probe makes more likely, not less.
+  run('git', ['worktree', 'prune'], ROOT);
 
   // `--detach`: a branch name would collide if that same branch happens to
   // be checked out in the primary worktree already (running this on `main`
@@ -446,7 +524,44 @@ function buildReference(ref: string): string {
 
   run('pnpm', ['install', '--frozen-lockfile'], worktree);
   run('pnpm', ['run', 'build'], worktree);
-  return cli;
+  return { sha, cli, reused: false };
+}
+
+/**
+ * What this run compared against, for the report to state.
+ *
+ * The report has never said which commit the baseline came from, which makes
+ * two different things unreadable: whether a comparison is against the main
+ * you think it is, and — since the PR job only ever *restores* the shared
+ * cache and never writes one — whether the reference had to be rebuilt. A
+ * miss is only ever slow, never wrong, but "slow for a reason nobody can
+ * see" is how a warm job that quietly stopped working stays unnoticed.
+ */
+let REFERENCE: (Reference & { ref: string }) | null = null;
+
+/**
+ * Ambient for the same reason `blobBase`, `siteUrl` and `runUrl` are: it
+ * describes the run, not any one case, and every report surface wants it.
+ * Exported so tests can set it and clear it again.
+ */
+export function recordReference(
+  record: (Reference & { ref: string }) | null,
+): void {
+  REFERENCE = record;
+}
+
+/** The provenance line every report surface carries, in Markdown. */
+function referenceLine(): string[] {
+  if (!REFERENCE) return [];
+  const { sha, ref, reused } = REFERENCE;
+  const provenance = reused
+    ? 'reused from cache'
+    : '**built from source**: no cache entry for this commit, so this run was slower. The comparison is unaffected';
+  // The ref only earns a mention when it is not the SHA already shown. CI
+  // passes the resolved commit, so naming it twice there is noise; a local
+  // `--against beta` is where the name carries something the SHA does not.
+  const named = sha.startsWith(ref) ? '' : ` (\`${ref}\`)`;
+  return [`Reference: \`${sha.slice(0, 7)}\`${named} — ${provenance}.`, ''];
 }
 
 // ── Case dossiers ────────────────────────────────────────────────────────────
@@ -807,6 +922,35 @@ function isClean(result: CaseResult): boolean {
   );
 }
 
+/**
+ * True when the target branch produced nothing to compare against, so the
+ * diff below it has no left-hand side and every `+` line is the whole output
+ * *appearing* rather than changing.
+ *
+ * The case this exists for: a PR adds a key to a fixture config, the config
+ * schema is `.strict()`, and the reference CLI — built from a branch that has
+ * never heard of that key — throws before printing anything. Reported as a
+ * bare `+40 −22` it is indistinguishable from a real output change, which is
+ * precisely the moment a reviewer is being asked for `output:approved`.
+ *
+ * Deliberately **not** `reference.status !== fixture.expectExit`: most
+ * `comply` cases assert `expectExit: 1`, and an unhandled rejection exits 1
+ * too, so the crash is invisible to that check. The asymmetry is the tell.
+ *
+ * The current-side half is what keeps a legitimately silent case from being
+ * flagged when both sides agree about the silence. No case is silent today —
+ * `createCommandContext` writes `hermex v<version>` and the spinner to
+ * *stdout* for human format, so even `comply-exit-2` and `scan-no-files`
+ * print something — and the case this fires on is upstream of that:
+ * `loadConfig` runs in the commander action before any context exists. The
+ * guard costs nothing and holds the day that stops being true.
+ */
+export function hasNoBaseline(result: CaseResult): boolean {
+  const reference = result.reference;
+  if (!reference) return false;
+  return reference.raw.stdout.trim() === '' && result.raw.stdout.trim() !== '';
+}
+
 // ── Invariants ───────────────────────────────────────────────────────────────
 //
 // Claims about the *relationship between* cases, or about properties every
@@ -1111,6 +1255,64 @@ function renderBreaches(
   ];
 }
 
+/**
+ * The "these cases have no baseline" block.
+ *
+ * Deliberately not an entry in `INVARIANTS`, advisory or otherwise. An
+ * invariant states something that must never happen, and its callout is red
+ * because a breach means a defect; a reference build that could not run a
+ * case is a recurring, expected consequence of adding a config key, and it
+ * arrives on every PR that adds a rule. Parking it there would make the red
+ * callout mean "sometimes a defect", which is the one thing it must not mean
+ * — and `fixtures/README.md` says advisory is a holding position for a
+ * breach being fixed, not a place to leave one.
+ */
+function renderNoBaseline(
+  results: CaseResult[],
+  audience: Audience = 'github',
+): string[] {
+  const affected = results.filter(hasNoBaseline);
+  if (affected.length === 0) return [];
+
+  const why =
+    `The target branch could not run ${affected.length === 1 ? 'this case' : 'these cases'} — ` +
+    'its build produced no output at all, so there is nothing to diff against ' +
+    'and every added line below is the whole output appearing, not changing. ' +
+    'Usually this means the branch adds a config key the target branch\u2019s ' +
+    'schema rejects, in which case it resolves itself on merge. Each case page ' +
+    'carries the reference build\u2019s stderr.';
+
+  if (audience === 'github') {
+    const lines = [
+      '> [!NOTE]',
+      `> **No baseline for ${affected.length} case(s)**`,
+      `> ${why}`,
+    ];
+    for (const result of affected) {
+      lines.push(
+        `> - \`${result.fixture.name}\` — the reference exited ${result.reference?.status ?? '?'} without printing to stdout.`,
+      );
+    }
+    return [...lines, ''];
+  }
+
+  const items = affected
+    .map(
+      (result) =>
+        `<li><code>${escapeHtml(result.fixture.name)}</code> — the reference exited ` +
+        `${result.reference?.status ?? '?'} without printing to stdout.</li>`,
+    )
+    .join('');
+  return [
+    '<div class="or-callout or-note">',
+    `<strong>No baseline for ${affected.length} case(s)</strong>`,
+    `<p>${escapeHtml(why)}</p>`,
+    `<ul>${items}</ul>`,
+    '</div>',
+    '',
+  ];
+}
+
 // ── Reporting ────────────────────────────────────────────────────────────────
 
 /**
@@ -1119,9 +1321,15 @@ function renderBreaches(
  * not reliably render — the status would read literally, asterisks and all.
  */
 function statusOf(result: CaseResult): string {
+  // An exit-code mismatch outranks everything below it: it is the one thing
+  // here that fails the run, and naming the missing baseline instead would
+  // hide it.
   if (result.exitMismatch) {
     return `exit ${result.exitMismatch.actual}, expected ${result.exitMismatch.expected}`;
   }
+  // Ahead of the artifact list, which would otherwise read `changed:
+  // +stdout.json, -stdout.txt` and describe the crash as a renamed file.
+  if (hasNoBaseline(result)) return 'no baseline';
   if (isClean(result)) return 'unchanged';
   const parts: string[] = [];
   if (result.changed.length > 0) parts.push(`${result.changed.join(', ')}`);
@@ -1141,6 +1349,7 @@ function shortStatus(result: CaseResult): string {
   if (result.exitMismatch) {
     return `exit ${result.exitMismatch.actual}, expected ${result.exitMismatch.expected}`;
   }
+  if (hasNoBaseline(result)) return 'no baseline';
   return isClean(result) ? 'unchanged' : 'changed';
 }
 
@@ -1335,6 +1544,18 @@ function forSummary(content: string): string {
  * this carries everything, for the reviewer who wants to see what a case
  * actually emits rather than only how it moved.
  */
+/**
+ * ` · N with no baseline`, or nothing at all. A separate segment rather than
+ * folded into the changed count, because they are not the same claim: a
+ * changed case has two outputs that differ, a no-baseline case has one.
+ * Folding them is how "26 of 26 changed" comes to mean "26 diffs with no
+ * left-hand side".
+ */
+function noBaselineCount(results: CaseResult[]): string {
+  const count = results.filter(hasNoBaseline).length;
+  return count === 0 ? '' : ` · ${count} with no baseline`;
+}
+
 function buildJobSummary(results: CaseResult[], breaches: Breach[]): string {
   const base = blobBase();
   const differing = results.filter((result) => !isClean(result));
@@ -1343,10 +1564,12 @@ function buildJobSummary(results: CaseResult[], breaches: Breach[]): string {
   const lines: string[] = [
     '# Output Review',
     '',
-    `${results.length} cases · ${differing.length} changed · ${breaches.length} invariant breach(es)`,
+    `${results.length} cases · ${differing.length} changed${noBaselineCount(results)} · ${breaches.length} invariant breach(es)`,
     '',
+    ...referenceLine(),
   ];
   lines.push(...renderBreaches(breaches));
+  lines.push(...renderNoBaseline(results));
   lines.push(buildTable(results), '', DIFF_LEGEND, '');
 
   if (differing.length > 0) {
@@ -1448,7 +1671,10 @@ function caseLink(name: string, site: string | null, summary: string | null) {
  * which is the case where a reviewer can tell from a glance whether the
  * change is the intended one and never needs to click at all.
  */
-function buildComment(results: CaseResult[], breaches: Breach[]): string {
+export function buildComment(
+  results: CaseResult[],
+  breaches: Breach[],
+): string {
   const site = siteUrl();
   const summary = runUrl();
   const differing = results.filter((result) => !isClean(result));
@@ -1463,16 +1689,24 @@ function buildComment(results: CaseResult[], breaches: Breach[]): string {
     '<!-- hermex-output-review -->',
     '### Output Review',
     '',
-    `**${differing.length} of ${results.length} case(s) changed** · ${breaches.length} invariant breach(es) · ${index}`,
+    `**${differing.length} of ${results.length} case(s) changed**${noBaselineCount(results)} · ${breaches.length} invariant breach(es) · ${index}`,
     '',
+    ...referenceLine(),
     ...renderBreaches(breaches),
+    ...renderNoBaseline(results),
   ];
 
   if (differing.length > 0) {
     lines.push('| Case | Change | |', '| --- | --- | --- |');
     for (const result of differing) {
+      // `no baseline` in place of the totals, not beside them: `+40 −22` on
+      // a case with nothing to compare against is not a smaller truth, it is
+      // a different and wrong one.
+      const change = hasNoBaseline(result)
+        ? '**no baseline**'
+        : caseTotals(result);
       lines.push(
-        `| \`${result.fixture.name}\` | ${caseTotals(result)} | ${caseLink(result.fixture.name, site, summary)} |`,
+        `| \`${result.fixture.name}\` | ${change} | ${caseLink(result.fixture.name, site, summary)} |`,
       );
     }
     lines.push('');
@@ -1488,6 +1722,10 @@ function buildComment(results: CaseResult[], breaches: Breach[]): string {
     );
   } else if (differing.length === 0) {
     lines.push('Output is unchanged. Nothing to review.');
+  } else if (results.some(hasNoBaseline)) {
+    lines.push(
+      'Open a case to read its diff, its config and its full output. The cases marked `no baseline` cannot be diffed from here — read their output on its own merits, since they will compare normally once this merges. If this is the change you meant, apply the `output:approved` label — see CONTRIBUTING.md.',
+    );
   } else {
     lines.push(
       'Open a case to read its diff, its config and its full output. If this is the change you meant, apply the `output:approved` label — see CONTRIBUTING.md.',
@@ -1610,6 +1848,15 @@ export const SITE_STYLE = [
   '  padding: 0.75rem 1rem;',
   '  border-radius: 0 6px 6px 0;',
   '  margin: 1rem 0;',
+  '}',
+  '',
+  '/* A missing baseline is not a defect — it is the expected consequence of',
+  '   adding a config key the target branch has never seen. Red would put it',
+  '   in the same visual class as a broken invariant, which is exactly the',
+  '   distinction the reader needs. */',
+  '.or-callout.or-note {',
+  '  border-left-color: #0969da;',
+  '  background: #ddf4ff;',
   '}',
   '',
   '/* jekyll-theme-primer is a light-only theme with every colour hardcoded,',
@@ -1816,6 +2063,10 @@ export const SITE_STYLE = [
   '    background: rgba(248, 81, 73, 0.1);',
   '    color: #c9d1d9;',
   '  }',
+  '',
+  '  .or-callout.or-note {',
+  '    background: rgba(56, 139, 253, 0.15);',
+  '  }',
   '}',
   '',
 ].join('\n');
@@ -1921,6 +2172,29 @@ function caseBody(result: CaseResult, base: string | null): string[] {
   const lines = [...caseContext(result, base)];
   lines.push(...configBlock(result.fixture, base));
 
+  // Before the diff, not after it: by the time a reader reaches the diff
+  // they have already started reading it as a comparison.
+  if (hasNoBaseline(result) && result.reference) {
+    lines.push(
+      '## No baseline',
+      '',
+      `The target branch's build ran this case and printed nothing to stdout (it exited ${result.reference.status}). There is no baseline, so the diff below has no left-hand side: every added line is the whole output appearing, not changing, and the removed lines are the reference's own error output going away.`,
+      '',
+      "This is what a config key the target branch's schema does not recognise looks like, and it resolves itself the moment this merges. What it is not is an output change anyone can read from the diff.",
+      '',
+      "The reference build's stderr:",
+      '',
+      '```text',
+      // Stripped here rather than at capture: `raw` is what the ANSI-purity
+      // invariant has to see un-stripped, and `comply`'s failure path is a
+      // red `spinner.fail`, so this would otherwise put escape bytes into
+      // the job summary and onto gh-pages.
+      forSummary(stripAnsi(result.reference.raw.stderr).trimEnd() || '(empty)'),
+      '```',
+      '',
+    );
+  }
+
   if (result.diff) {
     lines.push(
       '## Diff against the target branch',
@@ -1960,9 +2234,14 @@ function caseBody(result: CaseResult, base: string | null): string[] {
 function statusTable(results: CaseResult[]): string[] {
   const rows = results.map((result) => {
     const name = `[\`${result.fixture.name}\`](./${encodeURIComponent(result.fixture.name)}.html)`;
+    // No totals on a no-baseline row: `shortStatus` already says `no
+    // baseline`, and appending `+40 −22` to it states the count of a
+    // comparison that did not happen.
     const status = isClean(result)
       ? shortStatus(result)
-      : `**${shortStatus(result)}** ${caseTotals(result, true)}`;
+      : hasNoBaseline(result)
+        ? `**${shortStatus(result)}**`
+        : `**${shortStatus(result)}** ${caseTotals(result, true)}`;
     return `| ${name} | ${status} | ${result.fixture.proves} |`;
   });
   return ['| Case | Status | Proves |', '| --- | --- | --- |', ...rows, ''];
@@ -1983,9 +2262,11 @@ export function buildSite(
     RAW_OPEN,
     '# Output Review',
     '',
-    `${results.length} cases · ${differing.length} changed · ${breaches.length} invariant breach(es)`,
+    `${results.length} cases · ${differing.length} changed${noBaselineCount(results)} · ${breaches.length} invariant breach(es)`,
     '',
+    ...referenceLine(),
     ...renderBreaches(breaches, 'jekyll'),
+    ...renderNoBaseline(results, 'jekyll'),
     ...(differing.length > 0
       ? ['## Changed', '', ...statusTable(differing)]
       : ['Every case matches the target branch.', '']),
@@ -2042,6 +2323,34 @@ async function main(): Promise<void> {
       ? (process.env['GITHUB_BASE_REF'] ?? 'main')
       : argv[againstIndex + 1];
 
+  // `--against` is load-bearing now that a CI cache key names the same
+  // commit, and a workflow expression that evaluates to empty would
+  // otherwise arrive here as `undefined` and resolve `origin/undefined`.
+  if (against === undefined || against === '') {
+    throw new Error('--against needs a ref or a commit SHA.');
+  }
+
+  // Warming the shared reference cache, for the push-side job in
+  // `.github/workflows/output-review-reference.yaml`. Nothing below this is
+  // needed to produce `.output-review/reference/<sha>`, and building this
+  // tree's CLI only to throw it away would double the job for nothing.
+  if (argv.includes('--reference-only')) {
+    const reference = buildReference(against);
+    const expected = process.env['GITHUB_SHA'];
+    // Without this the cache would be keyed on a commit nothing built, and
+    // the symptom would be a reference entry that is silently never there:
+    // a slow rebuild on every PR, with no failure to trace it back to.
+    if (expected !== undefined && expected !== reference.sha) {
+      throw new Error(
+        `--reference-only resolved "${against}" to ${reference.sha}, but this run is ${expected}. The cache would be keyed on a commit nothing built.`,
+      );
+    }
+    process.stdout.write(
+      `${reference.reused ? 'reused' : 'built'} reference ${reference.sha}\n${reference.cli}\n`,
+    );
+    return;
+  }
+
   if (!argv.includes('--no-build')) {
     // One command string rather than an argv array: with `shell: true` the
     // array form is concatenated unescaped, which Node deprecates.
@@ -2075,7 +2384,20 @@ async function main(): Promise<void> {
   // Before any rendering: every report surface prints a config block.
   await resolveConfigs(selected);
 
-  const referenceCli = buildReference(against);
+  const reference = buildReference(against);
+  recordReference({ ...reference, ref: against });
+
+  // An annotation as well as the report line: the report is read by whoever
+  // opens the PR comment, and this is read by whoever is looking at a job
+  // that took four minutes longer than it should have. Since #178 the PR
+  // side only ever restores the shared cache, so a miss here means the
+  // push-side warm job has not finished, failed, or never ran.
+  if (!reference.reused && process.env['GITHUB_ACTIONS']) {
+    process.stdout.write(
+      `::warning::No cached reference build for ${reference.sha}; built it from source. ` +
+        'Check that the "Output review reference" workflow ran for that commit.\n',
+    );
+  }
 
   const registry = selected.some((fixture) => fixture.registry)
     ? await startRegistry()
@@ -2088,14 +2410,19 @@ async function main(): Promise<void> {
       const current = await runCase(fixture, registryUrl, CLI);
       // Same fixture, same registry, the only variable is which build of
       // hermex is running it — see `runCase`'s doc comment.
-      const reference = await runCase(fixture, registryUrl, referenceCli);
+      const baseline = await runCase(fixture, registryUrl, reference.cli);
 
       const result = compare(
         fixture,
         current.artifacts,
         current.raw,
-        reference.artifacts,
+        baseline.artifacts,
       );
+      // Kept rather than discarded with the rest of the reference run: its
+      // artifacts alone cannot say whether it ran at all, and a reference
+      // that printed nothing renders as an ordinary diff unless something
+      // notices. See `hasNoBaseline`.
+      result.reference = { status: baseline.status, raw: baseline.raw };
       if (current.status !== fixture.expectExit) {
         result.exitMismatch = {
           expected: fixture.expectExit,
@@ -2165,7 +2492,7 @@ async function main(): Promise<void> {
   }
 
   const differing = results.filter((r) => !isClean(r));
-  // Read by output-approval.yaml (a separate job in the same workflow) to
+  // Read by the output-approval job in output-review.yaml to
   // decide whether the output:approved label gate applies — cheaper than
   // re-running the whole matrix a second time just to ask that question.
   writeFileSync(

@@ -111,6 +111,30 @@ So: open the PR, read the output-review comment yourself (or have someone
 else read it — either way works, this repo doesn't require a second
 person), and apply `output:approved` once you're satisfied with the diff.
 
+The comment names the commit it compared against. That comparison can only
+go stale in one direction — main moving after the run — and merging closes
+it: branches have to be up to date before merge, bringing one up to date is
+a push, and a push re-runs the review against the current main *and* strips
+`output:approved`. So what you approved is always what merges. To re-baseline
+sooner, hit "Update branch" or push anything.
+
+### When a case says `no baseline`
+
+Sometimes a case is marked `no baseline` instead of `+N −M`. That means the
+target branch's build of hermex could not run that case at all and printed
+nothing, so there is no left-hand side: every added line in its diff is the
+whole output *appearing*, not changing.
+
+Adding a rule does this every time. The config schema is `.strict()`, the
+fixture config gains a key for your new rule, and the target branch's hermex
+has never heard of it — so it throws before printing. It is legitimate, it
+fixes itself the moment you merge, and the case page shows the reference
+build's error so you can confirm that's all it is.
+
+It is not a failure and it does not block the check. What it does mean is
+that the diff for those cases cannot be read as a comparison: judge their
+output on its own terms instead, then apply `output:approved` as usual.
+
 ### Adding a case
 
 One entry in `fixtures/cases.ts` plus, usually, one config in
