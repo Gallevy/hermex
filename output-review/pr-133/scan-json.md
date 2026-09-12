@@ -14,13 +14,13 @@ _unchanged_
 
 **Ran** `hermex scan --format json` in `fixtures/` → exit 0, as asserted
 
-**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/8455a6a3874084b3785cbf24196cd99b6c5bf521/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/8455a6a3874084b3785cbf24196cd99b6c5bf521/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/8455a6a3874084b3785cbf24196cd99b6c5bf521/fixtures/README.md)) · **Case** [`scan-json`](https://github.com/Gallevy/hermex/blob/8455a6a3874084b3785cbf24196cd99b6c5bf521/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/8455a6a3874084b3785cbf24196cd99b6c5bf521/fixtures/cases/scan-json.md))
+**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/880e0ffe7ef36de9f4837620868bf570c81a0b4e/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/880e0ffe7ef36de9f4837620868bf570c81a0b4e/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/880e0ffe7ef36de9f4837620868bf570c81a0b4e/fixtures/README.md)) · **Case** [`scan-json`](https://github.com/Gallevy/hermex/blob/880e0ffe7ef36de9f4837620868bf570c81a0b4e/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/880e0ffe7ef36de9f4837620868bf570c81a0b4e/fixtures/cases/scan-json.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter scan-json`</sub>
 
 ## Config
 
-[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/8455a6a3874084b3785cbf24196cd99b6c5bf521/fixtures/hermex.config.ts) — resolved, as the loader sees it
+[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/880e0ffe7ef36de9f4837620868bf570c81a0b4e/fixtures/hermex.config.ts) — resolved, as the loader sees it
 
 ```json
 {
