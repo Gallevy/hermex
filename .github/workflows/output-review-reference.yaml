@@ -1,0 +1,113 @@
+# .github/workflows/output-review-reference.yaml
+#
+# Builds the output-review reference CLI for each commit that lands on main or
+# beta, and stores it in the Actions cache, so the `review` job in
+# output-review.yaml restores it instead of rebuilding it on every pull
+# request.
+#
+# Why this workflow has to exist at all, rather than pull requests caching it
+# themselves (#178): a cache entry's scope is fixed at *write* time by the ref
+# of the run that creates it, and a `pull_request` run writes to
+# refs/pull/<n>/merge. Nothing else can read that. So the cache output-review
+# used to save was invisible to every other PR, and each one independently
+# rebuilt — and then re-stored — a byte-identical 52 MiB artifact under an
+# identical key. Reads are scoped to the run's own ref plus its base branch
+# plus the default branch, which makes a push-triggered job on main and beta
+# the only place a PR-readable entry can come from.
+#
+# That isolation is deliberate, not an oversight, and the workaround people
+# reach for first does not exist: there is no re-scope, copy or promote
+# operation — the cache REST API is list and delete only. If a pull_request
+# run could write into the scope main reads, any contributor could poison the
+# baseline every other PR is judged against. Artifacts are run-scoped rather
+# than ref-scoped and could technically carry this, but that means querying
+# for "some run that built exactly this SHA", which is fragile, breaks on
+# retention expiry, and reintroduces the same trust problem with less
+# guarding.
+#
+# A cache and not an artifact, which is the opposite of the call
+# coverage-baseline.yaml makes for its own baseline — deliberately. That one
+# wants *a* recent number and cannot name the commit it will be compared
+# against in advance, which is exactly what a cache key demands. This one is
+# useless unless it is *that exact* commit, and it is 52 MiB rather than one
+# small JSON file: a bad artifact and a fine cache. The two jobs reach
+# opposite conclusions from the same constraint because they want opposite
+# things.
+#
+# Deliberately not folded into coverage-baseline.yaml: that workflow cancels
+# superseded runs, which is right for a number only the newest of which is
+# ever read, and wrong here — an older commit's reference is still what an
+# open pull request wants until it updates its branch.
+name: Output review reference
+
+on:
+  push:
+    branches: ['main', 'beta']
+
+permissions:
+  contents: read
+
+# Not cancel-in-progress. A superseded run here is still building something
+# open pull requests will ask for; cancelling it only guarantees they rebuild
+# it themselves. Grouped per branch rather than per commit so a burst of
+# pushes queues instead of spawning a full install and build for each.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  reference:
+    runs-on: ubuntu-latest
+    steps:
+      # Shallow is enough, unlike the PR side: `--reference-only` is handed
+      # this run's own commit, which is the one already checked out, so
+      # scripts/output-review.ts never has to resolve or fetch anything.
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm CLI
+        uses: pnpm/setup@v2
+        with:
+          runtime: node@26
+          cache: true
+          install: false
+
+      # No root `pnpm install`: scripts/output-review.ts imports nothing but
+      # node builtins, and the install that matters happens inside the
+      # reference worktree, where the store cache above is what makes it fast.
+
+      # `lookup-only`: this only needs to know whether the entry exists, and
+      # downloading 52 MiB to discover that it does would defeat the point.
+      # A hit means a re-run of a commit already warmed — nothing to do.
+      - name: Check for an existing reference build
+        id: warm
+        uses: actions/cache/restore@v6
+        with:
+          path: .output-review/reference/${{ github.sha }}
+          key: output-review-reference-${{ github.sha }}
+          lookup-only: true
+
+      # $GITHUB_SHA rather than the expression: the value is identical, and a
+      # run: block that never interpolates `${{ }}` cannot be an injection
+      # site regardless of what the expression turns out to hold.
+      - name: Build the reference
+        if: steps.warm.outputs.cache-hit != 'true'
+        run: pnpm run build:reference -- --against "$GITHUB_SHA"
+
+      # Before the save, not after: dist/cli.mjs is not self-contained —
+      # tsdown externalises everything in `dependencies` — so a build whose
+      # node_modules is wrong still produces a file. Caching one that cannot
+      # run would hand every pull request a baseline that silently is not the
+      # target branch's behaviour.
+      - name: Smoke-test the reference
+        if: steps.warm.outputs.cache-hit != 'true'
+        run: node ".output-review/reference/$GITHUB_SHA/dist/cli.mjs" --version
+
+      - name: Cache the reference build
+        if: steps.warm.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: .output-review/reference/${{ github.sha }}
+          key: output-review-reference-${{ github.sha }}

@@ -138,8 +138,18 @@ Three surfaces, split by what stays put and what changes every run:
 | Where | Shows | For |
 | --- | --- | --- |
 | [`cases/<name>.md`](./cases/) | The **case dossier** — what it asserts, its command, config, fixture, asserted exit code, and how to run it. Committed, and generated from `cases.ts`. | Answering "what is this case?" at any time, in git, without a CI run. |
-| **The sticky PR comment** | One row per **changed** case: name, `+N −M`, and a single link. | Triage — which cases moved, by how much, is that the set you expected? |
+| **The sticky PR comment** | One row per **changed** case: name, `+N −M`, and a single link. Plus the commit the run compared against, and whether that reference was reused from CI's cache or rebuilt. | Triage — which cases moved, by how much, is that the set you expected? |
 | **A page per case** (`.output-review/site/`) | One Markdown page per case with its context, **the config it ran under, inlined**, the full diff, and complete stdout, stderr and written files. | Reading one case, without any chance of confusing it with another. |
+
+A case can also be marked **`no baseline`** in place of `+N −M`. That is the
+state where the target branch's build produced no output for that case at
+all — adding a rule does it every time, since the fixture config gains a key
+the `.strict()` schema on the other side rejects. There is nothing to diff
+against, so the case is marked on every surface, all three say why, and the
+case page carries the reference build's stderr. It is reported, never
+blocking: it is legitimate, and it resolves itself on merge. What it must
+never do is look like an ordinary `+40 −22` a reviewer reads as a real
+output change (#178).
 
 The comment carries **no diffs at all**. An output change is rarely one line
 in one case — swapping a table border character rewrites every row of

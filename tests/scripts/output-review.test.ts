@@ -1,10 +1,13 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { resolve } from 'node:path';
 import {
+  buildComment,
   buildSite,
   caseDoc,
   diffHunks,
+  hasNoBaseline,
   INVARIANTS,
+  recordReference,
   scrub,
   SITE_STYLE,
   unifiedDiff,
@@ -13,6 +16,7 @@ import {
 import type { CaseResult, FixtureCase } from '../../scripts/output-review';
 
 const ROOT = resolve(__dirname, '../..');
+const ESC = String.fromCharCode(27);
 
 /**
  * The scrubber decides what a baseline records. A gap in it makes every run
@@ -24,6 +28,17 @@ describe('scrub', () => {
   it("replaces hermex's own version so a release does not touch every baseline", () => {
     expect(scrub('hermex v2.11.0\n')).toBe('hermex v<version>\n');
     expect(scrub('hermex v3.0.0-beta.1\n')).toBe('hermex v<version>\n');
+  });
+
+  it('collapses the commit the reference worktree is named after', () => {
+    // A stack trace out of the reference CLI carries the SHA it was built
+    // from, which changes every time the target branch moves — the same
+    // class of noise as the version above, and it lands in stderr.txt.
+    const trace =
+      'at <repo>/.output-review/reference/dd78b0600bccbcf0b1344519f4bb91e52e401c0d/dist/cli.mjs:1:1';
+    expect(scrub(trace)).toBe(
+      'at <repo>/.output-review/reference/<sha>/dist/cli.mjs:1:1',
+    );
   });
 
   it('leaves package versions in the tables alone', () => {
@@ -569,5 +584,192 @@ describe('SITE_STYLE diff markers', () => {
     expect(dark.indexOf('.markdown-body .gd {')).toBeLessThan(
       dark.indexOf('.markdown-body .highlight .gd:first-child,'),
     );
+  });
+});
+
+/**
+ * A reference build that produced no output is the one state the report used
+ * to render as an ordinary diff, and it is the state where that is most
+ * dangerous: the reviewer is being asked for `output:approved` over a `+40
+ * −22` whose left-hand side does not exist (#178). Nothing else can catch
+ * this regressing — a detection that silently stopped firing would look
+ * exactly like a PR whose reference happened to work.
+ */
+describe('hasNoBaseline', () => {
+  const withReference = (
+    reference: { status: number; stdout: string; stderr?: string },
+    currentStdout: string,
+  ): CaseResult => ({
+    ...caseResult(fixtureCase({ name: 'subject' }), {
+      'stdout.txt': currentStdout,
+    }),
+    raw: { stdout: currentStdout, stderr: '' },
+    reference: {
+      status: reference.status,
+      raw: { stdout: reference.stdout, stderr: reference.stderr ?? '' },
+    },
+  });
+
+  it('flags a reference that printed nothing where this tree printed output', () => {
+    const result = withReference(
+      { status: 1, stdout: '', stderr: 'ZodError: unrecognized_keys\n' },
+      '🔴 Not compliant\n',
+    );
+    expect(hasNoBaseline(result)).toBe(true);
+  });
+
+  it('does not flag a case both sides are silent about', () => {
+    // The false positive that matters: a case legitimately printing only to
+    // stderr agrees with its reference, and there is nothing to warn about.
+    expect(hasNoBaseline(withReference({ status: 2, stdout: '' }, ''))).toBe(
+      false,
+    );
+  });
+
+  it('does not flag a reference that printed only the version banner', () => {
+    // createCommandContext writes `hermex v<version>` and the spinner to
+    // stdout for human format, so a reference that got as far as starting is
+    // never silent. The predicate has to stay on the right side of that.
+    const result = withReference(
+      { status: 1, stdout: 'hermex v<version>\n✖ No files found\n' },
+      'hermex v<version>\n🔴 Not compliant\n',
+    );
+    expect(hasNoBaseline(result)).toBe(false);
+  });
+
+  it('says nothing when no reference ran at all', () => {
+    const result = caseResult(fixtureCase({ name: 'unit' }), {
+      'stdout.txt': 'x\n',
+    });
+    expect(hasNoBaseline(result)).toBe(false);
+  });
+});
+
+/**
+ * Detecting it is half the job; the other half is that a reviewer cannot
+ * miss it on any of the surfaces a case is rendered on.
+ */
+describe('reporting a missing baseline', () => {
+  const noBaseline = (name: string, currentStdout = '🔴 Not compliant\n') => ({
+    ...caseResult(fixtureCase({ name }), { 'stdout.txt': currentStdout }, 'd'),
+    raw: { stdout: currentStdout, stderr: '' },
+    reference: {
+      status: 1,
+      raw: {
+        stdout: '',
+        // Coloured, because comply's failure path is a red spinner.fail and
+        // this text ends up in the job summary and on gh-pages.
+        stderr: `${ESC}[31mZodError: unrecognized_keys${ESC}[39m\n`,
+      },
+    },
+  });
+
+  it('marks the comment row instead of printing totals for it', () => {
+    const comment = buildComment([noBaseline('all-rule-types')], []);
+    expect(comment).toContain('**no baseline**');
+    // The shape the issue reported: a plain +N −M row a reviewer reads as an
+    // ordinary output change.
+    expect(comment).not.toMatch(/\| \+\d+ −\d+ \|/);
+  });
+
+  it('counts it separately from a changed case in the comment headline', () => {
+    expect(buildComment([noBaseline('all-rule-types')], [])).toContain(
+      '1 with no baseline',
+    );
+  });
+
+  it('tells the comment reader the marked cases cannot be diffed', () => {
+    const comment = buildComment([noBaseline('all-rule-types')], []);
+    expect(comment).toContain('cannot be diffed');
+    expect(comment).toContain('output:approved');
+  });
+
+  it('carries a note naming the cases, without the broken-invariant callout', () => {
+    const comment = buildComment([noBaseline('all-rule-types')], []);
+    expect(comment).toContain('No baseline for 1 case(s)');
+    expect(comment).toContain('`all-rule-types`');
+    // Not an invariant breach: the red callout has to keep meaning "defect".
+    expect(comment).not.toContain('[!WARNING]');
+  });
+
+  it('gives the case page the reference stderr, stripped of colour', () => {
+    const page =
+      buildSite([noBaseline('all-rule-types')], [], null).get(
+        'all-rule-types.md',
+      ) ?? '';
+    expect(page).toContain('## No baseline');
+    expect(page).toContain('ZodError: unrecognized_keys');
+    expect(page).not.toContain(ESC);
+  });
+
+  it('does not put totals next to the verdict on the site index', () => {
+    // statusTable composes shortStatus with caseTotals, so marking both
+    // would render `**no baseline** +0 −0` — a count of a comparison that
+    // never happened.
+    const index =
+      buildSite([noBaseline('all-rule-types')], [], null).get('index.md') ?? '';
+    expect(index).toContain('**no baseline**');
+    expect(index).not.toContain('**no baseline** <span');
+  });
+
+  it('lets an exit-code mismatch outrank it in the verdict', () => {
+    // Both are true, and the run-level note still names the case — but the
+    // verdict cell has room for one thing, and the exit mismatch is the half
+    // that fails the run.
+    const result = noBaseline('all-rule-types');
+    result.exitMismatch = { expected: 1, actual: 7 };
+    const index = buildSite([result], [], null).get('index.md') ?? '';
+    const row =
+      index.split('\n').find((line) => line.includes('all-rule-types.html')) ??
+      '';
+    expect(row).toContain('exit 7, expected 1');
+    expect(row).not.toContain('no baseline');
+  });
+
+  it('marks a json case, whose crash shows up as an added/removed pair', () => {
+    // runCase keys stdout by content, so a silent reference yields
+    // stdout.txt while the current run yields stdout.json — `added`/`removed`
+    // rather than `changed`, which statusOf would otherwise call a rename.
+    const result = {
+      ...noBaseline('all-rule-types-json', '{"summary":{}}\n'),
+      changed: [],
+      added: ['stdout.json'],
+      removed: ['stdout.txt'],
+    };
+    const index = buildSite([result], [], null).get('index.md') ?? '';
+    expect(index).toContain('**no baseline**');
+    expect(index).not.toContain('+stdout.json');
+  });
+});
+
+/**
+ * The report never used to say which commit it compared against. Since the
+ * pull-request job only restores the shared reference cache and never writes
+ * one (#178), this line is also the only place a cache miss is visible to
+ * anyone not reading the raw job log.
+ */
+describe('reference provenance', () => {
+  const results = [caseResult(fixtureCase({ name: 'alpha' }))];
+  const sha = 'dd78b0600bccbcf0b1344519f4bb91e52e401c0d';
+
+  afterEach(() => {
+    recordReference(null);
+  });
+
+  it('names the commit and says it was reused', () => {
+    recordReference({ sha, cli: '/tmp/cli.mjs', reused: true, ref: 'main' });
+    expect(buildComment(results, [])).toContain(
+      'Reference: `dd78b06` (`main`) — reused from cache',
+    );
+  });
+
+  it('says so loudly when the reference had to be built', () => {
+    recordReference({ sha, cli: '/tmp/cli.mjs', reused: false, ref: 'main' });
+    const index = buildSite(results, [], null).get('index.md') ?? '';
+    expect(index).toContain('built from source');
+  });
+
+  it('says nothing at all when no reference was recorded', () => {
+    expect(buildComment(results, [])).not.toContain('Reference:');
   });
 });
