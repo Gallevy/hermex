@@ -41,21 +41,44 @@ export interface PackageDistribution {
   releaseAge?: ReleaseAgeEntry;
 }
 
+/**
+ * The package name an import path belongs to, or `null` when the path names
+ * no package at all.
+ *
+ * An npm package name is exactly one path segment, or two when scoped
+ * (`@scope/name`) — everything after that is a subpath export. So the name is
+ * read straight off the path rather than prefix-matched against every known
+ * package, which is what lets the caller resolve with a single hash probe
+ * instead of a scan of the whole lockfile per JSX element.
+ */
+function packageNameFromImportPath(importPath: string): string | null {
+  if (importPath.length === 0) return null;
+
+  const firstSlash = importPath.indexOf('/');
+  // Bare specifier (`react`), or a lone `@scope` — the latter is not a valid
+  // specifier and simply falls out as a miss against the package set.
+  if (firstSlash === -1) return importPath;
+
+  if (importPath.charCodeAt(0) === 64 /* @ */) {
+    const secondSlash = importPath.indexOf('/', firstSlash + 1);
+    // `@scope/name` exactly; there is no subpath to trim.
+    return secondSlash === -1 ? importPath : importPath.slice(0, secondSlash);
+  }
+
+  return importPath.slice(0, firstSlash);
+}
+
 function resolvePackageFromImportPath(
   importPath: string,
-  availablePackages: string[],
+  availablePackages: ReadonlySet<string>,
 ): string {
   if (importPath.startsWith('.') || importPath.startsWith('/')) {
     return 'local';
   }
 
-  const sortedPackages = [...availablePackages].sort(
-    (a, b) => b.length - a.length,
-  );
-
-  for (const pkg of sortedPackages) {
-    if (importPath === pkg) return pkg;
-    if (importPath.startsWith(`${pkg}/`)) return pkg;
+  const packageName = packageNameFromImportPath(importPath);
+  if (packageName !== null && availablePackages.has(packageName)) {
+    return packageName;
   }
 
   return 'unknown';
@@ -64,7 +87,7 @@ function resolvePackageFromImportPath(
 export function findComponentSource(
   componentName: string,
   report: UsageReport,
-  availablePackages: string[],
+  availablePackages: ReadonlySet<string>,
 ): string {
   const namedImport = report.patterns.imports.named.find(
     (imp) => imp.name === componentName,

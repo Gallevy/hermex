@@ -54,7 +54,9 @@ export function aggregateReports(
   let totalUsagePatterns = 0;
   const patternCountMap = new Map<string, number>();
 
-  const availablePackages = Object.keys(versions);
+  // A Set, not the key array: `findComponentSource` runs once per JSX
+  // element and resolves with a single hash probe against it.
+  const availablePackages = new Set(Object.keys(versions));
 
   for (const report of reports) {
     totalImports += report.summary.totalImports;
