@@ -8,13 +8,13 @@ title: "release-age-tree-scope — Output Review"
 
 # `release-age-tree-scope`
 
-_unchanged_
+_changed_
 
 **Asserts** — scope: tree enforces every resolved copy, so the nested version becomes the mandatory failure and the reported installed version follows it.
 
 **Ran** `hermex comply --config tree.config.ts` in `fixtures/repos/version-conflict` → exit 1, as asserted
 
-**Config** [`fixtures/repos/version-conflict/tree.config.ts`](https://github.com/Gallevy/hermex/blob/1a3dc3b5f2c132d64304ce7a73008e292111b1b3/fixtures/repos/version-conflict/tree.config.ts) · **Fixture** [`fixtures/repos/version-conflict`](https://github.com/Gallevy/hermex/blob/1a3dc3b5f2c132d64304ce7a73008e292111b1b3/fixtures/repos/version-conflict) ([overview](https://github.com/Gallevy/hermex/blob/1a3dc3b5f2c132d64304ce7a73008e292111b1b3/fixtures/repos/version-conflict/README.md)) · **Case** [`release-age-tree-scope`](https://github.com/Gallevy/hermex/blob/1a3dc3b5f2c132d64304ce7a73008e292111b1b3/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/1a3dc3b5f2c132d64304ce7a73008e292111b1b3/fixtures/cases/release-age-tree-scope.md))
+**Config** [`fixtures/repos/version-conflict/tree.config.ts`](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/repos/version-conflict/tree.config.ts) · **Fixture** [`fixtures/repos/version-conflict`](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/repos/version-conflict) ([overview](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/repos/version-conflict/README.md)) · **Case** [`release-age-tree-scope`](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/cases/release-age-tree-scope.md))
 
 **Registry** offline, served from `fixtures/registry/timelines.ts` — no network
 
@@ -22,7 +22,7 @@ _unchanged_
 
 ## Config
 
-[`fixtures/repos/version-conflict/tree.config.ts`](https://github.com/Gallevy/hermex/blob/1a3dc3b5f2c132d64304ce7a73008e292111b1b3/fixtures/repos/version-conflict/tree.config.ts) — resolved, as the loader sees it
+[`fixtures/repos/version-conflict/tree.config.ts`](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/repos/version-conflict/tree.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -46,6 +46,24 @@ _unchanged_
     "versus": false
   }
 }
+```
+
+## Diff against the target branch
+
+<sub>Diffs are unified format: `-` is the target branch, `+` is this run. `@@ -12,7 +12,9 @@` is a hunk header — unchanged lines were skipped, and the hunk below covers 7 lines from line 12 of the target branch and 9 lines from line 12 of this run.</sub>
+
+```diff
+--- target/stdout.txt
++++ current/stdout.txt
+@@ -18,7 +18,7 @@
+ Notes:
+   🔵 react → 2 versions installed (bundle impact): 17.0.2, 18.3.1
+ 
+-Total: 2 packages
++2 packages total
+ 
+ 🔴 Not compliant
+   1 mandatory violation found
 ```
 
 ## Full output
@@ -73,7 +91,7 @@ hermex v<version>
 Notes:
   🔵 react → 2 versions installed (bundle impact): 17.0.2, 18.3.1
 
-Total: 2 packages
+2 packages total
 
 🔴 Not compliant
   1 mandatory violation found

@@ -14,7 +14,7 @@ _changed_
 
 **Ran** `hermex comply` in `fixtures/repos/all-rule-types` → exit 1, as asserted
 
-**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/1a3dc3b5f2c132d64304ce7a73008e292111b1b3/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/1a3dc3b5f2c132d64304ce7a73008e292111b1b3/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/1a3dc3b5f2c132d64304ce7a73008e292111b1b3/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types`](https://github.com/Gallevy/hermex/blob/1a3dc3b5f2c132d64304ce7a73008e292111b1b3/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/1a3dc3b5f2c132d64304ce7a73008e292111b1b3/fixtures/cases/comply-all-rule-types.md))
+**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types`](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/cases/comply-all-rule-types.md))
 
 **Registry** offline, served from `fixtures/registry/timelines.ts` — no network
 
@@ -22,7 +22,7 @@ _changed_
 
 ## Config
 
-[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/1a3dc3b5f2c132d64304ce7a73008e292111b1b3/fixtures/repos/all-rule-types/hermex.config.ts) — resolved, as the loader sees it
+[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/repos/all-rule-types/hermex.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -158,8 +158,7 @@ _changed_
 +│ require-codeowners     │ 🔵 1 scanned file(s) have the wrong owner: src/legacy.tsx — Every file needs a platform owner │
  └────────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────┘
  
--6 errors, 3 warnings, 2 info
-+8 errors, 4 warnings, 2 info
+ 6 errors, 3 warnings, 2 info
  
 +📦 Packages
 +
@@ -171,7 +170,7 @@ _changed_
 +│ [DEPRECATED] [BANNED] moment │ 2.29.4    │ 🟡 minor 2.30.1 (no compliant release available) [not enforced] │
 +└──────────────────────────────┴───────────┴─────────────────────────────────────────────────────────────────┘
 +
-+Total: 2 packages
++2 packages total
 +
  🔴 Not compliant
 -  6 mandatory violations found
@@ -220,7 +219,7 @@ hermex v<version>
 │ require-codeowners     │ 🔵 1 scanned file(s) have the wrong owner: src/legacy.tsx — Every file needs a platform owner │
 └────────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────┘
 
-8 errors, 4 warnings, 2 info
+6 errors, 3 warnings, 2 info
 
 📦 Packages
 
@@ -232,7 +231,7 @@ hermex v<version>
 │ [DEPRECATED] [BANNED] moment │ 2.29.4    │ 🟡 minor 2.30.1 (no compliant release available) [not enforced] │
 └──────────────────────────────┴───────────┴─────────────────────────────────────────────────────────────────┘
 
-Total: 2 packages
+2 packages total
 
 🔴 Not compliant
   8 mandatory violations found

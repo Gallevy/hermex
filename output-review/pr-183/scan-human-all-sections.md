@@ -8,19 +8,19 @@ title: "scan-human-all-sections — Output Review"
 
 # `scan-human-all-sections`
 
-_unchanged_
+_changed_
 
 **Asserts** — Every human section rendered at once, including details and patterns, which the default config leaves off.
 
 **Ran** `hermex scan --config configs/all-sections.config.ts` in `fixtures/` → exit 0, as asserted
 
-**Config** [`fixtures/configs/all-sections.config.ts`](https://github.com/Gallevy/hermex/blob/1a3dc3b5f2c132d64304ce7a73008e292111b1b3/fixtures/configs/all-sections.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/1a3dc3b5f2c132d64304ce7a73008e292111b1b3/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/1a3dc3b5f2c132d64304ce7a73008e292111b1b3/fixtures/README.md)) · **Case** [`scan-human-all-sections`](https://github.com/Gallevy/hermex/blob/1a3dc3b5f2c132d64304ce7a73008e292111b1b3/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/1a3dc3b5f2c132d64304ce7a73008e292111b1b3/fixtures/cases/scan-human-all-sections.md))
+**Config** [`fixtures/configs/all-sections.config.ts`](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/configs/all-sections.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/README.md)) · **Case** [`scan-human-all-sections`](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/cases/scan-human-all-sections.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter scan-human-all-sections`</sub>
 
 ## Config
 
-[`fixtures/configs/all-sections.config.ts`](https://github.com/Gallevy/hermex/blob/1a3dc3b5f2c132d64304ce7a73008e292111b1b3/fixtures/configs/all-sections.config.ts) — resolved, as the loader sees it
+[`fixtures/configs/all-sections.config.ts`](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/configs/all-sections.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -122,6 +122,24 @@ _unchanged_
 }
 ```
 
+## Diff against the target branch
+
+<sub>Diffs are unified format: `-` is the target branch, `+` is this run. `@@ -12,7 +12,9 @@` is a hunk header — unchanged lines were skipped, and the hunk below covers 7 lines from line 12 of the target branch and 9 lines from line 12 of this run.</sub>
+
+```diff
+--- target/stdout.txt
++++ current/stdout.txt
+@@ -33,7 +33,7 @@
+ │ react-dom                 │ 18.3.1  │
+ └───────────────────────────┴─────────┘
+ 
+-Total: 5 packages
++5 packages total
+ 
+ ⚖️ Versus
+ 
+```
+
 ## Full output
 
 <details markdown="1"><summary><code>stdout.txt</code></summary>
@@ -162,7 +180,7 @@ Caused by:
 │ react-dom                 │ 18.3.1  │
 └───────────────────────────┴─────────┘
 
-Total: 5 packages
+5 packages total
 
 ⚖️ Versus
 

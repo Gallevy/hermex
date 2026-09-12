@@ -14,7 +14,7 @@ _changed_
 
 **Ran** `hermex comply --config configs/release-age-unscoped.config.ts` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/configs/release-age-unscoped.config.ts`](https://github.com/Gallevy/hermex/blob/1a3dc3b5f2c132d64304ce7a73008e292111b1b3/fixtures/configs/release-age-unscoped.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/1a3dc3b5f2c132d64304ce7a73008e292111b1b3/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/1a3dc3b5f2c132d64304ce7a73008e292111b1b3/fixtures/README.md)) · **Case** [`comply-release-age-unscoped`](https://github.com/Gallevy/hermex/blob/1a3dc3b5f2c132d64304ce7a73008e292111b1b3/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/1a3dc3b5f2c132d64304ce7a73008e292111b1b3/fixtures/cases/comply-release-age-unscoped.md))
+**Config** [`fixtures/configs/release-age-unscoped.config.ts`](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/configs/release-age-unscoped.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/README.md)) · **Case** [`comply-release-age-unscoped`](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/cases/comply-release-age-unscoped.md))
 
 **Registry** offline, served from `fixtures/registry/timelines.ts` — no network
 
@@ -22,7 +22,7 @@ _changed_
 
 ## Config
 
-[`fixtures/configs/release-age-unscoped.config.ts`](https://github.com/Gallevy/hermex/blob/1a3dc3b5f2c132d64304ce7a73008e292111b1b3/fixtures/configs/release-age-unscoped.config.ts) — resolved, as the loader sees it
+[`fixtures/configs/release-age-unscoped.config.ts`](https://github.com/Gallevy/hermex/blob/ed1756a93c0664444ee827bd1afdfdc44031327a/fixtures/configs/release-age-unscoped.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -137,14 +137,14 @@ _changed_
 ```diff
 --- target/stdout.txt
 +++ current/stdout.txt
-@@ -32,7 +32,7 @@
- │ require-files    │ 🟡 .editorconfig not found                           │
- └──────────────────┴──────────────────────────────────────────────────────┘
+@@ -50,7 +50,7 @@
+ │ react-dom                    │ 18.3.1    │ 🔵 patch 18.3.2 (20 days remaining)                             │
+ └──────────────────────────────┴───────────┴─────────────────────────────────────────────────────────────────┘
  
--3 errors, 1 warning
-+3 errors, 3 warnings
+-Total: 5 packages
++5 packages total
  
- 📦 Packages
+ ⚖️ Versus
  
 ```
 
@@ -187,7 +187,7 @@ Caused by:
 │ require-files    │ 🟡 .editorconfig not found                           │
 └──────────────────┴──────────────────────────────────────────────────────┘
 
-3 errors, 3 warnings
+3 errors, 1 warning
 
 📦 Packages
 
@@ -205,7 +205,7 @@ Caused by:
 │ react-dom                    │ 18.3.1    │ 🔵 patch 18.3.2 (20 days remaining)                             │
 └──────────────────────────────┴───────────┴─────────────────────────────────────────────────────────────────┘
 
-Total: 5 packages
+5 packages total
 
 ⚖️ Versus
 
