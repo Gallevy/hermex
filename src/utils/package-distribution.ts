@@ -21,6 +21,12 @@ export interface PackageDistribution {
   declaredIn: DependencyBucket[];
   componentCount: number;
   usageCount: number;
+  /**
+   * How many scanned files import this package — the axis that stays
+   * meaningful for a package used only as a function (#174). See
+   * `PackageInventoryEntry.importingFileCount` for why it counts files.
+   */
+  importingFileCount: number;
   /** Share of total measured component usage. 0 for a package that is never rendered as a component — which includes every package used only as a function. */
   percentage: number;
   hasVersionConflict: boolean;
@@ -68,12 +74,19 @@ function packageNameFromImportPath(importPath: string): string | null {
   return importPath.slice(0, firstSlash);
 }
 
-function resolvePackageFromImportPath(
+/**
+ * Sources that name no package at all — a relative import, or one that
+ * resolved against no known package name.
+ */
+const LOCAL_SOURCE = 'local';
+const UNKNOWN_SOURCE = 'unknown';
+
+export function resolvePackageFromImportPath(
   importPath: string,
   availablePackages: ReadonlySet<string>,
 ): string {
   if (importPath.startsWith('.') || importPath.startsWith('/')) {
-    return 'local';
+    return LOCAL_SOURCE;
   }
 
   const packageName = packageNameFromImportPath(importPath);
@@ -81,7 +94,44 @@ function resolvePackageFromImportPath(
     return packageName;
   }
 
-  return 'unknown';
+  return UNKNOWN_SOURCE;
+}
+
+/**
+ * The packages one file imports, deduplicated — the unit the imported count
+ * is measured in (see `PackageInventoryEntry.importingFileCount`).
+ *
+ * Every specifier carrying a source is folded in: the three static import
+ * forms, plus `React.lazy(() => import(...))` and bare dynamic `import()`, so
+ * a package pulled in only on a code-split path still counts as depended on.
+ * `aliased` is deliberately skipped — it is a second view of entries already
+ * in `named`, not a fourth import form.
+ *
+ * A specifier only resolves when its package name is already known to the
+ * lockfile layer; anything else lands on `unknown` and is dropped here. So
+ * this can never surface a package the inventory has not already seen, which
+ * is what keeps the imported count purely additive — `isOwnedByRepo`, and
+ * therefore the packages table and every package rule, is untouched by it.
+ */
+export function collectImportedPackages(
+  report: UsageReport,
+  availablePackages: ReadonlySet<string>,
+): Set<string> {
+  const imported = new Set<string>();
+
+  const add = (source: string): void => {
+    const resolved = resolvePackageFromImportPath(source, availablePackages);
+    if (resolved === LOCAL_SOURCE || resolved === UNKNOWN_SOURCE) return;
+    imported.add(resolved);
+  };
+
+  for (const imp of report.patterns.imports.default) add(imp.source);
+  for (const imp of report.patterns.imports.named) add(imp.source);
+  for (const imp of report.patterns.imports.namespace) add(imp.source);
+  for (const imp of report.patterns.advanced.lazy) add(imp.source);
+  for (const imp of report.patterns.advanced.dynamic) add(imp.source);
+
+  return imported;
 }
 
 export function findComponentSource(
@@ -178,6 +228,7 @@ export function calculatePackageDistribution(
       declaredIn: entry.declaredIn,
       componentCount: entry.componentCount,
       usageCount: entry.usageCount,
+      importingFileCount: entry.importingFileCount,
       percentage: 0,
       hasVersionConflict: entry.hasVersionConflict,
       allVersions: entry.allVersions,

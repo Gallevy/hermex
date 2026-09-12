@@ -4,6 +4,7 @@ import { resolve, relative } from 'node:path';
 import { globSync } from 'glob';
 import { parseCode as parseWithSwc } from '../../src/swc-parser';
 import { parseCode as parseWithOxc } from '../../src/oxc-parser';
+import { aggregateReports } from '../../src/utils/aggregator';
 
 const ROOT = resolve(__dirname, '../..');
 
@@ -212,5 +213,88 @@ describe('oxc-experimental parity — parse failures', () => {
     const code = `export const El = <Button />;`;
     expect(() => parseWithSwc(code, 'file.ts')).toThrow();
     expect(() => parseWithOxc(code, 'file.ts')).toThrow();
+  });
+});
+
+// ── Derived axes ──────────────────────────────────────────────────────────────
+
+/**
+ * Report parity is the premise, not the conclusion. Everything hermex counts
+ * is derived from a `UsageReport`, so identical reports *should* mean
+ * identical counts — but "should" is what a differential test is for, and a
+ * derivation that reads a field the two front-ends happen to order
+ * differently would slip through the report comparison above (which is
+ * order-sensitive per key) only to diverge here.
+ *
+ * The imported axis (#174) is the one worth pinning, because it is the only
+ * count that reads the *advanced* patterns — `lazy` and `dynamic` — rather
+ * than the import and JSX collections everything else uses, and those are the
+ * ones oxc reconstructs rather than renames (see `normalize.ts`).
+ */
+describe('oxc-experimental parity — derived counts', () => {
+  const FUNCTION_ONLY = [
+    'fixtures/versus/03-function-only-lodash.ts',
+    'fixtures/versus/04-function-only-lodash-subpath.ts',
+    'fixtures/versus/05-function-only-es-toolkit.ts',
+    'fixtures/versus/06-function-only-dynamic.ts',
+  ];
+  const VERSIONS = { lodash: '4.17.21', 'es-toolkit': '1.39.10' };
+
+  function aggregateWith(parse: typeof parseWithSwc, files: string[]) {
+    return aggregateReports(
+      files.map((file) =>
+        parse(readFileSync(resolve(ROOT, file), 'utf8'), file),
+      ),
+      VERSIONS,
+    );
+  }
+
+  test('importingFileCount is identical across both front-ends', () => {
+    const axisOf = (parse: typeof parseWithSwc) =>
+      aggregateWith(parse, FUNCTION_ONLY).packageInventory.map((e) => [
+        e.packageName,
+        e.importingFileCount,
+      ]);
+
+    // Pinned, not just compared: two front-ends that both returned nothing
+    // would agree perfectly and prove nothing.
+    expect(axisOf(parseWithSwc)).toEqual([
+      ['lodash', 3],
+      ['es-toolkit', 1],
+    ]);
+    expect(axisOf(parseWithOxc)).toEqual(axisOf(parseWithSwc));
+  });
+
+  test('a dynamic import counts under both front-ends', () => {
+    // The path only oxc has to reconstruct: `import()` is a CallExpression
+    // with an `Import` callee in SWC's vocabulary, and ESTree spells it
+    // ImportExpression.
+    const only = ['fixtures/versus/06-function-only-dynamic.ts'];
+    const countFor = (parse: typeof parseWithSwc) =>
+      aggregateWith(parse, only).packageInventory.find(
+        (e) => e.packageName === 'lodash',
+      )?.importingFileCount;
+
+    expect(countFor(parseWithSwc)).toBe(1);
+    expect(countFor(parseWithOxc)).toBe(1);
+  });
+
+  test('a React.lazy import counts under both front-ends', () => {
+    const code = [
+      `import { lazy } from 'react';`,
+      `const Card = lazy(() => import('@ui/components/card'));`,
+      `export default Card;`,
+    ].join('\n');
+    const versions = { '@ui/components': '1.0.0', react: '18.0.0' };
+
+    const countFor = (parse: typeof parseWithSwc) =>
+      aggregateReports(
+        [parse(code, 'lazy.ts')],
+        versions,
+      ).packageInventory.find((e) => e.packageName === '@ui/components')
+        ?.importingFileCount;
+
+    expect(countFor(parseWithSwc)).toBe(1);
+    expect(countFor(parseWithOxc)).toBe(1);
   });
 });
