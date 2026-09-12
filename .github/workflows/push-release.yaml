@@ -45,10 +45,6 @@ jobs:
         with:
           runtime: node@26
           cache: true
-          install: false
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
 
       - name: Select Changesets mode
         id: select-mode
@@ -86,10 +82,6 @@ jobs:
         uses: pnpm/setup@v2
         with:
           runtime: node@26
-          install: false
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
 
       - name: Version packages
         uses: changesets/action/version@v2
@@ -122,10 +114,6 @@ jobs:
         uses: pnpm/setup@v2
         with:
           runtime: node@26
-          install: false
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
 
       - name: Run format
         run: pnpm run format:ci
@@ -168,10 +156,6 @@ jobs:
         uses: pnpm/setup@v2
         with:
           runtime: node@26
-          install: false
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
 
       - name: Publish packages
         uses: changesets/action/publish@v2

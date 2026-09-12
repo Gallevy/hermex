@@ -22,10 +22,6 @@ jobs:
         with:
           runtime: node@26
           cache: true
-          install: false
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
 
       - name: Run format
         run: pnpm run format:ci
@@ -64,10 +60,6 @@ jobs:
         with:
           runtime: node@26
           cache: true
-          install: false
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
 
       - name: Run tests with coverage
         run: pnpm run test:coverage
