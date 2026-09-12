@@ -14,13 +14,13 @@ _unchanged_
 
 **Ran** `hermex scan --config configs/no-files.config.ts` in `fixtures/` → exit 0, as asserted
 
-**Config** [`fixtures/configs/no-files.config.ts`](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures/configs/no-files.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures/README.md)) · **Case** [`scan-no-files`](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures/cases/scan-no-files.md))
+**Config** [`fixtures/configs/no-files.config.ts`](https://github.com/Gallevy/hermex/blob/7a3b5d470d26fc259934a12887f039379423b721/fixtures/configs/no-files.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/7a3b5d470d26fc259934a12887f039379423b721/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/7a3b5d470d26fc259934a12887f039379423b721/fixtures/README.md)) · **Case** [`scan-no-files`](https://github.com/Gallevy/hermex/blob/7a3b5d470d26fc259934a12887f039379423b721/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/7a3b5d470d26fc259934a12887f039379423b721/fixtures/cases/scan-no-files.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter scan-no-files`</sub>
 
 ## Config
 
-[`fixtures/configs/no-files.config.ts`](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures/configs/no-files.config.ts) — resolved, as the loader sees it
+[`fixtures/configs/no-files.config.ts`](https://github.com/Gallevy/hermex/blob/7a3b5d470d26fc259934a12887f039379423b721/fixtures/configs/no-files.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -39,6 +39,13 @@ _unchanged_
       "packages": [
         "@design-system/foundation",
         "@new-system/arc"
+      ]
+    },
+    {
+      "name": "Utility Library Migration",
+      "packages": [
+        "lodash",
+        "es-toolkit"
       ]
     }
   ],
@@ -127,7 +134,7 @@ _unchanged_
 ```text
 hermex v<version>
 - Parsing lockfile...
-✔ Found pnpm lockfile (supports: v5, v6, v9) - 5 packages
+✔ Found pnpm lockfile (supports: v5, v6, v9) - 7 packages
 ✖ No files found matching includes: no-such-directory/**/*.{tsx,jsx,ts,js}
 ```
 

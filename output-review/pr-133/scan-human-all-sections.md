@@ -14,13 +14,13 @@ _unchanged_
 
 **Ran** `hermex scan --config configs/all-sections.config.ts` in `fixtures/` → exit 0, as asserted
 
-**Config** [`fixtures/configs/all-sections.config.ts`](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures/configs/all-sections.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures/README.md)) · **Case** [`scan-human-all-sections`](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures/cases/scan-human-all-sections.md))
+**Config** [`fixtures/configs/all-sections.config.ts`](https://github.com/Gallevy/hermex/blob/7a3b5d470d26fc259934a12887f039379423b721/fixtures/configs/all-sections.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/7a3b5d470d26fc259934a12887f039379423b721/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/7a3b5d470d26fc259934a12887f039379423b721/fixtures/README.md)) · **Case** [`scan-human-all-sections`](https://github.com/Gallevy/hermex/blob/7a3b5d470d26fc259934a12887f039379423b721/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/7a3b5d470d26fc259934a12887f039379423b721/fixtures/cases/scan-human-all-sections.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter scan-human-all-sections`</sub>
 
 ## Config
 
-[`fixtures/configs/all-sections.config.ts`](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures/configs/all-sections.config.ts) — resolved, as the loader sees it
+[`fixtures/configs/all-sections.config.ts`](https://github.com/Gallevy/hermex/blob/7a3b5d470d26fc259934a12887f039379423b721/fixtures/configs/all-sections.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -39,6 +39,13 @@ _unchanged_
       "packages": [
         "@design-system/foundation",
         "@new-system/arc"
+      ]
+    },
+    {
+      "name": "Utility Library Migration",
+      "packages": [
+        "lodash",
+        "es-toolkit"
       ]
     }
   ],
@@ -129,9 +136,9 @@ _unchanged_
 ```text
 hermex v<version>
 - Parsing lockfile...
-✔ Found pnpm lockfile (supports: v5, v6, v9) - 5 packages
-✔ Found 18 files
-✔ Analysis complete! Analyzed 17/18 files
+✔ Found pnpm lockfile (supports: v5, v6, v9) - 7 packages
+✔ Found 22 files
+✔ Analysis complete! Analyzed 21/22 files
 
 ⚠ 1 file(s) failed to parse:
   broken/unparseable.tsx
@@ -155,19 +162,28 @@ Caused by:
 ├───────────────────────────┼─────────┤
 │ react                     │ 18.3.1  │
 ├───────────────────────────┼─────────┤
+│ react-dom                 │ 18.3.1  │
+├───────────────────────────┼─────────┤
+│ lodash                    │ 4.17.21 │
+├───────────────────────────┼─────────┤
+│ es-toolkit                │ 1.39.10 │
+├───────────────────────────┼─────────┤
 │ eslint                    │ N/A     │
 ├───────────────────────────┼─────────┤
 │ [BANNED] moment           │ 2.29.4  │
-├───────────────────────────┼─────────┤
-│ react-dom                 │ 18.3.1  │
 └───────────────────────────┴─────────┘
 
 ⚖️ Versus
 
   Design System Migration
   ──────────────────────────────────────────────────
-  @design-system/foundation  ██████████████████████████████ 100.0% (33 usages)
-  @new-system/arc            ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0.0% (0 usages)
+  @design-system/foundation  ██████████████████████████████ 100.0% (8 files, 33 renders)
+  @new-system/arc            ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0.0% (not found in this repo)
+
+  Utility Library Migration
+  ──────────────────────────────────────────────────
+  lodash      ███████████████████████░░░░░░░ 75.0% (3 files)
+  es-toolkit  ████████░░░░░░░░░░░░░░░░░░░░░░ 25.0% (1 file)
 
 
 🔍 Rules
@@ -188,13 +204,13 @@ Caused by:
 
 📋 Details
 
-  Total usage patterns: 284
+  Total usage patterns: 291
   JSX Usage: 64
   Props Analyzed: 64
-  Default Imports: 39
-  Named Imports: 37
+  Named Imports: 42
+  Default Imports: 40
+  Dynamic Imports: 20
   Object Mappings: 19
-  Dynamic Imports: 19
   Variable Assignments: 9
   Conditional Usage: 7
   Named Imports (aliased): 6
@@ -258,13 +274,13 @@ Caused by:
 ├─────────────────────────┼───────┤
 │ Props Analyzed          │ 64    │
 ├─────────────────────────┼───────┤
-│ Default Imports         │ 39    │
+│ Named Imports           │ 42    │
 ├─────────────────────────┼───────┤
-│ Named Imports           │ 37    │
+│ Default Imports         │ 40    │
+├─────────────────────────┼───────┤
+│ Dynamic Imports         │ 20    │
 ├─────────────────────────┼───────┤
 │ Object Mappings         │ 19    │
-├─────────────────────────┼───────┤
-│ Dynamic Imports         │ 19    │
 ├─────────────────────────┼───────┤
 │ Variable Assignments    │ 9     │
 ├─────────────────────────┼───────┤
@@ -285,16 +301,16 @@ Caused by:
 │ Portal Usage            │ 1     │
 └─────────────────────────┴───────┘
 
-Total: 284 patterns detected
+Total: 291 patterns detected
 
 📊 Summary
 
 ┌─────────────────────┬───────┐
 │ Metric              │ Count │
 ├─────────────────────┼───────┤
-│ Files Analyzed      │ 17    │
+│ Files Analyzed      │ 21    │
 ├─────────────────────┼───────┤
-│ Packages            │ 5     │
+│ Packages            │ 7     │
 ├─────────────────────┼───────┤
 │ External Components │ 19    │
 ├─────────────────────┼───────┤

@@ -14,13 +14,13 @@ _unchanged_
 
 **Ran** `hermex scan --config configs/parse-errors.config.ts` in `fixtures/` → exit 0, as asserted
 
-**Config** [`fixtures/configs/parse-errors.config.ts`](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures/configs/parse-errors.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures/README.md)) · **Case** [`parse-errors`](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures/cases/parse-errors.md))
+**Config** [`fixtures/configs/parse-errors.config.ts`](https://github.com/Gallevy/hermex/blob/7a3b5d470d26fc259934a12887f039379423b721/fixtures/configs/parse-errors.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/7a3b5d470d26fc259934a12887f039379423b721/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/7a3b5d470d26fc259934a12887f039379423b721/fixtures/README.md)) · **Case** [`parse-errors`](https://github.com/Gallevy/hermex/blob/7a3b5d470d26fc259934a12887f039379423b721/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/7a3b5d470d26fc259934a12887f039379423b721/fixtures/cases/parse-errors.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter parse-errors`</sub>
 
 ## Config
 
-[`fixtures/configs/parse-errors.config.ts`](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures/configs/parse-errors.config.ts) — resolved, as the loader sees it
+[`fixtures/configs/parse-errors.config.ts`](https://github.com/Gallevy/hermex/blob/7a3b5d470d26fc259934a12887f039379423b721/fixtures/configs/parse-errors.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -39,6 +39,13 @@ _unchanged_
       "packages": [
         "@design-system/foundation",
         "@new-system/arc"
+      ]
+    },
+    {
+      "name": "Utility Library Migration",
+      "packages": [
+        "lodash",
+        "es-toolkit"
       ]
     }
   ],
@@ -132,7 +139,7 @@ _unchanged_
 ```text
 hermex v<version>
 - Parsing lockfile...
-✔ Found pnpm lockfile (supports: v5, v6, v9) - 5 packages
+✔ Found pnpm lockfile (supports: v5, v6, v9) - 7 packages
 ✔ Found 1 files
 ✔ Analysis complete! Analyzed 0/1 files
 
@@ -156,7 +163,7 @@ Caused by:
 ├─────────────────────┼───────┤
 │ Files Analyzed      │ 0     │
 ├─────────────────────┼───────┤
-│ Packages            │ 5     │
+│ Packages            │ 7     │
 ├─────────────────────┼───────┤
 │ External Components │ 0     │
 ├─────────────────────┼───────┤

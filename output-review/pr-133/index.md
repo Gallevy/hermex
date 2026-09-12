@@ -8,7 +8,7 @@ title: "Output Review"
 
 27 cases · 0 changed · 0 invariant breach(es)
 
-Reference: `dbbb737` — reused from cache.
+Reference: `fe5ac5b` — reused from cache.
 
 Every case matches the target branch.
 
@@ -16,11 +16,11 @@ Every case matches the target branch.
 
 | Case | Status | Proves |
 | --- | --- | --- |
-| [`scan-human-default`](./scan-human-default.html) | unchanged | Baseline human output: the sections a repo gets with no output config of its own. |
+| [`scan-human-default`](./scan-human-default.html) | unchanged | Baseline human output: the sections a repo gets with no output config of its own. Includes both Versus groups — a component pair and a function-only one — which is where #174 is visible: the function-only group reports a real split off files-that-import, where it used to read 0 vs 0 off JSX renders, and the package named by no lockfile entry says so instead of reporting a confident 0%. |
 | [`scan-human-all-sections`](./scan-human-all-sections.html) | unchanged | Every human section rendered at once, including details and patterns, which the default config leaves off. |
 | [`scan-human-charts`](./scan-human-charts.html) | unchanged | The bar-chart renderer: bar scaling and label alignment for packages, components and patterns. |
 | [`scan-human-minimal`](./scan-human-minimal.html) | unchanged | Section toggles actually suppress output — every section off except the summary (#63). |
-| [`scan-json`](./scan-json.html) | unchanged | The full JSON contract: summary.patternCounts (#80), every owned package in packages[], de-duplicated components (#78, #79), and the compliance block (#55). |
+| [`scan-json`](./scan-json.html) | unchanged | The full JSON contract: summary.patternCounts (#80), every owned package in packages[], de-duplicated components (#78, #79), and the compliance block (#55). Also the imported axis (#174): packages[].importingFileCount beside usageCount — lodash and es-toolkit read non-zero on the first and 0 on the second — and versus[].count keyed on it, with present:false marking a configured package the repo does not have. |
 | [`scan-json-toggles`](./scan-json-toggles.html) | unchanged | What output.* toggles do to --format json: today, nothing (#91). The payload below is emitted with every section switched off, yet still carries packages, components, versus and ruleViolations in full. Pair it with scan-human-minimal to see the two formats diverge; when #91 lands, this baseline shrinking is the proof. |
 | [`comply-human-pass`](./comply-human-pass.html) | unchanged | A repo that satisfies every rule: the clean verdict wording and exit 0. |
 | [`comply-human-fail`](./comply-human-fail.html) | unchanged | The rules table on a failing repo: row ordering, severity badges, the error/warning tally, and exit 1. |

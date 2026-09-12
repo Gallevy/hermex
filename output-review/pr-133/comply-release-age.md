@@ -14,7 +14,7 @@ _unchanged_
 
 **Ran** `hermex comply --config configs/release-age.config.ts` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/configs/release-age.config.ts`](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures/configs/release-age.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures/README.md)) · **Case** [`comply-release-age`](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures/cases/comply-release-age.md))
+**Config** [`fixtures/configs/release-age.config.ts`](https://github.com/Gallevy/hermex/blob/7a3b5d470d26fc259934a12887f039379423b721/fixtures/configs/release-age.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/7a3b5d470d26fc259934a12887f039379423b721/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/7a3b5d470d26fc259934a12887f039379423b721/fixtures/README.md)) · **Case** [`comply-release-age`](https://github.com/Gallevy/hermex/blob/7a3b5d470d26fc259934a12887f039379423b721/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/7a3b5d470d26fc259934a12887f039379423b721/fixtures/cases/comply-release-age.md))
 
 **Registry** offline, served from `fixtures/registry/timelines.ts` — no network
 
@@ -22,7 +22,7 @@ _unchanged_
 
 ## Config
 
-[`fixtures/configs/release-age.config.ts`](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures/configs/release-age.config.ts) — resolved, as the loader sees it
+[`fixtures/configs/release-age.config.ts`](https://github.com/Gallevy/hermex/blob/7a3b5d470d26fc259934a12887f039379423b721/fixtures/configs/release-age.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -41,6 +41,13 @@ _unchanged_
       "packages": [
         "@design-system/foundation",
         "@new-system/arc"
+      ]
+    },
+    {
+      "name": "Utility Library Migration",
+      "packages": [
+        "lodash",
+        "es-toolkit"
       ]
     }
   ],
@@ -138,9 +145,9 @@ _unchanged_
 ```text
 hermex v<version>
 - Parsing lockfile...
-✔ Found pnpm lockfile (supports: v5, v6, v9) - 5 packages
-✔ Found 18 files
-✔ Analysis complete! Analyzed 17/18 files
+✔ Found pnpm lockfile (supports: v5, v6, v9) - 7 packages
+✔ Found 22 files
+✔ Analysis complete! Analyzed 21/22 files
 
 ⚠ 1 file(s) failed to parse:
   broken/unparseable.tsx
@@ -154,7 +161,7 @@ hermex v<version>
 Caused by:
     Syntax Error
 
-✔ Release age fetched (1 packages skipped — registry unreachable or not found)
+✔ Release age fetched (3 packages skipped — registry unreachable or not found)
 
 🔍 Rules
 
@@ -181,11 +188,15 @@ Caused by:
 ├──────────────────────────────┼───────────┼───────────────────────────────────────────────────┤
 │ react                        │ 18.3.1    │ 🟡 major 19.1.0 (340 days overdue) [not enforced] │
 ├──────────────────────────────┼───────────┼───────────────────────────────────────────────────┤
+│ react-dom                    │ 18.3.1    │ 🔵 patch 18.3.2 (20 days remaining)               │
+├──────────────────────────────┼───────────┼───────────────────────────────────────────────────┤
+│ lodash                       │ 4.17.21   │                                                   │
+├──────────────────────────────┼───────────┼───────────────────────────────────────────────────┤
+│ es-toolkit                   │ 1.39.10   │                                                   │
+├──────────────────────────────┼───────────┼───────────────────────────────────────────────────┤
 │ eslint                       │ N/A       │                                                   │
 ├──────────────────────────────┼───────────┼───────────────────────────────────────────────────┤
 │ [DEPRECATED] [BANNED] moment │ 2.29.4    │ 🔴 minor 2.30.1 (no compliant release available)  │
-├──────────────────────────────┼───────────┼───────────────────────────────────────────────────┤
-│ react-dom                    │ 18.3.1    │ 🔵 patch 18.3.2 (20 days remaining)               │
 └──────────────────────────────┴───────────┴───────────────────────────────────────────────────┘
 
 1 error, 1 warning
@@ -194,8 +205,13 @@ Caused by:
 
   Design System Migration
   ──────────────────────────────────────────────────
-  @design-system/foundation  ██████████████████████████████ 100.0% (33 usages)
-  @new-system/arc            ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0.0% (0 usages)
+  @design-system/foundation  ██████████████████████████████ 100.0% (8 files, 33 renders)
+  @new-system/arc            ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0.0% (not found in this repo)
+
+  Utility Library Migration
+  ──────────────────────────────────────────────────
+  lodash      ███████████████████████░░░░░░░ 75.0% (3 files)
+  es-toolkit  ████████░░░░░░░░░░░░░░░░░░░░░░ 25.0% (1 file)
 
 
 🔴 Not compliant

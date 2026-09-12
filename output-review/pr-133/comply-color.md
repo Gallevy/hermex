@@ -14,7 +14,7 @@ _unchanged_
 
 **Ran** `hermex comply` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures/README.md)) · **Case** [`comply-color`](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures/cases/comply-color.md))
+**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/7a3b5d470d26fc259934a12887f039379423b721/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/7a3b5d470d26fc259934a12887f039379423b721/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/7a3b5d470d26fc259934a12887f039379423b721/fixtures/README.md)) · **Case** [`comply-color`](https://github.com/Gallevy/hermex/blob/7a3b5d470d26fc259934a12887f039379423b721/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/7a3b5d470d26fc259934a12887f039379423b721/fixtures/cases/comply-color.md))
 
 **Environment** `NO_COLOR` unset, `FORCE_COLOR=3`
 
@@ -22,7 +22,7 @@ _unchanged_
 
 ## Config
 
-[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures/hermex.config.ts) — resolved, as the loader sees it
+[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/7a3b5d470d26fc259934a12887f039379423b721/fixtures/hermex.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -41,6 +41,13 @@ _unchanged_
       "packages": [
         "@design-system/foundation",
         "@new-system/arc"
+      ]
+    },
+    {
+      "name": "Utility Library Migration",
+      "packages": [
+        "lodash",
+        "es-toolkit"
       ]
     }
   ],
@@ -126,9 +133,9 @@ _unchanged_
 ```text
 hermex v<version>
 - Parsing lockfile...
-✔ Found pnpm lockfile (supports: v5, v6, v9) - 5 packages
-✔ Found 18 files
-✔ Analysis complete! Analyzed 17/18 files
+✔ Found pnpm lockfile (supports: v5, v6, v9) - 7 packages
+✔ Found 22 files
+✔ Analysis complete! Analyzed 21/22 files
 
 ⚠ 1 file(s) failed to parse:
   broken/unparseable.tsx
@@ -163,8 +170,13 @@ Caused by:
 
   Design System Migration
   ──────────────────────────────────────────────────
-  @design-system/foundation  ██████████████████████████████ 100.0% (33 usages)
-  @new-system/arc            ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0.0% (0 usages)
+  @design-system/foundation  ██████████████████████████████ 100.0% (8 files, 33 renders)
+  @new-system/arc            ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0.0% (not found in this repo)
+
+  Utility Library Migration
+  ──────────────────────────────────────────────────
+  lodash      ███████████████████████░░░░░░░ 75.0% (3 files)
+  es-toolkit  ████████░░░░░░░░░░░░░░░░░░░░░░ 25.0% (1 file)
 
 
 🔴 Not compliant
@@ -186,9 +198,9 @@ Caused by:
 ```text
 [90mhermex v<version>
 [90m[39m- Parsing lockfile...
-[32m✔[39m [34mFound pnpm lockfile (supports: v5, v6, v9) - 5 packages[39m
-[32m✔[39m [32mFound 18 files[39m
-[32m✔[39m [32mAnalysis complete! Analyzed 17/18 files[39m
+[32m✔[39m [34mFound pnpm lockfile (supports: v5, v6, v9) - 7 packages[39m
+[32m✔[39m [32mFound 22 files[39m
+[32m✔[39m [32mAnalysis complete! Analyzed 21/22 files[39m
 [33m[39m
 [33m⚠ 1 file(s) failed to parse:[39m
 [33m[39m[33m  broken/unparseable.tsx[39m
@@ -223,8 +235,13 @@ Caused by:
 [95m[1m[22m[39m
 [1m  Design System Migration[22m
 [90m  ──────────────────────────────────────────────────[39m
-  @design-system/foundation  [36m██████████████████████████████[39m [1m100.0%[22m [90m(33 usages)[39m
-  @new-system/arc            [90m░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░[39m [1m0.0%[22m [90m(0 usages)[39m
+  @design-system/foundation  [36m██████████████████████████████[39m [1m100.0%[22m [90m(8 files, 33 renders)[39m
+  @new-system/arc            [90m░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░[39m [1m0.0%[22m [90m(not found in this repo)[39m
+
+[1m  Utility Library Migration[22m
+[90m  ──────────────────────────────────────────────────[39m
+  lodash      [36m███████████████████████[39m[90m░░░░░░░[39m [1m75.0%[22m [90m(3 files)[39m
+  es-toolkit  [36m████████[39m[90m░░░░░░░░░░░░░░░░░░░░░░[39m [1m25.0%[22m [90m(1 file)[39m
 
 [91m[1m[22m[39m
 [91m[1m🔴 Not compliant[22m[39m

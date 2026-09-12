@@ -14,13 +14,13 @@ _unchanged_
 
 **Ran** `hermex comply --format json` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures/README.md)) · **Case** [`comply-json`](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures/cases/comply-json.md))
+**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/7a3b5d470d26fc259934a12887f039379423b721/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/7a3b5d470d26fc259934a12887f039379423b721/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/7a3b5d470d26fc259934a12887f039379423b721/fixtures/README.md)) · **Case** [`comply-json`](https://github.com/Gallevy/hermex/blob/7a3b5d470d26fc259934a12887f039379423b721/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/7a3b5d470d26fc259934a12887f039379423b721/fixtures/cases/comply-json.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-json`</sub>
 
 ## Config
 
-[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/5cb7b937a6982f82d88bfaecbdb79840e4ed9946/fixtures/hermex.config.ts) — resolved, as the loader sees it
+[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/7a3b5d470d26fc259934a12887f039379423b721/fixtures/hermex.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -39,6 +39,13 @@ _unchanged_
       "packages": [
         "@design-system/foundation",
         "@new-system/arc"
+      ]
+    },
+    {
+      "name": "Utility Library Migration",
+      "packages": [
+        "lodash",
+        "es-toolkit"
       ]
     }
   ],
@@ -125,10 +132,10 @@ _unchanged_
 {
   "version": "<version>",
   "summary": {
-    "filesAnalyzed": 17,
-    "totalImports": 80,
+    "filesAnalyzed": 21,
+    "totalImports": 86,
     "totalComponents": 35,
-    "totalUsagePatterns": 284
+    "totalUsagePatterns": 291
   },
   "packages": [
     {
@@ -140,6 +147,7 @@ _unchanged_
       ],
       "componentCount": 18,
       "usageCount": 33,
+      "importingFileCount": 8,
       "percentage": 91.66666666666666,
       "hasVersionConflict": false,
       "allVersions": [
@@ -155,10 +163,57 @@ _unchanged_
       ],
       "componentCount": 1,
       "usageCount": 3,
+      "importingFileCount": 6,
       "percentage": 8.333333333333332,
       "hasVersionConflict": false,
       "allVersions": [
         "18.3.1"
+      ]
+    },
+    {
+      "packageName": "react-dom",
+      "version": "18.3.1",
+      "rootVersion": "18.3.1",
+      "declaredIn": [],
+      "componentCount": 0,
+      "usageCount": 0,
+      "importingFileCount": 1,
+      "percentage": 0,
+      "hasVersionConflict": false,
+      "allVersions": [
+        "18.3.1"
+      ]
+    },
+    {
+      "packageName": "lodash",
+      "version": "4.17.21",
+      "rootVersion": "4.17.21",
+      "declaredIn": [
+        "dependencies"
+      ],
+      "componentCount": 0,
+      "usageCount": 0,
+      "importingFileCount": 3,
+      "percentage": 0,
+      "hasVersionConflict": false,
+      "allVersions": [
+        "4.17.21"
+      ]
+    },
+    {
+      "packageName": "es-toolkit",
+      "version": "1.39.10",
+      "rootVersion": "1.39.10",
+      "declaredIn": [
+        "dependencies"
+      ],
+      "componentCount": 0,
+      "usageCount": 0,
+      "importingFileCount": 1,
+      "percentage": 0,
+      "hasVersionConflict": false,
+      "allVersions": [
+        "1.39.10"
       ]
     },
     {
@@ -170,6 +225,7 @@ _unchanged_
       ],
       "componentCount": 0,
       "usageCount": 0,
+      "importingFileCount": 0,
       "percentage": 0,
       "hasVersionConflict": false,
       "allVersions": []
@@ -183,23 +239,11 @@ _unchanged_
       ],
       "componentCount": 0,
       "usageCount": 0,
+      "importingFileCount": 0,
       "percentage": 0,
       "hasVersionConflict": false,
       "allVersions": [
         "2.29.4"
-      ]
-    },
-    {
-      "packageName": "react-dom",
-      "version": "18.3.1",
-      "rootVersion": "18.3.1",
-      "declaredIn": [],
-      "componentCount": 0,
-      "usageCount": 0,
-      "percentage": 0,
-      "hasVersionConflict": false,
-      "allVersions": [
-        "18.3.1"
       ]
     }
   ],
@@ -485,44 +529,7 @@ _unchanged_
       "count": 1,
       "files": [
         "patterns/09-jsx-in-attributes.tsx"
-      ]
-    },
-    {
-      "name": "CaseAttrHost",
-      "source": "@design-system/foundation",
-      "count": 1,
-      "files": [
-        "patterns/09-jsx-in-attributes.tsx"
-      ]
-    },
-    {
-      "name": "CaseAttrFragment",
-      "source": "@design-system/foundation",
-      "count": 1,
-      "files": [
-        "patterns/09-jsx-in-attributes.tsx"
-      ]
-    },
-    {
-      "name": "CaseBoth",
-      "source": "@design-system/foundation",
-      "count": 1,
-      "files": [
-        "patterns/09-jsx-in-attributes.tsx"
-      ]
-    }
-  ],
-  "versus": [
-    {
-      "name": "Design System Migration",
-      "packages": [
-        "@design-system/foundation",
-        "@new-system/arc"
-      ],
-      "entries": [
-        {
-          "packageName": "@design-system/foundation",
-… 54 more line(s) — re-run locally for the full text.
+… 119 more line(s) — re-run locally for the full text.
 ```
 
 </details>
@@ -532,9 +539,9 @@ _unchanged_
 ```text
 hermex v<version>
 - Parsing lockfile...
-✔ Found pnpm lockfile (supports: v5, v6, v9) - 5 packages
-✔ Found 18 files
-✔ Analysis complete! Analyzed 17/18 files
+✔ Found pnpm lockfile (supports: v5, v6, v9) - 7 packages
+✔ Found 22 files
+✔ Analysis complete! Analyzed 21/22 files
 
 ⚠ 1 file(s) failed to parse:
   broken/unparseable.tsx
