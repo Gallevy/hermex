@@ -210,6 +210,85 @@ describe('inventory predicates', () => {
     expect(isOwnedByRepo(find(inventory, 'react')!)).toBe(false);
   });
 
+  it('records importingFileCount per package, independently of component usage', () => {
+    const inventory = buildPackageInventory({
+      versions: { lodash: '4.17.21', '@acme/ui': '1.0.0' },
+      importingFiles: new Map([
+        ['lodash', 3],
+        ['@acme/ui', 1],
+      ]),
+      componentUsage: usageMap({ name: 'Button', source: '@acme/ui' }),
+    });
+
+    // Imported by three files, rendered by none — the axis #174 is about.
+    expect(find(inventory, 'lodash')).toMatchObject({
+      importingFileCount: 3,
+      usageCount: 0,
+      componentCount: 0,
+    });
+    expect(find(inventory, '@acme/ui')).toMatchObject({
+      importingFileCount: 1,
+      usageCount: 1,
+    });
+  });
+
+  it('defaults importingFileCount to 0 for a package no scanned file imports', () => {
+    const inventory = buildPackageInventory({
+      versions: { moment: '2.29.4' },
+      declared: { moment: ['devDependencies'] },
+    });
+
+    expect(find(inventory, 'moment')?.importingFileCount).toBe(0);
+  });
+
+  // `collectImportedPackages` only resolves names the lockfile layer already
+  // knows, so in practice this cannot happen — but the union that builds the
+  // name set must include the imported axis regardless, or a package could be
+  // counted into a map nothing ever reads back.
+  it('includes a package known only from the imported axis in the name set', () => {
+    const inventory = buildPackageInventory({
+      importingFiles: new Map([['es-toolkit', 2]]),
+    });
+
+    expect(find(inventory, 'es-toolkit')).toMatchObject({
+      importingFileCount: 2,
+      version: null,
+      declaredIn: [],
+    });
+  });
+
+  // The narrowness is deliberate: widening `isUsed` to the imported axis
+  // would move packages in and out of `isOwnedByRepo`, and with it the
+  // packages table, no-packages and release-age enrichment — far past what
+  // #174 asked for.
+  it('isUsed stays the render axis and ignores importingFileCount', () => {
+    const inventory = buildPackageInventory({
+      versions: { lodash: '4.17.21' },
+      importingFiles: new Map([['lodash', 3]]),
+    });
+
+    expect(isUsed(find(inventory, 'lodash')!)).toBe(false);
+  });
+
+  // The sort is by usageCount alone, so everything that renders nothing ties
+  // at 0 and insertion order ranks the tail. Rendered, then imported, then
+  // neither — a package the repo imports must not sit below one nothing has
+  // ever referenced.
+  it('ranks an imported-but-unrendered package above one nothing references', () => {
+    const inventory = buildPackageInventory({
+      versions: { eslint: '9.0.0', lodash: '4.17.21', '@acme/ui': '1.0.0' },
+      declared: { eslint: ['devDependencies'] },
+      importingFiles: new Map([['lodash', 3]]),
+      componentUsage: usageMap({ name: 'Button', source: '@acme/ui' }),
+    });
+
+    expect(inventory.map((e) => e.packageName)).toEqual([
+      '@acme/ui',
+      'lodash',
+      'eslint',
+    ]);
+  });
+
   it('isOwnedByRepo accepts declared-but-unused and used-but-undeclared packages', () => {
     const inventory = buildPackageInventory({
       versions: { oxlint: '1.0.0', 'lru-cache': '10.0.0' },

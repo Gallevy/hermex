@@ -94,9 +94,13 @@ export interface HermexScanResult {
   /**
    * Every package this repo owns — declared in `package.json`, a direct
    * dependency in the lockfile, and/or imported by scanned source (#78).
-   * Purely transitive dependencies are excluded. `usageCount` is component
-   * usage, so a package used only as a function reads 0 while still being a
-   * real dependency. Omitted when `output.packages: false`.
+   * Purely transitive dependencies are excluded.
+   *
+   * Two independent usage axes, and they are not interchangeable:
+   * `usageCount` is component usage, so a package used only as a function
+   * reads 0 while still being a real dependency; `importingFileCount` is how
+   * many scanned files import it, which stays meaningful for exactly those
+   * packages (#174). Omitted when `output.packages: false`.
    */
   packages?: import('./utils/package-distribution').PackageDistribution[];
   /**
@@ -105,7 +109,14 @@ export interface HermexScanResult {
    * Omitted when `output.components: false`.
    */
   components?: HermexScanComponent[];
-  /** Omitted when `output.versus: false`. */
+  /**
+   * Each configured versus group's split. `count` — the field the
+   * percentages are computed from — is how many scanned files import the
+   * package (`importingFileCount`); `renderCount` carries the JSX render
+   * count (`usageCount`) alongside it, since files measure how much of a
+   * migration is done and renders measure how much editing is left. See
+   * `VersusEntry` (#174). Omitted when `output.versus: false`.
+   */
   versus?: import('./utils/versus').VersusResult[];
   /**
    * Every rule hit, in one list — filter on `type` to single out a rule.

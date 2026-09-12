@@ -11,6 +11,12 @@ importers:
       '@design-system/foundation':
         specifier: ^2.0.0
         version: 2.5.3
+      es-toolkit:
+        specifier: ^1.39.0
+        version: 1.39.10
+      lodash:
+        specifier: ^4.17.21
+        version: 4.17.21
       react:
         specifier: ^18.3.0
         version: 18.3.1
@@ -25,6 +31,15 @@ importers:
 packages:
 
   '@design-system/foundation@2.5.3':
+    resolution: {integrity: sha512-mock}
+
+  # Imported as functions and never rendered, so `usageCount` reads 0 for
+  # both while `importingFileCount` reads 3 and 1 — the function-only versus
+  # pair of #174, and the only packages here that exercise it.
+  lodash@4.17.21:
+    resolution: {integrity: sha512-mock}
+
+  es-toolkit@1.39.10:
     resolution: {integrity: sha512-mock}
 
   react@18.3.1:

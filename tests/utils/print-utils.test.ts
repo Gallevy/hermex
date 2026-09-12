@@ -1489,9 +1489,17 @@ describe('printVersus', () => {
             {
               packageName: 'react',
               count: 3,
+              renderCount: 9,
               percentage: 100,
+              present: true,
             },
-            { packageName: 'vue', count: 0, percentage: 0 },
+            {
+              packageName: 'vue',
+              count: 0,
+              renderCount: 0,
+              percentage: 0,
+              present: true,
+            },
           ],
           totalCount: 3,
         },
@@ -1516,9 +1524,17 @@ describe('printVersus', () => {
             {
               packageName: 'react',
               count: 3,
+              renderCount: 9,
               percentage: 100,
+              present: true,
             },
-            { packageName: 'vue', count: 0, percentage: 0 },
+            {
+              packageName: 'vue',
+              count: 0,
+              renderCount: 0,
+              percentage: 0,
+              present: true,
+            },
           ],
           totalCount: 3,
         },
@@ -1532,7 +1548,111 @@ describe('printVersus', () => {
     expect(output).not.toContain('Input');
   });
 
-  it('shows a "no usage detected" note when a versus group has zero total usage', () => {
+  it('counts each entry in files, singular at one — the unit is files that import the package, not renders (#174)', () => {
+    printVersus(
+      makeAggregated({
+        versusResults: [
+          {
+            name: 'date-libraries',
+            packages: ['moment', 'date-fns'],
+            entries: [
+              {
+                packageName: 'moment',
+                count: 3,
+                renderCount: 0,
+                percentage: 75,
+                present: true,
+              },
+              {
+                packageName: 'date-fns',
+                count: 1,
+                renderCount: 0,
+                percentage: 25,
+                present: true,
+              },
+            ],
+            totalCount: 4,
+          },
+        ],
+      }),
+    );
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('(3 files)');
+    expect(output).toContain('(1 file)');
+    expect(output).not.toContain('usages');
+  });
+
+  // Renders are kept beside files, not replaced by them: files are how much
+  // of the migration is done, renders are how much editing is left, and a
+  // package used densely in a few files looks very different on the two.
+  it('shows renders beside files for a package that renders, and omits them for one that does not', () => {
+    printVersus(
+      makeAggregated({
+        versusResults: [
+          {
+            name: 'mixed',
+            packages: ['@acme/ui', 'lodash'],
+            entries: [
+              {
+                packageName: '@acme/ui',
+                count: 8,
+                renderCount: 33,
+                percentage: 80,
+                present: true,
+              },
+              {
+                packageName: 'lodash',
+                count: 2,
+                renderCount: 0,
+                percentage: 20,
+                present: true,
+              },
+            ],
+            totalCount: 10,
+          },
+        ],
+      }),
+    );
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('(8 files, 33 renders)');
+    // Not '(2 files, 0 renders)' — a zero there reads as a finding rather
+    // than as "this package renders nothing, so the axis does not apply".
+    expect(output).toContain('(2 files)');
+    expect(output).not.toContain('0 renders');
+  });
+
+  it('uses the singular for a lone file and a lone render', () => {
+    printVersus(
+      makeAggregated({
+        versusResults: [
+          {
+            name: 'mixed',
+            packages: ['@acme/ui'],
+            entries: [
+              {
+                packageName: '@acme/ui',
+                count: 1,
+                renderCount: 1,
+                percentage: 100,
+                present: true,
+              },
+            ],
+            totalCount: 1,
+          },
+        ],
+      }),
+    );
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('(1 file, 1 render)');
+  });
+
+  it('says no imports were detected when the group is real dependencies nobody imports', () => {
     printVersus(
       makeAggregated({
         versusResults: [
@@ -1540,8 +1660,20 @@ describe('printVersus', () => {
             name: 'ui-kits',
             packages: ['react', 'vue'],
             entries: [
-              { packageName: 'react', count: 0, percentage: 0 },
-              { packageName: 'vue', count: 0, percentage: 0 },
+              {
+                packageName: 'react',
+                count: 0,
+                renderCount: 0,
+                percentage: 0,
+                present: true,
+              },
+              {
+                packageName: 'vue',
+                count: 0,
+                renderCount: 0,
+                percentage: 0,
+                present: true,
+              },
             ],
             totalCount: 0,
           },
@@ -1551,7 +1683,85 @@ describe('printVersus', () => {
     const output = consoleSpy.mock.calls
       .map((call) => call.join(' '))
       .join('\n');
-    expect(output).toContain('No usage detected for any package in this group');
+    expect(output).toContain(
+      'No imports detected for any package in this group',
+    );
+  });
+
+  // The other half of #174: the lookup behind the count is an exact-name
+  // match, so a misspelled, ignored or purely transitive package reads 0
+  // exactly like a dependency nobody has imported yet. One sentence for both
+  // is the "confident number that happens to be wrong" the issue is about.
+  it('says the packages are not dependencies at all when none of them is in the distribution', () => {
+    printVersus(
+      makeAggregated({
+        versusResults: [
+          {
+            name: 'ui-kits',
+            packages: ['raect', 'voo'],
+            entries: [
+              {
+                packageName: 'raect',
+                count: 0,
+                renderCount: 0,
+                percentage: 0,
+                present: false,
+              },
+              {
+                packageName: 'voo',
+                count: 0,
+                renderCount: 0,
+                percentage: 0,
+                present: false,
+              },
+            ],
+            totalCount: 0,
+          },
+        ],
+      }),
+    );
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('None of these packages was found in this repo');
+  });
+
+  // The footer above never fires here — the group total is non-zero — so the
+  // absent package has to name itself on its own row or nothing does.
+  it('marks an absent package on its own row when the other side of the group is a real dependency', () => {
+    printVersus(
+      makeAggregated({
+        versusResults: [
+          {
+            name: 'date-libraries',
+            packages: ['moment', 'dat-fns'],
+            entries: [
+              {
+                packageName: 'moment',
+                count: 4,
+                renderCount: 0,
+                percentage: 100,
+                present: true,
+              },
+              {
+                packageName: 'dat-fns',
+                count: 0,
+                renderCount: 0,
+                percentage: 0,
+                present: false,
+              },
+            ],
+            totalCount: 4,
+          },
+        ],
+      }),
+    );
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('(not found in this repo)');
+    expect(output).toContain('(4 files)');
+    expect(output).not.toContain('None of these packages');
   });
 
   it('prints the header with a single space after the emoji, matching every other section header', () => {
@@ -1565,6 +1775,7 @@ describe('printVersus', () => {
               {
                 packageName: 'react',
                 count: 1,
+                renderCount: 2,
                 percentage: 100,
               },
             ],
