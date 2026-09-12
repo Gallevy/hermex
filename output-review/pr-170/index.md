@@ -6,22 +6,16 @@ title: "Output Review"
 {% raw %}
 # Output Review
 
-27 cases · 2 changed · 2 with no baseline · 0 invariant breach(es)
+27 cases · 2 changed · 0 invariant breach(es)
 
-Reference: `8d56a74` — reused from cache.
-
-<div class="or-callout or-note">
-<strong>No baseline for 2 case(s)</strong>
-<p>The target branch could not run these cases — its build produced no output at all, so there is nothing to diff against and every added line below is the whole output appearing, not changing. Usually this means the branch adds a config key the target branch’s schema rejects, in which case it resolves itself on merge. Each case page carries the reference build’s stderr.</p>
-<ul><li><code>comply-all-rule-types</code> — the reference exited 1 without printing to stdout.</li><li><code>comply-all-rule-types-json</code> — the reference exited 1 without printing to stdout.</li></ul>
-</div>
+Reference: `17ede5f` — reused from cache.
 
 ## Changed
 
 | Case | Status | Proves |
 | --- | --- | --- |
-| [`comply-all-rule-types`](./comply-all-rule-types.html) | **no baseline** | Every one of the ten rule types in one table, at three severities — the only case that renders max-file-size, require-engine-version, codeowners and both package-field shapes. |
-| [`comply-all-rule-types-json`](./comply-all-rule-types-json.html) | **no baseline** | The machine-readable shape of every rule type: fieldPath and actualValue on package-field hits, maxSizeBytes/oversizeFiles on max-file-size, installedRange/requiredRange on require-engine-version, matchedFiles on codeowners. Also where #95 is visible — the two codeowners entries are byte-identical apart from matchedFiles. |
+| [`comply-all-rule-types`](./comply-all-rule-types.html) | **changed** <span class="or-add">+3</span> <span class="or-del">−1</span> | Every one of the ten rule types in one table, at three severities — the only case that renders max-file-size, require-engine-version, codeowners and both package-field shapes. |
+| [`comply-all-rule-types-json`](./comply-all-rule-types-json.html) | **changed** <span class="or-add">+19</span> <span class="or-del">−1</span> | The machine-readable shape of every rule type: fieldPath and actualValue on package-field hits, maxSizeBytes/oversizeFiles on max-file-size, installedRange/requiredRange on require-engine-version, matchedFiles on codeowners. Also where #95 is visible — the two codeowners entries are byte-identical apart from matchedFiles. |
 
 ## Unchanged (25)
 

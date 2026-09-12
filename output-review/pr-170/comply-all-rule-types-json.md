@@ -8,19 +8,19 @@ title: "comply-all-rule-types-json — Output Review"
 
 # `comply-all-rule-types-json`
 
-_no baseline_
+_changed_
 
 **Asserts** — The machine-readable shape of every rule type: fieldPath and actualValue on package-field hits, maxSizeBytes/oversizeFiles on max-file-size, installedRange/requiredRange on require-engine-version, matchedFiles on codeowners. Also where #95 is visible — the two codeowners entries are byte-identical apart from matchedFiles.
 
 **Ran** `hermex comply --format json` in `fixtures/repos/all-rule-types` → exit 1, as asserted
 
-**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/8295a05ca336bf7f2ddfaaa42e4b1a9a4ac0ebdb/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/8295a05ca336bf7f2ddfaaa42e4b1a9a4ac0ebdb/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/8295a05ca336bf7f2ddfaaa42e4b1a9a4ac0ebdb/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types-json`](https://github.com/Gallevy/hermex/blob/8295a05ca336bf7f2ddfaaa42e4b1a9a4ac0ebdb/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/8295a05ca336bf7f2ddfaaa42e4b1a9a4ac0ebdb/fixtures/cases/comply-all-rule-types-json.md))
+**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/3504285fbcc87e6dc20dbba60471268d6f718822/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/3504285fbcc87e6dc20dbba60471268d6f718822/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/3504285fbcc87e6dc20dbba60471268d6f718822/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types-json`](https://github.com/Gallevy/hermex/blob/3504285fbcc87e6dc20dbba60471268d6f718822/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/3504285fbcc87e6dc20dbba60471268d6f718822/fixtures/cases/comply-all-rule-types-json.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-all-rule-types-json`</sub>
 
 ## Config
 
-[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/8295a05ca336bf7f2ddfaaa42e4b1a9a4ac0ebdb/fixtures/repos/all-rule-types/hermex.config.ts) — resolved, as the loader sees it
+[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/3504285fbcc87e6dc20dbba60471268d6f718822/fixtures/repos/all-rule-types/hermex.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -123,38 +123,6 @@ _no baseline_
 }
 ```
 
-## No baseline
-
-The target branch's build ran this case and printed nothing to stdout (it exited 1). There is no baseline, so the diff below has no left-hand side: every added line is the whole output appearing, not changing, and the removed lines are the reference's own error output going away.
-
-This is what a config key the target branch's schema does not recognise looks like, and it resolves itself the moment this merges. What it is not is an output change anyone can read from the diff.
-
-The reference build's stderr:
-
-```text
-file://<repo>/.output-review/reference/<sha>/dist/cli.mjs:958
-		return HermexConfigSchema.parse(mod.default);
-		                          ^
-
-ZodError: [
-  {
-    "code": "unrecognized_keys",
-    "keys": [
-      "max-file-size"
-    ],
-    "path": [
-      "rules"
-    ],
-    "message": "Unrecognized key: /"max-file-size/""
-  }
-]
-    at loadConfig (file://<repo>/.output-review/reference/<sha>/dist/cli.mjs:958:29)
-    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
-    at async Command.<anonymous> (file://<repo>/.output-review/reference/<sha>/dist/cli.mjs:2678:23)
-
-Node.js v26.8.2
-```
-
 ## Diff against the target branch
 
 <sub>Diffs are unified format: `-` is the target branch, `+` is this run. `@@ -12,7 +12,9 @@` is a hunk header — unchanged lines were skipped, and the hunk below covers 7 lines from line 12 of the target branch and 9 lines from line 12 of this run.</sub>
@@ -162,76 +130,10 @@ Node.js v26.8.2
 ```diff
 --- target/stdout.json
 +++ current/stdout.json
-@@ -0,0 +1,139 @@
-+{
-+  "version": "<version>",
-+  "summary": {
-+    "filesAnalyzed": 3,
-+    "totalImports": 3,
-+    "totalComponents": 1,
-+    "totalUsagePatterns": 5
-+  },
-+  "ruleViolations": [
-+    {
-+      "ruleId": "no-packages",
-+      "severity": "error",
-+      "patterns": [
-+        "moment"
-+      ],
-+      "message": "Use date-fns or dayjs",
-+      "matchedFiles": [],
-+      "packageName": "moment"
-+    },
-+    {
-+      "ruleId": "require-packages",
-+      "severity": "error",
-+      "patterns": [
-+        "typescript"
-+      ],
-+      "message": "TypeScript is required",
-+      "matchedFiles": []
-+    },
-+    {
-+      "ruleId": "no-files",
-+      "severity": "error",
-+      "patterns": [
-+        "jest.config.*",
-+        ".babelrc"
-+      ],
-+      "message": "Use vitest + Vite",
-+      "matchedFiles": [
-+        "jest.config.js",
-+        ".babelrc"
-+      ]
-+    },
-+    {
-+      "ruleId": "require-files",
-+      "severity": "error",
-+      "patterns": [
-+        ".nvmrc"
-+      ],
-+      "matchedFiles": []
-+    },
-+    {
-+      "ruleId": "require-scripts",
-+      "severity": "error",
-+      "patterns": [
-+        "build",
-+        "test"
-+      ],
-+      "message": "Required npm scripts",
-+      "matchedFiles": []
-+    },
-+    {
-+      "ruleId": "require-engine-version",
-+      "severity": "error",
-+      "patterns": [],
-+      "message": "Minimum Node 20 required",
-+      "matchedFiles": [],
-+      "installedRange": ">=16",
-+      "requiredRange": ">=20"
-+    },
-+    {
+@@ -67,6 +67,24 @@
+       "requiredRange": ">=20"
+     },
+     {
 +      "ruleId": "max-file-size",
 +      "severity": "warn",
 +      "patterns": [
@@ -250,91 +152,18 @@ Node.js v26.8.2
 +      ]
 +    },
 +    {
-+      "ruleId": "require-package-fields",
-+      "severity": "warn",
-+      "patterns": [
-+        "license"
-+      ],
-+      "matchedFiles": []
-+    },
-+    {
-+      "ruleId": "no-package-fields",
-+      "severity": "warn",
-+      "patterns": [
-+        "publishConfig.registry"
-+      ],
-+      "message": "Publish to the public registry",
-+      "matchedFiles": [],
-+      "fieldPath": "publishConfig.registry",
-+      "actualValue": "https://npm.internal.example.com"
-+    },
-+    {
-+      "ruleId": "require-codeowners",
-+      "severity": "info",
-+      "patterns": [
-+        "CODEOWNERS"
-+      ],
-+      "message": "Every file needs a platform owner",
-+      "matchedFiles": [
-+        "src/orphan.tsx"
-+      ]
-+    },
-+    {
-+      "ruleId": "require-codeowners",
-+      "severity": "info",
-+      "patterns": [
-+        "CODEOWNERS"
-+      ],
-+      "message": "Every file needs a platform owner",
-+      "matchedFiles": [
-+        "src/legacy.tsx"
-+      ]
-+    }
-+  ],
-+  "compliance": {
-+    "status": "non-compliant",
-+    "compliant": false,
-+    "counts": {
-+      "errorRuleViolations": 6,
-+      "releaseAgeViolations": 0,
+       "ruleId": "require-package-fields",
+       "severity": "warn",
+       "patterns": [
+@@ -114,7 +132,7 @@
+     "counts": {
+       "errorRuleViolations": 6,
+       "releaseAgeViolations": 0,
+-      "warningRuleViolations": 2
 +      "warningRuleViolations": 3
-+    }
-+  }
-+}
-+
-
---- target/stderr.txt
-+++ current/stderr.txt
-@@ -1,22 +1,6 @@
--file://<repo>/.output-review/reference/<sha>/dist/cli.mjs:958
--		return HermexConfigSchema.parse(mod.default);
--		                          ^
--
--ZodError: [
--  {
--    "code": "unrecognized_keys",
--    "keys": [
--      "max-file-size"
--    ],
--    "path": [
--      "rules"
--    ],
--    "message": "Unrecognized key: /"max-file-size/""
--  }
--]
--    at loadConfig (file://<repo>/.output-review/reference/<sha>/dist/cli.mjs:958:29)
--    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
--    at async Command.<anonymous> (file://<repo>/.output-review/reference/<sha>/dist/cli.mjs:2678:23)
--
--Node.js v26.8.2
-+hermex v<version>
-+- Parsing lockfile...
-+✔ Found pnpm lockfile (supports: v5, v6, v9) - 2 packages
-+✔ Found 3 files
-+✔ Analysis complete! Analyzed 3/3 files
- 
-
-
+     }
+   }
+ }
 ```
 
 ## Full output
