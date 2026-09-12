@@ -14,13 +14,13 @@ _unchanged_
 
 **Ran** `hermex comply` in `fixtures/repos/compliant` → exit 0, as asserted
 
-**Config** [`fixtures/repos/compliant/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/2eaf0168302e865a532070bfbf9cd58e9e94233f/fixtures/repos/compliant/hermex.config.ts) · **Fixture** [`fixtures/repos/compliant`](https://github.com/Gallevy/hermex/blob/2eaf0168302e865a532070bfbf9cd58e9e94233f/fixtures/repos/compliant) ([overview](https://github.com/Gallevy/hermex/blob/2eaf0168302e865a532070bfbf9cd58e9e94233f/fixtures/repos/compliant/README.md)) · **Case** [`comply-human-pass`](https://github.com/Gallevy/hermex/blob/2eaf0168302e865a532070bfbf9cd58e9e94233f/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/2eaf0168302e865a532070bfbf9cd58e9e94233f/fixtures/cases/comply-human-pass.md))
+**Config** [`fixtures/repos/compliant/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/8295a05ca336bf7f2ddfaaa42e4b1a9a4ac0ebdb/fixtures/repos/compliant/hermex.config.ts) · **Fixture** [`fixtures/repos/compliant`](https://github.com/Gallevy/hermex/blob/8295a05ca336bf7f2ddfaaa42e4b1a9a4ac0ebdb/fixtures/repos/compliant) ([overview](https://github.com/Gallevy/hermex/blob/8295a05ca336bf7f2ddfaaa42e4b1a9a4ac0ebdb/fixtures/repos/compliant/README.md)) · **Case** [`comply-human-pass`](https://github.com/Gallevy/hermex/blob/8295a05ca336bf7f2ddfaaa42e4b1a9a4ac0ebdb/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/8295a05ca336bf7f2ddfaaa42e4b1a9a4ac0ebdb/fixtures/cases/comply-human-pass.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-human-pass`</sub>
 
 ## Config
 
-[`fixtures/repos/compliant/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/2eaf0168302e865a532070bfbf9cd58e9e94233f/fixtures/repos/compliant/hermex.config.ts) — resolved, as the loader sees it
+[`fixtures/repos/compliant/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/8295a05ca336bf7f2ddfaaa42e4b1a9a4ac0ebdb/fixtures/repos/compliant/hermex.config.ts) — resolved, as the loader sees it
 
 ```json
 {

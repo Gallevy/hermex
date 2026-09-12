@@ -8,19 +8,19 @@ title: "comply-all-rule-types-json — Output Review"
 
 # `comply-all-rule-types-json`
 
-_changed_
+_no baseline_
 
 **Asserts** — The machine-readable shape of every rule type: fieldPath and actualValue on package-field hits, maxSizeBytes/oversizeFiles on max-file-size, installedRange/requiredRange on require-engine-version, matchedFiles on codeowners. Also where #95 is visible — the two codeowners entries are byte-identical apart from matchedFiles.
 
 **Ran** `hermex comply --format json` in `fixtures/repos/all-rule-types` → exit 1, as asserted
 
-**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/2eaf0168302e865a532070bfbf9cd58e9e94233f/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/2eaf0168302e865a532070bfbf9cd58e9e94233f/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/2eaf0168302e865a532070bfbf9cd58e9e94233f/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types-json`](https://github.com/Gallevy/hermex/blob/2eaf0168302e865a532070bfbf9cd58e9e94233f/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/2eaf0168302e865a532070bfbf9cd58e9e94233f/fixtures/cases/comply-all-rule-types-json.md))
+**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/8295a05ca336bf7f2ddfaaa42e4b1a9a4ac0ebdb/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/8295a05ca336bf7f2ddfaaa42e4b1a9a4ac0ebdb/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/8295a05ca336bf7f2ddfaaa42e4b1a9a4ac0ebdb/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types-json`](https://github.com/Gallevy/hermex/blob/8295a05ca336bf7f2ddfaaa42e4b1a9a4ac0ebdb/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/8295a05ca336bf7f2ddfaaa42e4b1a9a4ac0ebdb/fixtures/cases/comply-all-rule-types-json.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-all-rule-types-json`</sub>
 
 ## Config
 
-[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/2eaf0168302e865a532070bfbf9cd58e9e94233f/fixtures/repos/all-rule-types/hermex.config.ts) — resolved, as the loader sees it
+[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/8295a05ca336bf7f2ddfaaa42e4b1a9a4ac0ebdb/fixtures/repos/all-rule-types/hermex.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -121,6 +121,38 @@ _changed_
     "versus": false
   }
 }
+```
+
+## No baseline
+
+The target branch's build ran this case and printed nothing to stdout (it exited 1). There is no baseline, so the diff below has no left-hand side: every added line is the whole output appearing, not changing, and the removed lines are the reference's own error output going away.
+
+This is what a config key the target branch's schema does not recognise looks like, and it resolves itself the moment this merges. What it is not is an output change anyone can read from the diff.
+
+The reference build's stderr:
+
+```text
+file://<repo>/.output-review/reference/<sha>/dist/cli.mjs:958
+		return HermexConfigSchema.parse(mod.default);
+		                          ^
+
+ZodError: [
+  {
+    "code": "unrecognized_keys",
+    "keys": [
+      "max-file-size"
+    ],
+    "path": [
+      "rules"
+    ],
+    "message": "Unrecognized key: /"max-file-size/""
+  }
+]
+    at loadConfig (file://<repo>/.output-review/reference/<sha>/dist/cli.mjs:958:29)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async Command.<anonymous> (file://<repo>/.output-review/reference/<sha>/dist/cli.mjs:2678:23)
+
+Node.js v26.8.2
 ```
 
 ## Diff against the target branch
@@ -274,7 +306,7 @@ _changed_
 --- target/stderr.txt
 +++ current/stderr.txt
 @@ -1,22 +1,6 @@
--file://<repo>/.output-review/reference/dd78b0600bccbcf0b1344519f4bb91e52e401c0d/dist/cli.mjs:958
+-file://<repo>/.output-review/reference/<sha>/dist/cli.mjs:958
 -		return HermexConfigSchema.parse(mod.default);
 -		                          ^
 -
@@ -290,9 +322,9 @@ _changed_
 -    "message": "Unrecognized key: /"max-file-size/""
 -  }
 -]
--    at loadConfig (file://<repo>/.output-review/reference/dd78b0600bccbcf0b1344519f4bb91e52e401c0d/dist/cli.mjs:958:29)
+-    at loadConfig (file://<repo>/.output-review/reference/<sha>/dist/cli.mjs:958:29)
 -    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
--    at async Command.<anonymous> (file://<repo>/.output-review/reference/dd78b0600bccbcf0b1344519f4bb91e52e401c0d/dist/cli.mjs:2678:23)
+-    at async Command.<anonymous> (file://<repo>/.output-review/reference/<sha>/dist/cli.mjs:2678:23)
 -
 -Node.js v26.8.2
 +hermex v<version>
