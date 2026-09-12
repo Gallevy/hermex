@@ -8,12 +8,12 @@ import type {
   ReleaseAgeEntry,
   SemverBump,
 } from '../npm-registry/types';
+import { formatDaysOverdue, formatDaysRemaining } from './format-utils';
 import {
-  formatCount,
-  formatDaysOverdue,
-  formatDaysRemaining,
-} from './format-utils';
-import { severityIcon, severityColor } from './severity-format';
+  formatSeverityTally,
+  severityIcon,
+  severityColor,
+} from './severity-format';
 
 function printHeader() {
   console.log(chalk.blueBright.bold('\n📦 Packages\n'));
@@ -281,7 +281,23 @@ function printPackagesTable(
     }
   }
 
-  console.log(chalk.gray(`\n${formatCount(packages.length)} packages total`));
+  // The same "N errors, M warnings" tally style as the Rules section
+  // (`print-rules.ts`), computed from this table's own release-age
+  // violations — the only violation kind this table uniquely surfaces (a
+  // banned package's no-packages hit is already counted in the Rules
+  // tally; [BANNED] here is just a cross-reference, not a second count).
+  // A plain package count ("N packages total") said nothing about
+  // compliance and didn't add up with anything else on screen — this does:
+  // Rules-tally + Packages-tally always equals the overall mandatory count.
+  const releaseAgeViolations = violations.filter(
+    (v) => v.ruleId === 'release-age',
+  );
+  const tally = formatSeverityTally(releaseAgeViolations, {
+    includeInfo: true,
+  });
+  if (tally) {
+    console.log(chalk.gray(`\n${tally}`));
+  }
 }
 
 // Only ever called via printPackages, which already guarantees a non-empty

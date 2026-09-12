@@ -181,7 +181,11 @@ describe('printPackages', () => {
     expect(output).not.toContain('Percentage');
   });
 
-  it('reports just the package count in the trailer, with no unique-components/total-usages numbers', () => {
+  it('prints no trailer at all when there are no release-age violations to tally', () => {
+    // A bare package count said nothing about compliance and never lined up
+    // with anything else on screen — the trailer is a severity tally now
+    // (see below), and there's nothing to tally when release-age isn't
+    // configured, or nothing it flagged is a violation.
     const aggregated = makeAggregated({
       packageDistribution: [
         createMockPackage('react', { componentCount: 2, usageCount: 8 }),
@@ -192,9 +196,48 @@ describe('printPackages', () => {
     const output = consoleSpy.mock.calls
       .map((call) => call.join(' '))
       .join('\n');
-    expect(output).toContain('2 packages total');
+    expect(output).not.toContain('packages total');
     expect(output).not.toContain('unique components');
     expect(output).not.toContain('total usages');
+  });
+
+  // The Packages table's own "N errors, M warnings" tally, in the same
+  // style as the Rules section's — computed only from release-age
+  // violations, the one kind this table uniquely surfaces. Added together
+  // with the Rules tally, this always equals the overall mandatory count.
+  it('tallies release-age violations in the same style as the Rules section', () => {
+    const aggregated = makeAggregated({
+      packageDistribution: [
+        createMockPackage('moment', {
+          releaseAge: createMockReleaseAge({
+            worstLevel: 'major_overdue',
+            severity: 'error',
+          }),
+        }),
+        createMockPackage('react', {
+          releaseAge: createMockReleaseAge({
+            worstLevel: 'minor_overdue',
+            severity: 'warn',
+          }),
+        }),
+      ],
+      ruleViolations: [
+        createMockReleaseAgeViolation('moment', {
+          worstLevel: 'major_overdue',
+          severity: 'error',
+        }),
+        createMockReleaseAgeViolation('react', {
+          worstLevel: 'minor_overdue',
+          severity: 'warn',
+        }),
+      ],
+    });
+    printPackages(aggregated, 'table');
+    const output = stripAnsi(
+      consoleSpy.mock.calls.map((call) => call.join(' ')).join('\n'),
+    );
+    expect(output).toContain('1 error, 1 warning');
+    expect(output).not.toContain('packages total');
   });
 
   it('renders "days overdue" for a package past its release-age threshold', () => {
