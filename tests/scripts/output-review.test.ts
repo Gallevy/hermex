@@ -12,6 +12,7 @@ import {
   SITE_STYLE,
   unifiedDiff,
   resolveConfigs,
+  runBaseline,
 } from '../../scripts/output-review';
 import type { CaseResult, FixtureCase } from '../../scripts/output-review';
 
@@ -771,5 +772,56 @@ describe('reference provenance', () => {
 
   it('says nothing at all when no reference was recorded', () => {
     expect(buildComment(results, [])).not.toContain('Reference:');
+  });
+});
+
+describe('runBaseline', () => {
+  const fixture: FixtureCase = {
+    name: 'brand-new',
+    proves: 'a case that only exists on this branch',
+    cwd: 'repos/does-not-exist-on-main',
+    args: ['comply'],
+    expectExit: 1,
+  };
+
+  // A case added by this branch has no counterpart in the reference
+  // checkout, so there is nothing on the target branch that could have run
+  // it. That is a real missing baseline — unlike a case the target branch
+  // has, which now runs against its own config and produces one.
+  it('reports no baseline for a case the reference checkout does not have', async () => {
+    const baseline = await runBaseline(
+      fixture,
+      null,
+      { sha: 'abc1234def', cli: 'unused', root: '/nope', reused: true },
+      resolve('/nope/fixtures'),
+    );
+
+    expect(baseline.raw.stdout).toBe('');
+    expect(baseline.artifacts).toEqual({});
+    expect(baseline.raw.stderr).toContain('does not exist at abc1234');
+    expect(baseline.raw.stderr).toContain('new in this branch');
+  });
+
+  it('feeds hasNoBaseline, so the existing reporting picks it up', async () => {
+    const baseline = await runBaseline(
+      fixture,
+      null,
+      { sha: 'abc1234def', cli: 'unused', root: '/nope', reused: true },
+      resolve('/nope/fixtures'),
+    );
+
+    const result = {
+      fixture,
+      artifacts: {},
+      raw: { stdout: 'this branch printed a table', stderr: '' },
+      reference: { status: baseline.status, raw: baseline.raw },
+      changed: [],
+      added: [],
+      removed: [],
+      fileDiffs: [],
+      diff: '',
+    } as CaseResult;
+
+    expect(hasNoBaseline(result)).toBe(true);
   });
 });

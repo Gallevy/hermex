@@ -1,8 +1,13 @@
 #!/usr/bin/env node
 /**
- * Output review: run the real CLI over `fixtures/` twice — once built from
- * this working tree, once from a reference build of the target branch —
- * and diff what the two actually printed.
+ * Output review: run the real CLI over `fixtures/` twice — once from this
+ * working tree, once from a reference build of the target branch over
+ * *that* checkout's fixtures — and diff what the two actually printed.
+ *
+ * Each build is paired with the config it shipped with, which is what lets
+ * a PR that adds a rule still have a baseline: the target branch's hermex
+ * reads the target branch's config, a config it understands. See
+ * `runCase`.
  *
  * Hermex's value is its output and its verdict, and unit tests do not look
  * at either. This runner does the loop a human was doing by hand — run the
@@ -311,16 +316,32 @@ function spawnCapture(
 }
 
 /**
- * Runs one fixture against a specific CLI build. `cliPath` is the only
- * thing that varies between a "current tree" run and a "reference branch"
- * run — the fixtures directory is always this working tree's, so the two
- * runs isolate exactly one variable: what the tool itself does with the
- * same input.
+ * Runs one fixture with a specific CLI build, against a specific
+ * `fixtures/` tree. Each side of a comparison runs in its own checkout:
+ * this tree's CLI over this tree's fixtures, the reference build over the
+ * reference checkout's fixtures.
+ *
+ * That pairing is the point. Running both builds over *this* tree's
+ * fixtures isolates "what does the tool do differently with identical
+ * input", which sounds tighter and is the wrong question: a config is
+ * input too. `HermexConfigSchema` is `.strict()`, so a PR that adds a
+ * rule gives the target branch's hermex a key it has never heard of, and
+ * it rejects the whole config and prints nothing — the case that renders
+ * that rule loses its baseline precisely when a reviewer most needs one
+ * (#178, and see `hasNoBaseline`). Pairing each build with the config it
+ * shipped with asks the question the review is actually for: what changes
+ * about the output a user sees?
+ *
+ * The cost is that a fixture edit now shows up in the diff alongside a
+ * renderer change. That is the honest reading — both are things this PR
+ * changes about hermex's output — and the case page names the config each
+ * side ran under.
  */
 async function runCase(
   fixture: FixtureCase,
   registryUrl: string | null,
   cliPath: string,
+  fixturesRoot: string,
 ): Promise<{ artifacts: Artifacts; status: number; raw: RawCapture }> {
   const scratch = mkdtempSync(join(tmpdir(), `hermex-output-${fixture.name}-`));
   try {
@@ -333,7 +354,7 @@ async function runCase(
     }
 
     const result = await spawnCapture([cliPath, ...args], {
-      cwd: join(FIXTURES, fixture.cwd),
+      cwd: join(fixturesRoot, fixture.cwd),
       env,
     });
 
@@ -404,6 +425,36 @@ function run(command: string, args: string[], cwd: string): void {
 }
 
 /**
+ * Runs `fixture` against the reference build, in the reference checkout's
+ * own `fixtures/`.
+ *
+ * A case whose fixture directory does not exist there is new in this branch
+ * and has no baseline by definition — there is nothing on the target branch
+ * to have run it. Reported as a reference that produced no output, which is
+ * exactly what it is, so `hasNoBaseline` and the reporting built on it
+ * handle this without a second concept.
+ */
+export async function runBaseline(
+  fixture: FixtureCase,
+  registryUrl: string | null,
+  reference: Reference,
+  referenceFixtures: string,
+): Promise<{ status: number; raw: RawCapture; artifacts: Artifacts }> {
+  if (!existsSync(join(referenceFixtures, fixture.cwd))) {
+    return {
+      status: -1,
+      raw: {
+        stdout: '',
+        stderr: `fixtures/${fixture.cwd} does not exist at ${reference.sha.slice(0, 7)} — this case is new in this branch.
+`,
+      },
+      artifacts: {},
+    };
+  }
+  return runCase(fixture, registryUrl, reference.cli, referenceFixtures);
+}
+
+/**
  * A ref to a commit SHA. Tries the already-fetched `origin/<ref>` first —
  * the common case, since CI checks out a branch — and falls back to
  * fetching it directly, which covers both a shallow CI checkout (the
@@ -470,6 +521,11 @@ function resolveRef(ref: string): string {
 export interface Reference {
   sha: string;
   cli: string;
+  /**
+   * The reference checkout itself. The baseline run reads its `fixtures/`,
+   * not this branch's — see `runCase`.
+   */
+  root: string;
   /** False when this run paid for the worktree, the install and the build. */
   reused: boolean;
 }
@@ -502,7 +558,7 @@ function buildReference(ref: string): Reference {
       cwd: worktree,
       encoding: 'utf8',
     });
-    if (probe.status === 0) return { sha, cli, reused: true };
+    if (probe.status === 0) return { sha, cli, root: worktree, reused: true };
     process.stderr.write(
       `Reference build at ${sha} did not run; rebuilding it.\n`,
     );
@@ -524,7 +580,7 @@ function buildReference(ref: string): Reference {
 
   run('pnpm', ['install', '--frozen-lockfile'], worktree);
   run('pnpm', ['run', 'build'], worktree);
-  return { sha, cli, reused: false };
+  return { sha, cli, root: worktree, reused: false };
 }
 
 /**
@@ -2399,6 +2455,8 @@ async function main(): Promise<void> {
     );
   }
 
+  const referenceFixtures = join(reference.root, 'fixtures');
+
   const registry = selected.some((fixture) => fixture.registry)
     ? await startRegistry()
     : null;
@@ -2407,10 +2465,13 @@ async function main(): Promise<void> {
   try {
     for (const fixture of selected) {
       const registryUrl = fixture.registry && registry ? registry.url : null;
-      const current = await runCase(fixture, registryUrl, CLI);
-      // Same fixture, same registry, the only variable is which build of
-      // hermex is running it — see `runCase`'s doc comment.
-      const baseline = await runCase(fixture, registryUrl, reference.cli);
+      const current = await runCase(fixture, registryUrl, CLI, FIXTURES);
+      const baseline = await runBaseline(
+        fixture,
+        registryUrl,
+        reference,
+        referenceFixtures,
+      );
 
       const result = compare(
         fixture,

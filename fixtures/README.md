@@ -141,15 +141,19 @@ Three surfaces, split by what stays put and what changes every run:
 | **The sticky PR comment** | One row per **changed** case: name, `+N −M`, and a single link. Plus the commit the run compared against, and whether that reference was reused from CI's cache or rebuilt. | Triage — which cases moved, by how much, is that the set you expected? |
 | **A page per case** (`.output-review/site/`) | One Markdown page per case with its context, **the config it ran under, inlined**, the full diff, and complete stdout, stderr and written files. | Reading one case, without any chance of confusing it with another. |
 
-A case can also be marked **`no baseline`** in place of `+N −M`. That is the
-state where the target branch's build produced no output for that case at
-all — adding a rule does it every time, since the fixture config gains a key
-the `.strict()` schema on the other side rejects. There is nothing to diff
-against, so the case is marked on every surface, all three say why, and the
-case page carries the reference build's stderr. It is reported, never
-blocking: it is legitimate, and it resolves itself on merge. What it must
-never do is look like an ordinary `+40 −22` a reviewer reads as a real
-output change (#178).
+A case can also be marked **`no baseline`** in place of `+N −M`: the target
+branch's build produced no output for that case at all, so there is nothing
+to diff against. It is marked on every surface, all three say why, and the
+case page carries the reference build's stderr. Reported, never blocking.
+What it must never do is look like an ordinary `+40 −22` a reviewer reads as
+a real output change (#178).
+
+It now means only one thing: the case is new in the branch, so the reference
+checkout has no fixture directory for it. Adding a rule used to land here as
+well — both sides ran this tree's fixtures, so the target branch's hermex met
+a config key its `.strict()` schema rejects and threw before printing. Each
+side now runs its own checkout's fixtures, pairing every build with the
+config it shipped with, so a rule addition diffs normally.
 
 The comment carries **no diffs at all**. An output change is rarely one line
 in one case — swapping a table border character rewrites every row of
