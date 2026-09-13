@@ -14,7 +14,7 @@ _unchanged_
 
 **Ran** `hermex comply --config configs/deprecated-packages.config.ts` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/configs/deprecated-packages.config.ts`](https://github.com/Gallevy/hermex/blob/8a1323458f8e20ffd6465dcc0682fa618b4dda08/fixtures/configs/deprecated-packages.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/8a1323458f8e20ffd6465dcc0682fa618b4dda08/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/8a1323458f8e20ffd6465dcc0682fa618b4dda08/fixtures/README.md)) · **Case** [`comply-deprecated-packages`](https://github.com/Gallevy/hermex/blob/8a1323458f8e20ffd6465dcc0682fa618b4dda08/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/8a1323458f8e20ffd6465dcc0682fa618b4dda08/fixtures/cases/comply-deprecated-packages.md))
+**Config** [`fixtures/configs/deprecated-packages.config.ts`](https://github.com/Gallevy/hermex/blob/8bbb88a1c70535a49b55b5e0f6b6d9fd9fa9fdc6/fixtures/configs/deprecated-packages.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/8bbb88a1c70535a49b55b5e0f6b6d9fd9fa9fdc6/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/8bbb88a1c70535a49b55b5e0f6b6d9fd9fa9fdc6/fixtures/README.md)) · **Case** [`comply-deprecated-packages`](https://github.com/Gallevy/hermex/blob/8bbb88a1c70535a49b55b5e0f6b6d9fd9fa9fdc6/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/8bbb88a1c70535a49b55b5e0f6b6d9fd9fa9fdc6/fixtures/cases/comply-deprecated-packages.md))
 
 **Registry** offline, served from `fixtures/registry/timelines.ts` — no network
 
@@ -22,7 +22,7 @@ _unchanged_
 
 ## Config
 
-[`fixtures/configs/deprecated-packages.config.ts`](https://github.com/Gallevy/hermex/blob/8a1323458f8e20ffd6465dcc0682fa618b4dda08/fixtures/configs/deprecated-packages.config.ts) — resolved, as the loader sees it
+[`fixtures/configs/deprecated-packages.config.ts`](https://github.com/Gallevy/hermex/blob/8bbb88a1c70535a49b55b5e0f6b6d9fd9fa9fdc6/fixtures/configs/deprecated-packages.config.ts) — resolved, as the loader sees it
 
 ```json
 {
