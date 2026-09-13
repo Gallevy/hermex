@@ -18,15 +18,15 @@ import { severityColor, severityIcon } from './severity-format';
  * it and the rule ids these come from. The icon is already doing the
  * shouting; uppercasing the word too just put two casing conventions in one
  * row. */
-export type PackageStatusLabel = 'forbidden' | 'deprecated';
+export type PackageFlagLabel = 'forbidden' | 'deprecated';
 
-export interface PackageStatus {
+export interface PackageFlag {
   ruleId: CoreRuleViolation['ruleId'];
   /** A badge exists if and only if a violation does, so this is always a
    * real violation's severity — never a config-resolved one. That's what
    * keeps a badge and its rules-table row from ever disagreeing. */
   severity: RuleViolation['severity'];
-  label: PackageStatusLabel;
+  label: PackageFlagLabel;
   /** Long-form context (the publisher's deprecation notice). Rendered in
    * the Notes block below the table, never inside a cell — a table cell is
    * the wrong shape for a sentence. */
@@ -37,7 +37,7 @@ export interface PackageStatus {
 type Contribute = (
   pkg: PackageDistribution,
   violations: RuleViolation[],
-) => Omit<PackageStatus, 'ruleId'> | undefined;
+) => Omit<PackageFlag, 'ruleId'> | undefined;
 
 /**
  * Plugin findings are excluded before the id check, not merely to narrow
@@ -68,13 +68,13 @@ function findDeprecatedViolation(
   );
 }
 
-const forbiddenStatus: Contribute = (pkg, violations) => {
+const forbiddenFlag: Contribute = (pkg, violations) => {
   const violation = findForbidViolation(pkg.packageName, violations);
   if (!violation) return undefined;
   return { severity: violation.severity, label: 'forbidden' };
 };
 
-const deprecatedStatus: Contribute = (pkg, violations) => {
+const deprecatedFlag: Contribute = (pkg, violations) => {
   const violation = findDeprecatedViolation(pkg.packageName, violations);
   if (!violation) return undefined;
   return {
@@ -100,12 +100,12 @@ const deprecatedStatus: Contribute = (pkg, violations) => {
  * (`src/rules/shared.ts`) already makes about it rendering no rules-table
  * row either.
  */
-const PACKAGE_STATUS_CONTRIBUTORS: readonly {
+const PACKAGE_FLAG_CONTRIBUTORS: readonly {
   ruleId: CoreRuleViolation['ruleId'];
   contribute: Contribute;
 }[] = [
-  { ruleId: 'no-packages', contribute: forbiddenStatus },
-  { ruleId: 'no-deprecated-packages', contribute: deprecatedStatus },
+  { ruleId: 'no-packages', contribute: forbiddenFlag },
+  { ruleId: 'no-deprecated-packages', contribute: deprecatedFlag },
 ];
 
 /**
@@ -113,34 +113,34 @@ const PACKAGE_STATUS_CONTRIBUTORS: readonly {
  * stamped on from the registry entry rather than returned by the
  * contributor, so a contributor structurally cannot mislabel its own rule.
  */
-export function collectPackageStatuses(
+export function collectPackageFlags(
   pkg: PackageDistribution,
   violations: RuleViolation[],
-): PackageStatus[] {
-  const statuses: PackageStatus[] = [];
-  for (const { ruleId, contribute } of PACKAGE_STATUS_CONTRIBUTORS) {
-    const status = contribute(pkg, violations);
-    if (status) statuses.push({ ruleId, ...status });
+): PackageFlag[] {
+  const flags: PackageFlag[] = [];
+  for (const { ruleId, contribute } of PACKAGE_FLAG_CONTRIBUTORS) {
+    const flag = contribute(pkg, violations);
+    if (flag) flags.push({ ruleId, ...flag });
   }
-  return statuses;
+  return flags;
 }
 
-/** The Status cell: `icon LABEL` per badge, space-joined; empty when no
+/** The Flags cell: `icon label` per badge, space-joined; empty when no
  * rule flagged the row. Colored — cli-table3 measures with `string-width`,
  * which ignores ANSI, so column math is unaffected. */
-export function formatPackageStatus(statuses: PackageStatus[]): string {
-  return statuses
+export function formatPackageFlags(flags: PackageFlag[]): string {
+  return flags
     .map(
-      (status) =>
-        `${severityIcon(status.severity)} ${severityColor(status.severity)(status.label)}`,
+      (flag) =>
+        `${severityIcon(flag.severity)} ${severityColor(flag.severity)(flag.label)}`,
     )
     .join(' ');
 }
 
 /** Notes-line facts for the badges carrying long-form context, phrased to
  * read as a continuation of the badge itself ("deprecated: <notice>"). */
-export function describeStatusDetails(statuses: PackageStatus[]): string[] {
-  return statuses
-    .filter((status) => status.detail !== undefined)
-    .map((status) => `${status.label}: ${status.detail}`);
+export function describeFlagDetails(flags: PackageFlag[]): string[] {
+  return flags
+    .filter((flag) => flag.detail !== undefined)
+    .map((flag) => `${flag.label}: ${flag.detail}`);
 }

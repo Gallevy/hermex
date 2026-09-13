@@ -6,7 +6,7 @@ Packages table: a status-badge hook, and deprecation as its own rule
 
 Closes #86 and #107.
 
-**A `Status` column on the packages table.** A badge exists if and only if a package rule produced a
+**A `Flags` column on the packages table.** A badge exists if and only if a package rule produced a
 violation for that row, and its icon is that violation's severity. `no-packages` and the new
 `no-deprecated-packages` contribute today; a future package rule plugs into the same declaration table
 (`src/utils/package-status.ts`) and gets a badge with no change to any renderer.
@@ -33,7 +33,7 @@ Breaking changes:
   than `minor 3.24.0 (12 days remaining)`, and a row with nothing to check at all renders `—`
   rather than blank, so it can be told apart from 🟢 ("checked, nothing to do").
 - The `[BANNED]` / `[RESTRICTED]` / `[DEPRECATED]` prefixes on package names are gone, replaced by
-  lowercase `forbidden` / `deprecated` badges in the Status column. `[RESTRICTED]`
+  lowercase `forbidden` / `deprecated` badges in a new Flags column. `[RESTRICTED]`
   named a config concept that never existed — both badges came from one `no-packages` rule — and it
   collapsed `warn` and `info` into a single word.
 - The gray `[not enforced]` suffix is gone; the severity icon carries that on its own.

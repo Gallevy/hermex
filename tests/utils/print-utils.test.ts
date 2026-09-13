@@ -460,7 +460,7 @@ describe('printPackages', () => {
   });
 });
 
-describe('the Status column (#86)', () => {
+describe('the Flags column (#86)', () => {
   it('omits the column entirely when no package rule flagged anything', () => {
     // A plain scan of a repo with no package rules keeps its clean two-column
     // table rather than growing a column of blanks.
@@ -469,7 +469,7 @@ describe('the Status column (#86)', () => {
     });
     printPackages(aggregated, 'table');
     const output = consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n');
-    expect(output).not.toContain('Status');
+    expect(output).not.toContain('Flags');
   });
 
   it('adds the column as soon as one row has a badge', () => {
@@ -484,7 +484,7 @@ describe('the Status column (#86)', () => {
     const output = stripAnsi(
       consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n'),
     );
-    expect(output).toContain('Status');
+    expect(output).toContain('Flags');
     expect(output).toContain('🔴 forbidden');
   });
 

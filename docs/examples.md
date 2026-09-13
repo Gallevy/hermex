@@ -383,7 +383,7 @@ Purely transitive dependencies are never flagged: they arrive through another pa
 isn't something your repo can do. Packages excluded by `packages.ignore` are never flagged either.
 
 Every banned package appears in the Rules and Compliance sections, and also gets a `forbidden` badge in
-the packages table's **Status** column. Since #78 that table lists every package the repo owns, so a
+the packages table's **Flags** column. Since #78 that table lists every package the repo owns, so a
 declared-but-unimported banned package has a row — and a badge on it — just like an imported one.
 
 The badge used to read `[BANNED]` at `error` and `[RESTRICTED]` at anything softer, glued to the front of
@@ -476,7 +476,7 @@ ordinary `ruleViolations` entry:
 
 ```
 ┌─────────┬───────────┬─────────────────────────────────────┬───────────────┐
-│ Package │ Installed │ Minimum target                      │ Status        │
+│ Package │ Installed │ Minimum target                      │ Flags         │
 ├─────────┼───────────┼─────────────────────────────────────┼───────────────┤
 │ react   │ 18.3.1    │ 🟢                                  │               │
 │ zod     │ 3.23.8    │ 🟢 3.24.0 (minor, due in 12 days)   │               │
@@ -486,7 +486,7 @@ ordinary `ruleViolations` entry:
 ```
 
 **Installed** and **Minimum target** appear only when release-age ran; they are that rule's display, and
-its icon sits beside the target it judges. **Status** is where every *other* package rule reports — one
+its icon sits beside the target it judges. **Flags** is where every *other* package rule reports — one
 badge per rule that flagged the row, blank when none did.
 
 The target names the version to move to, then why: the bump tier, and how long the breached tier has

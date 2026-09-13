@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 import type { RuleViolation } from '../../src/rules/evaluator';
 import { stripAnsi } from '../../src/utils/severity-format';
 import {
-  collectPackageStatuses,
-  describeStatusDetails,
-  formatPackageStatus,
-} from '../../src/utils/package-status';
+  collectPackageFlags,
+  describeFlagDetails,
+  formatPackageFlags,
+} from '../../src/utils/package-flags';
 import {
   createMockPackage,
   createMockDeprecatedViolation,
@@ -26,22 +26,22 @@ function forbidViolation(
   };
 }
 
-describe('package status badges', () => {
+describe('package flags', () => {
   it('contributes nothing for a package no package rule flagged', () => {
     const pkg = createMockPackage('react');
-    expect(collectPackageStatuses(pkg, [])).toEqual([]);
-    expect(formatPackageStatus([])).toBe('');
+    expect(collectPackageFlags(pkg, [])).toEqual([]);
+    expect(formatPackageFlags([])).toBe('');
   });
 
   it('badges a banned package as forbidden at the severity of its own violation', () => {
     const pkg = createMockPackage('moment');
-    const statuses = collectPackageStatuses(pkg, [
+    const statuses = collectPackageFlags(pkg, [
       forbidViolation('moment', 'warn'),
     ]);
     expect(statuses).toEqual([
       { ruleId: 'no-packages', severity: 'warn', label: 'forbidden' },
     ]);
-    expect(stripAnsi(formatPackageStatus(statuses))).toBe('🟡 forbidden');
+    expect(stripAnsi(formatPackageFlags(statuses))).toBe('🟡 forbidden');
   });
 
   // The single badge #86 asked for: one rule, one word, severity in the
@@ -51,8 +51,8 @@ describe('package status badges', () => {
     const pkg = createMockPackage('moment');
     const render = (severity: RuleViolation['severity']) =>
       stripAnsi(
-        formatPackageStatus(
-          collectPackageStatuses(pkg, [forbidViolation('moment', severity)]),
+        formatPackageFlags(
+          collectPackageFlags(pkg, [forbidViolation('moment', severity)]),
         ),
       );
     expect(render('error')).toBe('🔴 forbidden');
@@ -64,7 +64,7 @@ describe('package status badges', () => {
     const pkg = createMockPackage('request', {
       deprecated: 'request has been deprecated',
     });
-    const statuses = collectPackageStatuses(pkg, [
+    const statuses = collectPackageFlags(pkg, [
       createMockDeprecatedViolation('request', {
         deprecated: 'request has been deprecated',
       }),
@@ -72,18 +72,18 @@ describe('package status badges', () => {
     expect(statuses[0].label).toBe('deprecated');
     expect(statuses[0].severity).toBe('info');
     expect(statuses[0].detail).toBe('request has been deprecated');
-    expect(stripAnsi(formatPackageStatus(statuses))).toBe('🔵 deprecated');
+    expect(stripAnsi(formatPackageFlags(statuses))).toBe('🔵 deprecated');
   });
 
   it('renders both badges in contributor order when a package is banned and deprecated', () => {
     const pkg = createMockPackage('moment', { deprecated: 'use dayjs' });
-    const statuses = collectPackageStatuses(pkg, [
+    const statuses = collectPackageFlags(pkg, [
       createMockDeprecatedViolation('moment', { deprecated: 'use dayjs' }),
       forbidViolation('moment', 'error'),
     ]);
-    // Declaration order in PACKAGE_STATUS_CONTRIBUTORS, not the order the
+    // Declaration order in PACKAGE_FLAG_CONTRIBUTORS, not the order the
     // violations happened to arrive in.
-    expect(stripAnsi(formatPackageStatus(statuses))).toBe(
+    expect(stripAnsi(formatPackageFlags(statuses))).toBe(
       '🔴 forbidden 🔵 deprecated',
     );
   });
@@ -98,34 +98,34 @@ describe('package status badges', () => {
       message: 'from a plugin',
       plugin: 'some-plugin',
     } as unknown as RuleViolation;
-    expect(collectPackageStatuses(pkg, [pluginFinding])).toEqual([]);
+    expect(collectPackageFlags(pkg, [pluginFinding])).toEqual([]);
   });
 
   it('says nothing about a package the deprecation rule exempted', () => {
     // `severity: 'off'` is resolved away into "no violation", so there is
     // no badge at all — the fact stays on the package for JSON consumers.
     const pkg = createMockPackage('moment', { deprecated: 'use dayjs' });
-    expect(collectPackageStatuses(pkg, [])).toEqual([]);
+    expect(collectPackageFlags(pkg, [])).toEqual([]);
   });
 });
 
-describe('describeStatusDetails', () => {
+describe('describeFlagDetails', () => {
   it('returns nothing for badges that carry no long-form context', () => {
     const pkg = createMockPackage('moment');
-    const statuses = collectPackageStatuses(pkg, [forbidViolation('moment')]);
-    expect(describeStatusDetails(statuses)).toEqual([]);
+    const statuses = collectPackageFlags(pkg, [forbidViolation('moment')]);
+    expect(describeFlagDetails(statuses)).toEqual([]);
   });
 
   it('phrases a deprecation notice as a continuation of its own badge', () => {
     const pkg = createMockPackage('request', {
       deprecated: 'request has been deprecated',
     });
-    const statuses = collectPackageStatuses(pkg, [
+    const statuses = collectPackageFlags(pkg, [
       createMockDeprecatedViolation('request', {
         deprecated: 'request has been deprecated',
       }),
     ]);
-    expect(describeStatusDetails(statuses)).toEqual([
+    expect(describeFlagDetails(statuses)).toEqual([
       'deprecated: request has been deprecated',
     ]);
   });

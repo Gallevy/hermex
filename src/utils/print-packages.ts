@@ -9,12 +9,12 @@ import type {
 } from '../npm-registry/types';
 import { formatDaysOverdue, formatDaysRemaining } from './format-utils';
 import { formatSeverityTally, severityIcon } from './severity-format';
-import type { PackageStatus } from './package-status';
+import type { PackageFlag } from './package-flags';
 import {
-  collectPackageStatuses,
-  describeStatusDetails,
-  formatPackageStatus,
-} from './package-status';
+  collectPackageFlags,
+  describeFlagDetails,
+  formatPackageFlags,
+} from './package-flags';
 
 function printHeader() {
   console.log(chalk.blueBright.bold('\n📦 Packages\n'));
@@ -135,15 +135,15 @@ export interface PackageNote {
 // stdout is the right place for "here's some extra context" (#59).
 export function describePackageNotes(
   pkg: PackageDistribution,
-  statuses: PackageStatus[] = [],
+  flags: PackageFlag[] = [],
 ): PackageNote | undefined {
   const facts = [
     describeBundleImpact(pkg),
     describeAdvisoryBreaches(pkg.releaseAge),
     // Appended, not prepended: a badge's long-form context (the publisher's
-    // deprecation notice) elaborates on the Status column, so it reads last,
+    // deprecation notice) elaborates on the Flags column, so it reads last,
     // after the facts about the package's own installed copies.
-    ...describeStatusDetails(statuses),
+    ...describeFlagDetails(flags),
   ].filter((fact): fact is string => Boolean(fact));
   if (facts.length === 0) return undefined;
   return { icon: severityIcon('info'), facts };
@@ -243,13 +243,11 @@ function printPackagesTable(
   printHeader();
 
   const hasReleaseAge = packages.some((p) => p.releaseAge !== undefined);
-  const statuses = packages.map((pkg) =>
-    collectPackageStatuses(pkg, violations),
-  );
+  const flags = packages.map((pkg) => collectPackageFlags(pkg, violations));
   // Only worth a column once something has actually landed in it —
   // otherwise every repo with no package-rule hits grows a column of blanks
   // where it used to have a clean two-column table.
-  const hasStatus = statuses.some((rowStatuses) => rowStatuses.length > 0);
+  const hasFlags = flags.some((rowFlags) => rowFlags.length > 0);
 
   // With release age on, "Version" splits into "Installed" (the single
   // version the verdict was actually measured against) and "Minimum target"
@@ -260,7 +258,7 @@ function printPackagesTable(
   const head = hasReleaseAge
     ? ['Package', 'Installed', 'Minimum target']
     : ['Package', 'Version'];
-  if (hasStatus) head.push('Status');
+  if (hasFlags) head.push('Flags');
 
   const table = new Table({
     head,
@@ -282,7 +280,7 @@ function printPackagesTable(
     } else {
       row.push(pkg.version || 'N/A');
     }
-    if (hasStatus) row.push(formatPackageStatus(statuses[index]));
+    if (hasFlags) row.push(formatPackageFlags(flags[index]));
     table.push(row);
   });
 
@@ -295,7 +293,7 @@ function printPackagesTable(
   const notes = packages
     .map((pkg, index) => ({
       pkg,
-      note: describePackageNotes(pkg, statuses[index]),
+      note: describePackageNotes(pkg, flags[index]),
     }))
     .filter(
       (entry): entry is { pkg: PackageDistribution; note: PackageNote } =>
@@ -313,7 +311,7 @@ function printPackagesTable(
   // (`print-rules.ts`), computed from this table's own release-age
   // violations — the only violation kind this table uniquely surfaces (a
   // banned or deprecated package's own hit is already counted in the Rules
-  // tally; the Status badge here is just a cross-reference, not a second
+  // tally; the Flags badge here is just a cross-reference, not a second
   // count).
   // A plain package count ("N packages total") said nothing about
   // compliance and didn't add up with anything else on screen — this does:
@@ -364,10 +362,10 @@ function printPackagesChart(
     const bar =
       chalk.green('█'.repeat(barLength)) + chalk.gray('░'.repeat(emptyLength));
 
-    const status = formatPackageStatus(collectPackageStatuses(pkg, violations));
+    const badges = formatPackageFlags(collectPackageFlags(pkg, violations));
 
     console.log(
-      `${label} ${bar} ${chalk.bold(pkg.percentage.toFixed(1) + '%')} (${pkg.usageCount})${status ? ` ${status}` : ''}`,
+      `${label} ${bar} ${chalk.bold(pkg.percentage.toFixed(1) + '%')} (${pkg.usageCount})${badges ? ` ${badges}` : ''}`,
     );
   });
 }

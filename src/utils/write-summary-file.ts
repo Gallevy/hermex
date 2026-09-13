@@ -7,7 +7,7 @@ import {
   describeMinimumTarget,
   resolveInstalledVersion,
 } from './print-packages';
-import { collectPackageStatuses, formatPackageStatus } from './package-status';
+import { collectPackageFlags, formatPackageFlags } from './package-flags';
 import {
   formatSeverityTally,
   severityIcon,
@@ -83,7 +83,7 @@ function buildRulesSection(aggregated: AggregatedReport): string {
 // A mandatory `no-deprecated-packages` hit doesn't get a row of its own
 // here either, for the same reason banned packages don't: it renders an
 // ordinary row in the Rules section above, which release-age never does.
-// The Status column below still carries it as a cross-reference on the
+// The Flags column below still carries it as a cross-reference on the
 // rows that ARE listed.
 function buildPackagesSection(aggregated: AggregatedReport): string {
   const failingPackageNames = new Set(
@@ -103,7 +103,7 @@ function buildPackagesSection(aggregated: AggregatedReport): string {
   const lines: string[] = [
     '### Packages',
     '',
-    '| | Package | Installed | Minimum target | Status |',
+    '| | Package | Installed | Minimum target | Flags |',
     '|---|---|---|---|---|',
   ];
   // The target cell comes from the same function the human table renders,
@@ -111,11 +111,11 @@ function buildPackagesSection(aggregated: AggregatedReport): string {
   // #57's "both surfaces recommend the same version" a structural
   // property instead of two call sites kept in step by hand.
   for (const pkg of mandatory) {
-    const status = formatPackageStatus(
-      collectPackageStatuses(pkg, aggregated.ruleViolations),
+    const flags = formatPackageFlags(
+      collectPackageFlags(pkg, aggregated.ruleViolations),
     );
     lines.push(
-      `| ${severityIcon('error')} | \`${pkg.packageName}\` | ${resolveInstalledVersion(pkg)} | ${describeMinimumTarget(pkg.releaseAge)} | ${status} |`,
+      `| ${severityIcon('error')} | \`${pkg.packageName}\` | ${resolveInstalledVersion(pkg)} | ${describeMinimumTarget(pkg.releaseAge)} | ${flags} |`,
     );
   }
 

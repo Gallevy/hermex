@@ -314,14 +314,14 @@ describe('writeSummaryFile', () => {
       );
       expect(content).toContain('### Packages');
       expect(content).toContain(
-        '| | Package | Installed | Minimum target | Status |',
+        '| | Package | Installed | Minimum target | Flags |',
       );
       expect(content).toContain(
         '| 🔴 | `my-internal-pkg` | 1.0.0 | 4.2.0 (major, 40 days overdue) |  |',
       );
     });
 
-    it('shows a deprecated overdue package as a DEPRECATED badge in Status, not crammed into the target cell', () => {
+    it('shows a deprecated overdue package as a deprecated badge in Flags, not crammed into the target cell', () => {
       const both = createMockPackage('my-internal-pkg', {
         deprecated: 'no longer maintained',
         releaseAge: createMockReleaseAge({
