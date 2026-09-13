@@ -3,7 +3,6 @@ import type { ComplianceResult } from './compliance';
 import type { OutputConfig } from '../config/types';
 import type { HermexScanResult } from '../index';
 import { computeCompliance } from './compliance';
-import { sortViolationsBySeverity } from './severity-format';
 import { getVersion } from './version';
 
 /**
@@ -76,7 +75,7 @@ export function printJson(
         }
       : {}),
     ...(output.versus ? { versus: aggregated.versusResults } : {}),
-    ruleViolations: sortViolationsBySeverity(aggregated.ruleViolations),
+    ruleViolations: aggregated.ruleViolations,
     compliance: {
       status: compliance.status,
       compliant: compliance.compliant,
