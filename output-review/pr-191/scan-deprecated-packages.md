@@ -1,26 +1,28 @@
 ---
 layout: default
-title: "scan-human-default — Output Review"
+title: "scan-deprecated-packages — Output Review"
 ---
 
 {% raw %}
 [← all cases](./index.html)
 
-# `scan-human-default`
+# `scan-deprecated-packages`
 
 _unchanged_
 
-**Asserts** — Baseline human output: the sections a repo gets with no output config of its own. Includes both Versus groups — a component pair and a function-only one — which is where #174 is visible: the function-only group reports a real split off files-that-import, where it used to read 0 vs 0 off JSX renders, and the package named by no lockfile entry says so instead of reporting a confident 0%.
+**Asserts** — `scan` with a registry-backed rule that is NOT `no-outdated-packages` — the one combination no case covered, and the cell a real bug lived in. `scan` gates the Packages table on `output.packages` rather than on any rule, so it is the only path where registry facts reach the renderer without `no-outdated-packages` being configured. The table must therefore show the plain `Version` column and the `deprecated` badge, never the Installed/Minimum target pair, which belongs to a rule this config does not enable. Every other `scan` case runs a config with no registry rules at all, and every registry case runs `comply`, whose own gate hides this path entirely.
 
-**Ran** `hermex scan` in `fixtures/` → exit 0, as asserted
+**Ran** `hermex scan --config configs/deprecated-packages.config.ts` in `fixtures/` → exit 0, as asserted
 
-**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/08a3bb0cba7276f9c5bcbb9aa5df09123941e6f2/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/08a3bb0cba7276f9c5bcbb9aa5df09123941e6f2/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/08a3bb0cba7276f9c5bcbb9aa5df09123941e6f2/fixtures/README.md)) · **Case** [`scan-human-default`](https://github.com/Gallevy/hermex/blob/08a3bb0cba7276f9c5bcbb9aa5df09123941e6f2/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/08a3bb0cba7276f9c5bcbb9aa5df09123941e6f2/fixtures/cases/scan-human-default.md))
+**Config** [`fixtures/configs/deprecated-packages.config.ts`](https://github.com/Gallevy/hermex/blob/08a3bb0cba7276f9c5bcbb9aa5df09123941e6f2/fixtures/configs/deprecated-packages.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/08a3bb0cba7276f9c5bcbb9aa5df09123941e6f2/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/08a3bb0cba7276f9c5bcbb9aa5df09123941e6f2/fixtures/README.md)) · **Case** [`scan-deprecated-packages`](https://github.com/Gallevy/hermex/blob/08a3bb0cba7276f9c5bcbb9aa5df09123941e6f2/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/08a3bb0cba7276f9c5bcbb9aa5df09123941e6f2/fixtures/cases/scan-deprecated-packages.md))
 
-<sub>Reproduce locally: `pnpm run test:output -- --filter scan-human-default`</sub>
+**Registry** offline, served from `fixtures/registry/timelines.ts` — no network
+
+<sub>Reproduce locally: `pnpm run test:output -- --filter scan-deprecated-packages`</sub>
 
 ## Config
 
-[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/08a3bb0cba7276f9c5bcbb9aa5df09123941e6f2/fixtures/hermex.config.ts) — resolved, as the loader sees it
+[`fixtures/configs/deprecated-packages.config.ts`](https://github.com/Gallevy/hermex/blob/08a3bb0cba7276f9c5bcbb9aa5df09123941e6f2/fixtures/configs/deprecated-packages.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -115,11 +117,22 @@ _unchanged_
       "severity": "warn",
       "range": ">=20",
       "message": "Minimum Node 20 required"
-    }
+    },
+    "no-deprecated-packages": [
+      {
+        "severity": "error",
+        "patterns": [
+          "**"
+        ]
+      }
+    ]
   },
   "output": {
     "details": false,
     "patterns": false
+  },
+  "releaseAge": {
+    "cacheDisabled": true
   }
 }
 ```
@@ -147,26 +160,30 @@ hermex v<version>
 Caused by:
     Syntax Error
 
+✔ Registry checked (3 packages skipped — registry unreachable or not found)
 
 📦 Packages
 
-┌───────────────────────────┬─────────┬──────────────┐
-│ Package                   │ Version │ Flags        │
-├───────────────────────────┼─────────┼──────────────┤
-│ @design-system/foundation │ 2.5.3   │              │
-├───────────────────────────┼─────────┼──────────────┤
-│ react                     │ 18.3.1  │              │
-├───────────────────────────┼─────────┼──────────────┤
-│ react-dom                 │ 18.3.1  │              │
-├───────────────────────────┼─────────┼──────────────┤
-│ lodash                    │ 4.17.21 │              │
-├───────────────────────────┼─────────┼──────────────┤
-│ es-toolkit                │ 1.39.10 │              │
-├───────────────────────────┼─────────┼──────────────┤
-│ eslint                    │ N/A     │              │
-├───────────────────────────┼─────────┼──────────────┤
-│ moment                    │ 2.29.4  │ 🔴 forbidden │
-└───────────────────────────┴─────────┴──────────────┘
+┌───────────────────────────┬─────────┬────────────────────────────┐
+│ Package                   │ Version │ Flags                      │
+├───────────────────────────┼─────────┼────────────────────────────┤
+│ @design-system/foundation │ 2.5.3   │                            │
+├───────────────────────────┼─────────┼────────────────────────────┤
+│ react                     │ 18.3.1  │                            │
+├───────────────────────────┼─────────┼────────────────────────────┤
+│ react-dom                 │ 18.3.1  │                            │
+├───────────────────────────┼─────────┼────────────────────────────┤
+│ lodash                    │ 4.17.21 │                            │
+├───────────────────────────┼─────────┼────────────────────────────┤
+│ es-toolkit                │ 1.39.10 │                            │
+├───────────────────────────┼─────────┼────────────────────────────┤
+│ eslint                    │ N/A     │                            │
+├───────────────────────────┼─────────┼────────────────────────────┤
+│ moment                    │ 2.29.4  │ 🔴 forbidden 🔴 deprecated │
+└───────────────────────────┴─────────┴────────────────────────────┘
+
+Notes:
+  🔵 moment → deprecated: Moment is in maintenance mode — prefer date-fns or dayjs
 
 ⚖️ Versus
 
@@ -183,19 +200,21 @@ Caused by:
 
 🔍 Rules
 
-┌──────────────────┬──────────────────────────────────────────────────────┐
-│ Rule             │ Description                                          │
-├──────────────────┼──────────────────────────────────────────────────────┤
-│ no-packages      │ 🔴 moment is forbidden — Use date-fns or dayjs       │
-├──────────────────┼──────────────────────────────────────────────────────┤
-│ require-packages │ 🔴 typescript not installed — TypeScript is required │
-├──────────────────┼──────────────────────────────────────────────────────┤
-│ require-files    │ 🔴 .nvmrc not found                                  │
-├──────────────────┼──────────────────────────────────────────────────────┤
-│ require-files    │ 🟡 .editorconfig not found                           │
-└──────────────────┴──────────────────────────────────────────────────────┘
+┌────────────────────────┬────────────────────────────────────────────────────────────────────────────────────┐
+│ Rule                   │ Description                                                                        │
+├────────────────────────┼────────────────────────────────────────────────────────────────────────────────────┤
+│ no-packages            │ 🔴 moment is forbidden — Use date-fns or dayjs                                     │
+├────────────────────────┼────────────────────────────────────────────────────────────────────────────────────┤
+│ require-packages       │ 🔴 typescript not installed — TypeScript is required                               │
+├────────────────────────┼────────────────────────────────────────────────────────────────────────────────────┤
+│ require-files          │ 🔴 .nvmrc not found                                                                │
+├────────────────────────┼────────────────────────────────────────────────────────────────────────────────────┤
+│ no-deprecated-packages │ 🔴 moment is deprecated — Moment is in maintenance mode — prefer date-fns or dayjs │
+├────────────────────────┼────────────────────────────────────────────────────────────────────────────────────┤
+│ require-files          │ 🟡 .editorconfig not found                                                         │
+└────────────────────────┴────────────────────────────────────────────────────────────────────────────────────┘
 
-3 errors, 1 warning
+4 errors, 1 warning
 
 ⚛️ Components
 
