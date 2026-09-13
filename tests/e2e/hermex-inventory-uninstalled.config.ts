@@ -4,8 +4,8 @@
 // installed).
 export default {
   rules: {
-    forbid_packages: [{ severity: 'error', patterns: ['eslint'] }],
-    require_packages: [{ severity: 'error', patterns: ['eslint'] }],
+    'no-packages': [{ severity: 'error', patterns: ['eslint'] }],
+    'require-packages': [{ severity: 'error', patterns: ['eslint'] }],
   },
   output: {
     format: 'json',

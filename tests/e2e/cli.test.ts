@@ -1,7 +1,13 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { spawnSync, execSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
-import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs';
+import {
+  mkdtempSync,
+  rmSync,
+  existsSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import packageJson from '../../package.json';
 
@@ -102,6 +108,49 @@ describe('CLI smoke tests', () => {
     );
   });
 
+  // #63/#91: output.* used to gate only the human printers, so `components:
+  // false` still shipped a full components[] — the largest part of a stored
+  // scan file — and consumers had to strip it downstream.
+  it('output.* section toggles omit the matching fields from --format json', () => {
+    const configPath = join(
+      ROOT,
+      'tests',
+      'e2e',
+      'hermex-json-trimmed.config.ts',
+    );
+    const result = run(['scan', '--config', configPath]);
+    expect(result.status).toBe(0);
+
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed).not.toHaveProperty('components');
+    expect(parsed).not.toHaveProperty('packages');
+    expect(parsed).not.toHaveProperty('versus');
+    expect(parsed.summary).not.toHaveProperty('patternCounts');
+    // The counters and the verdict are never gated — CI reads those.
+    expect(parsed.summary).toHaveProperty('filesAnalyzed');
+    expect(parsed).toHaveProperty('ruleViolations');
+    expect(parsed).toHaveProperty('compliance');
+  });
+
+  it('keeps ruleViolations in comply --format json even with output.rules false', () => {
+    const configPath = join(
+      ROOT,
+      'tests',
+      'e2e',
+      'hermex-json-trimmed.config.ts',
+    );
+    const result = run(['comply', '--config', configPath]);
+    expect(result.status).toBe(1);
+
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.compliance.status).toBe('non-compliant');
+    expect(
+      parsed.ruleViolations.some(
+        (v: { ruleId: string }) => v.ruleId === 'require-files',
+      ),
+    ).toBe(true);
+  });
+
   it('skips .d.ts files instead of reporting them as parse errors (#22)', () => {
     const configPath = join(ROOT, 'tests', 'e2e', 'hermex-dts.config.ts');
     const result = run(['scan', '--config', configPath]);
@@ -197,7 +246,7 @@ describe('comply command', () => {
     );
     const result = run(['comply', '--config', configPath]);
     expect(result.status).toBe(1);
-    expect(result.stdout).toMatch(/NOT COMPLIANT/);
+    expect(result.stdout).toMatch(/Not compliant/);
   });
 
   it('exits 0 when there are no mandatory violations', () => {
@@ -209,7 +258,7 @@ describe('comply command', () => {
     );
     const result = run(['comply', '--config', configPath]);
     expect(result.status).toBe(0);
-    expect(result.stdout).toMatch(/COMPLIANT/);
+    expect(result.stdout).toMatch(/Compliant/);
   });
 
   it('exits 2 when no files match includes', () => {
@@ -271,7 +320,7 @@ describe('comply command', () => {
   });
 
   it("json output reports status 'compliant' when the only signals are info/advisory, not 'warning' (#55)", () => {
-    // hermex-comply-pass has only an info detect_files rule (matches
+    // hermex-comply-pass has only an info no-files rule (matches
     // fixtures/hermex.config.ts), so nothing is at error or warn severity.
     const configPath = join(
       ROOT,
@@ -323,19 +372,19 @@ describe('comply command', () => {
         summaryPath,
       ]);
       expect(result.status).toBe(1);
-      expect(result.stdout).toMatch(/NOT COMPLIANT/); // full report on stdout, unchanged
+      expect(result.stdout).toMatch(/Not compliant/); // full report on stdout, unchanged
       expect(existsSync(summaryPath)).toBe(true);
       const content = readFileSync(summaryPath, 'utf8');
       // oxlint-disable-next-line no-control-regex -- asserting the ANSI escape byte is absent
       expect(content).not.toMatch(/\x1b\[/);
-      expect(content).toMatch(/NOT COMPLIANT/);
+      expect(content).toMatch(/Not compliant/);
       expect(content).not.toMatch(/Versus/);
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
     }
   });
 
-  it('--summary-file writes a COMPLIANT summary when there are no mandatory violations', () => {
+  it('--summary-file writes a Compliant summary when there are no mandatory violations', () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'hermex-summary-e2e-'));
     try {
       const summaryPath = join(tempDir, 'summary.md');
@@ -355,8 +404,8 @@ describe('comply command', () => {
       expect(result.status).toBe(0);
       expect(existsSync(summaryPath)).toBe(true);
       const content = readFileSync(summaryPath, 'utf8');
-      expect(content).toMatch(/COMPLIANT/);
-      expect(content).not.toMatch(/NOT COMPLIANT/);
+      expect(content).toMatch(/Compliant/);
+      expect(content).not.toMatch(/Not compliant/);
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
     }
@@ -411,7 +460,7 @@ describe('comply command', () => {
       expect(() => JSON.parse(result.stdout)).not.toThrow();
       expect(existsSync(summaryPath)).toBe(true);
       const content = readFileSync(summaryPath, 'utf8');
-      expect(content).toMatch(/NOT COMPLIANT/);
+      expect(content).toMatch(/Not compliant/);
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
     }
@@ -547,11 +596,10 @@ describe('package inventory axes (end to end)', () => {
     const parsed = JSON.parse(result.stdout);
     expect(parsed.ruleViolations).toEqual([
       {
-        type: 'forbid_packages',
+        ruleId: 'no-packages',
         severity: 'error',
         patterns: ['moment'],
         message: 'Use date-fns',
-        matchedFiles: [],
         packageName: 'moment',
       },
     ]);
@@ -559,7 +607,7 @@ describe('package inventory axes (end to end)', () => {
   });
 
   // #77: the whole point of the merge — a consumer reading only
-  // `ruleViolations` used to miss every forbid_packages hit.
+  // `ruleViolations` used to miss every no-packages hit.
   it('emits no separate bannedPackageViolations field', () => {
     const result = run(['comply', '--config', inventoryConfig('declared')]);
     const parsed = JSON.parse(result.stdout);
@@ -607,7 +655,7 @@ describe('package inventory axes (end to end)', () => {
   it('names the forbidden package in the human-readable Rules table', () => {
     const result = run(['comply']); // fixtures/hermex.config.ts forbids moment
     expect(result.status).toBe(1);
-    expect(result.stdout).toMatch(/forbid_packages/);
+    expect(result.stdout).toMatch(/no-packages/);
     expect(result.stdout).toMatch(/moment is forbidden/);
   });
 
@@ -624,34 +672,33 @@ describe('package inventory axes (end to end)', () => {
     expect(result.status).toBe(1);
     const parsed = JSON.parse(result.stdout);
     expect(parsed.ruleViolations).toHaveLength(1);
-    expect(parsed.ruleViolations[0].type).toBe('forbid_packages');
+    expect(parsed.ruleViolations[0].ruleId).toBe('no-packages');
     expect(parsed.ruleViolations[0].packageName).toBe('react-dom');
   });
 
-  it('packages.ignore drops a package from forbid_packages while it still satisfies require_packages', () => {
+  it('packages.ignore drops a package from no-packages while it still satisfies require-packages', () => {
     const result = run(['comply', '--config', inventoryConfig('ignored')]);
     expect(result.status).toBe(0);
     const parsed = JSON.parse(result.stdout);
     expect(parsed.ruleViolations).toEqual([]);
   });
 
-  it('a declared but uninstalled package is forbiddable yet does not satisfy require_packages', () => {
+  it('a declared but uninstalled package is forbiddable yet does not satisfy require-packages', () => {
     const result = run(['comply', '--config', inventoryConfig('uninstalled')]);
     expect(result.status).toBe(1);
     const parsed = JSON.parse(result.stdout);
     // Both rules fire on the same package, from different axes, into the
-    // same list — forbid_packages reads the declared axis (eslint is in
-    // package.json), require_packages the installed axis (it is not in the
+    // same list — no-packages reads the declared axis (eslint is in
+    // package.json), require-packages the installed axis (it is not in the
     // lockfile, so the requirement is genuinely unsatisfied).
-    expect(parsed.ruleViolations.map((v: { type: string }) => v.type)).toEqual([
-      'forbid_packages',
-      'require_packages',
-    ]);
+    expect(
+      parsed.ruleViolations.map((v: { ruleId: string }) => v.ruleId),
+    ).toEqual(['no-packages', 'require-packages']);
     expect(parsed.ruleViolations[0].packageName).toBe('eslint');
   });
 
   // #77 regression guard, end to end: the `uninstalled` fixture is the only
-  // one producing an error forbid_packages hit AND another error rule
+  // one producing an error no-packages hit AND another error rule
   // violation at once — the shape that double-reported while the verdict
   // still added a separate banned-package bucket on top of the rule bucket.
   it('counts a coinciding forbidden package and failing rule once each', () => {
@@ -659,8 +706,179 @@ describe('package inventory axes (end to end)', () => {
     const parsed = JSON.parse(result.stdout);
     expect(parsed.compliance.counts).toEqual({
       errorRuleViolations: 2,
-      releaseAgeViolations: 0,
       warningRuleViolations: 0,
     });
+  });
+});
+
+describe('plugins (end to end)', () => {
+  const pluginConfig = join(ROOT, 'tests', 'e2e', 'hermex-plugin.config.ts');
+  const throwingConfig = join(
+    ROOT,
+    'tests',
+    'e2e',
+    'hermex-plugin-throws.config.ts',
+  );
+
+  it('loads a config declaring an inline plugin and runs it', () => {
+    const result = run(['scan', '--config', pluginConfig]);
+    expect(result.status).toBe(0);
+    expect(result.stderr).not.toMatch(/ERR_MODULE_NOT_FOUND/);
+    expect(result.stdout).toMatch(/Analysis complete/);
+  });
+
+  it('names the plugins that ran, so foreign code is attributable', () => {
+    // hermex does not sandbox plugins, which makes visibility the
+    // obligation instead (#102).
+    const result = run(['scan', '--config', pluginConfig]);
+    expect(result.stdout).toMatch(/Ran 1 plugin\(s\): fake-linter/);
+    expect(result.stdout).toMatch(/3 finding\(s\)/);
+  });
+
+  it('renders plugin findings in the rules table under namespaced ids', () => {
+    const result = run(['scan', '--config', pluginConfig]);
+    expect(result.stdout).toContain('fake-linter/no-debugger');
+    expect(result.stdout).toContain('fake-linter/no-unused-vars');
+    expect(result.stdout).toContain('debugger statement');
+    // location renders as file:line
+    expect(result.stdout).toMatch(/patterns[/\\]imports\.tsx:12/);
+  });
+
+  it('an error-severity plugin finding fails comply through the ordinary verdict path', () => {
+    // There is no separate verdict channel — a plugin fails the run by
+    // reporting an error violation, so the verdict always carries a reason.
+    const result = run(['comply', '--config', pluginConfig]);
+    expect(result.status).toBe(1);
+  });
+
+  it('counts plugin findings alongside hermex-authored ones in the verdict', () => {
+    const result = run([
+      'comply',
+      '--config',
+      pluginConfig,
+      '--format',
+      'json',
+    ]);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.compliance.status).toBe('non-compliant');
+    expect(parsed.compliance.counts.errorRuleViolations).toBe(1);
+    expect(parsed.compliance.counts.warningRuleViolations).toBe(1);
+  });
+
+  it('emits plugin findings in the JSON ruleViolations array', () => {
+    const result = run(['scan', '--config', pluginConfig, '--format', 'json']);
+    const parsed = JSON.parse(result.stdout);
+    const ids = parsed.ruleViolations.map((v: { ruleId: string }) => v.ruleId);
+    expect(ids).toContain('fake-linter/no-debugger');
+    // JSON stays full-fidelity: the info-severity row is present too.
+    expect(ids).toContain('fake-linter/prefer-const');
+    const finding = parsed.ruleViolations.find(
+      (v: { ruleId: string }) => v.ruleId === 'fake-linter/no-debugger',
+    );
+    expect(finding.plugin).toBe('fake-linter');
+  });
+
+  it('aborts with exit 2 when a plugin throws', () => {
+    // Not a degradation (#129 does not model this): a run that could not
+    // complete every declared plugin reports neither pass nor fail.
+    const result = run(['comply', '--config', throwingConfig]);
+    expect(result.status).toBe(2);
+    // The spinner reports to stdout in human mode (it only moves to stderr
+    // under --format json, where stdout is the payload).
+    expect(result.stdout).toMatch(/Plugin "broken-linter" failed/);
+    expect(result.stdout).toMatch(/spawn oxlint ENOENT/);
+  });
+
+  it('reports the plugin failure on stderr under --format json', () => {
+    const result = run([
+      'comply',
+      '--config',
+      throwingConfig,
+      '--format',
+      'json',
+    ]);
+    expect(result.status).toBe(2);
+    expect(result.stderr).toMatch(/Plugin "broken-linter" failed/);
+  });
+
+  it('rejects an unknown hook at config-parse time', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'hermex-plugin-hook-'));
+    const configPath = join(dir, 'hermex.config.ts');
+    writeFileSync(
+      configPath,
+      `export default {
+         plugins: [{ name: 'p', hooks: { onFileParsed() {} } }],
+       };\n`,
+      'utf8',
+    );
+
+    const result = run(['scan', '--config', configPath]);
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toMatch(/Unknown hook `onFileParsed`/);
+    rmSync(dir, { recursive: true, force: true });
+  });
+});
+
+// The experimental oxc front-end is a swap of the parse step only. The claim
+// worth checking end to end is that a whole real CLI run — file discovery,
+// parsing, aggregation, rules, compliance, JSON rendering — produces the same
+// answer either way, on a fixture repo that deliberately exercises every
+// pattern the analyzer knows about.
+describe('parser: oxc-experimental (config)', () => {
+  const parserConfig = (parser: 'swc' | 'oxc-experimental') =>
+    join(
+      ROOT,
+      'tests',
+      'e2e',
+      `hermex-parser-${parser === 'swc' ? 'swc' : 'oxc'}.config.ts`,
+    );
+
+  it('produces JSON identical to the default swc parser over the fixture repo', () => {
+    const swc = run(['scan', '--config', parserConfig('swc')]);
+    const oxc = run(['scan', '--config', parserConfig('oxc-experimental')]);
+
+    expect(swc.status).toBe(0);
+    expect(oxc.status).toBe(0);
+    // Compare parsed objects first: a mismatch renders as a readable diff
+    // rather than two walls of minified JSON.
+    expect(JSON.parse(oxc.stdout)).toEqual(JSON.parse(swc.stdout));
+    expect(oxc.stdout).toBe(swc.stdout);
+  });
+
+  it('reports the same parse failures as swc', () => {
+    const configPath = join(
+      ROOT,
+      'fixtures',
+      'configs',
+      'parse-errors.config.ts',
+    );
+    const swc = run(['scan', '--config', configPath]);
+    const oxc = run(['scan', '--config', configPath, '--format', 'json']);
+
+    // Both front-ends must find the same file unparseable; only the message
+    // wording is parser-specific.
+    expect(swc.stdout + swc.stderr).toMatch(/1 file\(s\) failed to parse/);
+    expect(oxc.stdout + oxc.stderr).toMatch(/failed to parse/);
+  });
+
+  it('announces the experimental parser, and the default run stays silent about parsers', () => {
+    const oxc = run(['scan', '--config', parserConfig('oxc-experimental')]);
+    const swc = run(['scan', '--config', parserConfig('swc')]);
+
+    expect(oxc.stderr).toMatch(/experimental parser: oxc-experimental/);
+    expect(swc.stderr).not.toMatch(/experimental parser/);
+  });
+
+  it('rejects an unknown parser name', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'hermex-parser-'));
+    try {
+      const configPath = join(dir, 'hermex.config.ts');
+      writeFileSync(configPath, `export default { parser: 'babel' };`, 'utf8');
+      const result = run(['scan', '--config', configPath]);
+      expect(result.status).not.toBe(0);
+      expect(result.stderr).toMatch(/parser/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

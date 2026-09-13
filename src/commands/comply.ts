@@ -84,10 +84,15 @@ export async function executeComply(
     const compliance = computeCompliance(aggregated);
 
     if (isJson) {
-      printJson(aggregated, compliance);
+      printJson(aggregated, config.output, compliance);
     } else {
       printRules(aggregated);
-      if (config.releaseAge.enabled) {
+      // Whether release-age actually ran for this repo — `rules['release-age']`
+      // being non-empty in the base config isn't enough on its own, since a
+      // per-repo `overrides[]` entry can turn it on even when the base is
+      // empty (and vice versa can't happen: overrides only add rules here).
+      // Checking the enriched data directly is what's actually true.
+      if (aggregated.packageDistribution.some((p) => p.releaseAge)) {
         printPackages(aggregated, 'table');
       }
       if (config.output.versus) {

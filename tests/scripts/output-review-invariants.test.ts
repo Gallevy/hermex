@@ -62,7 +62,7 @@ describe('ansi-purity', () => {
       caseResult(
         { name: 'coloured', keepAnsi: true, writes: ['summary.md'] },
         {
-          'summary.md': `${ESC}[31mNOT COMPLIANT${ESC}[39m`,
+          'summary.md': `${ESC}[31mNot compliant${ESC}[39m`,
         },
       ),
     ]);
@@ -77,7 +77,7 @@ describe('exit-code-agrees-with-verdict', () => {
         { name: 'comply-x', args: ['comply'] },
         {
           'exit-code.txt': '0\n',
-          'stdout.txt': '🔴 NOT COMPLIANT\n',
+          'stdout.txt': '🔴 Not compliant\n',
         },
       ),
     ]);
@@ -92,7 +92,7 @@ describe('exit-code-agrees-with-verdict', () => {
         { name: 'comply-x', args: ['comply'] },
         {
           'exit-code.txt': '1\n',
-          'stdout.txt': '🔴 NOT COMPLIANT\n',
+          'stdout.txt': '🔴 Not compliant\n',
         },
       ),
     ]);
@@ -254,9 +254,9 @@ describe('lockfile-parity', () => {
   });
 });
 
-describe('no-orphaned-baselines', () => {
+describe('no-orphaned-case-docs', () => {
   it('does not judge the whole matrix from a filtered run', () => {
-    const breaches = run('no-orphaned-baselines', [], false);
+    const breaches = run('no-orphaned-case-docs', [], false);
     expect(breaches).toEqual([]);
   });
 });

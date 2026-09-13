@@ -1,15 +1,30 @@
 #!/usr/bin/env node
 /**
- * Output review: run the real CLI over `fixtures/`, capture everything each
- * case emits, and diff it against a committed baseline.
+ * Output review: run the real CLI over `fixtures/` twice — once from this
+ * working tree, once from a reference build of the target branch over
+ * *that* checkout's fixtures — and diff what the two actually printed.
+ *
+ * Each build is paired with the config it shipped with, which is what lets
+ * a PR that adds a rule still have a baseline: the target branch's hermex
+ * reads the target branch's config, a config it understands. See
+ * `runCase`.
  *
  * Hermex's value is its output and its verdict, and unit tests do not look
  * at either. This runner does the loop a human was doing by hand — run the
  * command, read what came out, decide whether it is right — and turns the
  * "decide" half into a reviewable diff.
  *
- *   pnpm run test:output              compare against the baselines
- *   pnpm run test:output -- --update  refresh them (a reviewable diff)
+ * Nothing is committed for this to work against: there is no baseline file
+ * to remember to refresh, and nothing to hand-edit, because both sides of
+ * every comparison are always freshly executed code (see `buildReference`).
+ * A real diff is just informational here — `pnpm run test:output` reports
+ * it but does not fail because of it, since a changed output isn't
+ * necessarily a bug. Whether it's an *approved* change is a separate,
+ * human question — see the `output-approval` job in
+ * `.github/workflows/output-review.yaml`.
+ *
+ *   pnpm run test:output                    compare against origin/main
+ *   pnpm run test:output -- --against beta  compare against another branch
  *   pnpm run test:output -- --filter comply
  *
  * The matrix lives in `fixtures/cases.ts`. Nothing here knows the case
@@ -58,7 +73,7 @@ export interface FixtureCase {
    * `suppressed-sections-stay-absent` invariant enforces it.
    */
   absent?: string[];
-  /** The exit code this case is asserting. A mismatch fails even with --update. */
+  /** The exit code this case is asserting. A mismatch always fails the run. */
   expectExit: number;
   /**
    * Prose for the case dossier that nothing here can derive — what a
@@ -94,6 +109,12 @@ export interface CaseResult {
   raw: RawCapture;
   /** Set when the process exit code did not match `expectExit`. */
   exitMismatch?: { expected: number; actual: number };
+  /**
+   * What the target branch's build did with this case. Kept so the report can
+   * tell "the output changed" from "there was no baseline at all" — see
+   * `hasNoBaseline`. Absent only in unit tests, which build results directly.
+   */
+  reference?: { status: number; raw: RawCapture };
   changed: string[];
   added: string[];
   removed: string[];
@@ -108,8 +129,8 @@ export interface CaseResult {
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const CLI = join(ROOT, 'dist', 'cli.mjs');
 const FIXTURES = join(ROOT, 'fixtures');
-const BASELINES = join(ROOT, 'tests', '__output_baselines__');
 const REPORT_DIR = join(ROOT, '.output-review');
+const REFERENCE_DIR = join(REPORT_DIR, 'reference');
 
 // ── Determinism ──────────────────────────────────────────────────────────────
 
@@ -182,6 +203,12 @@ export function scrub(text: string): string {
       // backslash — table borders are box-drawing characters and colour is
       // real escape bytes, not text.
       .replace(/\\/g, '/')
+      // The reference worktree is named after the commit it was built from,
+      // so a stack trace out of the reference CLI carries a SHA that changes
+      // every time the target branch moves. Left alone it marks `stderr.txt`
+      // as changed for a reason that is not a code change — the same class of
+      // noise as the version below.
+      .replace(/(<repo>\/\.output-review\/reference\/)[0-9a-f]{40}/g, '$1<sha>')
       // hermex's own version, which changes on every release and would
       // otherwise mark all 19 cases as changed. Package versions in the
       // tables and in `packages[]` are fixture data and stay untouched; the
@@ -288,9 +315,33 @@ function spawnCapture(
   });
 }
 
+/**
+ * Runs one fixture with a specific CLI build, against a specific
+ * `fixtures/` tree. Each side of a comparison runs in its own checkout:
+ * this tree's CLI over this tree's fixtures, the reference build over the
+ * reference checkout's fixtures.
+ *
+ * That pairing is the point. Running both builds over *this* tree's
+ * fixtures isolates "what does the tool do differently with identical
+ * input", which sounds tighter and is the wrong question: a config is
+ * input too. `HermexConfigSchema` is `.strict()`, so a PR that adds a
+ * rule gives the target branch's hermex a key it has never heard of, and
+ * it rejects the whole config and prints nothing — the case that renders
+ * that rule loses its baseline precisely when a reviewer most needs one
+ * (#178, and see `hasNoBaseline`). Pairing each build with the config it
+ * shipped with asks the question the review is actually for: what changes
+ * about the output a user sees?
+ *
+ * The cost is that a fixture edit now shows up in the diff alongside a
+ * renderer change. That is the honest reading — both are things this PR
+ * changes about hermex's output — and the case page names the config each
+ * side ran under.
+ */
 async function runCase(
   fixture: FixtureCase,
   registryUrl: string | null,
+  cliPath: string,
+  fixturesRoot: string,
 ): Promise<{ artifacts: Artifacts; status: number; raw: RawCapture }> {
   const scratch = mkdtempSync(join(tmpdir(), `hermex-output-${fixture.name}-`));
   try {
@@ -302,8 +353,8 @@ async function runCase(
       else env[key] = value;
     }
 
-    const result = await spawnCapture([CLI, ...args], {
-      cwd: join(FIXTURES, fixture.cwd),
+    const result = await spawnCapture([cliPath, ...args], {
+      cwd: join(fixturesRoot, fixture.cwd),
       env,
     });
 
@@ -348,25 +399,225 @@ function isJson(text: string): boolean {
   }
 }
 
-// ── Baselines ────────────────────────────────────────────────────────────────
+// ── The reference build ──────────────────────────────────────────────────────
+//
+// What a case's output is compared against — a second hermex, built from
+// `--against` (the target branch, `main` by default) rather than this
+// working tree. Replaces a committed baseline entirely: nothing here is
+// ever read from or written to disk as "the expected output," so there is
+// nothing for a PR to refresh, forget to refresh, or hand-edit. Both sides
+// of every diff are always the real, current output of real, current code.
 
-function readBaseline(name: string): Artifacts {
-  const directory = join(BASELINES, name);
-  if (!existsSync(directory)) return {};
-  const artifacts: Artifacts = {};
-  for (const file of readdirSync(directory).sort()) {
-    artifacts[file] = readFileSync(join(directory, file), 'utf8');
+function run(command: string, args: string[], cwd: string): void {
+  // One command string rather than an argv array, same reasoning as the
+  // `pnpm run build` call below: with `shell: true` the array form is
+  // concatenated unescaped, which Node deprecates, and `shell: true` is
+  // what lets this resolve `pnpm`/`git` shims on Windows.
+  const result = spawnSync(`${command} ${args.join(' ')}`, {
+    cwd,
+    encoding: 'utf8',
+    shell: true,
+  });
+  if (result.status !== 0) {
+    process.stderr.write(`${result.stdout ?? ''}${result.stderr ?? ''}`);
+    throw new Error(`\`${command} ${args.join(' ')}\` failed in ${cwd}`);
   }
-  return artifacts;
 }
 
-function writeBaseline(name: string, artifacts: Artifacts): void {
-  const directory = join(BASELINES, name);
-  rmSync(directory, { recursive: true, force: true });
-  mkdirSync(directory, { recursive: true });
-  for (const [file, content] of Object.entries(artifacts)) {
-    writeFileSync(join(directory, file), content);
+/**
+ * Runs `fixture` against the reference build, in the reference checkout's
+ * own `fixtures/`.
+ *
+ * A case whose fixture directory does not exist there is new in this branch
+ * and has no baseline by definition — there is nothing on the target branch
+ * to have run it. Reported as a reference that produced no output, which is
+ * exactly what it is, so `hasNoBaseline` and the reporting built on it
+ * handle this without a second concept.
+ */
+export async function runBaseline(
+  fixture: FixtureCase,
+  registryUrl: string | null,
+  reference: Reference,
+  referenceFixtures: string,
+): Promise<{ status: number; raw: RawCapture; artifacts: Artifacts }> {
+  if (!existsSync(join(referenceFixtures, fixture.cwd))) {
+    return {
+      status: -1,
+      raw: {
+        stdout: '',
+        stderr: `fixtures/${fixture.cwd} does not exist at ${reference.sha.slice(0, 7)} — this case is new in this branch.
+`,
+      },
+      artifacts: {},
+    };
   }
+  return runCase(fixture, registryUrl, reference.cli, referenceFixtures);
+}
+
+/**
+ * A ref to a commit SHA. Tries the already-fetched `origin/<ref>` first —
+ * the common case, since CI checks out a branch — and falls back to
+ * fetching it directly, which covers both a shallow CI checkout (the
+ * default `actions/checkout` depth) that never fetched it and a local
+ * clone whose remote-tracking branches are stale.
+ */
+function resolveRef(ref: string): string {
+  // An exact commit already in this clone needs no remote at all, and both
+  // CI jobs now name one: the warm job passes `github.sha`, the PR job passes
+  // the `origin/<base>` tip it resolved to build the cache key from. Without
+  // this the fetch below fires for a SHA that is already here.
+  //
+  // `^{commit}` is load-bearing, not decoration: `rev-parse --verify`
+  // short-circuits full hex and succeeds for objects that are *not* present.
+  // Peeling is what forces the object to actually exist.
+  if (/^[0-9a-f]{40}$/i.test(ref)) {
+    const local = spawnSync(
+      'git',
+      ['rev-parse', '--verify', `${ref}^{commit}`],
+      { cwd: ROOT, encoding: 'utf8' },
+    );
+    if (local.status === 0) return local.stdout.trim();
+  }
+
+  // Deliberately not generalised to any ref: bare `main` resolves to the
+  // *local* branch, which may lag origin, and silently changing what the
+  // reference is is exactly what the `origin/<ref>`-first ordering prevents.
+  const direct = spawnSync('git', ['rev-parse', `origin/${ref}`], {
+    cwd: ROOT,
+    encoding: 'utf8',
+  });
+  if (direct.status === 0) return direct.stdout.trim();
+
+  // `--depth=1` only when the clone is already shallow. Against a full clone
+  // it writes `.git/shallow` and shallows it for the rest of the process,
+  // which breaks anything downstream that wanted history — including the
+  // `git worktree add` this exists to feed.
+  const shallow =
+    spawnSync('git', ['rev-parse', '--is-shallow-repository'], {
+      cwd: ROOT,
+      encoding: 'utf8',
+    }).stdout.trim() === 'true';
+  const fetch = spawnSync(
+    'git',
+    shallow ? ['fetch', '--depth=1', 'origin', ref] : ['fetch', 'origin', ref],
+    { cwd: ROOT, encoding: 'utf8' },
+  );
+  if (fetch.status !== 0) {
+    throw new Error(
+      `Could not resolve "${ref}" to a commit, and fetching it from origin failed:\n${fetch.stderr}`,
+    );
+  }
+  const afterFetch = spawnSync('git', ['rev-parse', 'FETCH_HEAD'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+  });
+  if (afterFetch.status !== 0) {
+    throw new Error(`Fetched "${ref}" but could not resolve it afterward.`);
+  }
+  return afterFetch.stdout.trim();
+}
+
+/** Where the reference CLI came from, and whether it had to be built. */
+export interface Reference {
+  sha: string;
+  cli: string;
+  /**
+   * The reference checkout itself. The baseline run reads its `fixtures/`,
+   * not this branch's — see `runCase`.
+   */
+  root: string;
+  /** False when this run paid for the worktree, the install and the build. */
+  reused: boolean;
+}
+
+/**
+ * Builds `ref` in an isolated git worktree and returns its `dist/cli.mjs`.
+ * Cached by resolved commit SHA under `.output-review/reference/` — a
+ * worktree, an install and a build are not cheap, and `--filter` runs
+ * against the same `--against` commit far more often than that commit
+ * changes. In CI that directory also arrives pre-seeded from the Actions
+ * cache the push-side job warms (`output-review-reference.yaml`).
+ */
+function buildReference(ref: string): Reference {
+  const sha = resolveRef(ref);
+  const worktree = join(REFERENCE_DIR, sha);
+  const cli = join(worktree, 'dist', 'cli.mjs');
+
+  // Not `existsSync(cli)` alone, because this directory can now arrive from
+  // a cache rather than from a build this machine performed. `dist/cli.mjs`
+  // is not self-contained — tsdown externalises everything in
+  // `dependencies`, so it resolves `commander`, `@swc/core` and the rest at
+  // runtime — and Node resolution walks *up* from the worktree, reaching
+  // `<ROOT>/node_modules`: this branch's tree. A restore that lost
+  // `node_modules` therefore does not fail. It runs the target branch's
+  // source against this branch's dependencies and prints a plausible, wrong
+  // baseline. One `--version` spawn rules that out; the cost of being wrong
+  // here is every diff in the report.
+  if (existsSync(cli) && existsSync(join(worktree, 'node_modules', '.pnpm'))) {
+    const probe = spawnSync(process.execPath, [cli, '--version'], {
+      cwd: worktree,
+      encoding: 'utf8',
+    });
+    if (probe.status === 0) return { sha, cli, root: worktree, reused: true };
+    process.stderr.write(
+      `Reference build at ${sha} did not run; rebuilding it.\n`,
+    );
+  }
+
+  rmSync(worktree, { recursive: true, force: true });
+  mkdirSync(REFERENCE_DIR, { recursive: true });
+
+  // A worktree whose directory was removed stays registered in
+  // `.git/worktrees/`, and `add` then fails with "is a missing but already
+  // registered worktree". Reachable whenever the `rmSync` above fires on a
+  // half-built directory — which the probe makes more likely, not less.
+  run('git', ['worktree', 'prune'], ROOT);
+
+  // `--detach`: a branch name would collide if that same branch happens to
+  // be checked out in the primary worktree already (running this on `main`
+  // itself, for instance). A bare SHA has no such conflict.
+  run('git', ['worktree', 'add', '--detach', worktree, sha], ROOT);
+
+  run('pnpm', ['install', '--frozen-lockfile'], worktree);
+  run('pnpm', ['run', 'build'], worktree);
+  return { sha, cli, root: worktree, reused: false };
+}
+
+/**
+ * What this run compared against, for the report to state.
+ *
+ * The report has never said which commit the baseline came from, which makes
+ * two different things unreadable: whether a comparison is against the main
+ * you think it is, and — since the PR job only ever *restores* the shared
+ * cache and never writes one — whether the reference had to be rebuilt. A
+ * miss is only ever slow, never wrong, but "slow for a reason nobody can
+ * see" is how a warm job that quietly stopped working stays unnoticed.
+ */
+let REFERENCE: (Reference & { ref: string }) | null = null;
+
+/**
+ * Ambient for the same reason `blobBase`, `siteUrl` and `runUrl` are: it
+ * describes the run, not any one case, and every report surface wants it.
+ * Exported so tests can set it and clear it again.
+ */
+export function recordReference(
+  record: (Reference & { ref: string }) | null,
+): void {
+  REFERENCE = record;
+}
+
+/** The provenance line every report surface carries, in Markdown. */
+function referenceLine(): string[] {
+  if (!REFERENCE) return [];
+  const { sha, ref, reused } = REFERENCE;
+  const provenance = reused
+    ? 'reused from cache'
+    : '**built from source**: no cache entry for this commit, so this run was slower. The comparison is unaffected';
+  // The ref only earns a mention when it is not the SHA already shown. CI
+  // passes the resolved commit, so naming it twice there is noise; a local
+  // `--against beta` is where the name carries something the SHA does not.
+  const named = sha.startsWith(ref) ? '' : ` (\`${ref}\`)`;
+  return [`Reference: \`${sha.slice(0, 7)}\`${named} — ${provenance}.`, ''];
 }
 
 // ── Case dossiers ────────────────────────────────────────────────────────────
@@ -382,8 +633,10 @@ function writeBaseline(name: string, artifacts: Artifacts): void {
 // Generated rather than hand-written: twenty-six hand-maintained pages rot,
 // and a rotted dossier is worse than none because it is believed. The only
 // hand-written part is `notes` on the case itself, which travels with the
-// definition it describes. `case-docs-are-current` fails the run if a
-// dossier drifts from the case that generates it.
+// definition it describes. Regenerated at the start of every run — cheap,
+// pure string generation with no CLI execution involved — so there is
+// nothing to remember to refresh and nothing that can drift stale;
+// `no-orphaned-case-docs` only has to catch a page whose case disappeared.
 
 const CASE_DOCS = join(FIXTURES, 'cases');
 
@@ -456,7 +709,7 @@ export function caseDoc(fixture: FixtureCase): string {
   }
 
   const lines = [
-    '<!-- Generated by `pnpm run test:output -- --update`. Edit the case in',
+    '<!-- Generated by `pnpm run test:output`, every run. Edit the case in',
     '     fixtures/cases.ts, not this file. -->',
     '',
     `# \`${fixture.name}\``,
@@ -491,7 +744,7 @@ export function caseDoc(fixture: FixtureCase): string {
   lines.push(
     '## Recorded output',
     '',
-    `The committed baseline is [\`tests/__output_baselines__/${fixture.name}/\`](${fromCaseDoc(`tests/__output_baselines__/${fixture.name}`)}), which holds this case's stdout, stderr, exit code and any file it wrote. A change to hermex's output shows up as a diff there, in the same PR that causes it.`,
+    "Nothing is committed for this case's output — every run compares this tree's real output against a fresh build of the target branch (`--against`, `main` by default). A change to hermex's output shows up as a diff in that run's output-review report, never as a file in this repo.",
     '',
     '## Run it locally',
     '',
@@ -581,9 +834,8 @@ export interface FileDiff {
  * The change regions between two texts, each with `CONTEXT` lines around it.
  *
  * Structured rather than pre-rendered, because the line numbers are worth
- * more than the text: they are what lets the PR comment link straight at the
- * changed lines of the committed baseline instead of asking a reviewer to go
- * and find them.
+ * more than the text: they are what lets a reader jump straight to the
+ * changed lines instead of scanning the whole artifact for them.
  */
 export function diffHunks(before: string, after: string): Hunk[] {
   const rows = diffLines(
@@ -647,11 +899,12 @@ function fileDiffOf(file: string, before: string, after: string): FileDiff {
 /**
  * A unified diff. Real hunk headers — `@@ -12,7 +12,9 @@` — rather than the
  * bare `@@` this used to emit. The numbers are what make an elision
- * readable: they say the hunk covers 7 lines from line 12 of the baseline
- * and 9 from line 12 of the current output, so a reviewer can find the
- * changed line in the artifact instead of counting from the top. The header
- * lines are labelled `baseline/` and `current/` rather than the conventional
- * `a/` and `b/`, since which side is which is the first thing anyone asks.
+ * readable: they say the hunk covers 7 lines from line 12 of the target
+ * branch's output and 9 from line 12 of this tree's, so a reviewer can find
+ * the changed line in the artifact instead of counting from the top. The
+ * header lines are labelled `target/` and `current/` rather than the
+ * conventional `a/` and `b/`, since which side is which is the first thing
+ * anyone asks.
  */
 export function unifiedDiff(
   file: string,
@@ -665,7 +918,7 @@ function renderHunks(file: string, hunks: Hunk[]): string {
   // No changes at all means no hunks, and a header with nothing under it
   // reads as "something changed here" — which is exactly wrong.
   if (hunks.length === 0) return '';
-  const lines = [`--- baseline/${file}`, `+++ current/${file}`];
+  const lines = [`--- target/${file}`, `+++ current/${file}`];
   for (const hunk of hunks) {
     lines.push(
       `@@ -${hunk.oldStart},${hunk.oldCount} +${hunk.newStart},${hunk.newCount} @@`,
@@ -679,8 +932,8 @@ function compare(
   fixture: FixtureCase,
   artifacts: Artifacts,
   raw: RawCapture,
+  baseline: Artifacts,
 ): CaseResult {
-  const baseline = readBaseline(fixture.name);
   const changed: string[] = [];
   const added: string[] = [];
   const removed: string[] = [];
@@ -725,18 +978,46 @@ function isClean(result: CaseResult): boolean {
   );
 }
 
+/**
+ * True when the target branch produced nothing to compare against, so the
+ * diff below it has no left-hand side and every `+` line is the whole output
+ * *appearing* rather than changing.
+ *
+ * The case this exists for: a PR adds a key to a fixture config, the config
+ * schema is `.strict()`, and the reference CLI — built from a branch that has
+ * never heard of that key — throws before printing anything. Reported as a
+ * bare `+40 −22` it is indistinguishable from a real output change, which is
+ * precisely the moment a reviewer is being asked for `output:approved`.
+ *
+ * Deliberately **not** `reference.status !== fixture.expectExit`: most
+ * `comply` cases assert `expectExit: 1`, and an unhandled rejection exits 1
+ * too, so the crash is invisible to that check. The asymmetry is the tell.
+ *
+ * The current-side half is what keeps a legitimately silent case from being
+ * flagged when both sides agree about the silence. No case is silent today —
+ * `createCommandContext` writes `hermex v<version>` and the spinner to
+ * *stdout* for human format, so even `comply-exit-2` and `scan-no-files`
+ * print something — and the case this fires on is upstream of that:
+ * `loadConfig` runs in the commander action before any context exists. The
+ * guard costs nothing and holds the day that stops being true.
+ */
+export function hasNoBaseline(result: CaseResult): boolean {
+  const reference = result.reference;
+  if (!reference) return false;
+  return reference.raw.stdout.trim() === '' && result.raw.stdout.trim() !== '';
+}
+
 // ── Invariants ───────────────────────────────────────────────────────────────
 //
 // Claims about the *relationship between* cases, or about properties every
-// case must hold, that no single baseline can express.
+// case must hold, that a diff against the target branch cannot express.
 //
-// A baseline records what happened; it cannot record what must never
-// happen. Worse, `--update` rewrites every baseline at once, so a rule
-// encoded only in the recorded bytes is absorbed silently the moment the
-// bytes change together — three lock formats drifting apart in the same
-// commit, or a scrubber gap that gets faithfully re-recorded. These checks
-// sit outside the baselines for exactly that reason, and are reported
-// separately in the job summary and the PR comment.
+// A diff records what changed; it cannot record what must never happen —
+// three lock formats drifting apart in the same commit, or a scrubber gap
+// that gets faithfully carried through unnoticed because both sides of the
+// comparison share the same bug. These checks are reported separately in
+// the job summary and the PR comment, and — unlike an output diff, which is
+// only ever informational — a blocking one always fails the run.
 
 interface Invariant {
   name: string;
@@ -860,8 +1141,8 @@ export const INVARIANTS: Invariant[] = [
         }
 
         const text = payloadOf(result);
-        const saysNotCompliant = text.includes('NOT COMPLIANT');
-        const saysCompliant = text.includes('COMPLIANT') && !saysNotCompliant;
+        const saysNotCompliant = text.includes('Not compliant');
+        const saysCompliant = text.includes('Compliant') && !saysNotCompliant;
         if (exit === 0 && !saysCompliant) {
           breaches.push(
             `${result.fixture.name}: exited 0 without printing a compliant verdict`,
@@ -894,7 +1175,7 @@ export const INVARIANTS: Invariant[] = [
   {
     name: 'no-unscrubbed-volatiles',
     guarantees:
-      'no baseline records an absolute path, a process id or a released version — any of which would make the next run differ for reasons that are not code changes',
+      'no case records an absolute path, a process id or a released version — any of which would make the next run differ for reasons that are not code changes',
     blocking: true,
     check({ results }) {
       // Each pattern requires a non-letter before the path so a URL scheme
@@ -941,54 +1222,18 @@ export const INVARIANTS: Invariant[] = [
     },
   },
   {
-    name: 'case-docs-are-current',
+    name: 'no-orphaned-case-docs',
     guarantees:
-      'every case has a dossier at fixtures/cases/<name>.md that still describes it, so the page a reviewer is sent to cannot quietly stop matching the case it documents',
-    // Blocking, and deliberately so. A stale dossier is worse than a missing
-    // one: it is believed. `pnpm run test:output -- --update` regenerates
-    // them, and the regenerated page lands in the same PR as the case change.
+      'every dossier at fixtures/cases/<name>.md belongs to a live case, so a renamed or deleted case cannot leave a page nobody reads behind',
     blocking: true,
     check({ results, full }) {
-      const breaches: string[] = [];
-      for (const { fixture } of results) {
-        const path = caseDocPath(fixture.name);
-        if (!existsSync(path)) {
-          breaches.push(
-            `fixtures/cases/${fixture.name}.md does not exist — run \`pnpm run test:output -- --update\``,
-          );
-        } else if (readFileSync(path, 'utf8') !== caseDoc(fixture)) {
-          breaches.push(
-            `fixtures/cases/${fixture.name}.md no longer matches its case in fixtures/cases.ts — run \`pnpm run test:output -- --update\``,
-          );
-        }
-      }
-      // Orphans are a whole-matrix claim, so --filter cannot judge them.
-      if (full && existsSync(CASE_DOCS)) {
-        const live = new Set(results.map((r) => `${r.fixture.name}.md`));
-        for (const entry of readdirSync(CASE_DOCS)) {
-          if (entry.endsWith('.md') && !live.has(entry)) {
-            breaches.push(
-              `fixtures/cases/${entry} has no case in fixtures/cases.ts`,
-            );
-          }
-        }
-      }
-      return breaches;
-    },
-  },
-  {
-    name: 'no-orphaned-baselines',
-    guarantees:
-      'every committed baseline belongs to a live case, so a renamed or deleted case cannot leave a directory nobody reads behind',
-    blocking: true,
-    check({ results, full }) {
-      if (!full || !existsSync(BASELINES)) return [];
-      const live = new Set(results.map((r) => r.fixture.name));
-      return readdirSync(BASELINES, { withFileTypes: true })
-        .filter((entry) => entry.isDirectory() && !live.has(entry.name))
+      // A whole-matrix claim, so --filter cannot judge it.
+      if (!full || !existsSync(CASE_DOCS)) return [];
+      const live = new Set(results.map((r) => `${r.fixture.name}.md`));
+      return readdirSync(CASE_DOCS)
+        .filter((entry) => entry.endsWith('.md') && !live.has(entry))
         .map(
-          (entry) =>
-            `tests/__output_baselines__/${entry.name}/ has no case in fixtures/cases.ts`,
+          (entry) => `fixtures/cases/${entry} has no case in fixtures/cases.ts`,
         );
     },
   },
@@ -1066,6 +1311,64 @@ function renderBreaches(
   ];
 }
 
+/**
+ * The "these cases have no baseline" block.
+ *
+ * Deliberately not an entry in `INVARIANTS`, advisory or otherwise. An
+ * invariant states something that must never happen, and its callout is red
+ * because a breach means a defect; a reference build that could not run a
+ * case is a recurring, expected consequence of adding a config key, and it
+ * arrives on every PR that adds a rule. Parking it there would make the red
+ * callout mean "sometimes a defect", which is the one thing it must not mean
+ * — and `fixtures/README.md` says advisory is a holding position for a
+ * breach being fixed, not a place to leave one.
+ */
+function renderNoBaseline(
+  results: CaseResult[],
+  audience: Audience = 'github',
+): string[] {
+  const affected = results.filter(hasNoBaseline);
+  if (affected.length === 0) return [];
+
+  const why =
+    `The target branch could not run ${affected.length === 1 ? 'this case' : 'these cases'} — ` +
+    'its build produced no output at all, so there is nothing to diff against ' +
+    'and every added line below is the whole output appearing, not changing. ' +
+    'Usually this means the branch adds a config key the target branch\u2019s ' +
+    'schema rejects, in which case it resolves itself on merge. Each case page ' +
+    'carries the reference build\u2019s stderr.';
+
+  if (audience === 'github') {
+    const lines = [
+      '> [!NOTE]',
+      `> **No baseline for ${affected.length} case(s)**`,
+      `> ${why}`,
+    ];
+    for (const result of affected) {
+      lines.push(
+        `> - \`${result.fixture.name}\` — the reference exited ${result.reference?.status ?? '?'} without printing to stdout.`,
+      );
+    }
+    return [...lines, ''];
+  }
+
+  const items = affected
+    .map(
+      (result) =>
+        `<li><code>${escapeHtml(result.fixture.name)}</code> — the reference exited ` +
+        `${result.reference?.status ?? '?'} without printing to stdout.</li>`,
+    )
+    .join('');
+  return [
+    '<div class="or-callout or-note">',
+    `<strong>No baseline for ${affected.length} case(s)</strong>`,
+    `<p>${escapeHtml(why)}</p>`,
+    `<ul>${items}</ul>`,
+    '</div>',
+    '',
+  ];
+}
+
 // ── Reporting ────────────────────────────────────────────────────────────────
 
 /**
@@ -1074,9 +1377,15 @@ function renderBreaches(
  * not reliably render — the status would read literally, asterisks and all.
  */
 function statusOf(result: CaseResult): string {
+  // An exit-code mismatch outranks everything below it: it is the one thing
+  // here that fails the run, and naming the missing baseline instead would
+  // hide it.
   if (result.exitMismatch) {
     return `exit ${result.exitMismatch.actual}, expected ${result.exitMismatch.expected}`;
   }
+  // Ahead of the artifact list, which would otherwise read `changed:
+  // +stdout.json, -stdout.txt` and describe the crash as a renamed file.
+  if (hasNoBaseline(result)) return 'no baseline';
   if (isClean(result)) return 'unchanged';
   const parts: string[] = [];
   if (result.changed.length > 0) parts.push(`${result.changed.join(', ')}`);
@@ -1096,6 +1405,7 @@ function shortStatus(result: CaseResult): string {
   if (result.exitMismatch) {
     return `exit ${result.exitMismatch.actual}, expected ${result.exitMismatch.expected}`;
   }
+  if (hasNoBaseline(result)) return 'no baseline';
   return isClean(result) ? 'unchanged' : 'changed';
 }
 
@@ -1253,11 +1563,10 @@ function caseContext(result: CaseResult, base: string | null): string[] {
  * else — and why nobody who has not read `diff(1)` can use it.
  */
 const DIFF_LEGEND =
-  '<sub>Diffs are unified format: `-` is the committed baseline, `+` is this ' +
+  '<sub>Diffs are unified format: `-` is the target branch, `+` is this ' +
   'run. `@@ -12,7 +12,9 @@` is a hunk header — unchanged lines were skipped, ' +
-  'and the hunk below covers 7 lines from line 12 of the baseline and 9 lines ' +
-  'from line 12 of this run — which is where to look in ' +
-  '`tests/__output_baselines__/`.</sub>';
+  'and the hunk below covers 7 lines from line 12 of the target branch and 9 ' +
+  'lines from line 12 of this run.</sub>';
 
 function fence(file: string): string {
   if (file.endsWith('.json')) return 'json';
@@ -1266,9 +1575,9 @@ function fence(file: string): string {
 }
 
 /**
- * A job summary is capped at 1 MB, and the baselines are the complete
- * record anyway — so long artifacts are trimmed for reading rather than
- * dropped. Diffs are never trimmed: they are the part being reviewed.
+ * A job summary is capped at 1 MB, so long artifacts are trimmed for
+ * reading rather than dropped. Diffs are never trimmed: they are the part
+ * being reviewed.
  */
 const MAX_SUMMARY_LINES = 400;
 
@@ -1277,7 +1586,7 @@ function forSummary(content: string): string {
   if (lines.length <= MAX_SUMMARY_LINES) return lines.join('\n');
   return [
     ...lines.slice(0, MAX_SUMMARY_LINES),
-    `… ${lines.length - MAX_SUMMARY_LINES} more line(s) — full text in tests/__output_baselines__/`,
+    `… ${lines.length - MAX_SUMMARY_LINES} more line(s) — re-run locally for the full text.`,
   ].join('\n');
 }
 
@@ -1291,6 +1600,18 @@ function forSummary(content: string): string {
  * this carries everything, for the reviewer who wants to see what a case
  * actually emits rather than only how it moved.
  */
+/**
+ * ` · N with no baseline`, or nothing at all. A separate segment rather than
+ * folded into the changed count, because they are not the same claim: a
+ * changed case has two outputs that differ, a no-baseline case has one.
+ * Folding them is how "26 of 26 changed" comes to mean "26 diffs with no
+ * left-hand side".
+ */
+function noBaselineCount(results: CaseResult[]): string {
+  const count = results.filter(hasNoBaseline).length;
+  return count === 0 ? '' : ` · ${count} with no baseline`;
+}
+
 function buildJobSummary(results: CaseResult[], breaches: Breach[]): string {
   const base = blobBase();
   const differing = results.filter((result) => !isClean(result));
@@ -1299,10 +1620,12 @@ function buildJobSummary(results: CaseResult[], breaches: Breach[]): string {
   const lines: string[] = [
     '# Output Review',
     '',
-    `${results.length} cases · ${differing.length} changed · ${breaches.length} invariant breach(es)`,
+    `${results.length} cases · ${differing.length} changed${noBaselineCount(results)} · ${breaches.length} invariant breach(es)`,
     '',
+    ...referenceLine(),
   ];
   lines.push(...renderBreaches(breaches));
+  lines.push(...renderNoBaseline(results));
   lines.push(buildTable(results), '', DIFF_LEGEND, '');
 
   if (differing.length > 0) {
@@ -1319,7 +1642,7 @@ function buildJobSummary(results: CaseResult[], breaches: Breach[]): string {
     lines.push(
       `## Unchanged (${clean.length})`,
       '',
-      'These match their baseline. They are here to be read, not reviewed.',
+      'These match the target branch. They are here to be read, not reviewed.',
       '',
     );
     for (const result of clean) lines.push(...renderCase(result, base));
@@ -1404,7 +1727,10 @@ function caseLink(name: string, site: string | null, summary: string | null) {
  * which is the case where a reviewer can tell from a glance whether the
  * change is the intended one and never needs to click at all.
  */
-function buildComment(results: CaseResult[], breaches: Breach[]): string {
+export function buildComment(
+  results: CaseResult[],
+  breaches: Breach[],
+): string {
   const site = siteUrl();
   const summary = runUrl();
   const differing = results.filter((result) => !isClean(result));
@@ -1419,16 +1745,24 @@ function buildComment(results: CaseResult[], breaches: Breach[]): string {
     '<!-- hermex-output-review -->',
     '### Output Review',
     '',
-    `**${differing.length} of ${results.length} case(s) changed** · ${breaches.length} invariant breach(es) · ${index}`,
+    `**${differing.length} of ${results.length} case(s) changed**${noBaselineCount(results)} · ${breaches.length} invariant breach(es) · ${index}`,
     '',
+    ...referenceLine(),
     ...renderBreaches(breaches),
+    ...renderNoBaseline(results),
   ];
 
   if (differing.length > 0) {
     lines.push('| Case | Change | |', '| --- | --- | --- |');
     for (const result of differing) {
+      // `no baseline` in place of the totals, not beside them: `+40 −22` on
+      // a case with nothing to compare against is not a smaller truth, it is
+      // a different and wrong one.
+      const change = hasNoBaseline(result)
+        ? '**no baseline**'
+        : caseTotals(result);
       lines.push(
-        `| \`${result.fixture.name}\` | ${caseTotals(result)} | ${caseLink(result.fixture.name, site, summary)} |`,
+        `| \`${result.fixture.name}\` | ${change} | ${caseLink(result.fixture.name, site, summary)} |`,
       );
     }
     lines.push('');
@@ -1436,15 +1770,21 @@ function buildComment(results: CaseResult[], breaches: Breach[]): string {
 
   // This job is a required check, so the closing line has to say what it
   // takes to go green — a red run with no instructions is just an obstacle.
+  // An output diff alone never fails it (see the module doc comment) — only
+  // an invariant breach does, and no diff can fix one of those.
   if (breaches.length > 0) {
     lines.push(
-      'An invariant above is broken. That is not something a baseline refresh fixes — it describes what must never happen, so the check stays red until the behaviour changes.',
+      'An invariant above is broken. It describes what must never happen, so the check stays red until the behaviour changes — not something any output diff can fix.',
     );
   } else if (differing.length === 0) {
     lines.push('Output is unchanged. Nothing to review.');
+  } else if (results.some(hasNoBaseline)) {
+    lines.push(
+      'Open a case to read its diff, its config and its full output. The cases marked `no baseline` cannot be diffed from here — read their output on its own merits, since they will compare normally once this merges. If this is the change you meant, apply the `output:approved` label — see CONTRIBUTING.md.',
+    );
   } else {
     lines.push(
-      'Open a case to read its diff, its config and its full output. If every change is intended, run `pnpm run test:output -- --update` and commit the refreshed baselines — that diff is the record of what you approved, and this check goes green once it matches.',
+      'Open a case to read its diff, its config and its full output. If this is the change you meant, apply the `output:approved` label — see CONTRIBUTING.md.',
     );
   }
   return lines.join('\n');
@@ -1514,7 +1854,7 @@ export const SITE_STYLE = [
   '  color: inherit;',
   '}',
   '',
-  '/* Case names in the "All cases" table are the short, structured column —',
+  '/* Case names in the case tables are the short, structured column —',
   '   let them stay on one line and leave wrapping to the "Proves" prose. */',
   '.markdown-body table td:first-child,',
   '.markdown-body table th:first-child {',
@@ -1533,6 +1873,27 @@ export const SITE_STYLE = [
   '  font-weight: 600;',
   '}',
   '',
+  '/* A unified diff has three kinds of line, and only two of them are a',
+  '   change: the `@@` hunk header and the `---`/`+++` file headers are',
+  '   signposts. Left to Rouge they come out red and green like the removals',
+  '   and additions around them, so blue — the third colour every diff viewer',
+  '   uses for them — is what says they are structure rather than content. */',
+  '.markdown-body .highlight .gu {',
+  '  color: #0550ae;',
+  '  background-color: transparent;',
+  '  font-weight: 600;',
+  '}',
+  '',
+  '/* Rouge tags the `---`/`+++` headers `.gd`/`.gi`, exactly as it tags a',
+  '   removed and an added line, so position is the only thing left to tell',
+  '   them apart: `renderHunks` always emits both, always first, so they are',
+  '   the first two spans of the block and nothing else can be. */',
+  '.markdown-body .highlight .gd:first-child,',
+  '.markdown-body .highlight .gd:first-child + .gi {',
+  '  color: #0550ae;',
+  '  background-color: transparent;',
+  '}',
+  '',
   '/* The broken-invariants callout. A class rather than an inline style, so',
   '   it — and only it — needs overriding below for dark mode; nothing here',
   '   duplicates colours the theme already sets. */',
@@ -1543,6 +1904,15 @@ export const SITE_STYLE = [
   '  padding: 0.75rem 1rem;',
   '  border-radius: 0 6px 6px 0;',
   '  margin: 1rem 0;',
+  '}',
+  '',
+  '/* A missing baseline is not a defect — it is the expected consequence of',
+  '   adding a config key the target branch has never seen. Red would put it',
+  '   in the same visual class as a broken invariant, which is exactly the',
+  '   distinction the reader needs. */',
+  '.or-callout.or-note {',
+  '  border-left-color: #0969da;',
+  '  background: #ddf4ff;',
   '}',
   '',
   '/* jekyll-theme-primer is a light-only theme with every colour hardcoded,',
@@ -1605,12 +1975,113 @@ export const SITE_STYLE = [
   '    color: #c9d1d9;',
   '  }',
   '',
+  // Rouge wraps every fenced block as `.highlight > pre.highlight`, and
+  // Primer styles the *inner* pre via `.markdown-body .highlight pre`
+  // (specificity 0,2,1) — one tag more specific than `.markdown-body pre`
+  // above (0,2,0 with the `.highlight` alternative dropped, since `pre` is
+  // a descendant of `.highlight` here, not `.highlight` itself). That beats
+  // our rule regardless of source order, so every code, diff and config
+  // block — the entire comparison this site exists to show — kept Primer's
+  // light background (#f6f8fa) under our light text, unreadable. Matching
+  // Primer's own selector exactly ties the specificity, and ours wins the
+  // tie by coming later.
+  '  .markdown-body .highlight pre {',
+  '    background-color: #161b22;',
+  '    color: #c9d1d9;',
+  '  }',
+  '',
   '  .markdown-body pre {',
   '    border-color: #30363d;',
   '  }',
   '',
   '  .markdown-body details summary {',
   '    color: #c9d1d9;',
+  '  }',
+  '',
+  '  /* The token classes Rouge tags the *contents* of a block with are',
+  '     coloured by Primer for a light background only, and unlike the',
+  '     background above nothing here inherits: a resolved config came out as',
+  '     navy strings and near-black punctuation on #161b22 — the block that',
+  '     answers "what policy produced this output" being the least readable',
+  "     thing on the page. These mirror GitHub's dark syntax palette, for the",
+  '     tokens the report can actually print: JSON in the config and artifact',
+  '     blocks, Markdown in the summary artifacts. */',
+  '  .markdown-body .highlight .p,',
+  '  .markdown-body .highlight .pi,',
+  '  .markdown-body .highlight .w {',
+  '    color: #c9d1d9;',
+  '  }',
+  '',
+  '  .markdown-body .highlight .na,',
+  '  .markdown-body .highlight .nt {',
+  '    color: #7ee787;',
+  '  }',
+  '',
+  '  .markdown-body .highlight .dl,',
+  '  .markdown-body .highlight .s,',
+  '  .markdown-body .highlight .s1,',
+  '  .markdown-body .highlight .s2,',
+  '  .markdown-body .highlight .sb,',
+  '  .markdown-body .highlight .sc,',
+  '  .markdown-body .highlight .sd,',
+  '  .markdown-body .highlight .se,',
+  '  .markdown-body .highlight .sh,',
+  '  .markdown-body .highlight .si,',
+  '  .markdown-body .highlight .sr,',
+  '  .markdown-body .highlight .ss,',
+  '  .markdown-body .highlight .sx {',
+  '    color: #a5d6ff;',
+  '  }',
+  '',
+  '  .markdown-body .highlight .il,',
+  '  .markdown-body .highlight .m,',
+  '  .markdown-body .highlight .mb,',
+  '  .markdown-body .highlight .mf,',
+  '  .markdown-body .highlight .mh,',
+  '  .markdown-body .highlight .mi,',
+  '  .markdown-body .highlight .mo,',
+  '  .markdown-body .highlight .nb,',
+  '  .markdown-body .highlight .nc,',
+  '  .markdown-body .highlight .nf,',
+  '  .markdown-body .highlight .nl,',
+  '  .markdown-body .highlight .nn,',
+  '  .markdown-body .highlight .no,',
+  '  .markdown-body .highlight .nv,',
+  '  .markdown-body .highlight .nx {',
+  '    color: #79c0ff;',
+  '  }',
+  '',
+  '  .markdown-body .highlight .k,',
+  '  .markdown-body .highlight .kc,',
+  '  .markdown-body .highlight .kd,',
+  '  .markdown-body .highlight .kn,',
+  '  .markdown-body .highlight .kp,',
+  '  .markdown-body .highlight .kr,',
+  '  .markdown-body .highlight .kt,',
+  '  .markdown-body .highlight .o,',
+  '  .markdown-body .highlight .ow {',
+  '    color: #ff7b72;',
+  '  }',
+  '',
+  '  .markdown-body .highlight .c,',
+  '  .markdown-body .highlight .c1,',
+  '  .markdown-body .highlight .cd,',
+  '  .markdown-body .highlight .cm,',
+  '  .markdown-body .highlight .cs {',
+  '    color: #8b949e;',
+  '  }',
+  '',
+  '  .markdown-body .highlight .ge,',
+  '  .markdown-body .highlight .gh,',
+  '  .markdown-body .highlight .gs {',
+  '    color: #e6edf3;',
+  '  }',
+  '',
+  '  /* Primer paints `.err` dark red on pale pink. A lexer hiccup inside a',
+  '     captured artifact is not a finding, and it should not look like one. */',
+  '  .markdown-body .highlight .err {',
+  '    color: #ffa198;',
+  '    background-color: transparent;',
   '  }',
   '',
   "  /* Rouge's diff-fence colours (`.gd` deletion, `.gi` addition) are also",
@@ -1626,6 +2097,16 @@ export const SITE_STYLE = [
   '    color: #d2f6da;',
   '  }',
   '',
+  '  .markdown-body .highlight .gu {',
+  '    color: #58a6ff;',
+  '  }',
+  '',
+  '  .markdown-body .highlight .gd:first-child,',
+  '  .markdown-body .highlight .gd:first-child + .gi {',
+  '    color: #58a6ff;',
+  '    background-color: transparent;',
+  '  }',
+  '',
   '  .or-add {',
   '    color: #3fb950;',
   '  }',
@@ -1637,6 +2118,10 @@ export const SITE_STYLE = [
   '  .or-callout {',
   '    background: rgba(248, 81, 73, 0.1);',
   '    color: #c9d1d9;',
+  '  }',
+  '',
+  '  .or-callout.or-note {',
+  '    background: rgba(56, 139, 253, 0.15);',
   '  }',
   '}',
   '',
@@ -1654,6 +2139,59 @@ function frontMatter(title: string): string[] {
   ];
 }
 
+/**
+ * Effective config per source path, filled by `resolveConfigs` before any
+ * rendering. Keyed by the repo-relative path `sourcesOf` reports.
+ */
+const RESOLVED_CONFIGS = new Map<string, string>();
+
+/**
+ * The registry a fixture config falls back to is `process.env`-dependent and
+ * the offline one binds a random port, so neither is stable enough to print.
+ * Importing under a fixed placeholder makes the rendered value deterministic
+ * without pretending the config hard-codes a URL.
+ */
+const REGISTRY_PLACEHOLDER = '<fixture registry>';
+
+/**
+ * Imports every config a selected case loads and records it fully resolved.
+ *
+ * The point of printing a config at all is to answer "what policy produced
+ * this output", and the fixture configs compose — nearly all of them spread
+ * `fixtures/hermex.config.ts` and override a field or two. Printing the
+ * source alone answers the question with `...base`, which is no answer;
+ * printing nine literal copies of the same 67-line base instead would be
+ * worse. Resolving it keeps the fixtures composed and the report readable.
+ */
+export async function resolveConfigs(fixtures: FixtureCase[]): Promise<void> {
+  const previous = process.env['HERMEX_FIXTURE_REGISTRY'];
+  process.env['HERMEX_FIXTURE_REGISTRY'] = REGISTRY_PLACEHOLDER;
+  try {
+    for (const fixture of fixtures) {
+      const source = sourcesOf(fixture).config;
+      if (!source || RESOLVED_CONFIGS.has(source)) continue;
+      const absolute = join(ROOT, source);
+      if (!existsSync(absolute)) continue;
+      try {
+        const loaded = (await import(pathToFileURL(absolute).href)) as {
+          default?: unknown;
+        };
+        RESOLVED_CONFIGS.set(
+          source,
+          JSON.stringify(loaded.default ?? null, null, 2),
+        );
+      } catch {
+        // A config that cannot be imported is not worth failing the review
+        // over — the raw source is still linked, and the CLI run itself
+        // already reported whatever the loader made of it.
+      }
+    }
+  } finally {
+    if (previous === undefined) delete process.env['HERMEX_FIXTURE_REGISTRY'];
+    else process.env['HERMEX_FIXTURE_REGISTRY'] = previous;
+  }
+}
+
 /** The config a case actually loaded, inlined so the policy is on the page. */
 function configBlock(fixture: FixtureCase, base: string | null): string[] {
   const sources = sourcesOf(fixture);
@@ -1666,19 +2204,22 @@ function configBlock(fixture: FixtureCase, base: string | null): string[] {
     ];
   }
 
-  const absolute = join(ROOT, sources.config);
-  const contents = existsSync(absolute) ? readFileSync(absolute, 'utf8') : null;
+  const resolved = RESOLVED_CONFIGS.get(sources.config);
   return [
     '## Config',
     '',
     // Inlined rather than only linked. "What policy produced this output?"
     // is the question a diff cannot answer, and a reviewer who has to open
     // another tab to answer it mostly does not answer it.
-    `${fileLink(sources.config, base)}`,
+    //
+    // Fully resolved, not as authored: the fixture configs compose, so the
+    // source of most of them is a spread plus an override and answers the
+    // question with `...base`.
+    `${fileLink(sources.config, base)} — resolved, as the loader sees it`,
     '',
-    ...(contents
-      ? ['```ts', contents.trimEnd(), '```', '']
-      : ['_Not readable at report time._', '']),
+    ...(resolved
+      ? ['```json', resolved, '```', '']
+      : ['_Not resolvable at report time._', '']),
   ];
 }
 
@@ -1687,9 +2228,32 @@ function caseBody(result: CaseResult, base: string | null): string[] {
   const lines = [...caseContext(result, base)];
   lines.push(...configBlock(result.fixture, base));
 
+  // Before the diff, not after it: by the time a reader reaches the diff
+  // they have already started reading it as a comparison.
+  if (hasNoBaseline(result) && result.reference) {
+    lines.push(
+      '## No baseline',
+      '',
+      `The target branch's build ran this case and printed nothing to stdout (it exited ${result.reference.status}). There is no baseline, so the diff below has no left-hand side: every added line is the whole output appearing, not changing, and the removed lines are the reference's own error output going away.`,
+      '',
+      "This is what a config key the target branch's schema does not recognise looks like, and it resolves itself the moment this merges. What it is not is an output change anyone can read from the diff.",
+      '',
+      "The reference build's stderr:",
+      '',
+      '```text',
+      // Stripped here rather than at capture: `raw` is what the ANSI-purity
+      // invariant has to see un-stripped, and `comply`'s failure path is a
+      // red `spinner.fail`, so this would otherwise put escape bytes into
+      // the job summary and onto gh-pages.
+      forSummary(stripAnsi(result.reference.raw.stderr).trimEnd() || '(empty)'),
+      '```',
+      '',
+    );
+  }
+
   if (result.diff) {
     lines.push(
-      '## Diff against the committed baseline',
+      '## Diff against the target branch',
       '',
       DIFF_LEGEND,
       '',
@@ -1726,9 +2290,14 @@ function caseBody(result: CaseResult, base: string | null): string[] {
 function statusTable(results: CaseResult[]): string[] {
   const rows = results.map((result) => {
     const name = `[\`${result.fixture.name}\`](./${encodeURIComponent(result.fixture.name)}.html)`;
+    // No totals on a no-baseline row: `shortStatus` already says `no
+    // baseline`, and appending `+40 −22` to it states the count of a
+    // comparison that did not happen.
     const status = isClean(result)
       ? shortStatus(result)
-      : `**${shortStatus(result)}** ${caseTotals(result, true)}`;
+      : hasNoBaseline(result)
+        ? `**${shortStatus(result)}**`
+        : `**${shortStatus(result)}** ${caseTotals(result, true)}`;
     return `| ${name} | ${status} | ${result.fixture.proves} |`;
   });
   return ['| Case | Status | Proves |', '| --- | --- | --- |', ...rows, ''];
@@ -1742,21 +2311,27 @@ export function buildSite(
 ): Map<string, string> {
   const pages = new Map<string, string>();
   const differing = results.filter((result) => !isClean(result));
+  const clean = results.filter(isClean);
 
   const index = [
     ...frontMatter('Output Review'),
     RAW_OPEN,
     '# Output Review',
     '',
-    `${results.length} cases · ${differing.length} changed · ${breaches.length} invariant breach(es)`,
+    `${results.length} cases · ${differing.length} changed${noBaselineCount(results)} · ${breaches.length} invariant breach(es)`,
     '',
+    ...referenceLine(),
     ...renderBreaches(breaches, 'jekyll'),
+    ...renderNoBaseline(results, 'jekyll'),
     ...(differing.length > 0
       ? ['## Changed', '', ...statusTable(differing)]
-      : ['Every case matches its baseline.', '']),
-    '## All cases',
-    '',
-    ...statusTable(results),
+      : ['Every case matches the target branch.', '']),
+    // The cases the "Changed" table does not already list, rather than all
+    // of them: a case in both tables reads as two entries to review, and the
+    // duplicate is the copy with nothing to say about it.
+    ...(clean.length > 0
+      ? [`## Unchanged (${clean.length})`, '', ...statusTable(clean)]
+      : []),
     RAW_CLOSE,
   ];
   pages.set('index.md', index.join('\n'));
@@ -1796,9 +2371,41 @@ function siteUrl(): string | null {
 
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
-  const update = argv.includes('--update');
   const filterIndex = argv.indexOf('--filter');
   const filter = filterIndex === -1 ? null : argv[filterIndex + 1];
+  const againstIndex = argv.indexOf('--against');
+  const against =
+    againstIndex === -1
+      ? (process.env['GITHUB_BASE_REF'] ?? 'main')
+      : argv[againstIndex + 1];
+
+  // `--against` is load-bearing now that a CI cache key names the same
+  // commit, and a workflow expression that evaluates to empty would
+  // otherwise arrive here as `undefined` and resolve `origin/undefined`.
+  if (against === undefined || against === '') {
+    throw new Error('--against needs a ref or a commit SHA.');
+  }
+
+  // Warming the shared reference cache, for the push-side job in
+  // `.github/workflows/output-review-reference.yaml`. Nothing below this is
+  // needed to produce `.output-review/reference/<sha>`, and building this
+  // tree's CLI only to throw it away would double the job for nothing.
+  if (argv.includes('--reference-only')) {
+    const reference = buildReference(against);
+    const expected = process.env['GITHUB_SHA'];
+    // Without this the cache would be keyed on a commit nothing built, and
+    // the symptom would be a reference entry that is silently never there:
+    // a slow rebuild on every PR, with no failure to trace it back to.
+    if (expected !== undefined && expected !== reference.sha) {
+      throw new Error(
+        `--reference-only resolved "${against}" to ${reference.sha}, but this run is ${expected}. The cache would be keyed on a commit nothing built.`,
+      );
+    }
+    process.stdout.write(
+      `${reference.reused ? 'reused' : 'built'} reference ${reference.sha}\n${reference.cli}\n`,
+    );
+    return;
+  }
 
   if (!argv.includes('--no-build')) {
     // One command string rather than an argv array: with `shell: true` the
@@ -1824,10 +2431,31 @@ async function main(): Promise<void> {
     throw new Error(`No cases matched --filter ${String(filter)}`);
   }
 
-  // Before the run, not after: the dossiers describe the cases, not the
-  // results, so regenerating them first means `--update` leaves a tree the
-  // `case-docs-are-current` invariant already agrees with.
-  if (update) writeCaseDocs(module.cases);
+  // Regenerated on every run, not gated behind a flag: this is pure string
+  // generation from `fixtures/cases.ts`, no CLI execution involved, so
+  // there is no cost to always leaving the tree in a state
+  // `no-orphaned-case-docs` already agrees with.
+  writeCaseDocs(module.cases);
+
+  // Before any rendering: every report surface prints a config block.
+  await resolveConfigs(selected);
+
+  const reference = buildReference(against);
+  recordReference({ ...reference, ref: against });
+
+  // An annotation as well as the report line: the report is read by whoever
+  // opens the PR comment, and this is read by whoever is looking at a job
+  // that took four minutes longer than it should have. Since #178 the PR
+  // side only ever restores the shared cache, so a miss here means the
+  // push-side warm job has not finished, failed, or never ran.
+  if (!reference.reused && process.env['GITHUB_ACTIONS']) {
+    process.stdout.write(
+      `::warning::No cached reference build for ${reference.sha}; built it from source. ` +
+        'Check that the "Output review reference" workflow ran for that commit.\n',
+    );
+  }
+
+  const referenceFixtures = join(reference.root, 'fixtures');
 
   const registry = selected.some((fixture) => fixture.registry)
     ? await startRegistry()
@@ -1836,20 +2464,36 @@ async function main(): Promise<void> {
   const results: CaseResult[] = [];
   try {
     for (const fixture of selected) {
-      const { artifacts, status, raw } = await runCase(
+      const registryUrl = fixture.registry && registry ? registry.url : null;
+      const current = await runCase(fixture, registryUrl, CLI, FIXTURES);
+      const baseline = await runBaseline(
         fixture,
-        fixture.registry && registry ? registry.url : null,
+        registryUrl,
+        reference,
+        referenceFixtures,
       );
-      const result = compare(fixture, artifacts, raw);
-      if (status !== fixture.expectExit) {
-        result.exitMismatch = { expected: fixture.expectExit, actual: status };
+
+      const result = compare(
+        fixture,
+        current.artifacts,
+        current.raw,
+        baseline.artifacts,
+      );
+      // Kept rather than discarded with the rest of the reference run: its
+      // artifacts alone cannot say whether it ran at all, and a reference
+      // that printed nothing renders as an ordinary diff unless something
+      // notices. See `hasNoBaseline`.
+      result.reference = { status: baseline.status, raw: baseline.raw };
+      if (current.status !== fixture.expectExit) {
+        result.exitMismatch = {
+          expected: fixture.expectExit,
+          actual: current.status,
+        };
       }
       results.push(result);
 
-      if (update && !result.exitMismatch)
-        writeBaseline(fixture.name, artifacts);
       process.stdout.write(
-        `${isClean(result) ? '  ok  ' : update ? 'update' : ' diff '}  ${fixture.name}\n`,
+        `${isClean(result) ? '  ok  ' : ' diff '}  ${fixture.name}\n`,
       );
     }
   } finally {
@@ -1892,9 +2536,10 @@ async function main(): Promise<void> {
     });
   }
 
-  // An exit-code mismatch is never absorbed by --update: the manifest says
-  // what the case is asserting, so a changed exit code has to be an edit to
-  // fixtures/cases.ts, where a reviewer will see it.
+  // An exit-code mismatch always fails: the manifest states what the case
+  // is asserting, so a changed exit code has to be a conscious edit to
+  // fixtures/cases.ts, where a reviewer will see it — unlike stdout, it was
+  // never derived from a comparison, so there's nothing to approve it into.
   const mismatched = results.filter((r) => r.exitMismatch);
   for (const result of mismatched) {
     process.stderr.write(
@@ -1908,27 +2553,27 @@ async function main(): Promise<void> {
   }
 
   const differing = results.filter((r) => !isClean(r));
-  if (update) {
+  // Read by the output-approval job in output-review.yaml to
+  // decide whether the output:approved label gate applies — cheaper than
+  // re-running the whole matrix a second time just to ask that question.
+  writeFileSync(
+    join(REPORT_DIR, 'changed'),
+    differing.length > 0 ? 'true' : 'false',
+  );
+  if (differing.length > 0) {
     process.stdout.write(
-      `\n${results.length - mismatched.length} baseline(s) written to tests/__output_baselines__/\n`,
-    );
-  } else if (differing.length > 0) {
-    process.stdout.write(
-      `\n${differing.length} of ${results.length} case(s) differ from their baseline. Read .output-review/summary.md, then run\n  pnpm run test:output -- --update\nif the change is intended.\n`,
+      `\n${differing.length} of ${results.length} case(s) differ from ${against}. Read .output-review/summary.md for the diff — this is informational, not a failure, unless it needs the output:approved label to merge.\n`,
     );
   } else {
-    process.stdout.write(
-      `\nAll ${results.length} case(s) match their baseline.\n`,
-    );
+    process.stdout.write(`\nAll ${results.length} case(s) match ${against}.\n`);
   }
 
-  // A blocking invariant fails the run even under --update, for the same
-  // reason an exit-code mismatch does: it describes something no baseline
-  // should ever be allowed to record.
+  // An output diff never fails this on its own — see the module doc
+  // comment. Only a genuine defect does: an exit-code mismatch, or a
+  // blocking invariant.
   const failed =
     mismatched.length > 0 ||
-    breaches.some(({ invariant }) => invariant.blocking) ||
-    (!update && differing.length > 0);
+    breaches.some(({ invariant }) => invariant.blocking);
   process.exitCode = failed ? 1 : 0;
 }
 

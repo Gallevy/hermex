@@ -4,6 +4,7 @@ import type {
   PackageInventoryEntry,
 } from '../../src/utils/aggregator';
 import type { ReleaseAgeEntry } from '../../src/npm-registry/types';
+import type { ReleaseAgeViolation } from '../../src/rules/evaluator';
 
 /**
  * Creates a minimal UsageReport with all required fields.
@@ -59,9 +60,13 @@ export function createMockPackage(
     rootVersion: version,
     componentCount: 1,
     usageCount: 1,
+    // Defaults to 1 alongside `usageCount`: the default mock is a package
+    // present on every axis, and a component rendered once came from a file
+    // that imported it once. Override to 0 for the function-only /
+    // never-imported cases (#174).
+    importingFileCount: 1,
     percentage: 100,
     declaredIn: ['dependencies'],
-    internal: false,
     hasVersionConflict: false,
     // Defaults to a single-entry array matching `version` (not a fixed
     // '1.0.0') so overriding just `version` doesn't silently produce a
@@ -76,8 +81,10 @@ export function createMockPackage(
  * Creates a minimal PackageInventoryEntry — by default a package that is
  * declared, installed as a direct dependency, and used once, i.e. present
  * on all three axes. Override to test a single axis in isolation (e.g.
- * `{ usageCount: 0, componentCount: 0 }` for declared-but-never-imported,
- * or `{ declaredIn: [], rootVersion: null }` for purely transitive).
+ * `{ usageCount: 0, componentCount: 0, importingFileCount: 0 }` for
+ * declared-but-never-imported, or `{ declaredIn: [], rootVersion: null }` for
+ * purely transitive). `{ usageCount: 0, componentCount: 0 }` alone leaves the
+ * function-only case: imported, never rendered (#174).
  */
 export function createMockInventoryEntry(
   packageName: string,
@@ -91,10 +98,10 @@ export function createMockInventoryEntry(
     rootVersion: version,
     allVersions: version ? [version] : [],
     hasVersionConflict: false,
-    internal: false,
     ignored: false,
     usageCount: 1,
     componentCount: 1,
+    importingFileCount: 1,
     ...overrides,
   };
 }
@@ -111,6 +118,28 @@ export function createMockReleaseAge(
     upgrades: [],
     worstLevel: null,
     severity: 'error',
+    scope: 'root',
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a minimal `ReleaseAgeViolation` — release-age is a rule like any
+ * other now (#93 superseded), so this is what a mandatory/warn-severity
+ * overdue package looks like in `ruleViolations`, alongside its richer
+ * `createMockReleaseAge` display counterpart on `packageDistribution`.
+ */
+export function createMockReleaseAgeViolation(
+  packageName: string,
+  overrides: Partial<ReleaseAgeViolation> = {},
+): ReleaseAgeViolation {
+  return {
+    ruleId: 'release-age',
+    severity: 'error',
+    patterns: [packageName],
+    packageName,
+    installedVersion: '1.0.0',
+    worstLevel: 'major_overdue',
     scope: 'root',
     ...overrides,
   };

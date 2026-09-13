@@ -46,7 +46,7 @@ All contributions must adhere to the following directory structure:
 | `/src/npm-registry`  | Registry client, cache, release-age enrichment |
 | `/src/lock-parser`   | npm/yarn/pnpm lockfile adapters       |
 | `/src/utils`         | Shared utilities and output formatting |
-| `/tests`             | All tests (mirrors `/src`), plus the committed output baselines |
+| `/tests`             | All tests (mirrors `/src`) |
 | `/docs`              | Project documentation                 |
 | `/fixtures`          | Fixture repos hermex analyzes, and the output-review matrix — see `fixtures/README.md` |
 | `/scripts`           | Repo tooling that is not part of the published package |
@@ -61,35 +61,83 @@ All contributions must adhere to the following directory structure:
 
 Hermex's value is what it prints and the verdict it returns, and the unit
 suite does not look at either. The **output review** closes that gap: it
-runs the real CLI over `fixtures/` across a matrix of commands, formats,
-section toggles, severities and lock formats, then diffs everything each
-case emitted — stdout, stderr, exit code, `--summary-file` output — against
-a committed baseline.
+runs the real CLI over `fixtures/` twice — once from your branch, once from
+a fresh build of the target branch — across a matrix of commands, formats,
+section toggles, severities and lock formats, and diffs what the two
+actually printed: stdout, stderr, exit code, `--summary-file` output.
 
 ```bash
-pnpm run test:output                  # compare against the baselines
-pnpm run test:output -- --update      # refresh them after an intended change
+pnpm run test:output                    # compare against origin/main
+pnpm run test:output -- --against beta  # compare against another branch
 pnpm run test:output -- --filter comply
 ```
 
-Baselines live in `tests/__output_baselines__/<case>/`. They are committed
-on purpose: **refreshing a baseline is part of your PR diff**, which is what
-makes "is this change intended?" answerable in review.
+Nothing is committed for this to work against. Both sides of every
+comparison are always the real, current output of real, current code, so
+there is no baseline file to refresh, forget to refresh, or hand-edit —
+`--against` just resolves and builds the branch you're naming, in an
+isolated git worktree, and diffs your tree's output against it.
+
+An output diff on its own is informational, not a failure: a changed output
+isn't necessarily a bug, so `pnpm run test:output` exits 0 even when cases
+differ. What does fail it is a genuine defect — an exit code that doesn't
+match what a case asserts in `fixtures/cases.ts`, or a broken invariant (see
+below).
 
 ### It runs on every PR, and it has to pass
 
-There is no opt-in and no label. The job runs on every pull request, posts a
-sticky comment with a row and a link per case, and is a **required check**.
+The job runs on every pull request, posts a sticky comment with a row and a
+link per case, and is a **required check** (`review`). If it's red, an
+invariant broke or a case's exit code doesn't match its assertion — read the
+comment or the job summary, and fix the behaviour; no local action makes
+this pass on its own if the defect is real.
 
-If it is red, one of two things happened:
+### Getting an output change past the `output:approved` gate
 
-1. **The output changed and the baselines did not.** Read the comment or the
-   job summary, confirm every diff is what you meant, then run
-   `pnpm run test:output -- --update` and commit the result. The refreshed
-   baselines are the record of what you approved.
-2. **An invariant broke.** No baseline refresh fixes that — an invariant
-   describes what must never happen, so the check stays red until the
-   behaviour changes.
+`review` only proves an output diff is *real* — it can't tell you whether
+anyone looked at it, and merging a PR doesn't require that either. A second
+required check in the same workflow, `output-approval`, is the gate for
+that specifically:
+
+- If nothing differs from the target branch, it passes on its own.
+- If something does, it requires the `output:approved` label before merge —
+  a deliberate act, separate from opening or approving the PR, that says "I
+  read this diff."
+- Any later push removes the label again, the same way GitHub dismisses a
+  stale review on a new commit — an old approval can't silently cover a
+  diff nobody re-read.
+
+So: open the PR, read the output-review comment yourself (or have someone
+else read it — either way works, this repo doesn't require a second
+person), and apply `output:approved` once you're satisfied with the diff.
+
+The comment names the commit it compared against. That comparison can only
+go stale in one direction — main moving after the run — and merging closes
+it: branches have to be up to date before merge, bringing one up to date is
+a push, and a push re-runs the review against the current main *and* strips
+`output:approved`. So what you approved is always what merges. To re-baseline
+sooner, hit "Update branch" or push anything.
+
+### When a case says `no baseline`
+
+Sometimes a case is marked `no baseline` instead of `+N −M`. That means the
+target branch's build of hermex produced no output for that case at all, so
+there is no left-hand side: every added line in its diff is the whole output
+*appearing*, not changing.
+
+In practice this means one thing: **the case is new in your branch.** The
+target branch has no `fixtures/` directory for it, so nothing over there
+could have run it, and there is genuinely nothing to compare against. Read
+its output on its own merits and apply `output:approved` as usual.
+
+Adding a rule used to do this too, and no longer does. Each build runs
+against the config it shipped with, so the target branch's hermex reads the
+target branch's config — one it understands — rather than choking on a
+`.strict()` schema rejection of your new rule's key. A rule addition now
+shows what it should: the row appearing in a table that is otherwise
+unchanged.
+
+It is not a failure and it does not block the check.
 
 ### Adding a case
 
@@ -100,18 +148,17 @@ what each existing fixture proves; say the same for yours.
 
 ### Invariants
 
-Some claims cannot live in a baseline: `--update` rewrites every baseline at
-once, so a rule encoded only in the recorded bytes is absorbed the moment
-those bytes change together. Those claims are named invariants in
+Some claims can't be settled by a diff: a diff records what changed, not
+what must never happen. Those claims are named invariants in
 `scripts/output-review.ts` — ANSI purity, exit code agreeing with the
 printed verdict, `--format json` putting nothing but JSON on stdout, no
 unscrubbed absolute paths or versions, suppressed sections staying absent,
-and no orphaned baseline directories. `fixtures/README.md` lists them with
-what each one guarantees.
+and no orphaned case dossiers. `fixtures/README.md` lists them with what
+each one guarantees.
 
-A **blocking** invariant fails the run even under `--update`. Mark one
-**advisory** only when the breach is known, understood and tracked
-elsewhere — a permanently red advisory job is one nobody reads.
+A **blocking** invariant always fails the run. Mark one **advisory** only
+when the breach is known, understood and tracked elsewhere — a permanently
+red advisory job is one nobody reads.
 
 ### Keeping output deterministic
 
@@ -147,7 +194,7 @@ Pick the bump type, then write the summary. Two things to get right:
   small — people parse that output.
 - **Write the summary for someone upgrading, not for a reviewer.** It goes
   straight into the changelog and the GitHub Release, so say what changed for
-  them and what they need to do about it. "Report `forbid_packages` hits under
+  them and what they need to do about it. "Report `no-packages` hits under
   `ruleViolations`" is useful; "refactor rule plumbing" is not.
 
 This writes a Markdown file to `.changeset/`. Commit it with your change — a

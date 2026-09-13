@@ -48,6 +48,7 @@
     "test:ci": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:output": "node scripts/output-review.ts",
+    "build:reference": "node scripts/output-review.ts --reference-only",
     "typecheck": "tsc --noEmit",
     "build": "tsdown",
     "build:ci": "tsdown",
@@ -55,35 +56,37 @@
   },
   "dependencies": {
     "@pnpm/dependency-path": "^1001.1.10",
-    "@swc/core": "^1.15.46",
-    "@swc/types": "^0.1.27",
+    "@swc/core": "^1.16.2",
+    "@swc/types": "^0.1.28",
     "@yarnpkg/lockfile": "^1.1.0",
-    "chalk": "^5.6.2",
+    "chalk": "^6.0.0",
     "cli-table3": "^0.6.5",
     "commander": "^15.0.0",
     "glob": "^13.0.6",
-    "js-yaml": "^5.2.1",
+    "js-yaml": "^5.4.1",
     "micromatch": "^4.0.8",
     "ora": "^9.4.1",
+    "oxc-parser": "^0.149.0",
     "semver": "^7.8.5",
-    "zod": "^4.4.3"
+    "zod": "^4.6.2"
   },
   "devDependencies": {
-    "@changesets/changelog-github": "^1.0.0",
-    "@changesets/cli": "^3.0.0",
+    "@changesets/changelog-github": "^1.0.1",
+    "@changesets/cli": "^3.0.2",
     "@types/js-yaml": "^4.0.9",
     "@types/micromatch": "^4.0.10",
-    "@types/node": "^26.1.1",
-    "@types/semver": "^7.7.1",
+    "@types/node": "^26.5.1",
+    "@types/semver": "^7.8.0",
     "@types/yarnpkg__lockfile": "^1.1.9",
-    "@vitest/coverage-v8": "4.1.10",
-    "oxfmt": "^0.60.0",
-    "oxlint": "^1.75.0",
-    "tsdown": "^0.22.14",
+    "@vitest/coverage-v8": "5.0.0",
+    "oxfmt": "^0.67.0",
+    "oxlint": "^1.82.0",
+    "tsdown": "^0.23.0",
     "typescript": "7.0.2",
-    "vitest": "^4.1.10"
+    "vitest": "^5.0.0"
   },
   "engines": {
     "node": ">=24.11.1"
-  }
+  },
+  "packageManager": "pnpm@12.1.0+sha512.d9b8276d97f6ec86e49815877f91ee9f63cee61f2063b304e43b6dab8fa07ce8a9afd46d2facd39f921e6a9d06b3c75a81349c7b888c2d22886bae0229901037"
 }

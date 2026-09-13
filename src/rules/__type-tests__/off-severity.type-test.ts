@@ -17,6 +17,7 @@
 // detaching the check from the error it's meant to catch.
 
 import { evaluateFileRules } from '../file-rules';
+import { evaluateMaxFileSize } from '../max-file-size';
 import { evaluateScriptRules } from '../script-rules';
 import { evaluatePackageFieldRules } from '../package-field-rules';
 import { evaluateEngineVersion } from '../engine-version';
@@ -36,6 +37,7 @@ declare const resolvedConfig: import('../../config/types').ResolvedHermexConfig;
 // — proves the negative checks below fail because of the resolved-vs-raw
 // distinction specifically, not because these calls are wrong some other way.
 evaluateFileRules('.', resolvedRules, []);
+evaluateMaxFileSize('.', resolvedRules, []);
 evaluateScriptRules('.', resolvedRules);
 evaluatePackageFieldRules('.', resolvedRules);
 evaluateEngineVersion('.', resolvedRules);
@@ -51,6 +53,8 @@ declare const wideRules: RulesConfig;
 declare const wideConfig: HermexConfig;
 // @ts-expect-error — evaluateFileRules must require ResolvedRulesConfig
 evaluateFileRules('.', wideRules, []);
+// @ts-expect-error — evaluateMaxFileSize must require ResolvedRulesConfig
+evaluateMaxFileSize('.', wideRules, []);
 // @ts-expect-error — evaluateScriptRules must require ResolvedRulesConfig
 evaluateScriptRules('.', wideRules);
 // @ts-expect-error — evaluatePackageFieldRules must require ResolvedRulesConfig

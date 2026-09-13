@@ -1,4 +1,7 @@
 import { z } from 'zod';
+import { KNOWN_HOOKS } from '../plugins/types';
+import type { HermexPlugin } from '../plugins/types';
+import { parseByteSize } from '../utils/byte-size';
 
 // ── Sub-schemas ────────────────────────────────────────────────────────────────
 
@@ -10,11 +13,13 @@ import { z } from 'zod';
 // way an override cancels an org-wide rule for specific repos today.
 const RuleSeveritySchema = z.enum(['error', 'warn', 'info', 'off']);
 
-const RuleConfigSchema = z.object({
-  severity: RuleSeveritySchema,
-  patterns: z.array(z.string()),
-  message: z.string().optional(),
-});
+const RuleConfigSchema = z
+  .object({
+    severity: RuleSeveritySchema,
+    patterns: z.array(z.string()),
+    message: z.string().optional(),
+  })
+  .strict();
 
 const RuleConfigOrArraySchema = z.union([
   RuleConfigSchema,
@@ -24,171 +29,346 @@ const RuleConfigOrArraySchema = z.union([
 const PackageFieldRuleSchema = RuleConfigSchema.extend({
   /** Optional micromatch patterns the field's stringified value must match */
   values: z.array(z.string()).optional(),
-});
+}).strict();
 
 const PackageFieldRuleOrArraySchema = z.union([
   PackageFieldRuleSchema,
   z.array(PackageFieldRuleSchema),
 ]);
 
-const EngineVersionRuleSchema = z.object({
-  severity: RuleSeveritySchema,
-  range: z.string(),
-  message: z.string().optional(),
-});
+/**
+ * A file size ceiling, authored either as a raw byte count (`204800`) or as
+ * a string with a unit (`'200kb'`, `'1.5mb'`) — both normalize to whole
+ * bytes here, so everything downstream only ever sees a number. Units are
+ * binary (1 KB = 1024 B); see src/utils/byte-size.ts.
+ */
+const ByteSizeSchema = z
+  .union([z.number(), z.string()])
+  .transform((value, ctx) => {
+    const bytes = parseByteSize(value);
+    if (bytes === null) {
+      ctx.addIssue({
+        code: 'custom',
+        message:
+          `Invalid file size ${JSON.stringify(value)} — use a positive byte ` +
+          `count (204800) or a size with a unit ("200kb", "1.5mb").`,
+      });
+      return z.NEVER;
+    }
+    return bytes;
+  });
 
-const CodeownersRuleSchema = z.object({
-  severity: RuleSeveritySchema,
-  message: z.string().optional(),
-  /** If set, matched files must be owned by at least one of these owner strings (exact match against CODEOWNERS entries, e.g. "@org/team"). */
-  requiredOwners: z.array(z.string()).optional(),
-});
+const MaxFileSizeRuleSchema = RuleConfigSchema.extend({
+  /** Files matching `patterns` may not exceed this size */
+  maxSize: ByteSizeSchema,
+}).strict();
+
+const MaxFileSizeRuleOrArraySchema = z.union([
+  MaxFileSizeRuleSchema,
+  z.array(MaxFileSizeRuleSchema),
+]);
+
+const EngineVersionRuleSchema = z
+  .object({
+    severity: RuleSeveritySchema,
+    range: z.string(),
+    message: z.string().optional(),
+  })
+  .strict();
+
+const CodeownersRuleSchema = z
+  .object({
+    severity: RuleSeveritySchema,
+    message: z.string().optional(),
+    /** If set, matched files must be owned by at least one of these owner strings (exact match against CODEOWNERS entries, e.g. "@org/team"). */
+    requiredOwners: z.array(z.string()).optional(),
+  })
+  .strict();
 
 const ThresholdSchema = z.union([z.number(), z.literal(false)]);
+
+/**
+ * A release-age policy for the packages matching `patterns` — same shape
+ * family as every other rule (severity/patterns/message from
+ * `RuleConfigSchema`), extended with the age-check knobs. Each entry is
+ * fully self-contained (its own defaulted `thresholds`/`scope`) rather than
+ * falling back to a separate global default, so there's exactly one place
+ * to look for a given package's policy. See `resolveReleaseAgeRule` in
+ * `src/config/overrides.ts` for how multiple entries resolve to one
+ * governing entry per package (last-match-wins).
+ */
+const ReleaseAgeRuleConfigSchema = RuleConfigSchema.extend({
+  thresholds: z
+    .object({
+      patch: ThresholdSchema.default(30),
+      minor: ThresholdSchema.default(45),
+      major: ThresholdSchema.default(60),
+    })
+    .strict()
+    .default(() => ({ patch: 30, minor: 45, major: 60 })),
+  // 'root' checks only the package's direct/root-installed version; 'tree'
+  // checks every resolved copy in the lockfile, failing if any is overdue.
+  // Nested duplicates are always visible as advisory data regardless of
+  // scope — this only decides what's mandatory (#57).
+  scope: z.enum(['root', 'tree']).default('root'),
+}).strict();
+
+const ReleaseAgeRuleOrArraySchema = z.union([
+  ReleaseAgeRuleConfigSchema,
+  z.array(ReleaseAgeRuleConfigSchema),
+]);
+
+/**
+ * Which AST front-end analyzes source files.
+ *
+ * 'swc' is the default and the supported one. 'oxc-experimental' swaps
+ * @swc/core for oxc-parser — a smaller install and a different native binding
+ * — and is opt-in while it proves itself. Both front-ends run the identical
+ * visitor, pattern analyzers and report generator (oxc's ESTree AST is
+ * normalized into SWC's node vocabulary first), so the analysis is the same
+ * either way; only the parse step differs.
+ */
+const ParserSchema = z.enum(['swc', 'oxc-experimental']);
 
 // Overrides use the same rule schemas as the base `rules` below (severity
 // 'off' included) — an override rule is resolved into the base the same
 // way `resolveRules` resolves the base config against itself.
 const OverrideRulesSchema = z
   .object({
-    detect_files: RuleConfigOrArraySchema.optional(),
-    require_files: RuleConfigOrArraySchema.optional(),
-    forbid_packages: RuleConfigOrArraySchema.optional(),
-    require_packages: RuleConfigOrArraySchema.optional(),
-    require_scripts: RuleConfigOrArraySchema.optional(),
-    require_package_fields: PackageFieldRuleOrArraySchema.optional(),
-    forbid_package_fields: PackageFieldRuleOrArraySchema.optional(),
-    engine_version: z
+    'no-files': RuleConfigOrArraySchema.optional(),
+    'require-files': RuleConfigOrArraySchema.optional(),
+    'max-file-size': MaxFileSizeRuleOrArraySchema.optional(),
+    'no-packages': RuleConfigOrArraySchema.optional(),
+    'require-packages': RuleConfigOrArraySchema.optional(),
+    'require-scripts': RuleConfigOrArraySchema.optional(),
+    'require-package-fields': PackageFieldRuleOrArraySchema.optional(),
+    'no-package-fields': PackageFieldRuleOrArraySchema.optional(),
+    'require-engine-version': z
       .union([EngineVersionRuleSchema, z.array(EngineVersionRuleSchema)])
       .optional(),
-    codeowners: CodeownersRuleSchema.optional(),
+    'require-codeowners': CodeownersRuleSchema.optional(),
+    'release-age': ReleaseAgeRuleOrArraySchema.optional(),
   })
+  .strict()
   .default(() => ({}));
 
-const OverrideSchema = z.object({
-  /** Micromatch patterns checked against the current repo's package.json "name" */
-  match: z.array(z.string()).min(1),
-  rules: OverrideRulesSchema,
+const OverrideSchema = z
+  .object({
+    /** Micromatch patterns checked against the current repo's package.json "name" */
+    match: z.array(z.string()).min(1),
+    rules: OverrideRulesSchema,
+  })
+  .strict();
+
+// ── Plugins ────────────────────────────────────────────────────────────────────
+
+// A plugin holds functions, so it can't be described structurally the way
+// every other branch of this schema is — `z.custom` carries the type and the
+// refinement below does the checking by hand. Note this makes a config that
+// declares plugins non-JSON-serializable, which is inherent: hooks are code.
+const PluginSchema = z.custom<HermexPlugin>().superRefine((value, ctx) => {
+  const fail = (message: string, path: (string | number)[] = []) =>
+    ctx.addIssue({ code: 'custom', message, path });
+
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    fail('Plugin must be an object with `name` and `hooks`.');
+    return;
+  }
+
+  const plugin = value as Partial<HermexPlugin>;
+
+  if (typeof plugin.name !== 'string' || plugin.name.trim() === '') {
+    fail('Plugin `name` must be a non-empty string.', ['name']);
+  }
+
+  if (
+    typeof plugin.hooks !== 'object' ||
+    plugin.hooks === null ||
+    Array.isArray(plugin.hooks)
+  ) {
+    fail('Plugin `hooks` must be an object.', ['hooks']);
+    return;
+  }
+
+  const hooks = plugin.hooks as Record<string, unknown>;
+  const declared = Object.keys(hooks);
+
+  for (const key of declared) {
+    // Rejected rather than ignored on purpose: a plugin built against a
+    // newer hermex must fail loudly, not half-run. A hook that silently
+    // never fires is the failure mode this check exists to prevent.
+    if (!(KNOWN_HOOKS as readonly string[]).includes(key)) {
+      fail(
+        `Unknown hook \`${key}\`. This version of hermex supports: ${KNOWN_HOOKS.join(', ')}. ` +
+          `If the plugin targets a newer hermex, upgrade rather than removing the hook.`,
+        ['hooks', key],
+      );
+      continue;
+    }
+    if (typeof hooks[key] !== 'function') {
+      fail(`Hook \`${key}\` must be a function.`, ['hooks', key]);
+    }
+  }
+
+  if (declared.length === 0) {
+    fail(
+      `Plugin "${plugin.name ?? '<unnamed>'}" declares no hooks, so it can never run. ` +
+        `Implement one of: ${KNOWN_HOOKS.join(', ')}.`,
+      ['hooks'],
+    );
+  }
+});
+
+// Identity is the plugin's own `name` — never a namespace the config author
+// assigns. ESLint handed naming to the config layer and had to retrofit
+// `meta.namespace` to recover identity; de-duplicating by declared name here
+// avoids that, and makes a duplicate a config error rather than two
+// silently-merged sources of the same finding.
+const PluginsSchema = z.array(PluginSchema).superRefine((plugins, ctx) => {
+  const seen = new Set<string>();
+  plugins.forEach((plugin, index) => {
+    const name = (plugin as Partial<HermexPlugin>)?.name;
+    if (typeof name !== 'string') return;
+    if (seen.has(name)) {
+      ctx.addIssue({
+        code: 'custom',
+        message: `Duplicate plugin name "${name}". Plugin names must be unique — hermex de-duplicates by name, not by object identity.`,
+        path: [index, 'name'],
+      });
+    }
+    seen.add(name);
+  });
 });
 
 // ── Main schema with defaults ──────────────────────────────────────────────────
 
-export const HermexConfigSchema = z.object({
-  includes: z.array(z.string()).default(['**/*.{tsx,jsx,ts,js}']),
-  excludes: z
-    .array(z.string())
-    .default(['**/node_modules/**', '**/dist/**', '**/build/**']),
+export const HermexConfigSchema = z
+  .object({
+    includes: z.array(z.string()).default(['**/*.{tsx,jsx,ts,js}']),
+    excludes: z
+      .array(z.string())
+      .default(['**/node_modules/**', '**/dist/**', '**/build/**']),
 
-  packages: z
-    .object({
-      internal: z.array(z.string()).default([]),
-      ignore: z.array(z.string()).default([]),
-    })
-    .default(() => ({ internal: [], ignore: [] })),
+    parser: ParserSchema.default('swc'),
 
-  versus: z
-    .array(z.object({ name: z.string(), packages: z.array(z.string()).min(2) }))
-    .default([]),
+    packages: z
+      .object({
+        ignore: z.array(z.string()).default([]),
+      })
+      .strict()
+      .default(() => ({ ignore: [] })),
 
-  /**
-   * Repo-scoped rule adjustments: when the current repo's package.json "name"
-   * matches an entry's `match` patterns, its `rules` are upserted into the
-   * base `rules` below, keyed by identity (a rule's `patterns`, or `range`
-   * for engine_version) — a rule with new patterns is added, one whose
-   * patterns match an existing base rule replaces it, and severity 'off'
-   * replaces it with nothing (like ESLint's per-rule 'off'). Lets one shared
-   * config both add rules to a subset of repos (a mandatory dependency for
-   * 30 of 150 apps) and loosen/cancel an org-wide rule for specific repos.
-   */
-  overrides: z.array(OverrideSchema).default([]),
+    versus: z
+      .array(
+        z
+          .object({ name: z.string(), packages: z.array(z.string()).min(2) })
+          .strict(),
+      )
+      .default([]),
 
-  rules: z
-    .object({
-      detect_files: RuleConfigOrArraySchema.default([]),
-      require_files: RuleConfigOrArraySchema.default([]),
-      forbid_packages: RuleConfigOrArraySchema.default([]),
-      require_packages: RuleConfigOrArraySchema.default([]),
-      require_scripts: RuleConfigOrArraySchema.default([]),
-      require_package_fields: PackageFieldRuleOrArraySchema.default([]),
-      forbid_package_fields: PackageFieldRuleOrArraySchema.default([]),
-      engine_version: z
-        .union([EngineVersionRuleSchema, z.array(EngineVersionRuleSchema)])
-        .optional(),
-      codeowners: CodeownersRuleSchema.optional(),
-    })
-    .default(() => ({
-      detect_files: [] as RuleConfig[],
-      require_files: [] as RuleConfig[],
-      forbid_packages: [] as RuleConfig[],
-      require_packages: [] as RuleConfig[],
-      require_scripts: [] as RuleConfig[],
-      require_package_fields: [] as PackageFieldRule[],
-      forbid_package_fields: [] as PackageFieldRule[],
-    })),
+    /**
+     * Repo-scoped rule adjustments: when the current repo's package.json "name"
+     * matches an entry's `match` patterns, its `rules` are upserted into the
+     * base `rules` below, keyed by identity (a rule's `patterns`, or `range`
+     * for require-engine-version) — a rule with new patterns is added, one
+     * whose patterns match an existing base rule replaces it, and severity
+     * 'off' replaces it with nothing (like ESLint's per-rule 'off'). Lets one
+     * shared config both add rules to a subset of repos (a mandatory
+     * dependency for 30 of 150 apps) and loosen/cancel an org-wide rule for
+     * specific repos.
+     */
+    overrides: z.array(OverrideSchema).default([]),
 
-  output: z
-    .object({
-      summary: z.union([z.literal('log'), z.literal(false)]).default('log'),
-      components: z
-        .union([z.enum(['table', 'chart']), z.literal(false)])
-        .default('table'),
-      packages: z
-        .union([z.enum(['table', 'chart']), z.literal(false)])
-        .default('table'),
-      patterns: z
-        .union([z.enum(['table', 'chart']), z.literal(false)])
-        .default('table'),
-      details: z.boolean().default(false),
-      versus: z.boolean().default(true),
-      rules: z.boolean().default(true),
-      format: z.enum(['human', 'json']).default('human'),
-    })
-    .default(() => ({
-      summary: 'log' as const,
-      components: 'table' as const,
-      packages: 'table' as const,
-      patterns: 'table' as const,
-      details: false,
-      versus: true,
-      rules: true,
-      format: 'human' as const,
-    })),
+    /**
+     * Plugins run other tools and fold their findings into this run — hermex
+     * orchestrates, it never reimplements (#102). Each is a plain object with
+     * a canonical `name` and a `hooks` envelope; declare them inline to keep
+     * the config importable under `npx` with no `node_modules`, since only
+     * `node:` builtins and `import type` resolve there.
+     *
+     * hermex owns the channel and nothing else: granularity and severity are
+     * the plugin's, configured in the plugin's own idiom, so `rules` below
+     * stays exclusively hermex's own.
+     */
+    plugins: PluginsSchema.default([]),
 
-  releaseAge: z
-    .object({
-      enabled: z.boolean().default(false),
-      registry: z.string().default('https://registry.npmjs.org'),
-      authToken: z.string().optional(),
-      thresholds: z
-        .object({
-          patch: ThresholdSchema.default(30),
-          minor: ThresholdSchema.default(45),
-          major: ThresholdSchema.default(60),
-        })
-        .default(() => ({ patch: 30, minor: 45, major: 60 })),
-      enforceOn: z.array(z.string()).default([]),
-      cacheTtlMs: z.number().int().positive().optional(),
-      cacheDisabled: z.boolean().default(false),
-      // 'root' checks only each package's direct/root-installed version;
-      // 'tree' checks every resolved copy in the lockfile, failing if any
-      // is overdue. Nested duplicates are always visible as advisory data
-      // regardless of scope — this only decides what's mandatory (#57).
-      scope: z.enum(['root', 'tree']).default('root'),
-      // Glob-matched (like enforceOn): packages matching here use the
-      // OPPOSITE of `scope`, letting one global policy carve out
-      // exceptions for specific packages.
-      scopeExceptions: z.array(z.string()).default([]),
-    })
-    .default(() => ({
-      enabled: false,
-      registry: 'https://registry.npmjs.org',
-      thresholds: { patch: 30, minor: 45, major: 60 },
-      enforceOn: [],
-      cacheDisabled: false,
-      scope: 'root' as const,
-      scopeExceptions: [],
-    })),
-});
+    rules: z
+      .object({
+        'no-files': RuleConfigOrArraySchema.default([]),
+        'require-files': RuleConfigOrArraySchema.default([]),
+        'max-file-size': MaxFileSizeRuleOrArraySchema.default([]),
+        'no-packages': RuleConfigOrArraySchema.default([]),
+        'require-packages': RuleConfigOrArraySchema.default([]),
+        'require-scripts': RuleConfigOrArraySchema.default([]),
+        'require-package-fields': PackageFieldRuleOrArraySchema.default([]),
+        'no-package-fields': PackageFieldRuleOrArraySchema.default([]),
+        'require-engine-version': z
+          .union([EngineVersionRuleSchema, z.array(EngineVersionRuleSchema)])
+          .optional(),
+        'require-codeowners': CodeownersRuleSchema.optional(),
+        'release-age': ReleaseAgeRuleOrArraySchema.default([]),
+      })
+      .strict()
+      .default(() => ({
+        'no-files': [] as RuleConfig[],
+        'require-files': [] as RuleConfig[],
+        'max-file-size': [] as MaxFileSizeRule[],
+        'no-packages': [] as RuleConfig[],
+        'require-packages': [] as RuleConfig[],
+        'require-scripts': [] as RuleConfig[],
+        'require-package-fields': [] as PackageFieldRule[],
+        'no-package-fields': [] as PackageFieldRule[],
+        'release-age': [] as ReleaseAgeRuleConfig[],
+      })),
+
+    output: z
+      .object({
+        summary: z.union([z.literal('log'), z.literal(false)]).default('log'),
+        components: z
+          .union([z.enum(['table', 'chart']), z.literal(false)])
+          .default('table'),
+        packages: z
+          .union([z.enum(['table', 'chart']), z.literal(false)])
+          .default('table'),
+        patterns: z
+          .union([z.enum(['table', 'chart']), z.literal(false)])
+          .default('table'),
+        details: z.boolean().default(false),
+        versus: z.boolean().default(true),
+        rules: z.boolean().default(true),
+        format: z.enum(['human', 'json']).default('human'),
+      })
+      .strict()
+      .default(() => ({
+        summary: 'log' as const,
+        components: 'table' as const,
+        packages: 'table' as const,
+        patterns: 'table' as const,
+        details: false,
+        versus: true,
+        rules: true,
+        format: 'human' as const,
+      })),
+
+    /**
+     * Connection/infra settings for the `release-age` rule (`rules['release-age']`
+     * above) — nothing policy-related lives here. Whether release-age runs
+     * at all is decided by whether `rules['release-age']` resolves to a
+     * non-empty array for a repo, not a flag here — same as every other
+     * rule, where an empty rule list means "does nothing." Only npm is
+     * supported today, so the registry URL isn't configurable; add it back
+     * if/when a second registry is actually needed.
+     */
+    releaseAge: z
+      .object({
+        authToken: z.string().optional(),
+        cacheTtlMs: z.number().int().positive().optional(),
+        cacheDisabled: z.boolean().default(false),
+      })
+      .strict()
+      .default(() => ({ cacheDisabled: false })),
+  })
+  .strict();
 
 // ── Derived types ──────────────────────────────────────────────────────────────
 
@@ -200,14 +380,20 @@ export type HermexConfigInput = z.input<typeof HermexConfigSchema>;
 
 // Sub-types derived from the output shape so they can never drift from the schema
 export type RuleSeverity = z.infer<typeof RuleSeveritySchema>;
+export type ParserName = z.infer<typeof ParserSchema>;
 export type RuleConfig = z.infer<typeof RuleConfigSchema>;
 export type PackageFieldRule = z.infer<typeof PackageFieldRuleSchema>;
+/** `maxSize` is normalized to whole bytes on parse — authored as `number | string`, read as `number`. */
+export type MaxFileSizeRule = z.infer<typeof MaxFileSizeRuleSchema>;
 export type EngineVersionRule = z.infer<typeof EngineVersionRuleSchema>;
 export type CodeownersRule = z.infer<typeof CodeownersRuleSchema>;
+export type ReleaseAgeRuleConfig = z.infer<typeof ReleaseAgeRuleConfigSchema>;
 export type PackagesConfig = HermexConfig['packages'];
 export type VersusConfig = HermexConfig['versus'][number];
 export type RulesConfig = HermexConfig['rules'];
 export type OverrideConfig = HermexConfig['overrides'][number];
 export type OutputConfig = HermexConfig['output'];
+export type PluginsConfig = HermexConfig['plugins'];
+/** Connection/infra settings only — policy lives on each `ReleaseAgeRuleConfig` entry instead. */
 export type ReleaseAgeConfig = HermexConfig['releaseAge'];
-export type ReleaseAgeThresholds = HermexConfig['releaseAge']['thresholds'];
+export type ReleaseAgeThresholds = ReleaseAgeRuleConfig['thresholds'];

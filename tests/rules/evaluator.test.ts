@@ -8,6 +8,7 @@ import { evaluateFileRules } from '../../src/rules/file-rules';
 import { evaluateScriptRules } from '../../src/rules/script-rules';
 import { evaluatePackageFieldRules } from '../../src/rules/package-field-rules';
 import { evaluateEngineVersion } from '../../src/rules/engine-version';
+import { evaluateMaxFileSize } from '../../src/rules/max-file-size';
 
 let tempDir: string;
 
@@ -16,15 +17,16 @@ let tempDir: string;
 // pipeline runs — see src/config/overrides.ts) — this is enforced by
 // ResolvedRulesConfig's type, not re-checked here.
 const emptyRules: ResolvedRulesConfig = {
-  detect_files: [],
-  require_files: [],
-  forbid_packages: [],
-  require_packages: [],
-  require_scripts: [],
-  require_package_fields: [],
-  forbid_package_fields: [],
-  engine_version: [],
-  codeowners: undefined,
+  'no-files': [],
+  'require-files': [],
+  'max-file-size': [],
+  'no-packages': [],
+  'require-packages': [],
+  'require-scripts': [],
+  'require-package-fields': [],
+  'no-package-fields': [],
+  'require-engine-version': [],
+  'require-codeowners': undefined,
 };
 
 beforeAll(() => {
@@ -50,61 +52,63 @@ afterAll(() => {
 });
 
 describe('evaluateFileRules', () => {
-  it('no violation when detect_files pattern matches nothing', () => {
+  it('no violation when no-files pattern matches nothing', () => {
     const result = evaluateFileRules(
       tempDir,
       {
         ...emptyRules,
-        detect_files: [{ severity: 'error', patterns: ['**/*.java'] }],
+        'no-files': [{ severity: 'error', patterns: ['**/*.java'] }],
       },
       [],
     );
     expect(result).toHaveLength(0);
   });
 
-  it('violation when detect_files pattern matches a file', () => {
+  it('violation when no-files pattern matches a file', () => {
     const result = evaluateFileRules(
       tempDir,
       {
         ...emptyRules,
-        detect_files: [{ severity: 'error', patterns: ['src/legacy.js'] }],
+        'no-files': [{ severity: 'error', patterns: ['src/legacy.js'] }],
       },
       [],
     );
     expect(result).toHaveLength(1);
-    expect(result[0].type).toBe('detect_files');
+    expect(result[0].ruleId).toBe('no-files');
     expect(result[0].severity).toBe('error');
-    expect(result[0].matchedFiles.length).toBeGreaterThan(0);
-    for (const file of result[0].matchedFiles) {
-      expect(isAbsolute(file)).toBe(false);
+    for (const v of result) {
+      expect(isAbsolute((v as { matchedFile: string }).matchedFile)).toBe(
+        false,
+      );
     }
-    expect(result[0].matchedFiles).toContain('src/legacy.js');
+    expect(
+      result.map((v) => (v as { matchedFile: string }).matchedFile),
+    ).toContain('src/legacy.js');
   });
 
-  it('no violation when require_files pattern matches a file', () => {
+  it('no violation when require-files pattern matches a file', () => {
     const result = evaluateFileRules(
       tempDir,
       {
         ...emptyRules,
-        require_files: [{ severity: 'error', patterns: ['src/App.tsx'] }],
+        'require-files': [{ severity: 'error', patterns: ['src/App.tsx'] }],
       },
       [],
     );
     expect(result).toHaveLength(0);
   });
 
-  it('violation when require_files pattern matches nothing', () => {
+  it('violation when require-files pattern matches nothing', () => {
     const result = evaluateFileRules(
       tempDir,
       {
         ...emptyRules,
-        require_files: [{ severity: 'warn', patterns: ['src/missing.ts'] }],
+        'require-files': [{ severity: 'warn', patterns: ['src/missing.ts'] }],
       },
       [],
     );
     expect(result).toHaveLength(1);
-    expect(result[0].type).toBe('require_files');
-    expect(result[0].matchedFiles).toHaveLength(0);
+    expect(result[0].ruleId).toBe('require-files');
   });
 
   it('excludes files matching the excludes list', () => {
@@ -112,19 +116,19 @@ describe('evaluateFileRules', () => {
       tempDir,
       {
         ...emptyRules,
-        detect_files: [{ severity: 'error', patterns: ['src/legacy.js'] }],
+        'no-files': [{ severity: 'error', patterns: ['src/legacy.js'] }],
       },
       ['src/legacy.js'],
     );
     expect(result).toHaveLength(0);
   });
 
-  it('detect_files with severity info produces an info-severity violation when the file is present', () => {
+  it('no-files with severity info produces an info-severity violation when the file is present', () => {
     const result = evaluateFileRules(
       tempDir,
       {
         ...emptyRules,
-        detect_files: [
+        'no-files': [
           {
             severity: 'info',
             patterns: ['src/legacy.js'],
@@ -135,29 +139,31 @@ describe('evaluateFileRules', () => {
       [],
     );
     expect(result).toHaveLength(1);
-    expect(result[0].type).toBe('detect_files');
+    expect(result[0].ruleId).toBe('no-files');
     expect(result[0].severity).toBe('info');
-    expect(result[0].matchedFiles).toContain('src/legacy.js');
+    expect((result[0] as { matchedFile: string }).matchedFile).toBe(
+      'src/legacy.js',
+    );
   });
 
-  it('detect_files produces nothing when the file is absent', () => {
+  it('no-files produces nothing when the file is absent', () => {
     const result = evaluateFileRules(
       tempDir,
       {
         ...emptyRules,
-        detect_files: [{ severity: 'info', patterns: ['src/missing.ts'] }],
+        'no-files': [{ severity: 'info', patterns: ['src/missing.ts'] }],
       },
       [],
     );
     expect(result).toHaveLength(0);
   });
 
-  it('detect_files supports warn and error severities', () => {
+  it('no-files supports warn and error severities', () => {
     const warnResult = evaluateFileRules(
       tempDir,
       {
         ...emptyRules,
-        detect_files: [{ severity: 'warn', patterns: ['src/legacy.js'] }],
+        'no-files': [{ severity: 'warn', patterns: ['src/legacy.js'] }],
       },
       [],
     );
@@ -167,7 +173,7 @@ describe('evaluateFileRules', () => {
       tempDir,
       {
         ...emptyRules,
-        detect_files: [{ severity: 'error', patterns: ['src/legacy.js'] }],
+        'no-files': [{ severity: 'error', patterns: ['src/legacy.js'] }],
       },
       [],
     );
@@ -176,7 +182,7 @@ describe('evaluateFileRules', () => {
 });
 
 describe('evaluateFileRules — schema defaults', () => {
-  it('parses successfully with detect_files/require_files defaulting to []', () => {
+  it('parses successfully with no-files/require-files defaulting to []', () => {
     const result = evaluateFileRules(tempDir, emptyRules, []);
     expect(result).toHaveLength(0);
   });
@@ -186,7 +192,7 @@ describe('evaluateScriptRules', () => {
   it('no violation when required script exists', () => {
     const result = evaluateScriptRules(tempDir, {
       ...emptyRules,
-      require_scripts: [{ severity: 'error', patterns: ['build'] }],
+      'require-scripts': [{ severity: 'error', patterns: ['build'] }],
     });
     expect(result).toHaveLength(0);
   });
@@ -194,13 +200,13 @@ describe('evaluateScriptRules', () => {
   it('violation when required script is missing', () => {
     const result = evaluateScriptRules(tempDir, {
       ...emptyRules,
-      require_scripts: [{ severity: 'warn', patterns: ['typecheck'] }],
+      'require-scripts': [{ severity: 'warn', patterns: ['typecheck'] }],
     });
     expect(result).toHaveLength(1);
-    expect(result[0].type).toBe('require_scripts');
+    expect(result[0].ruleId).toBe('require-scripts');
   });
 
-  it('returns nothing when no require_scripts rules are configured', () => {
+  it('returns nothing when no require-scripts rules are configured', () => {
     const result = evaluateScriptRules(tempDir, emptyRules);
     expect(result).toHaveLength(0);
   });
@@ -216,7 +222,7 @@ describe('evaluateScriptRules', () => {
       );
       const result = evaluateScriptRules(emptyDir, {
         ...emptyRules,
-        require_scripts: [{ severity: 'error', patterns: ['build'] }],
+        'require-scripts': [{ severity: 'error', patterns: ['build'] }],
       });
       expect(result).toHaveLength(1);
     } finally {
@@ -229,7 +235,7 @@ describe('evaluatePackageFieldRules', () => {
   it('no violation when required field exists in package.json', () => {
     const result = evaluatePackageFieldRules(tempDir, {
       ...emptyRules,
-      require_package_fields: [{ severity: 'error', patterns: ['license'] }],
+      'require-package-fields': [{ severity: 'error', patterns: ['license'] }],
     });
     expect(result).toHaveLength(0);
   });
@@ -237,16 +243,16 @@ describe('evaluatePackageFieldRules', () => {
   it('violation when required field is missing from package.json', () => {
     const result = evaluatePackageFieldRules(tempDir, {
       ...emptyRules,
-      require_package_fields: [{ severity: 'error', patterns: ['funding'] }],
+      'require-package-fields': [{ severity: 'error', patterns: ['funding'] }],
     });
     expect(result).toHaveLength(1);
-    expect(result[0].type).toBe('require_package_fields');
+    expect(result[0].ruleId).toBe('require-package-fields');
   });
 
   it('no violation when required dot-path field is present', () => {
     const result = evaluatePackageFieldRules(tempDir, {
       ...emptyRules,
-      require_package_fields: [
+      'require-package-fields': [
         { severity: 'error', patterns: ['engines.node'] },
       ],
     });
@@ -256,18 +262,18 @@ describe('evaluatePackageFieldRules', () => {
   it('violation when required dot-path field is missing', () => {
     const result = evaluatePackageFieldRules(tempDir, {
       ...emptyRules,
-      require_package_fields: [
+      'require-package-fields': [
         { severity: 'error', patterns: ['engines.npm'] },
       ],
     });
     expect(result).toHaveLength(1);
-    expect(result[0].type).toBe('require_package_fields');
+    expect(result[0].ruleId).toBe('require-package-fields');
   });
 
   it('no violation when required field value matches the values pattern', () => {
     const result = evaluatePackageFieldRules(tempDir, {
       ...emptyRules,
-      require_package_fields: [
+      'require-package-fields': [
         {
           severity: 'error',
           patterns: ['packageManager'],
@@ -281,7 +287,7 @@ describe('evaluatePackageFieldRules', () => {
   it('violation with fieldPath and actualValue when required field value does not match the values pattern', () => {
     const result = evaluatePackageFieldRules(tempDir, {
       ...emptyRules,
-      require_package_fields: [
+      'require-package-fields': [
         {
           severity: 'error',
           patterns: ['packageManager'],
@@ -290,7 +296,7 @@ describe('evaluatePackageFieldRules', () => {
       ],
     });
     expect(result).toHaveLength(1);
-    expect(result[0].type).toBe('require_package_fields');
+    expect(result[0].ruleId).toBe('require-package-fields');
     expect(result[0].fieldPath).toBe('packageManager');
     expect(result[0].actualValue).toBe('pnpm@10.12.0');
   });
@@ -298,19 +304,17 @@ describe('evaluatePackageFieldRules', () => {
   it('violation with fieldPath when a forbidden field is present', () => {
     const result = evaluatePackageFieldRules(tempDir, {
       ...emptyRules,
-      forbid_package_fields: [{ severity: 'error', patterns: ['jest'] }],
+      'no-package-fields': [{ severity: 'error', patterns: ['jest'] }],
     });
     expect(result).toHaveLength(1);
-    expect(result[0].type).toBe('forbid_package_fields');
+    expect(result[0].ruleId).toBe('no-package-fields');
     expect(result[0].fieldPath).toBe('jest');
   });
 
   it('no violation when a forbidden field is absent', () => {
     const result = evaluatePackageFieldRules(tempDir, {
       ...emptyRules,
-      forbid_package_fields: [
-        { severity: 'error', patterns: ['eslintConfig'] },
-      ],
+      'no-package-fields': [{ severity: 'error', patterns: ['eslintConfig'] }],
     });
     expect(result).toHaveLength(0);
   });
@@ -318,7 +322,7 @@ describe('evaluatePackageFieldRules', () => {
   it('no violation when forbidden field value does not match the values pattern', () => {
     const result = evaluatePackageFieldRules(tempDir, {
       ...emptyRules,
-      forbid_package_fields: [
+      'no-package-fields': [
         { severity: 'error', patterns: ['license'], values: ['GPL*'] },
       ],
     });
@@ -336,7 +340,7 @@ describe('evaluatePackageFieldRules', () => {
       );
       const result = evaluatePackageFieldRules(objectFieldDir, {
         ...emptyRules,
-        forbid_package_fields: [
+        'no-package-fields': [
           { severity: 'error', patterns: ['jest'], values: ['*'] },
         ],
       });
@@ -357,7 +361,7 @@ describe('evaluatePackageFieldRules', () => {
       );
       const result = evaluatePackageFieldRules(nullFieldDir, {
         ...emptyRules,
-        forbid_package_fields: [
+        'no-package-fields': [
           { severity: 'error', patterns: ['license'], values: ['*'] },
         ],
       });
@@ -370,12 +374,12 @@ describe('evaluatePackageFieldRules', () => {
   it('violation when forbidden field value matches the values pattern', () => {
     const result = evaluatePackageFieldRules(tempDir, {
       ...emptyRules,
-      forbid_package_fields: [
+      'no-package-fields': [
         { severity: 'error', patterns: ['license'], values: ['MIT'] },
       ],
     });
     expect(result).toHaveLength(1);
-    expect(result[0].type).toBe('forbid_package_fields');
+    expect(result[0].ruleId).toBe('no-package-fields');
   });
 
   it('require rules violate and forbid rules do not when package.json is absent', () => {
@@ -383,14 +387,14 @@ describe('evaluatePackageFieldRules', () => {
     try {
       const requireResult = evaluatePackageFieldRules(emptyDir, {
         ...emptyRules,
-        require_package_fields: [{ severity: 'error', patterns: ['name'] }],
+        'require-package-fields': [{ severity: 'error', patterns: ['name'] }],
       });
       expect(requireResult).toHaveLength(1);
-      expect(requireResult[0].type).toBe('require_package_fields');
+      expect(requireResult[0].ruleId).toBe('require-package-fields');
 
       const forbidResult = evaluatePackageFieldRules(emptyDir, {
         ...emptyRules,
-        forbid_package_fields: [{ severity: 'error', patterns: ['jest'] }],
+        'no-package-fields': [{ severity: 'error', patterns: ['jest'] }],
       });
       expect(forbidResult).toHaveLength(0);
     } finally {
@@ -403,7 +407,7 @@ describe('evaluateEngineVersion', () => {
   it('no violation when installed node range satisfies requirement', () => {
     const result = evaluateEngineVersion(tempDir, {
       ...emptyRules,
-      engine_version: [{ severity: 'error', range: '>=16.0.0' }],
+      'require-engine-version': [{ severity: 'error', range: '>=16.0.0' }],
     });
     expect(result).toHaveLength(0);
   });
@@ -411,15 +415,15 @@ describe('evaluateEngineVersion', () => {
   it('violation when installed node range does not satisfy requirement', () => {
     const result = evaluateEngineVersion(tempDir, {
       ...emptyRules,
-      engine_version: [{ severity: 'error', range: '>=24.0.0' }],
+      'require-engine-version': [{ severity: 'error', range: '>=24.0.0' }],
     });
     expect(result).toHaveLength(1);
-    expect(result[0].type).toBe('engine_version');
+    expect(result[0].ruleId).toBe('require-engine-version');
     expect(result[0].installedRange).toBe('>=18.0.0');
     expect(result[0].requiredRange).toBe('>=24.0.0');
   });
 
-  it('returns nothing when no engine_version rule is configured', () => {
+  it('returns nothing when no require-engine-version rule is configured', () => {
     const result = evaluateEngineVersion(tempDir, emptyRules);
     expect(result).toHaveLength(0);
   });
@@ -444,7 +448,7 @@ describe('evaluateEngineVersion', () => {
     it('reports "not specified" with the default message when no message is configured', () => {
       const result = evaluateEngineVersion(noEnginesDir, {
         ...emptyRules,
-        engine_version: [{ severity: 'error', range: '>=18.0.0' }],
+        'require-engine-version': [{ severity: 'error', range: '>=18.0.0' }],
       });
       expect(result).toHaveLength(1);
       expect(result[0].installedRange).toBeUndefined();
@@ -457,7 +461,7 @@ describe('evaluateEngineVersion', () => {
     it('uses a custom message when configured', () => {
       const result = evaluateEngineVersion(noEnginesDir, {
         ...emptyRules,
-        engine_version: [
+        'require-engine-version': [
           {
             severity: 'error',
             range: '>=18.0.0',
@@ -470,20 +474,132 @@ describe('evaluateEngineVersion', () => {
   });
 });
 
+describe('evaluateMaxFileSize', () => {
+  // Sizes are exact and platform-independent: every asset is written as a
+  // single run of ASCII with no newline, so nothing here depends on how the
+  // checkout handles line endings.
+  beforeAll(() => {
+    mkdirSync(join(tempDir, 'assets'), { recursive: true });
+    writeFileSync(join(tempDir, 'assets', 'small.svg'), 'a'.repeat(100));
+    writeFileSync(join(tempDir, 'assets', 'big.svg'), 'a'.repeat(2048));
+    writeFileSync(join(tempDir, 'assets', 'huge.svg'), 'a'.repeat(4096));
+  });
+
+  const rules = (rule: { maxSize: number; patterns?: string[] }) => ({
+    ...emptyRules,
+    'max-file-size': [
+      {
+        severity: 'error' as const,
+        patterns: rule.patterns ?? ['assets/**/*.svg'],
+        maxSize: rule.maxSize,
+      },
+    ],
+  });
+
+  it('no violation when every matched file is within the ceiling', () => {
+    const result = evaluateMaxFileSize(tempDir, rules({ maxSize: 8192 }), []);
+    expect(result).toHaveLength(0);
+  });
+
+  it('no violation when the pattern matches nothing', () => {
+    const result = evaluateMaxFileSize(
+      tempDir,
+      rules({ maxSize: 1, patterns: ['assets/**/*.png'] }),
+      [],
+    );
+    expect(result).toHaveLength(0);
+  });
+
+  // One atomic violation per oversize file — `print-rules.ts`'s default
+  // fold renderer is what turns these back into one readable row so a
+  // pattern matching hundreds of oversize assets doesn't flood the table.
+  it('reports one violation per oversize file', () => {
+    const result = evaluateMaxFileSize(tempDir, rules({ maxSize: 1024 }), []);
+    expect(result).toHaveLength(2);
+    for (const v of result) {
+      expect(v.ruleId).toBe('max-file-size');
+      expect(v.severity).toBe('error');
+      expect(
+        isAbsolute((v as { oversizeFile: { file: string } }).oversizeFile.file),
+      ).toBe(false);
+    }
+    expect(
+      result.map(
+        (v) => (v as { oversizeFile: { file: string } }).oversizeFile.file,
+      ),
+    ).toEqual(['assets/huge.svg', 'assets/big.svg']);
+  });
+
+  it('carries the ceiling and each file size', () => {
+    const result = evaluateMaxFileSize(tempDir, rules({ maxSize: 1024 }), []);
+    expect(result).toMatchObject([
+      {
+        maxSizeBytes: 1024,
+        oversizeFile: { file: 'assets/huge.svg', sizeBytes: 4096 },
+      },
+      {
+        maxSizeBytes: 1024,
+        oversizeFile: { file: 'assets/big.svg', sizeBytes: 2048 },
+      },
+    ]);
+  });
+
+  // Strictly greater-than: a file sitting exactly on the ceiling is allowed,
+  // the way "max 200kb" reads to whoever wrote it.
+  it('allows a file exactly at the ceiling', () => {
+    const result = evaluateMaxFileSize(tempDir, rules({ maxSize: 4096 }), []);
+    expect(result).toHaveLength(0);
+  });
+
+  it('honours excludes', () => {
+    const result = evaluateMaxFileSize(tempDir, rules({ maxSize: 1024 }), [
+      '**/huge.svg',
+    ]);
+    expect(result).toHaveLength(1);
+    expect(
+      (result[0] as { oversizeFile: { file: string } }).oversizeFile.file,
+    ).toBe('assets/big.svg');
+  });
+
+  it('evaluates each rule independently', () => {
+    const result = evaluateMaxFileSize(
+      tempDir,
+      {
+        ...emptyRules,
+        'max-file-size': [
+          { severity: 'error', patterns: ['assets/big.svg'], maxSize: 1024 },
+          { severity: 'warn', patterns: ['assets/huge.svg'], maxSize: 1024 },
+        ],
+      },
+      [],
+    );
+    expect(result).toHaveLength(2);
+    expect(result.map((v) => v.severity)).toEqual(['error', 'warn']);
+  });
+
+  it('returns nothing when no max-file-size rule is configured', () => {
+    expect(evaluateMaxFileSize(tempDir, emptyRules, [])).toHaveLength(0);
+  });
+});
+
 describe('evaluateRules — integration', () => {
   it('aggregates violations from all sub-evaluators', () => {
     const result = evaluateRules(
       tempDir,
       {
         ...emptyRules,
-        detect_files: [{ severity: 'error', patterns: ['src/legacy.js'] }],
-        require_scripts: [{ severity: 'warn', patterns: ['typecheck'] }],
+        'no-files': [{ severity: 'error', patterns: ['src/legacy.js'] }],
+        'require-scripts': [{ severity: 'warn', patterns: ['typecheck'] }],
+        'max-file-size': [
+          { severity: 'warn', patterns: ['assets/huge.svg'], maxSize: 1 },
+        ],
       },
       [],
     );
-    const types = result.map((v) => v.type);
-    expect(types).toContain('detect_files');
-    expect(types).toContain('require_scripts');
+    const types = result.map((v) => v.ruleId);
+    expect(types).toContain('no-files');
+    expect(types).toContain('require-scripts');
+    expect(types).toContain('max-file-size');
   });
 
   it('returns empty array when no rules configured', () => {

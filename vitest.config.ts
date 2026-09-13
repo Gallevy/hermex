@@ -7,11 +7,20 @@ import {
 export default defineConfig({
   test: {
     environment: 'node',
-    // Agent tooling checks the whole repo out into nested working copies.
-    // Without this, vitest discovers their test files too and runs a stale
-    // copy of the suite against the current source — locally that turned a
-    // clean run into 67 failures across 400 files.
-    exclude: [...configDefaults.exclude, '**/.claude/**', '**/.agents/**'],
+    // Agent tooling checks the whole repo out into nested working copies,
+    // and so does the output-review runner's reference-branch build
+    // (scripts/output-review.ts's buildReference, under
+    // .output-review/reference/<sha>/). Without this, vitest discovers
+    // their test files too and runs a stale copy of the suite against the
+    // current source — locally that turned a clean run into 67 failures
+    // across 400 files, and doubled the count entirely once the reference
+    // build started leaving a nested checkout behind.
+    exclude: [
+      ...configDefaults.exclude,
+      '**/.claude/**',
+      '**/.agents/**',
+      '**/.output-review/**',
+    ],
     coverage: {
       provider: 'v8',
       // Coverage measures the published package. `scripts/` is repo tooling

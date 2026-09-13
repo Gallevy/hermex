@@ -232,7 +232,6 @@ describe('aggregateReports — package distribution', () => {
     expect(dist.componentCount).toBe(1);
     expect(dist.usageCount).toBe(1);
     expect(dist.percentage).toBe(100);
-    expect(dist.internal).toBe(false);
   });
 
   it('resolves subpath imports to the base package', () => {
@@ -258,30 +257,17 @@ describe('aggregateReports — package distribution', () => {
     expect(result.totalComponents).toBe(2);
   });
 
-  it('marks packages matching internal patterns as internal', () => {
-    const report = reportWithNamedImport('Card', '@company/ui');
-    const config = createConfig({ packages: { internal: ['@company/*'] } });
-
-    const result = aggregateReports(
-      [report],
-      { '@company/ui': '2.0.0' },
-      config,
-    );
-
-    expect(result.packageDistribution).toHaveLength(1);
-    const dist = result.packageDistribution[0];
-    expect(dist.packageName).toBe('@company/ui');
-    expect(dist.version).toBe('2.0.0');
-    expect(dist.internal).toBe(true);
-  });
-
-  it('surfaces a lockfile-only, side-effect-imported package that matches releaseAge.enforceOn', () => {
+  it('surfaces a lockfile-only, side-effect-imported package matched by a release-age rule', () => {
     // No component ever imports '@acme-ui/pulse-styles' — it's a CSS
     // package pulled in only via `import '@acme-ui/pulse-styles/button.css'`,
     // which has no specifiers and never shows up in JSX/import usage.
     const report = reportWithNamedImport('Button', 'react');
     const config = createConfig({
-      releaseAge: { enabled: true, enforceOn: ['@acme-ui/pulse-styles'] },
+      rules: {
+        'release-age': [
+          { severity: 'error', patterns: ['@acme-ui/pulse-styles'] },
+        ],
+      },
     });
 
     const result = aggregateReports(
@@ -305,7 +291,7 @@ describe('aggregateReports — forbidden packages', () => {
     const report = reportWithNamedImport('Moment', 'moment');
     const config = createConfig({
       rules: {
-        forbid_packages: [
+        'no-packages': [
           { severity: 'error', patterns: ['moment'], message: 'Use dayjs' },
         ],
       },
@@ -315,38 +301,37 @@ describe('aggregateReports — forbidden packages', () => {
 
     expect(result.ruleViolations).toHaveLength(1);
     expect(result.ruleViolations[0]).toEqual({
-      type: 'forbid_packages',
+      ruleId: 'no-packages',
       severity: 'error',
       patterns: ['moment'],
       message: 'Use dayjs',
-      matchedFiles: [],
       packageName: 'moment',
     });
   });
 
   // #77: one list, so a consumer iterating ruleViolations can't miss a
-  // forbid_packages hit the way it could when they lived in their own field.
-  it('puts forbid_packages and require_packages hits in one list, in detection order', () => {
+  // no-packages hit the way it could when they lived in their own field.
+  it('puts no-packages and require-packages hits in one list, in detection order', () => {
     const report = reportWithNamedImport('Moment', 'moment');
     const config = createConfig({
       rules: {
-        forbid_packages: [{ severity: 'error', patterns: ['moment'] }],
-        require_packages: [{ severity: 'error', patterns: ['dayjs'] }],
+        'no-packages': [{ severity: 'error', patterns: ['moment'] }],
+        'require-packages': [{ severity: 'error', patterns: ['dayjs'] }],
       },
     });
 
     const result = aggregateReports([report], { moment: '2.29.0' }, config);
 
-    expect(result.ruleViolations.map((v) => v.type)).toEqual([
-      'forbid_packages',
-      'require_packages',
+    expect(result.ruleViolations.map((v) => v.ruleId)).toEqual([
+      'no-packages',
+      'require-packages',
     ]);
   });
 
   it('reports no violations when no package matches', () => {
     const report = reportWithNamedImport('Button', 'react');
     const config = createConfig({
-      rules: { forbid_packages: [{ severity: 'warn', patterns: ['moment'] }] },
+      rules: { 'no-packages': [{ severity: 'warn', patterns: ['moment'] }] },
     });
 
     const result = aggregateReports([report], { react: '18.0.0' }, config);
@@ -358,7 +343,7 @@ describe('aggregateReports — forbidden packages', () => {
     const report = reportWithNamedImport('Button', 'react');
     const config = createConfig({
       rules: {
-        forbid_packages: [
+        'no-packages': [
           { severity: 'error', patterns: ['jest'], message: 'Use vitest' },
         ],
       },
@@ -375,11 +360,10 @@ describe('aggregateReports — forbidden packages', () => {
 
     expect(result.ruleViolations).toEqual([
       {
-        type: 'forbid_packages',
+        ruleId: 'no-packages',
         severity: 'error',
         patterns: ['jest'],
         message: 'Use vitest',
-        matchedFiles: [],
         packageName: 'jest',
       },
     ]);

@@ -2,7 +2,7 @@ import type { FixtureCase } from '../scripts/output-review.ts';
 
 /**
  * The output-review matrix: every case `pnpm run test:output` runs, diffs
- * against `tests/__output_baselines__/`, and lists in the PR comment.
+ * against a fresh build of the target branch, and lists in the PR comment.
  *
  * Adding a case is one entry here plus (usually) one config in
  * `./configs/`. Nothing else knows the list — the runner, the CI matrix and
@@ -19,7 +19,7 @@ export const cases: FixtureCase[] = [
   {
     name: 'scan-human-default',
     proves:
-      'Baseline human output: the sections a repo gets with no output config of its own.',
+      'Baseline human output: the sections a repo gets with no output config of its own. Includes both Versus groups — a component pair and a function-only one — which is where #174 is visible: the function-only group reports a real split off files-that-import, where it used to read 0 vs 0 off JSX renders, and the package named by no lockfile entry says so instead of reporting a confident 0%.',
     cwd: '.',
     args: ['scan'],
     expectExit: 0,
@@ -56,7 +56,7 @@ export const cases: FixtureCase[] = [
   {
     name: 'scan-json',
     proves:
-      'The full JSON contract: summary.patternCounts (#80), every owned package in packages[], de-duplicated components (#78, #79), and the compliance block (#55).',
+      'The full JSON contract: summary.patternCounts (#80), every owned package in packages[], de-duplicated components (#78, #79), and the compliance block (#55). Also the imported axis (#174): packages[].importingFileCount beside usageCount — lodash and es-toolkit read non-zero on the first and 0 on the second — and versus[].count keyed on it, with present:false marking a configured package the repo does not have.',
     cwd: '.',
     args: ['scan', '--format', 'json'],
     expectExit: 0,
@@ -114,26 +114,37 @@ export const cases: FixtureCase[] = [
   {
     name: 'comply-release-age',
     proves:
-      'The flagged-packages table, against a recorded registry: an overdue package with no in-window target (#26), one with a real target, and one merely coming due.',
+      'The flagged-packages table, against a recorded registry: an overdue package with no in-window target (#26), one with a real target, and one merely coming due. `rules[\'release-age\']` names two of them at severity error, so the same three packages split across both severity tiers via the implicit `[\'**\']` baseline for everything else — pair it with comply-release-age-unscoped, where the identical repo is checked with nothing enforced.',
     cwd: '.',
     args: ['comply', '--config', 'configs/release-age.config.ts'],
     registry: true,
     expectExit: 1,
   },
   {
+    name: 'comply-release-age-unscoped',
+    proves:
+      'An authored catch-all at severity `warn` (no package-specific `error` entry) enforces nothing, rather than enforcing everything: every installed package is still fetched and reported, every release-age row is advisory, and the exit code comes from rule violations alone. Includes moment — declared, installed, never imported — which release age never even looked up before #171. The only case covering the nothing-enforced path, which is the one path where #171 can move a verdict.',
+    cwd: '.',
+    args: ['comply', '--config', 'configs/release-age-unscoped.config.ts'],
+    registry: true,
+    expectExit: 1,
+  },
+  {
     name: 'comply-all-rule-types',
     proves:
-      'Every one of the nine rule types in one table, at three severities — the only case that renders engine_version, codeowners and both package-field shapes.',
+      'Every one of the eleven rule types in one run, at three severities — the only case that renders max-file-size, require-engine-version, codeowners, both package-field shapes, and release-age together. release-age itself never gets a Rules-table row (its display is the Packages table) — that split is what this case pins.',
     cwd: 'repos/all-rule-types',
     args: ['comply'],
+    registry: true,
     expectExit: 1,
   },
   {
     name: 'comply-all-rule-types-json',
     proves:
-      'The machine-readable shape of every rule type: fieldPath and actualValue on package-field hits, installedRange/requiredRange on engine_version, matchedFiles on codeowners. Also where #95 is visible — the two codeowners entries are byte-identical apart from matchedFiles.',
+      'The machine-readable shape of every rule type: fieldPath and actualValue on package-field hits, maxSizeBytes/oversizeFile on max-file-size, installedRange/requiredRange on require-engine-version, matchedFile on codeowners, packageName/worstLevel/scope on release-age. Also where the #95 fix is visible — the two codeowners entries now differ by `reason` (\'unowned\' vs \'wrong-owner\'), not just matchedFile.',
     cwd: 'repos/all-rule-types',
     args: ['comply', '--format', 'json'],
+    registry: true,
     expectExit: 1,
   },
   {
@@ -170,7 +181,7 @@ export const cases: FixtureCase[] = [
 
   // ── release-age scope ────────────────────────────────────────────────────
   // The same repo — react 18.3.1 at the root, react 17.0.2 nested under
-  // legacy-widget — under both scopes. The diff between these two baselines
+  // @hermex/legacy-widget — under both scopes. The diff between these two baselines
   // is exactly what `releaseAge.scope` does (#57).
   {
     name: 'release-age-root-scope',

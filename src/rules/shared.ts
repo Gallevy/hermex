@@ -5,36 +5,150 @@ import type {
   DeclaredPackages,
   DependencyBucket,
 } from '../utils/package-inventory';
+// Type-only: `RuleViolation` includes `PluginViolation` while
+// `PluginInventoryView` exposes `RuleViolation`. The cycle is legal for
+// types and erased at runtime.
+import type { PluginViolation } from '../plugins/types';
 
-export interface RuleViolation {
-  type:
-    | 'detect_files'
-    | 'require_files'
-    | 'require_packages'
-    | 'forbid_packages'
-    | 'require_scripts'
-    | 'require_package_fields'
-    | 'forbid_package_fields'
-    | 'engine_version'
-    | 'codeowners';
+interface BaseViolation<T extends string> {
+  ruleId: T;
   severity: 'error' | 'warn' | 'info';
   patterns: string[];
   message?: string;
-  matchedFiles: string[];
-  // engine_version only
-  installedRange?: string;
-  requiredRange?: string;
-  // package-field rules only
+}
+
+/**
+ * Every violation is atomic — one record per actual subject (one file, one
+ * package, one oversize file) — never a bundle. A pattern matching 40 files
+ * is 40 `NoFilesViolation`s sharing `patterns`, not one violation with a
+ * 40-item array. `groupKeyFor` below is what reconstructs a folded,
+ * human-scale display from these at render time (`print-rules.ts`); nothing
+ * about counting or compliance needs to know a fold ever happened.
+ */
+export interface NoFilesViolation extends BaseViolation<'no-files'> {
+  matchedFile: string;
+}
+export type RequireFilesViolation = BaseViolation<'require-files'>;
+export type RequirePackagesViolation = BaseViolation<'require-packages'>;
+export type RequireScriptsViolation = BaseViolation<'require-scripts'>;
+
+export interface RequireCodeownersViolation extends BaseViolation<'require-codeowners'> {
+  /** Distinguishes the three things this rule can report — also part of the
+   * grouping key, since `require-codeowners` has no `patterns` identity of
+   * its own to key on (it's a singleton rule, not an array). */
+  reason: 'missing-file' | 'unowned' | 'wrong-owner';
+  /** Absent only for `reason: 'missing-file'`, which has no file subject. */
+  matchedFile?: string;
+}
+
+/**
+ * The package that matched `patterns`. A package's identity is what the
+ * packages table joins on.
+ */
+export interface NoPackagesViolation extends BaseViolation<'no-packages'> {
+  packageName?: string;
+}
+
+export interface OversizeFile {
+  file: string;
+  sizeBytes: number;
+}
+
+/**
+ * One violation per oversize file. Kept as its own field (not just
+ * `matchedFile`) because a JSON consumer needs the size to know by how much
+ * a file is over without re-stat'ing it.
+ */
+export interface MaxFileSizeViolation extends BaseViolation<'max-file-size'> {
+  /** The rule's `maxSize`, normalized to whole bytes by the config schema. */
+  maxSizeBytes: number;
+  oversizeFile: OversizeFile;
+}
+
+export interface RequirePackageFieldsViolation extends BaseViolation<'require-package-fields'> {
   fieldPath?: string;
   actualValue?: string;
-  /**
-   * forbid_packages only — the package that matched `patterns`. Kept as a
-   * scalar rather than folded into `matchedFiles` because that field is read
-   * as file paths everywhere (`describeViolation` takes basenames off it, the
-   * codeowners branch counts files with it), and because a package's identity
-   * is what the packages table joins on.
-   */
-  packageName?: string;
+}
+
+export interface NoPackageFieldsViolation extends BaseViolation<'no-package-fields'> {
+  fieldPath?: string;
+  actualValue?: string;
+}
+
+export interface RequireEngineVersionViolation extends BaseViolation<'require-engine-version'> {
+  installedRange?: string;
+  requiredRange?: string;
+}
+
+/**
+ * One violation per overdue package — see `src/rules/release-age.ts`.
+ * Renders only in the Packages table (`print-packages.ts`), never in the
+ * Rules table: `RULE_RENDERERS['release-age']` in `print-rules.ts` returns
+ * no rows for it, the same kind of declared, first-class rendering choice
+ * every other rule type makes, not a special case bolted on separately.
+ */
+export interface ReleaseAgeViolation extends BaseViolation<'release-age'> {
+  packageName: string;
+  installedVersion: string;
+  worstLevel: 'minor_overdue' | 'major_overdue';
+  scope: 'root' | 'tree';
+  deprecated?: string;
+}
+
+/**
+ * hermex's own violations — the rules it implements itself. Each has a
+ * literal `ruleId` and may carry rule-specific fields.
+ */
+export type CoreRuleViolation =
+  | NoFilesViolation
+  | RequireFilesViolation
+  | MaxFileSizeViolation
+  | RequirePackagesViolation
+  | NoPackagesViolation
+  | RequireScriptsViolation
+  | RequirePackageFieldsViolation
+  | NoPackageFieldsViolation
+  | RequireEngineVersionViolation
+  | RequireCodeownersViolation
+  | ReleaseAgeViolation;
+
+/**
+ * Everything the rules table and the compliance verdict see, hermex's own
+ * rules and plugin-contributed findings alike (#102). Plugin violations are
+ * structurally uniform — hermex does not model the wrapped tool's domain —
+ * and carry a `plugin` field the core ones never have, which is the
+ * discriminant: narrow with `'plugin' in violation`.
+ */
+export type RuleViolation = CoreRuleViolation | PluginViolation;
+
+/**
+ * The key that reconstructs "one row per rule-config-entry" from a list of
+ * atomic violations: `ruleId` plus the entry's own identity, which is
+ * exactly what `upsertPatternRules`/`upsertEngineVersionRules`
+ * (`src/config/overrides.ts`) already use to keep resolved rule entries
+ * unique — `patterns` (order-independent), or `range` for
+ * `require-engine-version`. Reusing that identity means two atomic
+ * violations from the same rule entry always share a key, and violations
+ * from different entries never collide, with no new bookkeeping. Plugin
+ * violations are excluded on purpose — they're not part of this grouping
+ * model at all, `print-rules.ts` renders each one on its own row as it
+ * always has.
+ */
+export function groupKeyFor(v: CoreRuleViolation): string {
+  if (v.ruleId === 'require-engine-version') {
+    return `require-engine-version:${v.requiredRange ?? ''}`;
+  }
+  if (v.ruleId === 'require-codeowners') {
+    return `require-codeowners:${v.reason}`;
+  }
+  return `${v.ruleId}:${[...v.patterns].sort().join(',')}`;
+}
+
+/** True for findings contributed by a plugin rather than by a hermex rule. */
+export function isPluginViolation(
+  violation: RuleViolation,
+): violation is PluginViolation {
+  return 'plugin' in violation;
 }
 
 export function toArray<T>(val: T | T[] | undefined): T[] {

@@ -14,20 +14,20 @@ import { formatUpgradeCell } from '../../src/utils/print-packages';
 import {
   createMockPackage,
   createMockReleaseAge,
+  createMockReleaseAgeViolation,
 } from '../helpers/mock-reports';
 
-/** A forbid_packages hit, the shape `detectForbiddenPackages` emits (#77). */
+/** A no-packages hit, the shape `detectForbiddenPackages` emits (#77). */
 function forbidViolation(
   packageName: string,
   severity: RuleViolation['severity'] = 'error',
   message?: string,
 ): RuleViolation {
   return {
-    type: 'forbid_packages',
+    ruleId: 'no-packages',
     severity,
     patterns: [packageName],
     message,
-    matchedFiles: [],
     packageName,
   };
 }
@@ -92,10 +92,9 @@ describe('writeSummaryFile', () => {
   it('writes a file with no ANSI escape sequences, even when chalk color is forced on', () => {
     chalk.level = 1;
     const violation: RuleViolation = {
-      type: 'require_files',
+      ruleId: 'require-files',
       severity: 'error',
       patterns: ['.nvmrc'],
-      matchedFiles: [],
     };
     const content = write(makeAggregated({ ruleViolations: [violation] }));
     // oxlint-disable-next-line no-control-regex -- asserting the ANSI escape byte is absent
@@ -107,52 +106,48 @@ describe('writeSummaryFile', () => {
     // list; it's now a markdown table matching the Packages section's shape.
     it('renders violations as a Rule/Description markdown table, not a bullet list', () => {
       const violation: RuleViolation = {
-        type: 'require_files',
+        ruleId: 'require-files',
         severity: 'error',
         patterns: ['.nvmrc'],
-        matchedFiles: [],
       };
       const content = write(makeAggregated({ ruleViolations: [violation] }));
       expect(content).toContain('| | Rule | Description |');
       expect(content).toContain('|---|---|---|');
-      expect(content).toContain('| 🔴 | require_files | .nvmrc not found |');
-      expect(content).not.toContain('- 🔴 require_files —');
+      expect(content).toContain('| 🔴 | require-files | .nvmrc not found |');
+      expect(content).not.toContain('- 🔴 require-files —');
     });
 
     it('excludes an info-severity rule violation from the lines and the error/warning count', () => {
       const errorViolation: RuleViolation = {
-        type: 'require_files',
+        ruleId: 'require-files',
         severity: 'error',
         patterns: ['.nvmrc'],
-        matchedFiles: [],
       };
       const infoViolation: RuleViolation = {
-        type: 'detect_files',
+        ruleId: 'no-files',
         severity: 'info',
         patterns: ['.env'],
-        matchedFiles: ['.env'],
+        matchedFile: '.env',
       };
       const content = write(
         makeAggregated({ ruleViolations: [errorViolation, infoViolation] }),
       );
-      expect(content).toContain('require_files');
-      expect(content).not.toContain('detect_files');
+      expect(content).toContain('require-files');
+      expect(content).not.toContain('no-files');
       expect(content).toContain('1 error');
       expect(content).not.toContain('warning');
     });
 
     it('still shows error and warn severities', () => {
       const errorViolation: RuleViolation = {
-        type: 'require_files',
+        ruleId: 'require-files',
         severity: 'error',
         patterns: ['.nvmrc'],
-        matchedFiles: [],
       };
       const warnViolation: RuleViolation = {
-        type: 'require_files',
+        ruleId: 'require-files',
         severity: 'warn',
         patterns: ['.editorconfig'],
-        matchedFiles: [],
       };
       const content = write(
         makeAggregated({ ruleViolations: [errorViolation, warnViolation] }),
@@ -165,23 +160,23 @@ describe('writeSummaryFile', () => {
     // buildPackagesSection's behavior for a fully-compliant report.
     it('omits the Rules section entirely when only info-severity violations exist', () => {
       const infoViolation: RuleViolation = {
-        type: 'detect_files',
+        ruleId: 'no-files',
         severity: 'info',
         patterns: ['.env'],
-        matchedFiles: ['.env'],
+        matchedFile: '.env',
       };
       const content = write(
         makeAggregated({ ruleViolations: [infoViolation] }),
       );
       expect(content).not.toContain('### Rules');
-      expect(content).not.toContain('detect_files');
-      expect(content).toContain('### 🟢 COMPLIANT');
+      expect(content).not.toContain('no-files');
+      expect(content).toContain('### 🟢 Compliant');
     });
 
     // The row wording is unchanged from when banned packages had their own
     // renderer here — describeViolation now produces it, so the two
     // duplicated loops could collapse into one (#77).
-    it('still shows a banned package as a forbid_packages line', () => {
+    it('still shows a banned package as a no-packages line', () => {
       const content = write(
         makeAggregated({
           ruleViolations: [
@@ -190,7 +185,7 @@ describe('writeSummaryFile', () => {
         }),
       );
       expect(content).toContain(
-        '| 🔴 | forbid_packages | moment is forbidden — Use date-fns or dayjs |',
+        '| 🔴 | no-packages | moment is forbidden — Use date-fns or dayjs |',
       );
     });
 
@@ -198,17 +193,14 @@ describe('writeSummaryFile', () => {
       const content = write(
         makeAggregated({ ruleViolations: [forbidViolation('moment')] }),
       );
-      expect(content).toContain(
-        '| 🔴 | forbid_packages | moment is forbidden |',
-      );
+      expect(content).toContain('| 🔴 | no-packages | moment is forbidden |');
     });
 
     it('shows only a warning count when there are no errors', () => {
       const violation: RuleViolation = {
-        type: 'require_files',
+        ruleId: 'require-files',
         severity: 'warn',
         patterns: ['.editorconfig'],
-        matchedFiles: [],
       };
       const content = write(makeAggregated({ ruleViolations: [violation] }));
       expect(content).toContain('1 warning');
@@ -218,16 +210,14 @@ describe('writeSummaryFile', () => {
     it('pluralizes the error/warning counts when there is more than one of each', () => {
       const errors: RuleViolation[] = [
         {
-          type: 'require_files',
+          ruleId: 'require-files',
           severity: 'error',
           patterns: ['a'],
-          matchedFiles: [],
         },
         {
-          type: 'require_files',
+          ruleId: 'require-files',
           severity: 'error',
           patterns: ['b'],
-          matchedFiles: [],
         },
       ];
       const content = write(
@@ -252,7 +242,7 @@ describe('writeSummaryFile', () => {
       );
       expect(content).not.toContain('### Rules');
       expect(content).not.toContain('some-pkg');
-      expect(content).toContain('### 🟢 COMPLIANT');
+      expect(content).toContain('### 🟢 Compliant');
     });
   });
 
@@ -310,7 +300,15 @@ describe('writeSummaryFile', () => {
         }),
       });
       const content = write(
-        makeAggregated({ packageDistribution: [overdueError] }),
+        makeAggregated({
+          packageDistribution: [overdueError],
+          ruleViolations: [
+            createMockReleaseAgeViolation('my-internal-pkg', {
+              worstLevel: 'major_overdue',
+              severity: 'error',
+            }),
+          ],
+        }),
       );
       expect(content).toContain('### Packages');
       expect(content).toContain('| | Package | Installed | Target |');
@@ -337,7 +335,17 @@ describe('writeSummaryFile', () => {
           ],
         }),
       });
-      const content = write(makeAggregated({ packageDistribution: [both] }));
+      const content = write(
+        makeAggregated({
+          packageDistribution: [both],
+          ruleViolations: [
+            createMockReleaseAgeViolation('my-internal-pkg', {
+              worstLevel: 'major_overdue',
+              severity: 'error',
+            }),
+          ],
+        }),
+      );
       const line = content
         .split('\n')
         .find((l) => l.includes('my-internal-pkg'));
@@ -358,7 +366,15 @@ describe('writeSummaryFile', () => {
         }),
       });
       const content = write(
-        makeAggregated({ packageDistribution: [deprecatedOnlyBreach] }),
+        makeAggregated({
+          packageDistribution: [deprecatedOnlyBreach],
+          ruleViolations: [
+            createMockReleaseAgeViolation('my-internal-pkg', {
+              worstLevel: 'major_overdue',
+              severity: 'error',
+            }),
+          ],
+        }),
       );
       const line = content
         .split('\n')
@@ -377,7 +393,7 @@ describe('writeSummaryFile', () => {
         }),
       );
       expect(content).not.toContain('### Packages');
-      expect(content).toContain('| forbid_packages | moment is forbidden');
+      expect(content).toContain('| 🔴 | no-packages | moment is forbidden');
     });
 
     it('omits the Packages heading entirely when there are no mandatory release-age violations', () => {
@@ -404,7 +420,15 @@ describe('writeSummaryFile', () => {
         }),
       });
       const content = write(
-        makeAggregated({ packageDistribution: [overdueError] }),
+        makeAggregated({
+          packageDistribution: [overdueError],
+          ruleViolations: [
+            createMockReleaseAgeViolation('my-internal-pkg', {
+              worstLevel: 'major_overdue',
+              severity: 'error',
+            }),
+          ],
+        }),
       );
       expect(content).toContain('### Packages\n');
       expect(content).not.toContain('(issues only)');
@@ -435,7 +459,17 @@ describe('writeSummaryFile', () => {
           ],
         }),
       });
-      const content = write(makeAggregated({ packageDistribution: [pkg] }));
+      const content = write(
+        makeAggregated({
+          packageDistribution: [pkg],
+          ruleViolations: [
+            createMockReleaseAgeViolation('some-lib', {
+              worstLevel: 'minor_overdue',
+              severity: 'error',
+            }),
+          ],
+        }),
+      );
       expect(content).toContain('major 1.0.0 (155 days overdue)');
       expect(content).not.toContain('no compliant release available');
     });
@@ -464,7 +498,17 @@ describe('writeSummaryFile', () => {
         ],
       });
       const pkg = createMockPackage('some-lib', { releaseAge });
-      const content = write(makeAggregated({ packageDistribution: [pkg] }));
+      const content = write(
+        makeAggregated({
+          packageDistribution: [pkg],
+          ruleViolations: [
+            createMockReleaseAgeViolation('some-lib', {
+              worstLevel: 'minor_overdue',
+              severity: 'error',
+            }),
+          ],
+        }),
+      );
 
       const tableCell = formatUpgradeCell(releaseAge);
       // formatUpgradeCell is "<icon> <description>[suffix]" — extract just
@@ -500,8 +544,8 @@ describe('writeSummaryFile', () => {
       expect(content).not.toContain('### Packages');
       expect(content).not.toContain('Notes:');
       expect(content).not.toContain('multi-version-lib');
-      expect(content).toContain('### 🟢 COMPLIANT');
-      expect(content).not.toContain('NOT COMPLIANT');
+      expect(content).toContain('### 🟢 Compliant');
+      expect(content).not.toContain('Not compliant');
     });
 
     // (#59) A package can be a MANDATORY failure (root itself is overdue)
@@ -531,7 +575,17 @@ describe('writeSummaryFile', () => {
           advisoryBreaches: [{ version: '2.0.0', level: 'major_overdue' }],
         }),
       });
-      const content = write(makeAggregated({ packageDistribution: [both] }));
+      const content = write(
+        makeAggregated({
+          packageDistribution: [both],
+          ruleViolations: [
+            createMockReleaseAgeViolation('multi-version-lib', {
+              worstLevel: 'major_overdue',
+              severity: 'error',
+            }),
+          ],
+        }),
+      );
       const tableLine = content.split('\n').find((l) => l.startsWith('| 🔴 |'));
       expect(tableLine).toBe(
         '| 🔴 | `multi-version-lib` | 1.0.0 | major 2.0.0 (340 days overdue) |',
@@ -539,7 +593,7 @@ describe('writeSummaryFile', () => {
       expect(content).not.toContain('Notes:');
       expect(content).not.toContain('bundle impact');
       expect(content).not.toContain('nested copy');
-      expect(content).toContain('NOT COMPLIANT');
+      expect(content).toContain('Not compliant');
     });
   });
 
@@ -568,10 +622,10 @@ describe('writeSummaryFile', () => {
     expect(content).not.toContain('ui-kits');
   });
 
-  it('writes a COMPLIANT verdict when there are no violations', () => {
+  it('writes a Compliant verdict when there are no violations', () => {
     const content = write(makeAggregated());
-    expect(content).toContain('COMPLIANT');
-    expect(content).not.toContain('NOT COMPLIANT');
+    expect(content).toContain('Compliant');
+    expect(content).not.toContain('Not compliant');
   });
 
   // A fully clean report shouldn't carry "Rules"/"Packages" boilerplate for
@@ -580,30 +634,28 @@ describe('writeSummaryFile', () => {
     const content = write(makeAggregated());
     expect(content).not.toContain('### Rules');
     expect(content).not.toContain('### Packages');
-    expect(content).toBe(`# ${DEFAULT_SUMMARY_TITLE}\n\n### 🟢 COMPLIANT\n`);
+    expect(content).toBe(`# ${DEFAULT_SUMMARY_TITLE}\n\n### 🟢 Compliant\n`);
   });
 
-  it('writes a NOT COMPLIANT verdict with the mandatory violation count when violations exist', () => {
+  it('writes a Not compliant verdict with the mandatory violation count when violations exist', () => {
     const violation: RuleViolation = {
-      type: 'require_files',
+      ruleId: 'require-files',
       severity: 'error',
       patterns: ['.nvmrc'],
-      matchedFiles: [],
     };
     const content = write(makeAggregated({ ruleViolations: [violation] }));
-    expect(content).toContain('NOT COMPLIANT');
+    expect(content).toContain('Not compliant');
     expect(content).toContain('1 mandatory violation found');
   });
 
   // #77 regression guard: the verdict used to add a separate banned-package
-  // count to the rule count. Now that forbid_packages hits ARE rule
+  // count to the rule count. Now that no-packages hits ARE rule
   // violations, that same sum would count each one twice.
   it('counts a forbidden package and a failing rule as two mandatory violations, not four', () => {
     const missingFile: RuleViolation = {
-      type: 'require_files',
+      ruleId: 'require-files',
       severity: 'error',
       patterns: ['.nvmrc'],
-      matchedFiles: [],
     };
     const content = write(
       makeAggregated({

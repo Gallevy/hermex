@@ -17,8 +17,20 @@ export async function loadConfig(
   }
 
   if (existsSync(configPath)) {
-    const mod = await import(pathToFileURL(configPath).href);
-    return HermexConfigSchema.parse(mod.default ?? mod);
+    const mod = (await import(pathToFileURL(configPath).href)) as Record<
+      string,
+      unknown
+    >;
+
+    if (mod.default === undefined) {
+      throw new Error(
+        `Config file has no default export: ${configPath}\n` +
+          `hermex reads the default export. Add \`export default { ... }\`, or ` +
+          `\`export default defineConfig({ ... })\` for type inference.`,
+      );
+    }
+
+    return HermexConfigSchema.parse(mod.default);
   }
 
   return HermexConfigSchema.parse({});

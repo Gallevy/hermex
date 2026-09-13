@@ -20,7 +20,6 @@ describe('mock report factory', () => {
   it('createMockPackage returns a valid PackageDistribution', () => {
     const pkg = createMockPackage('react');
     expect(pkg.packageName).toBe('react');
-    expect(pkg.internal).toBe(false);
   });
 
   it('createMockReleaseAge returns a valid ReleaseAgeEntry', () => {

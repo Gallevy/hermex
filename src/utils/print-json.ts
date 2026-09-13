@@ -1,6 +1,9 @@
 import type { AggregatedReport } from './aggregator';
 import type { ComplianceResult } from './compliance';
+import type { OutputConfig } from '../config/types';
+import type { HermexScanResult } from '../index';
 import { computeCompliance } from './compliance';
+import { sortViolationsBySeverity } from './severity-format';
 import { getVersion } from './version';
 
 /**
@@ -11,7 +14,7 @@ import { getVersion } from './version';
  * `ruleViolations` and drifting from `comply` (#55). `compliant` mirrors the
  * CLI exit code (0 ⇔ true); `status: 'warning'` never changes that exit code.
  *
- * `ruleViolations` is the single list of every rule hit, `forbid_packages`
+ * `ruleViolations` is the single list of every rule hit, `no-packages`
  * included (#77) — there is no second violations field to remember to read.
  *
  * Every top-level key besides `version`, `summary` and `compliance` is a
@@ -19,12 +22,37 @@ import { getVersion } from './version';
  * them (#80) because it is aggregate statistics — the same kind of number as
  * `totalImports` next to it, just broken down by pattern type.
  *
+ * The `output.*` section toggles apply here exactly as they do to the human
+ * printers (#63, #91) — a dataset switched off is *omitted*, not emptied, so
+ * disabling it actually shrinks the payload (`components[]` and `packages[]`
+ * dominate the file size of a stored scan). The split:
+ *
+ * - `output.packages: false` drops `packages`
+ * - `output.components: false` drops `components`
+ * - `output.versus: false` drops `versus`
+ * - `summary.patternCounts` needs *both* `output.patterns` and
+ *   `output.details` off before it drops, because both sections render that
+ *   same array — `printPatterns` as a table/chart, `printDetails` as a flat
+ *   list. Gating on `patterns` alone would drop it from the JSON while the
+ *   terminal still printed it under Details.
+ *
+ * `version`, the `summary` counters, `ruleViolations` and `compliance` are
+ * never gated: together they are the machine-readable verdict, and `comply`'s
+ * human path prints rules unconditionally too, so honouring `output.rules`
+ * here would make JSON *lossier* than the terminal it mirrors — a silent way
+ * to blind CI. That same rule is what forces the `patterns`/`details` pairing
+ * above. `output.summary` has no counterpart either: the human Summary table
+ * shows derived metrics (package count, external components, total usages)
+ * that share only `filesAnalyzed` with the counters serialized here, so there
+ * is no field it cleanly owns.
+ *
  * `compliance` defaults to `computeCompliance(aggregated)` so `scan --format
  * json` carries the same verdict as `comply`; callers that already computed
  * it (comply) pass it through to avoid recomputing.
  */
 export function printJson(
   aggregated: AggregatedReport,
+  output: OutputConfig,
   compliance: ComplianceResult = computeCompliance(aggregated),
 ): void {
   const result = {
@@ -34,24 +62,29 @@ export function printJson(
       totalImports: aggregated.totalImports,
       totalComponents: aggregated.totalComponents,
       totalUsagePatterns: aggregated.totalUsagePatterns,
-      patternCounts: aggregated.patternCounts,
+      ...(output.patterns || output.details
+        ? { patternCounts: aggregated.patternCounts }
+        : {}),
     },
-    packages: aggregated.packageDistribution,
-    components: aggregated.topComponents.map((c) => ({
-      ...c,
-      files: [...c.files],
-    })),
-    versus: aggregated.versusResults,
-    ruleViolations: aggregated.ruleViolations,
+    ...(output.packages ? { packages: aggregated.packageDistribution } : {}),
+    ...(output.components
+      ? {
+          components: aggregated.topComponents.map((c) => ({
+            ...c,
+            files: [...c.files],
+          })),
+        }
+      : {}),
+    ...(output.versus ? { versus: aggregated.versusResults } : {}),
+    ruleViolations: sortViolationsBySeverity(aggregated.ruleViolations),
     compliance: {
       status: compliance.status,
       compliant: compliance.compliant,
       counts: {
         errorRuleViolations: compliance.errorRuleViolations.length,
-        releaseAgeViolations: compliance.releaseAgeViolations.length,
         warningRuleViolations: compliance.warningRuleViolations.length,
       },
     },
-  };
+  } satisfies HermexScanResult;
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
 }

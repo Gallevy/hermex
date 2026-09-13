@@ -12,15 +12,16 @@ import {
 import type { CodeownersEntry } from '../../src/rules/codeowners';
 
 const emptyRules: ResolvedRulesConfig = {
-  detect_files: [],
-  require_files: [],
-  forbid_packages: [],
-  require_packages: [],
-  require_scripts: [],
-  require_package_fields: [],
-  forbid_package_fields: [],
-  engine_version: [],
-  codeowners: undefined,
+  'no-files': [],
+  'require-files': [],
+  'max-file-size': [],
+  'no-packages': [],
+  'require-packages': [],
+  'require-scripts': [],
+  'require-package-fields': [],
+  'no-package-fields': [],
+  'require-engine-version': [],
+  'require-codeowners': undefined,
 };
 
 describe('codeownersPatternToGlobs', () => {
@@ -145,12 +146,12 @@ describe('evaluateCodeowners', () => {
     tempDir = mkdtempSync(join(tmpdir(), 'hermex-codeowners-test-'));
     const result = evaluateCodeowners(
       tempDir,
-      { ...emptyRules, codeowners: { severity: 'error' } },
+      { ...emptyRules, 'require-codeowners': { severity: 'error' } },
       ['src/App.tsx'],
     );
     expect(result).toHaveLength(1);
-    expect(result[0].type).toBe('codeowners');
-    expect(result[0].matchedFiles).toEqual([]);
+    expect(result[0].ruleId).toBe('require-codeowners');
+    expect((result[0] as { reason: string }).reason).toBe('missing-file');
   });
 
   it('no violation when full coverage via `* @org/frontend`', () => {
@@ -159,7 +160,7 @@ describe('evaluateCodeowners', () => {
     writeFileSync(join(tempDir, '.github', 'CODEOWNERS'), '* @org/frontend\n');
     const result = evaluateCodeowners(
       tempDir,
-      { ...emptyRules, codeowners: { severity: 'error' } },
+      { ...emptyRules, 'require-codeowners': { severity: 'error' } },
       ['src/App.tsx', 'lib/x.ts'],
     );
     expect(result).toHaveLength(0);
@@ -171,11 +172,11 @@ describe('evaluateCodeowners', () => {
     writeFileSync(join(tempDir, '.github', 'CODEOWNERS'), 'src/ @a\n');
     const result = evaluateCodeowners(
       tempDir,
-      { ...emptyRules, codeowners: { severity: 'error' } },
+      { ...emptyRules, 'require-codeowners': { severity: 'error' } },
       ['src/App.tsx', 'lib/x.ts'],
     );
     expect(result).toHaveLength(1);
-    expect(result[0].matchedFiles).toEqual(['lib/x.ts']);
+    expect((result[0] as { matchedFile: string }).matchedFile).toBe('lib/x.ts');
   });
 
   it('no violation when the rule is not configured, even without a CODEOWNERS file', () => {
@@ -191,7 +192,7 @@ describe('evaluateCodeowners', () => {
     writeFileSync(join(tempDir, '.github', 'CODEOWNERS'), 'src/ @a\n');
     const result = evaluateCodeowners(
       tempDir,
-      { ...emptyRules, codeowners: { severity: 'error' } },
+      { ...emptyRules, 'require-codeowners': { severity: 'error' } },
       [join(tempDir, 'src', 'App.tsx')],
     );
     expect(result).toHaveLength(0);
@@ -204,7 +205,7 @@ describe('evaluateCodeowners', () => {
     writeFileSync(join(tempDir, 'CODEOWNERS'), '');
     const result = evaluateCodeowners(
       tempDir,
-      { ...emptyRules, codeowners: { severity: 'error' } },
+      { ...emptyRules, 'require-codeowners': { severity: 'error' } },
       ['src/App.tsx'],
     );
     // Root CODEOWNERS is empty (no owners at all); if it were used instead,
@@ -228,12 +229,17 @@ describe('evaluateCodeowners — requiredOwners', () => {
       tempDir,
       {
         ...emptyRules,
-        codeowners: { severity: 'error', requiredOwners: ['@platform-team'] },
+        'require-codeowners': {
+          severity: 'error',
+          requiredOwners: ['@platform-team'],
+        },
       },
       ['src/App.tsx'],
     );
     expect(result).toHaveLength(1);
-    expect(result[0].matchedFiles).toEqual(['src/App.tsx']);
+    expect((result[0] as { matchedFile: string }).matchedFile).toBe(
+      'src/App.tsx',
+    );
   });
 
   it('does not flag a file owned by a required owner', () => {
@@ -247,7 +253,10 @@ describe('evaluateCodeowners — requiredOwners', () => {
       tempDir,
       {
         ...emptyRules,
-        codeowners: { severity: 'error', requiredOwners: ['@platform-team'] },
+        'require-codeowners': {
+          severity: 'error',
+          requiredOwners: ['@platform-team'],
+        },
       },
       ['src/App.tsx'],
     );
@@ -262,20 +271,26 @@ describe('evaluateCodeowners — requiredOwners', () => {
       tempDir,
       {
         ...emptyRules,
-        codeowners: { severity: 'error', requiredOwners: ['@platform-team'] },
+        'require-codeowners': {
+          severity: 'error',
+          requiredOwners: ['@platform-team'],
+        },
       },
       ['src/App.tsx', 'lib/x.ts'],
     );
     expect(result).toHaveLength(2);
-    const unownedViolation = result.find((v) =>
-      v.matchedFiles.includes('lib/x.ts'),
+    const unownedViolation = result.find(
+      (v) => (v as { matchedFile?: string }).matchedFile === 'lib/x.ts',
     );
-    const wrongOwnerViolation = result.find((v) =>
-      v.matchedFiles.includes('src/App.tsx'),
+    const wrongOwnerViolation = result.find(
+      (v) => (v as { matchedFile?: string }).matchedFile === 'src/App.tsx',
     );
     expect(unownedViolation).toBeDefined();
     expect(wrongOwnerViolation).toBeDefined();
-    expect(unownedViolation).not.toBe(wrongOwnerViolation);
+    expect((unownedViolation as { reason: string }).reason).toBe('unowned');
+    expect((wrongOwnerViolation as { reason: string }).reason).toBe(
+      'wrong-owner',
+    );
   });
 
   it('uses a custom message for a wrong-owner violation when one is configured', () => {
@@ -286,7 +301,7 @@ describe('evaluateCodeowners — requiredOwners', () => {
       tempDir,
       {
         ...emptyRules,
-        codeowners: {
+        'require-codeowners': {
           severity: 'error',
           requiredOwners: ['@platform-team'],
           message: 'wrong owner for this path',
@@ -304,7 +319,7 @@ describe('evaluateCodeowners — requiredOwners', () => {
     writeFileSync(join(tempDir, '.github', 'CODEOWNERS'), 'src/ @any-team\n');
     const result = evaluateCodeowners(
       tempDir,
-      { ...emptyRules, codeowners: { severity: 'error' } },
+      { ...emptyRules, 'require-codeowners': { severity: 'error' } },
       ['src/App.tsx'],
     );
     expect(result).toHaveLength(0);

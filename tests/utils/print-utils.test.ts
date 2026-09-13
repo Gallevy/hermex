@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AggregatedReport } from '../../src/utils/aggregator';
 import type { RuleViolation } from '../../src/rules/evaluator';
+import type { OutputConfig } from '../../src/config/types';
+import { HermexConfigSchema } from '../../src/config/schema';
 import { printSummary } from '../../src/utils/print-summary';
 import { stripAnsi } from '../../src/utils/severity-format';
 import {
@@ -19,7 +21,11 @@ import { printComponents } from '../../src/utils/print-components';
 import { printPatterns } from '../../src/utils/print-patterns';
 import { printDetails } from '../../src/utils/print-details';
 import { printVersus } from '../../src/utils/print-versus';
-import { printRules, describeViolation } from '../../src/utils/print-rules';
+import {
+  printRules,
+  describeViolation,
+  formatRuleType,
+} from '../../src/utils/print-rules';
 import { printErrors } from '../../src/utils/print-errors';
 import { printJson } from '../../src/utils/print-json';
 import { printComplianceVerdict } from '../../src/utils/print-compliance';
@@ -27,6 +33,7 @@ import { computeCompliance } from '../../src/utils/compliance';
 import {
   createMockPackage,
   createMockReleaseAge,
+  createMockReleaseAgeViolation,
 } from '../helpers/mock-reports';
 
 // Drive the "user report" test end-to-end through the real enricher, so it
@@ -42,18 +49,17 @@ function daysAgo(n: number): string {
   return new Date(Date.now() - n * 24 * 60 * 60 * 1000).toISOString();
 }
 
-/** A forbid_packages hit, the shape `detectForbiddenPackages` emits (#77). */
+/** A no-packages hit, the shape `detectForbiddenPackages` emits (#77). */
 function forbidViolation(
   packageName: string,
   severity: RuleViolation['severity'] = 'error',
   message?: string,
 ): RuleViolation {
   return {
-    type: 'forbid_packages',
+    ruleId: 'no-packages',
     severity,
     patterns: [packageName],
     message,
-    matchedFiles: [],
     packageName,
   };
 }
@@ -81,6 +87,14 @@ function makeAggregated(
     reports: [],
     ...overrides,
   };
+}
+
+/**
+ * The `output` block a user gets with no config at all — read off the schema
+ * rather than hand-written, so these tests can't drift from the real defaults.
+ */
+function makeOutput(overrides: Partial<OutputConfig> = {}): OutputConfig {
+  return { ...HermexConfigSchema.parse({}).output, ...overrides };
 }
 
 let consoleSpy: ReturnType<typeof vi.spyOn>;
@@ -167,7 +181,11 @@ describe('printPackages', () => {
     expect(output).not.toContain('Percentage');
   });
 
-  it('reports just the package count in the trailer, with no unique-components/total-usages numbers', () => {
+  it('prints no trailer at all when there are no release-age violations to tally', () => {
+    // A bare package count said nothing about compliance and never lined up
+    // with anything else on screen — the trailer is a severity tally now
+    // (see below), and there's nothing to tally when release-age isn't
+    // configured, or nothing it flagged is a violation.
     const aggregated = makeAggregated({
       packageDistribution: [
         createMockPackage('react', { componentCount: 2, usageCount: 8 }),
@@ -178,9 +196,48 @@ describe('printPackages', () => {
     const output = consoleSpy.mock.calls
       .map((call) => call.join(' '))
       .join('\n');
-    expect(output).toContain('Total: 2 packages');
+    expect(output).not.toContain('packages total');
     expect(output).not.toContain('unique components');
     expect(output).not.toContain('total usages');
+  });
+
+  // The Packages table's own "N errors, M warnings" tally, in the same
+  // style as the Rules section's — computed only from release-age
+  // violations, the one kind this table uniquely surfaces. Added together
+  // with the Rules tally, this always equals the overall mandatory count.
+  it('tallies release-age violations in the same style as the Rules section', () => {
+    const aggregated = makeAggregated({
+      packageDistribution: [
+        createMockPackage('moment', {
+          releaseAge: createMockReleaseAge({
+            worstLevel: 'major_overdue',
+            severity: 'error',
+          }),
+        }),
+        createMockPackage('react', {
+          releaseAge: createMockReleaseAge({
+            worstLevel: 'minor_overdue',
+            severity: 'warn',
+          }),
+        }),
+      ],
+      ruleViolations: [
+        createMockReleaseAgeViolation('moment', {
+          worstLevel: 'major_overdue',
+          severity: 'error',
+        }),
+        createMockReleaseAgeViolation('react', {
+          worstLevel: 'minor_overdue',
+          severity: 'warn',
+        }),
+      ],
+    });
+    printPackages(aggregated, 'table');
+    const output = stripAnsi(
+      consoleSpy.mock.calls.map((call) => call.join(' ')).join('\n'),
+    );
+    expect(output).toContain('1 error, 1 warning');
+    expect(output).not.toContain('packages total');
   });
 
   it('renders "days overdue" for a package past its release-age threshold', () => {
@@ -337,19 +394,6 @@ describe('printPackages', () => {
     expect(consoleSpy).not.toHaveBeenCalled();
   });
 
-  it('chart mode pads an internal package label wider to make room for the [int] tag', () => {
-    const aggregated = makeAggregated({
-      packageDistribution: [
-        createMockPackage('@my-org/ui', { internal: true, percentage: 100 }),
-      ],
-    });
-    expect(() => printPackages(aggregated, 'chart')).not.toThrow();
-    const output = consoleSpy.mock.calls
-      .map((call) => call.join(' '))
-      .join('\n');
-    expect(output).toContain('[int]');
-  });
-
   it('marks a package with multiple resolved versions as a version conflict', () => {
     const aggregated = makeAggregated({
       packageDistribution: [
@@ -427,18 +471,6 @@ describe('formatPackageName', () => {
     expect(formatPackageName(pkg, forbidViolation('moment', 'warn'))).toContain(
       '[RESTRICTED]',
     );
-  });
-
-  it('prefixes an internal package as [int] when not banned', () => {
-    const pkg = createMockPackage('@my-org/utils', { internal: true });
-    expect(formatPackageName(pkg)).toContain('[int]');
-  });
-
-  it('prefers [BANNED]/[RESTRICTED] over [int] when a package is both internal and banned', () => {
-    const pkg = createMockPackage('@my-org/utils', { internal: true });
-    const name = formatPackageName(pkg, forbidViolation('@my-org/utils'));
-    expect(name).toContain('[BANNED]');
-    expect(name).not.toContain('[int]');
   });
 
   it('combines [DEPRECATED] with [BANNED] when both apply', () => {
@@ -751,14 +783,18 @@ describe('formatUpgradeCell — stale 0.x minor line beneath a compliant newer m
       versions: {},
     });
 
-    const { enriched } = await enrichWithReleaseAge([pkg], {
-      enabled: true,
-      registry: 'https://registry.npmjs.org',
-      thresholds: { patch: 30, minor: 45, major: 60 },
-      enforceOn: [],
-      scope: 'root',
-      scopeExceptions: [],
-    });
+    const { enriched } = await enrichWithReleaseAge(
+      [pkg],
+      { cacheDisabled: false },
+      // Named explicitly: severity follows the resolved policy alone, so
+      // the 🔴 this case asserts requires the package to actually be
+      // enforced ('error').
+      () => ({
+        severity: 'error',
+        thresholds: { patch: 30, minor: 45, major: 60 },
+        scope: 'root',
+      }),
+    );
 
     const cell = formatUpgradeCell(enriched[0].releaseAge);
 
@@ -889,10 +925,9 @@ describe('printRules', () => {
   // leading the Description cell (mirroring the Target cell convention).
   it('renders violations as a Rule/Description table, not a bullet list', () => {
     const errorViolation: RuleViolation = {
-      type: 'require_files',
+      ruleId: 'require-files',
       severity: 'error',
       patterns: ['.nvmrc'],
-      matchedFiles: [],
     };
     const aggregated = makeAggregated({
       ruleViolations: [
@@ -906,9 +941,9 @@ describe('printRules', () => {
     );
     expect(output).toContain('Rule');
     expect(output).toContain('Description');
-    expect(output).toMatch(/│\s*require_files\s*│\s*🔴 \.nvmrc not found\s*│/);
+    expect(output).toMatch(/│\s*require-files\s*│\s*🔴 \.nvmrc not found\s*│/);
     expect(output).toMatch(
-      /│\s*forbid_packages\s*│\s*🟡 moment is forbidden — Use dayjs\s*│/,
+      /│\s*no-packages\s*│\s*🟡 moment is forbidden — Use dayjs\s*│/,
     );
     // No leftover bullet-list markers from the old rendering.
     expect(output).not.toMatch(/^\s*- 🔴/m);
@@ -924,11 +959,10 @@ describe('printRules', () => {
 
   it('prints violations when present', () => {
     const violation: RuleViolation = {
-      type: 'require_packages',
+      ruleId: 'require-packages',
       severity: 'error',
       patterns: ['eslint'],
       message: 'eslint is required',
-      matchedFiles: [],
     };
     const aggregated = makeAggregated({ ruleViolations: [violation] });
     expect(() => printRules(aggregated)).not.toThrow();
@@ -942,11 +976,11 @@ describe('printRules', () => {
 
   it('info-severity violations do not affect errorCount/warnCount in the summary line', () => {
     const infoViolation: RuleViolation = {
-      type: 'detect_files',
+      ruleId: 'no-files',
       severity: 'info',
       patterns: ['orbis.config.*'],
       message: 'Orbis detected',
-      matchedFiles: ['orbis.config.ts'],
+      matchedFile: 'orbis.config.ts',
     };
     const aggregated = makeAggregated({ ruleViolations: [infoViolation] });
     expect(() => printRules(aggregated)).not.toThrow();
@@ -959,10 +993,10 @@ describe('printRules', () => {
 
   it('renders info-severity violations with a distinct icon from warn/error', () => {
     const infoViolation: RuleViolation = {
-      type: 'detect_files',
+      ruleId: 'no-files',
       severity: 'info',
       patterns: ['orbis.config.*'],
-      matchedFiles: ['orbis.config.ts'],
+      matchedFile: 'orbis.config.ts',
     };
     const aggregated = makeAggregated({ ruleViolations: [infoViolation] });
     printRules(aggregated);
@@ -974,36 +1008,65 @@ describe('printRules', () => {
     expect(output).not.toContain('🟡');
   });
 
-  it('renders require_package_fields/forbid_package_fields violations under the package_fields label', () => {
+  // The table always shows every severity, including info — so the tally
+  // below it must count every severity too, or the numbers stop matching
+  // the rows (#88).
+  it('includes an info count in the summary line so it matches the table rows shown', () => {
+    const errorViolation: RuleViolation = {
+      ruleId: 'require-files',
+      severity: 'error',
+      patterns: ['.nvmrc'],
+    };
+    const infoViolation: RuleViolation = {
+      ruleId: 'no-files',
+      severity: 'info',
+      patterns: ['orbis.config.*'],
+      matchedFile: 'orbis.config.ts',
+    };
+    const aggregated = makeAggregated({
+      ruleViolations: [
+        errorViolation,
+        forbidViolation('moment', 'warn', 'Use dayjs'),
+        infoViolation,
+      ],
+    });
+    printRules(aggregated);
+    const output = stripAnsi(
+      consoleSpy.mock.calls.map((call) => call.join(' ')).join('\n'),
+    );
+    expect(output).toContain('1 error, 1 warning, 1 info');
+  });
+
+  it('renders require-package-fields/no-package-fields violations under the package-fields label', () => {
     const violation: RuleViolation = {
-      type: 'require_package_fields',
+      ruleId: 'require-package-fields',
       severity: 'warn',
       patterns: ['license'],
-      matchedFiles: [],
     };
     const aggregated = makeAggregated({ ruleViolations: [violation] });
     printRules(aggregated);
     const output = consoleSpy.mock.calls
       .map((call) => call.join(' '))
       .join('\n');
-    expect(output).toContain('package_fields');
+    expect(output).toContain('package-fields');
     expect(output).not.toContain('pkg_fields');
   });
 
-  it('truncates a detect_files violation with many matched files instead of listing them all', () => {
-    const violation: RuleViolation = {
-      type: 'detect_files',
+  it('truncates a no-files violation with many matched files instead of listing them all', () => {
+    const files = [
+      'cypress.config.js',
+      'tsconfig.json',
+      'webpack.config.js',
+      'babel.config.js',
+      'jest.config.js',
+    ];
+    const violations: RuleViolation[] = files.map((matchedFile) => ({
+      ruleId: 'no-files',
       severity: 'error',
       patterns: ['*.config.js'],
-      matchedFiles: [
-        'cypress.config.js',
-        'tsconfig.json',
-        'webpack.config.js',
-        'babel.config.js',
-        'jest.config.js',
-      ],
-    };
-    const aggregated = makeAggregated({ ruleViolations: [violation] });
+      matchedFile,
+    }));
+    const aggregated = makeAggregated({ ruleViolations: violations });
     printRules(aggregated);
     const output = consoleSpy.mock.calls
       .map((call) => call.join(' '))
@@ -1014,7 +1077,7 @@ describe('printRules', () => {
     expect(output).not.toContain('webpack.config.js');
   });
 
-  it('renders a forbid_packages (banned/restricted) violation through the same line shape as other rules', () => {
+  it('renders a no-packages (banned/restricted) violation through the same line shape as other rules', () => {
     const aggregated = makeAggregated({
       ruleViolations: [forbidViolation('moment', 'warn', 'Use dayjs')],
     });
@@ -1022,17 +1085,32 @@ describe('printRules', () => {
     const output = consoleSpy.mock.calls
       .map((call) => call.join(' '))
       .join('\n');
-    expect(output).toContain('forbid_packages');
+    expect(output).toContain('no-packages');
     expect(output).toContain('moment is forbidden');
     expect(output).toContain('🟡');
   });
 
-  it('renders a require_files violation as "not found"', () => {
+  // `packageName` is set by `detectForbiddenPackages`, but the rule's own
+  // patterns are the fallback for a violation raised without one.
+  it('falls back to the rule patterns when a no-packages violation has no packageName', () => {
     const violation: RuleViolation = {
-      type: 'require_files',
+      ruleId: 'no-packages',
+      severity: 'error',
+      patterns: ['@legacy/*'],
+    };
+    const aggregated = makeAggregated({ ruleViolations: [violation] });
+    printRules(aggregated);
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('@legacy/* is forbidden');
+  });
+
+  it('renders a require-files violation as "not found"', () => {
+    const violation: RuleViolation = {
+      ruleId: 'require-files',
       severity: 'error',
       patterns: ['.nvmrc'],
-      matchedFiles: [],
     };
     const aggregated = makeAggregated({ ruleViolations: [violation] });
     printRules(aggregated);
@@ -1042,12 +1120,11 @@ describe('printRules', () => {
     expect(output).toContain('.nvmrc not found');
   });
 
-  it('renders a require_scripts violation with the script name and package.json context', () => {
+  it('renders a require-scripts violation with the script name and package.json context', () => {
     const violation: RuleViolation = {
-      type: 'require_scripts',
+      ruleId: 'require-scripts',
       severity: 'error',
       patterns: ['test'],
-      matchedFiles: [],
     };
     const aggregated = makeAggregated({ ruleViolations: [violation] });
     printRules(aggregated);
@@ -1057,12 +1134,11 @@ describe('printRules', () => {
     expect(output).toContain('script test missing in package.json');
   });
 
-  it('renders a require_package_fields violation with fieldPath/actualValue as a mismatch message', () => {
+  it('renders a require-package-fields violation with fieldPath/actualValue as a mismatch message', () => {
     const violation: RuleViolation = {
-      type: 'require_package_fields',
+      ruleId: 'require-package-fields',
       severity: 'error',
       patterns: ['license'],
-      matchedFiles: [],
       fieldPath: 'license',
       actualValue: 'UNLICENSED',
     };
@@ -1076,12 +1152,11 @@ describe('printRules', () => {
     );
   });
 
-  it('renders a forbid_package_fields violation using fieldPath when present', () => {
+  it('renders a no-package-fields violation using fieldPath when present', () => {
     const violation: RuleViolation = {
-      type: 'forbid_package_fields',
+      ruleId: 'no-package-fields',
       severity: 'error',
       patterns: ['scripts.postinstall'],
-      matchedFiles: [],
       fieldPath: 'scripts.postinstall',
     };
     const aggregated = makeAggregated({ ruleViolations: [violation] });
@@ -1092,12 +1167,11 @@ describe('printRules', () => {
     expect(output).toContain('field scripts.postinstall is forbidden');
   });
 
-  it('renders a forbid_package_fields violation falling back to patterns when fieldPath is absent', () => {
+  it('renders a no-package-fields violation falling back to patterns when fieldPath is absent', () => {
     const violation: RuleViolation = {
-      type: 'forbid_package_fields',
+      ruleId: 'no-package-fields',
       severity: 'error',
       patterns: ['scripts.postinstall'],
-      matchedFiles: [],
     };
     const aggregated = makeAggregated({ ruleViolations: [violation] });
     printRules(aggregated);
@@ -1107,12 +1181,70 @@ describe('printRules', () => {
     expect(output).toContain('field scripts.postinstall is forbidden');
   });
 
-  it('renders an engine_version violation showing installedRange when present', () => {
+  it('renders a max-file-size violation with the ceiling and the worst offender', () => {
+    const violations: RuleViolation[] = [
+      { file: 'assets/hero.svg', sizeBytes: 412000 },
+      { file: 'assets/logo.svg', sizeBytes: 262144 },
+    ].map((oversizeFile) => ({
+      ruleId: 'max-file-size',
+      severity: 'error',
+      patterns: ['**/*.svg'],
+      maxSizeBytes: 204800,
+      oversizeFile,
+    }));
+    const aggregated = makeAggregated({ ruleViolations: violations });
+    printRules(aggregated);
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('max-file-size');
+    expect(output).toContain('**/*.svg over 200 KB');
+    // Basenames, like no-files.
+    expect(output).toContain('hero.svg, logo.svg');
+    expect(output).toContain('largest 402.3 KB');
+  });
+
+  it('names the single file inline when only one file is over', () => {
     const violation: RuleViolation = {
-      type: 'engine_version',
+      ruleId: 'max-file-size',
+      severity: 'warn',
+      patterns: ['assets/**/*.svg'],
+      maxSizeBytes: 1024,
+      oversizeFile: { file: 'assets/logo.svg', sizeBytes: 1410 },
+    };
+    const aggregated = makeAggregated({ ruleViolations: [violation] });
+    printRules(aggregated);
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join(String.fromCharCode(10));
+    expect(output).toContain('assets/**/*.svg over 1 KB (logo.svg at 1.4 KB)');
+  });
+
+  it('truncates a long max-file-size file list', () => {
+    const violations: RuleViolation[] = [
+      { file: 'a.png', sizeBytes: 4096 },
+      { file: 'b.png', sizeBytes: 2048 },
+      { file: 'c.png', sizeBytes: 1536 },
+    ].map((oversizeFile) => ({
+      ruleId: 'max-file-size',
+      severity: 'warn',
+      patterns: ['**/*.png'],
+      maxSizeBytes: 1024,
+      oversizeFile,
+    }));
+    const aggregated = makeAggregated({ ruleViolations: violations });
+    printRules(aggregated);
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('a.png, b.png and 1 other file');
+  });
+
+  it('renders an require-engine-version violation showing installedRange when present', () => {
+    const violation: RuleViolation = {
+      ruleId: 'require-engine-version',
       severity: 'error',
       patterns: [],
-      matchedFiles: [],
       installedRange: '>=14',
       requiredRange: '>=18',
     };
@@ -1127,12 +1259,11 @@ describe('printRules', () => {
     expect(output).toContain('>=18');
   });
 
-  it('renders an engine_version violation as "not specified" when installedRange is absent', () => {
+  it('renders an require-engine-version violation as "not specified" when installedRange is absent', () => {
     const violation: RuleViolation = {
-      type: 'engine_version',
+      ruleId: 'require-engine-version',
       severity: 'error',
       patterns: [],
-      matchedFiles: [],
       requiredRange: '>=18',
     };
     const aggregated = makeAggregated({ ruleViolations: [violation] });
@@ -1146,10 +1277,10 @@ describe('printRules', () => {
 
   it('renders a codeowners violation as "not found" when there are no matched files', () => {
     const violation: RuleViolation = {
-      type: 'codeowners',
+      ruleId: 'require-codeowners',
       severity: 'error',
       patterns: ['CODEOWNERS'],
-      matchedFiles: [],
+      reason: 'missing-file',
     };
     const aggregated = makeAggregated({ ruleViolations: [violation] });
     printRules(aggregated);
@@ -1160,13 +1291,16 @@ describe('printRules', () => {
   });
 
   it('renders a codeowners violation listing unowned files when matched files are present', () => {
-    const violation: RuleViolation = {
-      type: 'codeowners',
-      severity: 'error',
-      patterns: ['CODEOWNERS'],
-      matchedFiles: ['src/foo.ts', 'src/bar.ts'],
-    };
-    const aggregated = makeAggregated({ ruleViolations: [violation] });
+    const violations: RuleViolation[] = ['src/foo.ts', 'src/bar.ts'].map(
+      (matchedFile) => ({
+        ruleId: 'require-codeowners',
+        severity: 'error',
+        patterns: ['CODEOWNERS'],
+        reason: 'unowned',
+        matchedFile,
+      }),
+    );
+    const aggregated = makeAggregated({ ruleViolations: violations });
     printRules(aggregated);
     const output = consoleSpy.mock.calls
       .map((call) => call.join(' '))
@@ -1177,16 +1311,14 @@ describe('printRules', () => {
   it('pluralizes the error/warning summary counts when there is more than one of each', () => {
     const errorViolations: RuleViolation[] = [
       {
-        type: 'require_files',
+        ruleId: 'require-files',
         severity: 'error',
         patterns: ['a'],
-        matchedFiles: [],
       },
       {
-        type: 'require_files',
+        ruleId: 'require-files',
         severity: 'error',
         patterns: ['b'],
-        matchedFiles: [],
       },
     ];
     const aggregated = makeAggregated({
@@ -1210,22 +1342,66 @@ describe('describeViolation', () => {
     // Defensive fallback for a violation type outside the known union —
     // e.g. a newer config schema evaluated against an older build.
     const violation = {
-      type: 'some_future_rule_type',
+      ruleId: 'some-future-rule-type',
       severity: 'error',
       patterns: ['whatever'],
-      matchedFiles: [],
     } as unknown as RuleViolation;
     expect(describeViolation(violation)).toBe('whatever not present');
+  });
+
+  describe('plugin violations', () => {
+    // Plugin findings carry a ready-made `message` from the wrapped tool and
+    // have no `patterns`, so they must be handled before anything reads it.
+    const base = {
+      ruleId: 'oxlint/no-debugger',
+      severity: 'error',
+      message: 'debugger statement',
+      plugin: 'oxlint',
+    } as const;
+
+    it('renders the message alone when there is no location or files', () => {
+      expect(describeViolation({ ...base })).toBe('debugger statement');
+    });
+
+    it('appends file:line when a location is given', () => {
+      const out = describeViolation({
+        ...base,
+        location: { file: 'src/a.tsx', line: 12 },
+      });
+      expect(stripAnsi(out)).toBe('debugger statement (src/a.tsx:12)');
+    });
+
+    it('omits the line when the location has none', () => {
+      const out = describeViolation({
+        ...base,
+        location: { file: 'src/a.tsx' },
+      });
+      expect(stripAnsi(out)).toBe('debugger statement (src/a.tsx)');
+    });
+
+    it('falls back to the file list when there is no location', () => {
+      const out = describeViolation({
+        ...base,
+        files: ['src/a.tsx', 'src/b.tsx'],
+      });
+      expect(stripAnsi(out)).toContain('debugger statement (');
+      expect(stripAnsi(out)).toContain('src/a.tsx');
+    });
+
+    it('renders the namespaced rule id as the rule column, unshortened', () => {
+      // hermex passes the wrapped tool's identifiers through rather than
+      // translating them (#102).
+      expect(formatRuleType({ ...base })).toBe('oxlint/no-debugger');
+    });
   });
 });
 
 describe('printComplianceVerdict', () => {
   it('uses the singular "violation" when exactly one mandatory violation is present', () => {
     const violation: RuleViolation = {
-      type: 'require_files',
+      ruleId: 'require-files',
       severity: 'error',
       patterns: ['.nvmrc'],
-      matchedFiles: [],
     };
     const aggregated = makeAggregated({ ruleViolations: [violation] });
     const compliance = computeCompliance(aggregated);
@@ -1237,42 +1413,28 @@ describe('printComplianceVerdict', () => {
     expect(output).not.toContain('violations found');
   });
 
-  it('prints COMPLIANT when there are no mandatory violations', () => {
+  it('prints Compliant when there are no mandatory violations', () => {
     const compliance = computeCompliance(makeAggregated());
     expect(() => printComplianceVerdict(compliance)).not.toThrow();
     const output = consoleSpy.mock.calls
       .map((call) => call.join(' '))
       .join('\n');
-    expect(output).toContain('COMPLIANT');
-    expect(output).not.toContain('NOT COMPLIANT');
+    expect(output).toContain('Compliant');
+    expect(output).not.toContain('Not compliant');
   });
 
-  it('prints NOT COMPLIANT with a count when mandatory violations are present, without repeating per-violation detail', () => {
+  it('prints Not compliant with a count when mandatory violations are present, without repeating per-violation detail', () => {
     const errorViolation: RuleViolation = {
-      type: 'require_files',
+      ruleId: 'require-files',
       severity: 'error',
       patterns: ['.nvmrc'],
-      matchedFiles: [],
     };
-    const pkg = createMockPackage('@my-org/internal', {
-      releaseAge: createMockReleaseAge({
-        worstLevel: 'major_overdue',
-        severity: 'error',
-        upgrades: [
-          {
-            version: '2.0.0',
-            releasedDaysAgo: 90,
-            breachReleasedDaysAgo: 90,
-            semverBump: 'major',
-            level: 'major_overdue',
-            thresholdDays: 60,
-          },
-        ],
-      }),
-    });
+    const releaseAgeViolation = createMockReleaseAgeViolation(
+      '@my-org/internal',
+      { worstLevel: 'major_overdue', severity: 'error' },
+    );
     const aggregated = makeAggregated({
-      ruleViolations: [errorViolation],
-      packageDistribution: [pkg],
+      ruleViolations: [errorViolation, releaseAgeViolation],
     });
     const compliance = computeCompliance(aggregated);
     expect(compliance.compliant).toBe(false);
@@ -1280,7 +1442,7 @@ describe('printComplianceVerdict', () => {
     const output = consoleSpy.mock.calls
       .map((call) => call.join(' '))
       .join('\n');
-    expect(output).toContain('NOT COMPLIANT');
+    expect(output).toContain('Not compliant');
     expect(output).toContain('2 mandatory violations');
     // per-violation detail belongs to the Rules/Packages sections above
     // the verdict, not the verdict itself — see printPackages tests for the
@@ -1290,14 +1452,13 @@ describe('printComplianceVerdict', () => {
   });
 
   // #77 regression guard: this count used to add a separate banned-package
-  // bucket to the rule bucket. Now that forbid_packages hits ARE rule
+  // bucket to the rule bucket. Now that no-packages hits ARE rule
   // violations, that same sum would count each one twice.
   it('counts a forbidden package and a failing rule as two mandatory violations, not four', () => {
     const missingFile: RuleViolation = {
-      type: 'require_files',
+      ruleId: 'require-files',
       severity: 'error',
       patterns: ['.nvmrc'],
-      matchedFiles: [],
     };
     const compliance = computeCompliance(
       makeAggregated({
@@ -1328,9 +1489,17 @@ describe('printVersus', () => {
             {
               packageName: 'react',
               count: 3,
+              renderCount: 9,
               percentage: 100,
+              present: true,
             },
-            { packageName: 'vue', count: 0, percentage: 0 },
+            {
+              packageName: 'vue',
+              count: 0,
+              renderCount: 0,
+              percentage: 0,
+              present: true,
+            },
           ],
           totalCount: 3,
         },
@@ -1355,9 +1524,17 @@ describe('printVersus', () => {
             {
               packageName: 'react',
               count: 3,
+              renderCount: 9,
               percentage: 100,
+              present: true,
             },
-            { packageName: 'vue', count: 0, percentage: 0 },
+            {
+              packageName: 'vue',
+              count: 0,
+              renderCount: 0,
+              percentage: 0,
+              present: true,
+            },
           ],
           totalCount: 3,
         },
@@ -1371,7 +1548,111 @@ describe('printVersus', () => {
     expect(output).not.toContain('Input');
   });
 
-  it('shows a "no usage detected" note when a versus group has zero total usage', () => {
+  it('counts each entry in files, singular at one — the unit is files that import the package, not renders (#174)', () => {
+    printVersus(
+      makeAggregated({
+        versusResults: [
+          {
+            name: 'date-libraries',
+            packages: ['moment', 'date-fns'],
+            entries: [
+              {
+                packageName: 'moment',
+                count: 3,
+                renderCount: 0,
+                percentage: 75,
+                present: true,
+              },
+              {
+                packageName: 'date-fns',
+                count: 1,
+                renderCount: 0,
+                percentage: 25,
+                present: true,
+              },
+            ],
+            totalCount: 4,
+          },
+        ],
+      }),
+    );
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('(3 files)');
+    expect(output).toContain('(1 file)');
+    expect(output).not.toContain('usages');
+  });
+
+  // Renders are kept beside files, not replaced by them: files are how much
+  // of the migration is done, renders are how much editing is left, and a
+  // package used densely in a few files looks very different on the two.
+  it('shows renders beside files for a package that renders, and omits them for one that does not', () => {
+    printVersus(
+      makeAggregated({
+        versusResults: [
+          {
+            name: 'mixed',
+            packages: ['@acme/ui', 'lodash'],
+            entries: [
+              {
+                packageName: '@acme/ui',
+                count: 8,
+                renderCount: 33,
+                percentage: 80,
+                present: true,
+              },
+              {
+                packageName: 'lodash',
+                count: 2,
+                renderCount: 0,
+                percentage: 20,
+                present: true,
+              },
+            ],
+            totalCount: 10,
+          },
+        ],
+      }),
+    );
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('(8 files, 33 renders)');
+    // Not '(2 files, 0 renders)' — a zero there reads as a finding rather
+    // than as "this package renders nothing, so the axis does not apply".
+    expect(output).toContain('(2 files)');
+    expect(output).not.toContain('0 renders');
+  });
+
+  it('uses the singular for a lone file and a lone render', () => {
+    printVersus(
+      makeAggregated({
+        versusResults: [
+          {
+            name: 'mixed',
+            packages: ['@acme/ui'],
+            entries: [
+              {
+                packageName: '@acme/ui',
+                count: 1,
+                renderCount: 1,
+                percentage: 100,
+                present: true,
+              },
+            ],
+            totalCount: 1,
+          },
+        ],
+      }),
+    );
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('(1 file, 1 render)');
+  });
+
+  it('says no imports were detected when the group is real dependencies nobody imports', () => {
     printVersus(
       makeAggregated({
         versusResults: [
@@ -1379,8 +1660,20 @@ describe('printVersus', () => {
             name: 'ui-kits',
             packages: ['react', 'vue'],
             entries: [
-              { packageName: 'react', count: 0, percentage: 0 },
-              { packageName: 'vue', count: 0, percentage: 0 },
+              {
+                packageName: 'react',
+                count: 0,
+                renderCount: 0,
+                percentage: 0,
+                present: true,
+              },
+              {
+                packageName: 'vue',
+                count: 0,
+                renderCount: 0,
+                percentage: 0,
+                present: true,
+              },
             ],
             totalCount: 0,
           },
@@ -1390,7 +1683,85 @@ describe('printVersus', () => {
     const output = consoleSpy.mock.calls
       .map((call) => call.join(' '))
       .join('\n');
-    expect(output).toContain('No usage detected for any package in this group');
+    expect(output).toContain(
+      'No imports detected for any package in this group',
+    );
+  });
+
+  // The other half of #174: the lookup behind the count is an exact-name
+  // match, so a misspelled, ignored or purely transitive package reads 0
+  // exactly like a dependency nobody has imported yet. One sentence for both
+  // is the "confident number that happens to be wrong" the issue is about.
+  it('says the packages are not dependencies at all when none of them is in the distribution', () => {
+    printVersus(
+      makeAggregated({
+        versusResults: [
+          {
+            name: 'ui-kits',
+            packages: ['raect', 'voo'],
+            entries: [
+              {
+                packageName: 'raect',
+                count: 0,
+                renderCount: 0,
+                percentage: 0,
+                present: false,
+              },
+              {
+                packageName: 'voo',
+                count: 0,
+                renderCount: 0,
+                percentage: 0,
+                present: false,
+              },
+            ],
+            totalCount: 0,
+          },
+        ],
+      }),
+    );
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('None of these packages was found in this repo');
+  });
+
+  // The footer above never fires here — the group total is non-zero — so the
+  // absent package has to name itself on its own row or nothing does.
+  it('marks an absent package on its own row when the other side of the group is a real dependency', () => {
+    printVersus(
+      makeAggregated({
+        versusResults: [
+          {
+            name: 'date-libraries',
+            packages: ['moment', 'dat-fns'],
+            entries: [
+              {
+                packageName: 'moment',
+                count: 4,
+                renderCount: 0,
+                percentage: 100,
+                present: true,
+              },
+              {
+                packageName: 'dat-fns',
+                count: 0,
+                renderCount: 0,
+                percentage: 0,
+                present: false,
+              },
+            ],
+            totalCount: 4,
+          },
+        ],
+      }),
+    );
+    const output = consoleSpy.mock.calls
+      .map((call) => call.join(' '))
+      .join('\n');
+    expect(output).toContain('(not found in this repo)');
+    expect(output).toContain('(4 files)');
+    expect(output).not.toContain('None of these packages');
   });
 
   it('prints the header with a single space after the emoji, matching every other section header', () => {
@@ -1404,6 +1775,7 @@ describe('printVersus', () => {
               {
                 packageName: 'react',
                 count: 1,
+                renderCount: 2,
                 percentage: 100,
               },
             ],
@@ -1476,7 +1848,7 @@ describe('printJson', () => {
   });
 
   it('writes parseable JSON with the expected top-level shape', () => {
-    printJson(makeAggregated());
+    printJson(makeAggregated(), makeOutput());
 
     expect(stdoutSpy).toHaveBeenCalledTimes(1);
     const written = stdoutSpy.mock.calls[0][0] as string;
@@ -1512,6 +1884,7 @@ describe('printJson', () => {
           },
         ],
       }),
+      makeOutput(),
     );
 
     const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
@@ -1523,7 +1896,7 @@ describe('printJson', () => {
   });
 
   it('emits the official compliance verdict (status + counts) so consumers need not re-derive it (#55)', () => {
-    printJson(makeAggregated());
+    printJson(makeAggregated(), makeOutput());
 
     const written = stdoutSpy.mock.calls[0][0] as string;
     const parsed = JSON.parse(written);
@@ -1533,29 +1906,28 @@ describe('printJson', () => {
       compliant: true,
       counts: {
         errorRuleViolations: 0,
-        releaseAgeViolations: 0,
         warningRuleViolations: 0,
       },
     });
   });
 
-  // #77: forbid_packages hits used to sit in a separate top-level field, so
+  // #77: no-packages hits used to sit in a separate top-level field, so
   // a consumer iterating ruleViolations silently missed every one of them.
-  it('emits a forbid_packages hit inside ruleViolations, carrying the matched package', () => {
+  it('emits a no-packages hit inside ruleViolations, carrying the matched package', () => {
     printJson(
       makeAggregated({
         ruleViolations: [forbidViolation('moment', 'error', 'Use dayjs')],
       }),
+      makeOutput(),
     );
 
     const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
     expect(parsed.ruleViolations).toEqual([
       {
-        type: 'forbid_packages',
+        ruleId: 'no-packages',
         severity: 'error',
         patterns: ['moment'],
         message: 'Use dayjs',
-        matchedFiles: [],
         packageName: 'moment',
       },
     ]);
@@ -1571,13 +1943,13 @@ describe('printJson', () => {
         ruleViolations: [
           forbidViolation('moment'),
           {
-            type: 'require_files',
+            ruleId: 'require-files',
             severity: 'error',
             patterns: ['.nvmrc'],
-            matchedFiles: [],
           },
         ],
       }),
+      makeOutput(),
     );
 
     const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
@@ -1588,14 +1960,13 @@ describe('printJson', () => {
     const aggregated = makeAggregated({
       ruleViolations: [
         {
-          type: 'require_files',
+          ruleId: 'require-files',
           severity: 'warn',
           patterns: ['.editorconfig'],
-          matchedFiles: [],
         },
       ],
     });
-    printJson(aggregated);
+    printJson(aggregated, makeOutput());
 
     const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
     expect(parsed.compliance.status).toBe('warning');
@@ -1620,7 +1991,7 @@ describe('printJson', () => {
         }),
       ],
     });
-    printJson(aggregated);
+    printJson(aggregated, makeOutput());
 
     const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
     expect(parsed.compliance.status).toBe('compliant');
@@ -1629,18 +2000,16 @@ describe('printJson', () => {
 
   it('passes an explicitly provided compliance result straight through (#55)', () => {
     const aggregated = makeAggregated();
-    printJson(aggregated, {
+    printJson(aggregated, makeOutput(), {
       compliant: false,
       status: 'non-compliant',
       errorRuleViolations: [
         {
-          type: 'require_files',
+          ruleId: 'require-files',
           severity: 'error',
           patterns: ['.nvmrc'],
-          matchedFiles: [],
         },
       ],
-      releaseAgeViolations: [],
       warningRuleViolations: [],
     });
 
@@ -1661,12 +2030,147 @@ describe('printJson', () => {
         },
       ],
     });
-    printJson(aggregated);
+    printJson(aggregated, makeOutput());
 
     const written = stdoutSpy.mock.calls[0][0] as string;
     const parsed = JSON.parse(written);
     expect(parsed.components).toHaveLength(1);
     expect(parsed.components[0].name).toBe('Button');
     expect(parsed.components[0].files).toEqual(['a.tsx', 'b.tsx']);
+  });
+
+  // #63/#91: output.* used to gate only the human printers, so a consumer
+  // asking for a slim report still got the full payload and had to strip it
+  // downstream. components[] and packages[] are the bulk of a stored scan.
+  describe('output.* section toggles', () => {
+    const trimmable = makeAggregated({
+      topComponents: [
+        { name: 'Button', source: 'antd', count: 4, files: new Set(['a.tsx']) },
+      ],
+      packageDistribution: [createMockPackage('antd')],
+      versusResults: [
+        {
+          name: 'Migration',
+          packages: ['antd', '@acme/arc'],
+          entries: [],
+          totalCount: 0,
+        },
+      ],
+    });
+
+    it('omits packages entirely when output.packages is false', () => {
+      printJson(trimmable, makeOutput({ packages: false }));
+
+      const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+      expect(parsed).not.toHaveProperty('packages');
+      expect(parsed.components).toHaveLength(1);
+    });
+
+    it('omits components entirely when output.components is false', () => {
+      printJson(trimmable, makeOutput({ components: false }));
+
+      const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+      expect(parsed).not.toHaveProperty('components');
+      expect(parsed.packages).toHaveLength(1);
+    });
+
+    it('omits versus entirely when output.versus is false', () => {
+      printJson(trimmable, makeOutput({ versus: false }));
+
+      const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+      expect(parsed).not.toHaveProperty('versus');
+    });
+
+    it('omits summary.patternCounts when output.patterns is false, keeping the counters', () => {
+      printJson(trimmable, makeOutput({ patterns: false, details: false }));
+
+      const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+      expect(parsed.summary).not.toHaveProperty('patternCounts');
+      expect(parsed.summary.filesAnalyzed).toBe(5);
+      expect(parsed.summary.totalUsagePatterns).toBe(7);
+    });
+
+    // printDetails renders the same patternCounts array as printPatterns (a
+    // flat list rather than a table), so gating on output.patterns alone
+    // would strip the field while the terminal still printed it under
+    // Details — the JSON must never be lossier than the human output.
+    it('keeps summary.patternCounts when patterns is off but details is on', () => {
+      printJson(trimmable, makeOutput({ patterns: false, details: true }));
+
+      const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+      expect(parsed.summary.patternCounts).toHaveLength(1);
+    });
+
+    it('keeps summary.patternCounts when details is off but patterns is on', () => {
+      printJson(trimmable, makeOutput({ patterns: 'chart', details: false }));
+
+      const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+      expect(parsed.summary.patternCounts).toHaveLength(1);
+    });
+
+    // A disabled section is absent, not `[]` — shrinking the payload is the
+    // whole point, and an empty array still costs a key on every scan file.
+    it('drops the keys rather than emitting empty arrays', () => {
+      printJson(
+        trimmable,
+        makeOutput({
+          packages: false,
+          components: false,
+          patterns: false,
+          details: false,
+          versus: false,
+        }),
+      );
+
+      const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+      expect(Object.keys(parsed)).toEqual([
+        'version',
+        'summary',
+        'ruleViolations',
+        'compliance',
+      ]);
+    });
+
+    // The verdict is what CI reads. `comply` prints rules in human mode
+    // regardless of output.rules, so gating them here would make the JSON
+    // lossier than the terminal output it mirrors.
+    it('keeps ruleViolations and compliance even with every section switched off', () => {
+      printJson(
+        makeAggregated({
+          ruleViolations: [forbidViolation('moment', 'error', 'Use dayjs')],
+        }),
+        makeOutput({
+          summary: false,
+          packages: false,
+          components: false,
+          patterns: false,
+          versus: false,
+          rules: false,
+          details: false,
+        }),
+      );
+
+      const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+      expect(parsed.ruleViolations).toHaveLength(1);
+      expect(parsed.compliance.status).toBe('non-compliant');
+      expect(parsed.compliance.counts.errorRuleViolations).toBe(1);
+      expect(parsed.version).toBeTypeOf('string');
+    });
+
+    it('emits every dataset under the default config', () => {
+      printJson(trimmable, makeOutput());
+
+      const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+      expect(Object.keys(parsed)).toEqual([
+        'version',
+        'summary',
+        'packages',
+        'components',
+        'versus',
+        'ruleViolations',
+        'compliance',
+      ]);
+      expect(parsed.summary.patternCounts).toHaveLength(1);
+    });
   });
 });

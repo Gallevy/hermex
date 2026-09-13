@@ -2,17 +2,18 @@ import chalk from 'chalk';
 import Table from 'cli-table3';
 import type { AggregatedReport, PackageDistribution } from './aggregator';
 import type { RuleViolation } from '../rules/evaluator';
+import { isPluginViolation } from '../rules/shared';
 import type {
   AvailableUpgrade,
   ReleaseAgeEntry,
   SemverBump,
 } from '../npm-registry/types';
+import { formatDaysOverdue, formatDaysRemaining } from './format-utils';
 import {
-  formatCount,
-  formatDaysOverdue,
-  formatDaysRemaining,
-} from './format-utils';
-import { severityIcon, severityColor } from './severity-format';
+  formatSeverityTally,
+  severityIcon,
+  severityColor,
+} from './severity-format';
 
 function printHeader() {
   console.log(chalk.blueBright.bold('\n📦 Packages\n'));
@@ -31,8 +32,6 @@ export function formatPackageName(
       banned.severity === 'error'
         ? severityColor('error')('[BANNED] ')
         : severityColor('warn')('[RESTRICTED] ');
-  } else if (pkg.internal) {
-    prefix += severityColor('warn')('[int] ');
   }
   return prefix + pkg.packageName;
 }
@@ -187,8 +186,8 @@ export function formatUpgradeCell(releaseAge?: ReleaseAgeEntry): string {
 }
 
 /**
- * The `forbid_packages` hit for this package, if any. Filters `ruleViolations`
- * by `type` rather than reading a dedicated banned-packages array, which is
+ * The `no-packages` hit for this package, if any. Filters `ruleViolations`
+ * by `ruleId` rather than reading a dedicated banned-packages array, which is
  * what #77 removed — `packageName` is what keeps the join to a table row
  * exact, since a violation carries no file paths to match on.
  */
@@ -197,7 +196,13 @@ export function findForbidViolation(
   violations: RuleViolation[],
 ): RuleViolation | undefined {
   return violations.find(
-    (v) => v.type === 'forbid_packages' && v.packageName === pkg.packageName,
+    (v) =>
+      // Plugin findings are excluded before the id check, not just to
+      // narrow the type: this column joins on hermex's own `no-packages`
+      // rule, and a plugin's id space is its own (#102).
+      !isPluginViolation(v) &&
+      v.ruleId === 'no-packages' &&
+      v.packageName === pkg.packageName,
   );
 }
 
@@ -276,7 +281,23 @@ function printPackagesTable(
     }
   }
 
-  console.log(chalk.gray(`\nTotal: ${formatCount(packages.length)} packages`));
+  // The same "N errors, M warnings" tally style as the Rules section
+  // (`print-rules.ts`), computed from this table's own release-age
+  // violations — the only violation kind this table uniquely surfaces (a
+  // banned package's no-packages hit is already counted in the Rules
+  // tally; [BANNED] here is just a cross-reference, not a second count).
+  // A plain package count ("N packages total") said nothing about
+  // compliance and didn't add up with anything else on screen — this does:
+  // Rules-tally + Packages-tally always equals the overall mandatory count.
+  const releaseAgeViolations = violations.filter(
+    (v) => v.ruleId === 'release-age',
+  );
+  const tally = formatSeverityTally(releaseAgeViolations, {
+    includeInfo: true,
+  });
+  if (tally) {
+    console.log(chalk.gray(`\n${tally}`));
+  }
 }
 
 // Only ever called via printPackages, which already guarantees a non-empty
@@ -297,9 +318,7 @@ function printPackagesChart(
 
   const maxBarWidth = 40;
   const maxPercentage = Math.max(...charted.map((p) => p.percentage));
-  const maxLabelLength = Math.max(
-    ...charted.map((p) => p.packageName.length + (p.internal ? 6 : 0)),
-  );
+  const maxLabelLength = Math.max(...charted.map((p) => p.packageName.length));
 
   charted.forEach((pkg) => {
     const barLength = Math.round(

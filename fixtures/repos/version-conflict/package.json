@@ -2,11 +2,11 @@
   "name": "hermex-fixture-version-conflict",
   "version": "1.0.0",
   "private": true,
-  "description": "One package resolved at two versions in the same lockfile: react 18.3.1 at the root, react 17.0.2 pulled in under legacy-widget. The only fixture where releaseAge.scope actually changes the verdict — 'root' enforces the direct copy and reports the nested one as an advisory breach, 'tree' enforces both and fails on the worse of them (#57).",
+  "description": "One package resolved at two versions in the same lockfile: react 18.3.1 at the root, react 17.0.2 pulled in under @hermex/legacy-widget. The only fixture where releaseAge.scope actually changes the verdict — 'root' enforces the direct copy and reports the nested one as an advisory breach, 'tree' enforces both and fails on the worse of them (#57).",
   "type": "module",
   "license": "MIT",
   "dependencies": {
-    "legacy-widget": "^1.0.0",
+    "@hermex/legacy-widget": "^1.0.0",
     "react": "^18.3.0"
   }
 }

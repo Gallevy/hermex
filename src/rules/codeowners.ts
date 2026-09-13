@@ -136,18 +136,18 @@ export function evaluateCodeowners(
   rulesConfig: ResolvedRulesConfig,
   scannedFiles: string[],
 ): RuleViolation[] {
-  const rule = rulesConfig.codeowners;
+  const rule = rulesConfig['require-codeowners'];
   if (!rule) return [];
 
   const filePath = findCodeownersFile(repoPath);
   if (!filePath) {
     return [
       {
-        type: 'codeowners',
+        ruleId: 'require-codeowners',
         severity: rule.severity,
         patterns: CODEOWNERS_LOCATIONS,
         message: rule.message,
-        matchedFiles: [],
+        reason: 'missing-file',
       },
     ];
   }
@@ -177,24 +177,26 @@ export function evaluateCodeowners(
   }
 
   const violations: RuleViolation[] = [];
-  if (unowned.length > 0) {
+  for (const matchedFile of unowned) {
     violations.push({
-      type: 'codeowners',
+      ruleId: 'require-codeowners',
       severity: rule.severity,
       patterns: [path.basename(filePath)],
       message: rule.message,
-      matchedFiles: unowned,
+      reason: 'unowned',
+      matchedFile,
     });
   }
-  if (wrongOwner.length > 0) {
+  for (const matchedFile of wrongOwner) {
     violations.push({
-      type: 'codeowners',
+      ruleId: 'require-codeowners',
       severity: rule.severity,
       patterns: [path.basename(filePath)],
       message:
         rule.message ??
         `Files must be owned by one of: ${requiredOwners!.join(', ')}`,
-      matchedFiles: wrongOwner,
+      reason: 'wrong-owner',
+      matchedFile,
     });
   }
   return violations;

@@ -73,12 +73,27 @@ export function createResolutionAccumulator(): {
       for (const [pkgName, versions] of Object.entries(versionSets)) {
         result[pkgName] = {
           rootVersion: roots[pkgName] ?? null,
-          allVersions: Array.from(versions).sort(),
+          allVersions: Array.from(versions).sort(compareVersions),
         };
       }
       return result;
     },
   };
+}
+
+/**
+ * Orders versions by semver, with non-semver strings (git URLs, `file:` links,
+ * workspace protocol) collated last in stable lexicographic order. A plain
+ * `.sort()` here put 1.10.0 before 1.9.0; `semver.compare` alone throws on the
+ * non-semver strings lockfiles legitimately contain.
+ */
+export function compareVersions(a: string, b: string): number {
+  const aValid = semver.valid(a);
+  const bValid = semver.valid(b);
+  if (aValid && bValid) return semver.compare(a, b);
+  if (aValid) return -1;
+  if (bValid) return 1;
+  return a < b ? -1 : a > b ? 1 : 0;
 }
 
 /** Highest valid semver among `versions`, or `undefined` if none are valid. */

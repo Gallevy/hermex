@@ -5,8 +5,10 @@ import type {
   RulesConfig,
   RuleConfig,
   PackageFieldRule,
+  MaxFileSizeRule,
   EngineVersionRule,
   CodeownersRule,
+  ReleaseAgeRuleConfig,
 } from './schema';
 
 /**
@@ -21,20 +23,38 @@ type Resolved<T extends { severity: string }> = T & {
 
 export type ResolvedRuleConfig = Resolved<RuleConfig>;
 export type ResolvedPackageFieldRule = Resolved<PackageFieldRule>;
+export type ResolvedMaxFileSizeRule = Resolved<MaxFileSizeRule>;
 export type ResolvedEngineVersionRule = Resolved<EngineVersionRule>;
 export type ResolvedCodeownersRule = Resolved<CodeownersRule>;
+/**
+ * NOT `Resolved<ReleaseAgeRuleConfig>` — unlike every other rule, release-age
+ * needs `'off'` to survive resolution as a real, matchable entry rather than
+ * being dropped. Every other rule fires independently per matching entry, so
+ * a dropped 'off' entry simply never fires — correct. Release-age instead
+ * picks exactly one governing entry per package via pattern matching
+ * against the whole resolved array plus an implicit `['**']` baseline
+ * (`resolveReleaseAgeRule` below); if an 'off' entry were dropped the way
+ * `upsertPatternRules` drops it for other rules, a package meant to be
+ * exempted would just fall through to the next-best match (often the
+ * baseline) instead of being exempted — the opposite of what 'off' means.
+ * `upsertReleaseAgeRules` (below) is `upsertPatternRules` without the
+ * `isEnabled` filter, so 'off' entries are upserted like any other.
+ */
+export type ResolvedReleaseAgeRuleConfig = ReleaseAgeRuleConfig;
 
 /** The shape `RulesConfig` resolves to after `applyOverrides` — see `ResolvedRuleConfig`. */
 export interface ResolvedRulesConfig {
-  detect_files: ResolvedRuleConfig[];
-  require_files: ResolvedRuleConfig[];
-  forbid_packages: ResolvedRuleConfig[];
-  require_packages: ResolvedRuleConfig[];
-  require_scripts: ResolvedRuleConfig[];
-  require_package_fields: ResolvedPackageFieldRule[];
-  forbid_package_fields: ResolvedPackageFieldRule[];
-  engine_version: ResolvedEngineVersionRule[];
-  codeowners: ResolvedCodeownersRule | undefined;
+  'no-files': ResolvedRuleConfig[];
+  'require-files': ResolvedRuleConfig[];
+  'max-file-size': ResolvedMaxFileSizeRule[];
+  'no-packages': ResolvedRuleConfig[];
+  'require-packages': ResolvedRuleConfig[];
+  'require-scripts': ResolvedRuleConfig[];
+  'require-package-fields': ResolvedPackageFieldRule[];
+  'no-package-fields': ResolvedPackageFieldRule[];
+  'require-engine-version': ResolvedEngineVersionRule[];
+  'require-codeowners': ResolvedCodeownersRule | undefined;
+  'release-age': ResolvedReleaseAgeRuleConfig[];
 }
 
 /** What `applyOverrides` returns: `HermexConfig` with `rules` resolved. */
@@ -72,7 +92,25 @@ function upsertPatternRules<T extends { severity: string; patterns: string[] }>(
   return result;
 }
 
-/** Same upsert semantics as {@link upsertPatternRules}, keyed by `range` instead of `patterns` (engine_version has no patterns). */
+/**
+ * Same identity/replacement semantics as {@link upsertPatternRules}
+ * (keyed by `patterns`), but never drops an 'off' entry — see
+ * `ResolvedReleaseAgeRuleConfig` above for why release-age needs 'off' to
+ * remain a real, resolvable entry instead of vanishing from the array.
+ */
+function upsertReleaseAgeRules(
+  base: ReleaseAgeRuleConfig[],
+  overrides: ReleaseAgeRuleConfig[],
+): ReleaseAgeRuleConfig[] {
+  let result = base;
+  for (const rule of overrides) {
+    result = result.filter((r) => !patternsMatch(r.patterns, rule.patterns));
+    result = [...result, rule];
+  }
+  return result;
+}
+
+/** Same upsert semantics as {@link upsertPatternRules}, keyed by `range` instead of `patterns` (require-engine-version has no patterns). */
 function upsertEngineVersionRules<
   T extends { severity: string; range: string },
 >(base: Resolved<T>[], overrides: T[]): Resolved<T>[] {
@@ -86,7 +124,7 @@ function upsertEngineVersionRules<
   return result;
 }
 
-/** `codeowners` only ever holds one rule, so 'off' simply clears it. */
+/** `require-codeowners` only ever holds one rule, so 'off' simply clears it. */
 function resolveCodeowners<T extends { severity: string }>(
   rule: T | undefined,
 ): Resolved<T> | undefined {
@@ -99,7 +137,7 @@ function resolveCodeowners<T extends { severity: string }>(
  * Resolves `rules` to its final, evaluator-ready form by upserting each
  * list against itself: a rule authored with severity 'off' — directly in
  * the base config, not only via `overrides` — is dropped, and rules
- * sharing an identity (patterns, or range for engine_version) collapse to
+ * sharing an identity (patterns, or range for require-engine-version) collapse to
  * the last one. This is the same upsert primitive `applyOverrides` uses
  * for `overrides`, just seeded from an empty base — so a rule authored
  * once in `rules` and a rule layered in via `overrides` behave
@@ -109,21 +147,32 @@ function resolveCodeowners<T extends { severity: string }>(
  */
 function resolveRules(rules: RulesConfig): ResolvedRulesConfig {
   return {
-    detect_files: upsertPatternRules([], toArray(rules.detect_files)),
-    require_files: upsertPatternRules([], toArray(rules.require_files)),
-    forbid_packages: upsertPatternRules([], toArray(rules.forbid_packages)),
-    require_packages: upsertPatternRules([], toArray(rules.require_packages)),
-    require_scripts: upsertPatternRules([], toArray(rules.require_scripts)),
-    require_package_fields: upsertPatternRules(
+    'no-files': upsertPatternRules([], toArray(rules['no-files'])),
+    'require-files': upsertPatternRules([], toArray(rules['require-files'])),
+    'max-file-size': upsertPatternRules([], toArray(rules['max-file-size'])),
+    'no-packages': upsertPatternRules([], toArray(rules['no-packages'])),
+    'require-packages': upsertPatternRules(
       [],
-      toArray(rules.require_package_fields),
+      toArray(rules['require-packages']),
     ),
-    forbid_package_fields: upsertPatternRules(
+    'require-scripts': upsertPatternRules(
       [],
-      toArray(rules.forbid_package_fields),
+      toArray(rules['require-scripts']),
     ),
-    engine_version: upsertEngineVersionRules([], toArray(rules.engine_version)),
-    codeowners: resolveCodeowners(rules.codeowners),
+    'require-package-fields': upsertPatternRules(
+      [],
+      toArray(rules['require-package-fields']),
+    ),
+    'no-package-fields': upsertPatternRules(
+      [],
+      toArray(rules['no-package-fields']),
+    ),
+    'require-engine-version': upsertEngineVersionRules(
+      [],
+      toArray(rules['require-engine-version']),
+    ),
+    'require-codeowners': resolveCodeowners(rules['require-codeowners']),
+    'release-age': upsertReleaseAgeRules([], toArray(rules['release-age'])),
   };
 }
 
@@ -156,60 +205,120 @@ export function applyOverrides(
 
       for (const override of matching) {
         const o = override.rules;
-        if (o.detect_files !== undefined) {
-          rules.detect_files = upsertPatternRules(
-            rules.detect_files,
-            toArray(o.detect_files),
+        if (o['no-files'] !== undefined) {
+          rules['no-files'] = upsertPatternRules(
+            rules['no-files'],
+            toArray(o['no-files']),
           );
         }
-        if (o.require_files !== undefined) {
-          rules.require_files = upsertPatternRules(
-            rules.require_files,
-            toArray(o.require_files),
+        if (o['require-files'] !== undefined) {
+          rules['require-files'] = upsertPatternRules(
+            rules['require-files'],
+            toArray(o['require-files']),
           );
         }
-        if (o.forbid_packages !== undefined) {
-          rules.forbid_packages = upsertPatternRules(
-            rules.forbid_packages,
-            toArray(o.forbid_packages),
+        if (o['max-file-size'] !== undefined) {
+          rules['max-file-size'] = upsertPatternRules(
+            rules['max-file-size'],
+            toArray(o['max-file-size']),
           );
         }
-        if (o.require_packages !== undefined) {
-          rules.require_packages = upsertPatternRules(
-            rules.require_packages,
-            toArray(o.require_packages),
+        if (o['no-packages'] !== undefined) {
+          rules['no-packages'] = upsertPatternRules(
+            rules['no-packages'],
+            toArray(o['no-packages']),
           );
         }
-        if (o.require_scripts !== undefined) {
-          rules.require_scripts = upsertPatternRules(
-            rules.require_scripts,
-            toArray(o.require_scripts),
+        if (o['require-packages'] !== undefined) {
+          rules['require-packages'] = upsertPatternRules(
+            rules['require-packages'],
+            toArray(o['require-packages']),
           );
         }
-        if (o.require_package_fields !== undefined) {
-          rules.require_package_fields = upsertPatternRules(
-            rules.require_package_fields,
-            toArray(o.require_package_fields),
+        if (o['require-scripts'] !== undefined) {
+          rules['require-scripts'] = upsertPatternRules(
+            rules['require-scripts'],
+            toArray(o['require-scripts']),
           );
         }
-        if (o.forbid_package_fields !== undefined) {
-          rules.forbid_package_fields = upsertPatternRules(
-            rules.forbid_package_fields,
-            toArray(o.forbid_package_fields),
+        if (o['require-package-fields'] !== undefined) {
+          rules['require-package-fields'] = upsertPatternRules(
+            rules['require-package-fields'],
+            toArray(o['require-package-fields']),
           );
         }
-        if (o.engine_version !== undefined) {
-          rules.engine_version = upsertEngineVersionRules(
-            rules.engine_version,
-            toArray(o.engine_version),
+        if (o['no-package-fields'] !== undefined) {
+          rules['no-package-fields'] = upsertPatternRules(
+            rules['no-package-fields'],
+            toArray(o['no-package-fields']),
           );
         }
-        if (o.codeowners !== undefined) {
-          rules.codeowners = resolveCodeowners(o.codeowners);
+        if (o['require-engine-version'] !== undefined) {
+          rules['require-engine-version'] = upsertEngineVersionRules(
+            rules['require-engine-version'],
+            toArray(o['require-engine-version']),
+          );
+        }
+        if (o['require-codeowners'] !== undefined) {
+          rules['require-codeowners'] = resolveCodeowners(
+            o['require-codeowners'],
+          );
+        }
+        if (o['release-age'] !== undefined) {
+          rules['release-age'] = upsertReleaseAgeRules(
+            rules['release-age'],
+            toArray(o['release-age']),
+          );
         }
       }
     }
   }
 
   return { ...config, rules };
+}
+
+/**
+ * The default policy for any package no authored `rules['release-age']`
+ * entry matches: checked, advisory-only, at the schema's own default
+ * thresholds/scope. This is what makes "check everything" the zero-config
+ * behavior once release-age is on for a repo (i.e. `rules['release-age']`
+ * is non-empty) — an author only needs a `['**']` entry of their own to
+ * override this, never to opt into checking in the first place.
+ */
+const RELEASE_AGE_BASELINE: ResolvedReleaseAgeRuleConfig = {
+  severity: 'warn',
+  patterns: ['**'],
+  thresholds: { patch: 30, minor: 45, major: 60 },
+  scope: 'root',
+};
+
+/**
+ * Resolves which single `release-age` rule entry governs `packageName`,
+ * among `resolvedRules` (from `ResolvedRulesConfig['release-age']`, already
+ * upserted through `resolveRules`/`applyOverrides` above) plus the implicit
+ * `['**']` baseline. Unlike every other rule family — where every matching
+ * entry fires independently — release-age needs exactly one governing
+ * entry per package (a package can't be simultaneously 'error' under one
+ * entry and 'warn' under another), so this picks a winner: **last match
+ * wins**, mirroring ESLint's `overrides`/flat-config semantics. This falls
+ * out of the same upsert mechanic every other rule already uses: an
+ * override always lands at the end of the resolved array (see
+ * `upsertPatternRules`), so it naturally wins here with no extra
+ * machinery — the same array position that means "replaces the base rule"
+ * for `no-packages` etc. means "governs this package" here.
+ *
+ * Only call this once you've confirmed release-age is actually on for the
+ * repo (`resolvedRules.length > 0`) — the baseline is not itself a reason
+ * to run release-age; an empty `rules['release-age']` means off, not "check
+ * everything by default."
+ */
+export function resolveReleaseAgeRule(
+  packageName: string,
+  resolvedRules: ResolvedReleaseAgeRuleConfig[],
+): ResolvedReleaseAgeRuleConfig {
+  let winner = RELEASE_AGE_BASELINE;
+  for (const rule of [RELEASE_AGE_BASELINE, ...resolvedRules]) {
+    if (micromatch.isMatch(packageName, rule.patterns)) winner = rule;
+  }
+  return winner;
 }

@@ -1,4 +1,5 @@
 import chalk from 'chalk';
+import type { RuleViolation } from '../rules/evaluator';
 
 export type DisplaySeverity = 'error' | 'warn' | 'info' | 'success';
 
@@ -77,4 +78,89 @@ export function applyColorLevel(level: 0 | 1 | undefined): void {
     stripAnsiWrites(process.stdout);
     stripAnsiWrites(process.stderr);
   }
+}
+
+const SEVERITY_RANK: Record<RuleViolation['severity'], number> = {
+  error: 0,
+  warn: 1,
+  info: 2,
+};
+
+/**
+ * Sorts rule violations by severity descending (error → warn → info), with
+ * detection order as the tiebreak so runs stay deterministic and diffable
+ * (#87). Render-time only — `ruleViolations` on `AggregatedReport` itself
+ * stays in detection order, so nothing upstream (compliance counting,
+ * further aggregation) has to account for a sort. Every rendered surface —
+ * the terminal table (`printRules`), `--summary-file`, and `--format json` —
+ * routes through this one helper, so none of them can drift from each other
+ * or from a second, differently-ordered notion of "the" rule violations.
+ */
+export function sortViolationsBySeverity<T extends RuleViolation>(
+  violations: T[],
+): T[] {
+  return violations
+    .map((v, index) => ({ v, index }))
+    .sort((a, b) => {
+      const rankDiff =
+        SEVERITY_RANK[a.v.severity] - SEVERITY_RANK[b.v.severity];
+      return rankDiff !== 0 ? rankDiff : a.index - b.index;
+    })
+    .map(({ v }) => v);
+}
+
+/**
+ * Buckets items by severity in one pass — the single place that knows how
+ * to partition a severity-bearing array, so `printRules`, `--summary-file`,
+ * and `computeCompliance`'s error/warn buckets all derive from the same
+ * grouping instead of each re-filtering independently (#88). Generic over
+ * anything with a `severity` field, not just `RuleViolation` — `printRules`
+ * and `buildRulesSection` (`write-summary-file.ts`) tally `Row[]` (what
+ * actually got rendered) rather than the raw, pre-grouping violation list,
+ * since `release-age` violations count toward compliance but never render
+ * as a Rules-table row (their display is the Packages table) — tallying the
+ * raw list would disagree with the table above it (#88's own invariant).
+ */
+export function groupBySeverity<
+  T extends { severity: RuleViolation['severity'] },
+>(items: T[]): Record<RuleViolation['severity'], T[]> {
+  const groups: Record<RuleViolation['severity'], T[]> = {
+    error: [],
+    warn: [],
+    info: [],
+  };
+  for (const v of items) groups[v.severity].push(v);
+  return groups;
+}
+
+/**
+ * Renders the colored, pluralized "N error(s), N warning(s)[, N info]" tally
+ * line shared by `printRules` and `--summary-file`. Built on
+ * `groupBySeverity` so the count under a table always matches the rows
+ * above it — `printRules` shows every severity and passes
+ * `includeInfo: true` accordingly; `--summary-file` filters `info` out of
+ * its rows before calling this (per #31) and leaves `includeInfo` off, so
+ * its tally stays untouched (#88).
+ */
+export function formatSeverityTally(
+  violations: { severity: RuleViolation['severity'] }[],
+  options?: { includeInfo?: boolean },
+): string {
+  const groups = groupBySeverity(violations);
+  const parts: string[] = [];
+  if (groups.error.length > 0)
+    parts.push(
+      severityColor('error')(
+        `${groups.error.length} error${groups.error.length > 1 ? 's' : ''}`,
+      ),
+    );
+  if (groups.warn.length > 0)
+    parts.push(
+      severityColor('warn')(
+        `${groups.warn.length} warning${groups.warn.length > 1 ? 's' : ''}`,
+      ),
+    );
+  if (options?.includeInfo && groups.info.length > 0)
+    parts.push(severityColor('info')(`${groups.info.length} info`));
+  return parts.join(', ');
 }

@@ -1,4 +1,5 @@
 import type { ParserState } from '../types';
+import { lineOf } from '../utils/span';
 
 /**
  * Analyzes array expressions containing components
@@ -17,7 +18,7 @@ export function analyzeArrayExpression(node: any, state: ParserState): void {
       components: node.elements
         ?.map((elem: any) => elem?.expression?.value)
         .filter(Boolean),
-      line: node.span?.start || 0,
+      line: lineOf(node),
     });
   }
 }
@@ -40,7 +41,7 @@ export function analyzeObjectExpression(node: any, state: ParserState): void {
         key: prop.key?.value || '[computed]',
         component: prop.value?.value,
       })),
-      line: node.span?.start || 0,
+      line: lineOf(node),
     });
   }
 }

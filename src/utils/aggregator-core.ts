@@ -8,6 +8,7 @@ import type {
 } from './package-distribution';
 import {
   calculatePackageDistribution,
+  collectImportedPackages,
   findComponentSource,
 } from './package-distribution';
 import type {
@@ -36,7 +37,7 @@ export interface AggregatedReport {
   packageInventory: PackageInventoryEntry[];
   packageDistribution: PackageDistribution[];
   versusResults: VersusResult[];
-  /** Every rule hit, `forbid_packages` included (#77) — one list, no second field to remember to read. */
+  /** Every rule hit, `no-packages` included (#77) — one list, no second field to remember to read. */
   ruleViolations: RuleViolation[];
   reports: UsageReport[];
 }
@@ -50,15 +51,33 @@ export function aggregateReports(
   declaredPackages: DeclaredPackages = {},
 ): AggregatedReport {
   const componentUsageMap = new Map<string, ComponentUsage>();
+  // Package name → how many scanned files import it. One increment per file
+  // per package, so a file pulling in five date-fns helpers counts once.
+  const importingFileCounts = new Map<string, number>();
   let totalImports = 0;
   let totalUsagePatterns = 0;
   const patternCountMap = new Map<string, number>();
 
-  const availablePackages = Object.keys(versions);
+  // A Set, not the key array: `findComponentSource` runs once per JSX
+  // element and resolves with a single hash probe against it.
+  const availablePackages = new Set(Object.keys(versions));
 
   for (const report of reports) {
     totalImports += report.summary.totalImports;
     totalUsagePatterns += report.summary.totalUsagePatterns;
+
+    // The imported axis, counted alongside the rendered one below rather than
+    // derived from it: the two answer different questions, and for a package
+    // consumed as a function or a hook only this one has an answer (#174).
+    for (const packageName of collectImportedPackages(
+      report,
+      availablePackages,
+    )) {
+      importingFileCounts.set(
+        packageName,
+        (importingFileCounts.get(packageName) ?? 0) + 1,
+      );
+    }
 
     for (const jsx of report.patterns.usage.jsx) {
       // Keyed by (source, name), not name alone — the same component name
@@ -123,6 +142,7 @@ export function aggregateReports(
     resolutions,
     declared: declaredPackages,
     componentUsage: componentUsageMap,
+    importingFiles: importingFileCounts,
     config,
   });
 
@@ -131,8 +151,11 @@ export function aggregateReports(
     config,
   );
 
+  // The inventory, not `packageDistribution`: versus selects the imported
+  // axis, and the distribution is the packages-table view — see
+  // `calculateVersusResults` for why routing through it is wrong (#174).
   const versusResults = calculateVersusResults(
-    packageDistribution,
+    packageInventory,
     config?.versus ?? [],
   );
   const forbiddenPackageViolations = detectForbiddenPackages(

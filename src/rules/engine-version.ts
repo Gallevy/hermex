@@ -7,7 +7,7 @@ export function evaluateEngineVersion(
   repoPath: string,
   rulesConfig: ResolvedRulesConfig,
 ): RuleViolation[] {
-  const rules = rulesConfig.engine_version;
+  const rules = rulesConfig['require-engine-version'];
   if (rules.length === 0) {
     return [];
   }
@@ -19,11 +19,10 @@ export function evaluateEngineVersion(
     if (!nodeRange) {
       return [
         {
-          type: 'engine_version',
+          ruleId: 'require-engine-version',
           severity: rule.severity,
           patterns: [],
           message: rule.message ?? 'engines.node not specified in package.json',
-          matchedFiles: [],
           requiredRange: rule.range,
         },
       ];
@@ -33,11 +32,10 @@ export function evaluateEngineVersion(
     if (!minVer || !semver.satisfies(minVer, rule.range)) {
       return [
         {
-          type: 'engine_version',
+          ruleId: 'require-engine-version',
           severity: rule.severity,
           patterns: [],
           message: rule.message,
-          matchedFiles: [],
           installedRange: nodeRange,
           requiredRange: rule.range,
         },

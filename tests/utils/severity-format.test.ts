@@ -1,12 +1,24 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import chalk from 'chalk';
+import type { RuleViolation } from '../../src/rules/evaluator';
 import {
   severityIcon,
   severityColor,
   resolveColorLevel,
   stripAnsi,
   applyColorLevel,
+  groupBySeverity,
+  formatSeverityTally,
 } from '../../src/utils/severity-format';
+
+function violation(severity: RuleViolation['severity']): RuleViolation {
+  return {
+    ruleId: 'require-files',
+    severity,
+    patterns: ['.nvmrc'],
+    matchedFiles: [],
+  };
+}
 
 describe('severityIcon', () => {
   it('maps each severity to a distinct colored-circle glyph', () => {
@@ -114,6 +126,72 @@ describe('applyColorLevel', () => {
     process.stdout.write(buf);
 
     expect(stdoutChunks[0]).toBe(buf);
+  });
+});
+
+describe('groupBySeverity', () => {
+  it('returns empty buckets for an empty list', () => {
+    expect(groupBySeverity([])).toEqual({ error: [], warn: [], info: [] });
+  });
+
+  it('buckets violations by severity, preserving order within each bucket', () => {
+    const errorA = violation('error');
+    const warnA = violation('warn');
+    const errorB = violation('error');
+    const infoA = violation('info');
+
+    expect(groupBySeverity([errorA, warnA, errorB, infoA])).toEqual({
+      error: [errorA, errorB],
+      warn: [warnA],
+      info: [infoA],
+    });
+  });
+});
+
+describe('formatSeverityTally', () => {
+  it('returns an empty string for an empty list', () => {
+    expect(formatSeverityTally([])).toBe('');
+  });
+
+  it('omits info by default even when info violations are present', () => {
+    const tally = stripAnsi(
+      formatSeverityTally([violation('error'), violation('info')]),
+    );
+    expect(tally).toBe('1 error');
+  });
+
+  it('includes info when includeInfo is true', () => {
+    const tally = stripAnsi(
+      formatSeverityTally(
+        [violation('error'), violation('warn'), violation('info')],
+        { includeInfo: true },
+      ),
+    );
+    expect(tally).toBe('1 error, 1 warning, 1 info');
+  });
+
+  it('omits an info count of zero even with includeInfo: true', () => {
+    const tally = stripAnsi(
+      formatSeverityTally([violation('error')], { includeInfo: true }),
+    );
+    expect(tally).toBe('1 error');
+  });
+
+  it('pluralizes counts greater than one', () => {
+    const tally = stripAnsi(
+      formatSeverityTally(
+        [
+          violation('error'),
+          violation('error'),
+          violation('warn'),
+          violation('warn'),
+          violation('info'),
+          violation('info'),
+        ],
+        { includeInfo: true },
+      ),
+    );
+    expect(tally).toBe('2 errors, 2 warnings, 2 info');
   });
 });
 

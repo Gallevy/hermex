@@ -63,14 +63,18 @@ describe('findComponentSource', () => {
     const report = createMockReport();
     report.patterns.imports.named.push({ name: 'Button', source: 'antd' });
 
-    expect(findComponentSource('Button', report, ['antd'])).toBe('antd');
+    expect(findComponentSource('Button', report, new Set(['antd']))).toBe(
+      'antd',
+    );
   });
 
   it('resolves a component from a default import to its package', () => {
     const report = createMockReport();
     report.patterns.imports.default.push({ name: 'React', source: 'react' });
 
-    expect(findComponentSource('React', report, ['react'])).toBe('react');
+    expect(findComponentSource('React', report, new Set(['react']))).toBe(
+      'react',
+    );
   });
 
   it('resolves a component from an aliased import to its package', () => {
@@ -81,7 +85,9 @@ describe('findComponentSource', () => {
       source: 'antd',
     });
 
-    expect(findComponentSource('AliasedButton', report, ['antd'])).toBe('antd');
+    expect(
+      findComponentSource('AliasedButton', report, new Set(['antd'])),
+    ).toBe('antd');
   });
 
   it('resolves a relative-path import source to "local"', () => {
@@ -91,13 +97,169 @@ describe('findComponentSource', () => {
       source: './Header',
     });
 
-    expect(findComponentSource('Header', report, [])).toBe('local');
+    expect(findComponentSource('Header', report, new Set())).toBe('local');
   });
 
   it('falls back to "unknown" for a component with no matching import', () => {
     const report = createMockReport();
 
-    expect(findComponentSource('Ghost', report, ['antd'])).toBe('unknown');
+    expect(findComponentSource('Ghost', report, new Set(['antd']))).toBe(
+      'unknown',
+    );
+  });
+});
+
+/**
+ * The resolution contract itself: every import specifier shape resolves to
+ * the package that owns it, to `local`, or to `unknown` — nothing else.
+ *
+ * Worth pinning case by case because the resolver reads the package name off
+ * the specifier (one segment, or two when scoped) rather than prefix-matching
+ * the lockfile. The names below are chosen to break a naive prefix match:
+ * `react`/`react-dom`, `lodash`/`lodash.merge` and `a`/`ab` all share a
+ * leading substring, so a check without the segment boundary would mis-file
+ * them.
+ */
+describe('findComponentSource specifier resolution', () => {
+  const INSTALLED = new Set([
+    'react',
+    'react-dom',
+    'antd',
+    'lodash',
+    'lodash.merge',
+    'a',
+    'ab',
+    '@scope/pkg',
+    '@scope/pkg-extra',
+    '@mui/material',
+  ]);
+
+  /** Resolve an import specifier the way the aggregator does. */
+  function resolve(source: string) {
+    const report = createMockReport();
+    report.patterns.imports.named.push({ name: 'Thing', source });
+    return findComponentSource('Thing', report, INSTALLED);
+  }
+
+  it.each([
+    // Bare specifiers.
+    ['react', 'react'],
+    ['react-dom', 'react-dom'],
+    ['lodash.merge', 'lodash.merge'],
+    // Subpath exports resolve to the owning package, at any depth.
+    ['react/jsx-runtime', 'react'],
+    ['react-dom/client', 'react-dom'],
+    ['lodash/fp/merge', 'lodash'],
+    ['antd/es/button/style/index.js', 'antd'],
+    // Scoped packages: the name is two segments, the rest is a subpath.
+    ['@scope/pkg', '@scope/pkg'],
+    ['@scope/pkg/sub', '@scope/pkg'],
+    ['@scope/pkg/sub/deep/thing', '@scope/pkg'],
+    ['@scope/pkg-extra', '@scope/pkg-extra'],
+    ['@mui/material/Button', '@mui/material'],
+    // Segment boundaries are respected: a shared prefix is not a match.
+    ['ab', 'ab'],
+    ['a/b', 'a'],
+    ['abc', 'unknown'],
+    ['react-router-dom', 'unknown'],
+    ['lodash-es', 'unknown'],
+    // Installed scope, uninstalled package: owning one package in a scope
+    // says nothing about the rest of it.
+    ['@scope/other', 'unknown'],
+    ['@scope/other/sub', 'unknown'],
+    // Not installed at all.
+    ['@mui/icons-material', 'unknown'],
+    ['@nope/thing', 'unknown'],
+    ['nope/deep/path', 'unknown'],
+    // Malformed specifiers resolve to `unknown` rather than throwing.
+    ['@scope', 'unknown'],
+    ['@scope/', 'unknown'],
+    ['', 'unknown'],
+  ])('resolves %j to %j', (source, expected) => {
+    expect(resolve(source)).toBe(expected);
+  });
+
+  it.each([['./Header'], ['../shared/Header'], ['./'], ['/abs/path/Header']])(
+    'resolves the relative or absolute path %j to "local"',
+    (source) => {
+      expect(resolve(source)).toBe('local');
+    },
+  );
+
+  it('keeps an installed package that is a path prefix of another distinct', () => {
+    // `a` and `ab` are both installed; neither may absorb the other.
+    expect(resolve('a')).toBe('a');
+    expect(resolve('a/deep')).toBe('a');
+    expect(resolve('ab/deep')).toBe('ab');
+  });
+
+  /**
+   * Node builtins are not resolved today — neither the `node:` form nor the
+   * bare legacy form — so they land in `unknown` alongside genuinely
+   * unresolvable specifiers. Pinned here so the gap is visible rather than
+   * implied, and so giving builtins a source of their own is a deliberate
+   * change to this expectation rather than an accident.
+   */
+  it('does not yet distinguish node builtins from unresolvable specifiers', () => {
+    expect(resolve('node:fs')).toBe('unknown');
+    expect(resolve('node:path/posix')).toBe('unknown');
+    expect(resolve('fs')).toBe('unknown');
+    expect(resolve('fs/promises')).toBe('unknown');
+  });
+
+  /**
+   * Parity with the longest-installed-prefix match this replaced: for every
+   * specifier shape above, both answers agree. They can only diverge on an
+   * `availablePackages` entry of three or more segments, which is not a valid
+   * npm package name and so cannot come out of a lockfile.
+   */
+  it('agrees with a longest-installed-prefix match on every specifier', () => {
+    const longestPrefixMatch = (source: string): string => {
+      if (source.startsWith('.') || source.startsWith('/')) return 'local';
+      const byLengthDesc = [...INSTALLED].sort((a, b) => b.length - a.length);
+      for (const pkg of byLengthDesc) {
+        if (source === pkg || source.startsWith(`${pkg}/`)) return pkg;
+      }
+      return 'unknown';
+    };
+
+    const specifiers = [
+      'react',
+      'react/jsx-runtime',
+      'react-dom/client',
+      'react-router-dom',
+      'lodash',
+      'lodash/fp/merge',
+      'lodash.merge',
+      'lodash-es',
+      'a',
+      'a/b',
+      'ab',
+      'ab/deep',
+      'abc',
+      'antd/es/button/style/index.js',
+      '@scope/pkg',
+      '@scope/pkg/sub/deep',
+      '@scope/pkg-extra/a',
+      '@scope/other',
+      '@mui/material/Button',
+      '@mui/icons-material',
+      '@scope',
+      '@scope/',
+      '',
+      './Header',
+      '../shared/Header',
+      '/abs/Header',
+      'node:fs',
+      'fs/promises',
+    ];
+
+    for (const source of specifiers) {
+      expect([source, resolve(source)]).toEqual([
+        source,
+        longestPrefixMatch(source),
+      ]);
+    }
   });
 });
 
@@ -336,17 +498,6 @@ describe('calculatePackageDistribution', () => {
     expect(distribution[0].allVersions).toEqual(['5.0.0']);
   });
 
-  it('marks a package as internal when it matches a configured internal pattern', () => {
-    const componentUsageMap = new Map<string, ComponentUsage>([
-      ['Widget', makeComponent('Widget', '@my-org/ui', 1)],
-    ]);
-    const config = createConfig({ packages: { internal: ['@my-org/*'] } });
-
-    const distribution = buildDistribution(componentUsageMap, {}, config);
-
-    expect(distribution[0].internal).toBe(true);
-  });
-
   it('excludes a package matched by a configured ignore pattern', () => {
     const componentUsageMap = new Map<string, ComponentUsage>([
       ['Button', makeComponent('Button', 'antd', 1)],
@@ -359,11 +510,15 @@ describe('calculatePackageDistribution', () => {
   });
 });
 
-describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => {
-  it('surfaces a lockfile package with zero usage when it matches releaseAge.enforceOn', () => {
+describe('calculatePackageDistribution — lockfile-only release-age rule matches', () => {
+  it('surfaces a lockfile package with zero usage when it matches an authored release-age rule', () => {
     const componentUsageMap = new Map<string, ComponentUsage>();
     const config = createConfig({
-      releaseAge: { enabled: true, enforceOn: ['@acme-ui/pulse-styles'] },
+      rules: {
+        'release-age': [
+          { severity: 'error', patterns: ['@acme-ui/pulse-styles'] },
+        ],
+      },
     });
 
     const distribution = buildDistribution(
@@ -379,7 +534,6 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
       componentCount: 0,
       usageCount: 0,
       percentage: 0,
-      internal: false,
     });
   });
 
@@ -391,7 +545,7 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
   it('surfaces a declared-but-uninstalled package with a null version', () => {
     const componentUsageMap = new Map<string, ComponentUsage>();
     const config = createConfig({
-      releaseAge: { enabled: true, enforceOn: ['eslint'] },
+      rules: { 'release-age': [{ severity: 'error', patterns: ['eslint'] }] },
     });
 
     const distribution = buildDistribution(
@@ -412,11 +566,9 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
     });
   });
 
-  it('does not surface lockfile-only packages when releaseAge is disabled', () => {
+  it('does not surface lockfile-only packages when release-age is off (no rule entries)', () => {
     const componentUsageMap = new Map<string, ComponentUsage>();
-    const config = createConfig({
-      releaseAge: { enabled: false, enforceOn: ['@acme-ui/pulse-styles'] },
-    });
+    const config = createConfig({ rules: { 'release-age': [] } });
 
     const distribution = buildDistribution(
       componentUsageMap,
@@ -427,9 +579,13 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
     expect(distribution).toEqual([]);
   });
 
-  it('does not surface lockfile-only packages when enforceOn is left empty (avoids pulling in the whole lockfile)', () => {
+  it('does not surface lockfile-only packages that no authored rule pattern names (avoids pulling in the whole lockfile)', () => {
     const componentUsageMap = new Map<string, ComponentUsage>();
-    const config = createConfig({ releaseAge: { enabled: true } });
+    const config = createConfig({
+      rules: {
+        'release-age': [{ severity: 'error', patterns: ['unrelated-package'] }],
+      },
+    });
 
     const distribution = buildDistribution(
       componentUsageMap,
@@ -445,7 +601,11 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
       ['Button', makeComponent('Button', '@acme-ui/pulse-styles', 3)],
     ]);
     const config = createConfig({
-      releaseAge: { enabled: true, enforceOn: ['@acme-ui/pulse-styles'] },
+      rules: {
+        'release-age': [
+          { severity: 'error', patterns: ['@acme-ui/pulse-styles'] },
+        ],
+      },
     });
 
     const distribution = buildDistribution(
@@ -459,11 +619,15 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
     expect(distribution[0].usageCount).toBe(3);
   });
 
-  it('respects a configured ignore pattern for a lockfile-only enforceOn match', () => {
+  it('respects a configured ignore pattern for a lockfile-only release-age rule match', () => {
     const componentUsageMap = new Map<string, ComponentUsage>();
     const config = createConfig({
       packages: { ignore: ['@acme-ui/pulse-styles'] },
-      releaseAge: { enabled: true, enforceOn: ['@acme-ui/pulse-styles'] },
+      rules: {
+        'release-age': [
+          { severity: 'error', patterns: ['@acme-ui/pulse-styles'] },
+        ],
+      },
     });
 
     const distribution = buildDistribution(
@@ -475,26 +639,14 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
     expect(distribution).toEqual([]);
   });
 
-  it('marks a lockfile-only enforceOn match as internal when it matches an internal pattern', () => {
+  it('flags hasVersionConflict/allVersions for a lockfile-only release-age rule match', () => {
     const componentUsageMap = new Map<string, ComponentUsage>();
     const config = createConfig({
-      packages: { internal: ['@acme-ui/*'] },
-      releaseAge: { enabled: true, enforceOn: ['@acme-ui/pulse-styles'] },
-    });
-
-    const distribution = buildDistribution(
-      componentUsageMap,
-      { '@acme-ui/pulse-styles': '2.1.0' },
-      config,
-    );
-
-    expect(distribution[0].internal).toBe(true);
-  });
-
-  it('flags hasVersionConflict/allVersions for a lockfile-only enforceOn match', () => {
-    const componentUsageMap = new Map<string, ComponentUsage>();
-    const config = createConfig({
-      releaseAge: { enabled: true, enforceOn: ['@acme-ui/pulse-styles'] },
+      rules: {
+        'release-age': [
+          { severity: 'error', patterns: ['@acme-ui/pulse-styles'] },
+        ],
+      },
     });
 
     const distribution = buildDistribution(
@@ -515,10 +667,12 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
   // (the highest resolved copy, so `scan` has something to show), but
   // `rootVersion` must come through as `null` — that's the signal
   // `scope: 'root'` needs to correctly decline to enforce it.
-  it('sets rootVersion to null for a lockfile-only enforceOn match with no true root resolution', () => {
+  it('sets rootVersion to null for a lockfile-only release-age rule match with no true root resolution', () => {
     const componentUsageMap = new Map<string, ComponentUsage>();
     const config = createConfig({
-      releaseAge: { enabled: true, enforceOn: ['@acme-ui/dio'] },
+      rules: {
+        'release-age': [{ severity: 'error', patterns: ['@acme-ui/dio'] }],
+      },
     });
 
     const distribution = buildDistribution(
@@ -533,10 +687,12 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
     expect(distribution[0].rootVersion).toBeNull();
   });
 
-  it('sets rootVersion to the real root value for a lockfile-only enforceOn match that IS a direct dependency', () => {
+  it('sets rootVersion to the real root value for a lockfile-only release-age rule match that IS a direct dependency', () => {
     const componentUsageMap = new Map<string, ComponentUsage>();
     const config = createConfig({
-      releaseAge: { enabled: true, enforceOn: ['@acme-ui/dio'] },
+      rules: {
+        'release-age': [{ severity: 'error', patterns: ['@acme-ui/dio'] }],
+      },
     });
 
     const distribution = buildDistribution(
@@ -550,10 +706,14 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
     expect(distribution[0].rootVersion).toBe('1.0.0');
   });
 
-  it('only surfaces lockfile packages matching enforceOn, leaving unmatched deps out', () => {
+  it('only surfaces lockfile packages matching an authored release-age rule, leaving unmatched deps out', () => {
     const componentUsageMap = new Map<string, ComponentUsage>();
     const config = createConfig({
-      releaseAge: { enabled: true, enforceOn: ['@acme-ui/pulse-styles'] },
+      rules: {
+        'release-age': [
+          { severity: 'error', patterns: ['@acme-ui/pulse-styles'] },
+        ],
+      },
     });
 
     const distribution = buildDistribution(
@@ -572,7 +732,11 @@ describe('calculatePackageDistribution — lockfile-only enforceOn deps', () => 
       ['DatePicker', makeComponent('DatePicker', 'moment', 1)],
     ]);
     const config = createConfig({
-      releaseAge: { enabled: true, enforceOn: ['@acme-ui/pulse-styles'] },
+      rules: {
+        'release-age': [
+          { severity: 'error', patterns: ['@acme-ui/pulse-styles'] },
+        ],
+      },
     });
 
     const distribution = buildDistribution(

@@ -26,9 +26,13 @@ export interface ComponentUsage {
  * - **declared** — listed in this repo's `package.json` (`declaredIn`).
  * - **installed** — present in the lockfile, as a direct dependency
  *   (`rootVersion`) and/or as one or more resolved copies (`allVersions`).
- *   This is the `root` vs `tree` distinction `releaseAge.scope` already
+ *   This is the `root` vs `tree` distinction the release-age rule's `scope` field already
  *   exposes to users.
- * - **used** — imported by scanned source (`usageCount` > 0).
+ * - **used** — imported by scanned source. Measured on two independent
+ *   axes: `usageCount` counts JSX component *renders*, `importingFileCount`
+ *   counts the files that *import* the package at all. A package called as a
+ *   function or hook — `moment`, `lodash`, `zustand` — is invisible to the
+ *   first and visible to the second (#174).
  *
  * A transitive dependency is installed but neither declared nor used; a
  * build tool run via `npx` is declared and installed but not used; a phantom
@@ -45,9 +49,7 @@ export interface PackageInventoryEntry {
   /** Every resolved copy in the lockfile — the `tree` axis. */
   allVersions: string[];
   hasVersionConflict: boolean;
-  /** Matches `packages.internal`. */
-  internal: boolean;
-  /** Matches `packages.ignore`. Kept in the inventory rather than filtered out at construction so each consumer can decide — the packages table and forbid rules skip these, `require_packages` deliberately does not. */
+  /** Matches `packages.ignore`. Kept in the inventory rather than filtered out at construction so each consumer can decide — the packages table and forbid rules skip these, `require-packages` deliberately does not. */
   ignored: boolean;
   usageCount: number;
   /**
@@ -57,6 +59,27 @@ export interface PackageInventoryEntry {
    * consumer had to decide which copy was canonical.
    */
   componentCount: number;
+  /**
+   * How many scanned files import this package, counted once per file however
+   * many specifiers that file pulls in (see `collectImportedPackages`).
+   *
+   * The one axis that answers "how much of this repo leans on this package"
+   * for a package that renders nothing. `usageCount` cannot: it counts JSX
+   * elements, so `moment` vs `date-fns` reads 0 vs 0 no matter how far a
+   * migration has actually got (#174).
+   *
+   * Files, rather than import statements or bound symbols, because that is
+   * the unit a migration is done in and the one a reader can check by grep:
+   * `import { format, parse, addDays } from 'date-fns'` is one file that
+   * depends on date-fns, not three, and refactoring it into one symbol must
+   * not look like progress.
+   *
+   * This is deliberately *not* the full imported axis of #163 — no per-file
+   * sites, no `tsconfig` path resolution, no record of unresolved
+   * specifiers. It is a scalar, and it leaves `usageCount` alone rather than
+   * reinterpreting it, so #163 stays free to decide the richer shape.
+   */
+  importingFileCount: number;
 }
 
 export interface BuildInventoryInput {
@@ -68,6 +91,8 @@ export interface BuildInventoryInput {
   declared?: DeclaredPackages;
   /** Component usage keyed by `source::component`, from the aggregator. */
   componentUsage?: Map<string, ComponentUsage>;
+  /** Package name → how many scanned files import it, from the aggregator. */
+  importingFiles?: ReadonlyMap<string, number>;
   config?: ResolvedHermexConfig;
 }
 
@@ -140,8 +165,8 @@ function getRootVersion(
  * The single list of packages every downstream consumer reads.
  *
  * Before this existed, each feature answered "what packages are in this
- * repo?" for itself — the packages table and `forbid_packages` from import
- * analysis, `require_packages` from the lockfile, `forbid_package_fields`
+ * repo?" for itself — the packages table and `no-packages` from import
+ * analysis, `require-packages` from the lockfile, `no-package-fields`
  * from the manifest — so a package could be visible to one rule and
  * invisible to another (#75). Merging the three axes once, here, means the
  * features differ only in which axis they *select*, not in what they can
@@ -156,11 +181,11 @@ export function buildPackageInventory(
     resolutions = {},
     declared = {},
     componentUsage,
+    importingFiles,
     config,
   } = input;
 
   const isIgnored = createGlobMatcher(config?.packages.ignore ?? []);
-  const isInternal = createGlobMatcher(config?.packages.internal ?? []);
 
   // Fold component usage up to one record per package first — several
   // components can come from the same source.
@@ -185,8 +210,17 @@ export function buildPackageInventory(
 
   // Used packages first so the inventory (and every view derived from it)
   // stays usage-ordered; declared-only and transitive packages follow.
+  //
+  // The imported axis sits second, between them, and the position is
+  // deliberate: the sort below is by `usageCount` alone, so every package
+  // that renders nothing ties at 0 and this insertion order is what actually
+  // ranks the tail. Ordering it rendered → imported → neither keeps the whole
+  // list reading as "how much does this repo lean on it", rather than putting
+  // a package the repo imports on every page below one nothing has ever
+  // referenced.
   const names = new Set<string>([
     ...usage.keys(),
+    ...(importingFiles?.keys() ?? []),
     ...Object.keys(declared),
     ...Object.keys(versions),
     ...Object.keys(resolutions),
@@ -204,10 +238,10 @@ export function buildPackageInventory(
       rootVersion: getRootVersion(packageName, resolutions),
       allVersions,
       hasVersionConflict: allVersions.length > 1,
-      internal: isInternal(packageName),
       ignored: isIgnored(packageName),
       usageCount: packageUsage?.usageCount ?? 0,
       componentCount: packageUsage?.componentCount ?? 0,
+      importingFileCount: importingFiles?.get(packageName) ?? 0,
     });
   }
 
@@ -221,7 +255,17 @@ export function isDeclared(entry: PackageInventoryEntry): boolean {
   return entry.declaredIn.length > 0;
 }
 
-/** Imported by scanned source. */
+/**
+ * Rendered as a JSX component by scanned source.
+ *
+ * Narrower than its name suggests, and deliberately left that way: widening
+ * it to include `importingFileCount` would move packages in and out of
+ * `isOwnedByRepo`, and with it the packages table, `no-packages` and
+ * release-age enrichment — a far larger change than #174 asked for. In
+ * practice it costs nothing: `collectImportedPackages` only resolves
+ * specifiers whose package the lockfile layer already knows, so anything it
+ * counts is in the inventory on the installed axis regardless.
+ */
 export function isUsed(entry: PackageInventoryEntry): boolean {
   return entry.usageCount > 0;
 }
@@ -229,7 +273,7 @@ export function isUsed(entry: PackageInventoryEntry): boolean {
 /**
  * Present in the lockfile. `root` counts only direct dependencies; `tree`
  * counts any resolved copy, including purely transitive ones — the same
- * axis `releaseAge.scope` exposes.
+ * axis the release-age rule's `scope` field exposes.
  */
 export function isInstalled(
   entry: PackageInventoryEntry,

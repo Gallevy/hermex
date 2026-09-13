@@ -21,9 +21,14 @@ export interface PackageDistribution {
   declaredIn: DependencyBucket[];
   componentCount: number;
   usageCount: number;
+  /**
+   * How many scanned files import this package — the axis that stays
+   * meaningful for a package used only as a function (#174). See
+   * `PackageInventoryEntry.importingFileCount` for why it counts files.
+   */
+  importingFileCount: number;
   /** Share of total measured component usage. 0 for a package that is never rendered as a component — which includes every package used only as a function. */
   percentage: number;
-  internal: boolean;
   hasVersionConflict: boolean;
   allVersions: string[];
   /**
@@ -42,30 +47,97 @@ export interface PackageDistribution {
   releaseAge?: ReleaseAgeEntry;
 }
 
-function resolvePackageFromImportPath(
+/**
+ * The package name an import path belongs to, or `null` when the path names
+ * no package at all.
+ *
+ * An npm package name is exactly one path segment, or two when scoped
+ * (`@scope/name`) — everything after that is a subpath export. So the name is
+ * read straight off the path rather than prefix-matched against every known
+ * package, which is what lets the caller resolve with a single hash probe
+ * instead of a scan of the whole lockfile per JSX element.
+ */
+function packageNameFromImportPath(importPath: string): string | null {
+  if (importPath.length === 0) return null;
+
+  const firstSlash = importPath.indexOf('/');
+  // Bare specifier (`react`), or a lone `@scope` — the latter is not a valid
+  // specifier and simply falls out as a miss against the package set.
+  if (firstSlash === -1) return importPath;
+
+  if (importPath.charCodeAt(0) === 64 /* @ */) {
+    const secondSlash = importPath.indexOf('/', firstSlash + 1);
+    // `@scope/name` exactly; there is no subpath to trim.
+    return secondSlash === -1 ? importPath : importPath.slice(0, secondSlash);
+  }
+
+  return importPath.slice(0, firstSlash);
+}
+
+/**
+ * Sources that name no package at all — a relative import, or one that
+ * resolved against no known package name.
+ */
+const LOCAL_SOURCE = 'local';
+const UNKNOWN_SOURCE = 'unknown';
+
+export function resolvePackageFromImportPath(
   importPath: string,
-  availablePackages: string[],
+  availablePackages: ReadonlySet<string>,
 ): string {
   if (importPath.startsWith('.') || importPath.startsWith('/')) {
-    return 'local';
+    return LOCAL_SOURCE;
   }
 
-  const sortedPackages = [...availablePackages].sort(
-    (a, b) => b.length - a.length,
-  );
-
-  for (const pkg of sortedPackages) {
-    if (importPath === pkg) return pkg;
-    if (importPath.startsWith(`${pkg}/`)) return pkg;
+  const packageName = packageNameFromImportPath(importPath);
+  if (packageName !== null && availablePackages.has(packageName)) {
+    return packageName;
   }
 
-  return 'unknown';
+  return UNKNOWN_SOURCE;
+}
+
+/**
+ * The packages one file imports, deduplicated — the unit the imported count
+ * is measured in (see `PackageInventoryEntry.importingFileCount`).
+ *
+ * Every specifier carrying a source is folded in: the three static import
+ * forms, plus `React.lazy(() => import(...))` and bare dynamic `import()`, so
+ * a package pulled in only on a code-split path still counts as depended on.
+ * `aliased` is deliberately skipped — it is a second view of entries already
+ * in `named`, not a fourth import form.
+ *
+ * A specifier only resolves when its package name is already known to the
+ * lockfile layer; anything else lands on `unknown` and is dropped here. So
+ * this can never surface a package the inventory has not already seen, which
+ * is what keeps the imported count purely additive — `isOwnedByRepo`, and
+ * therefore the packages table and every package rule, is untouched by it.
+ */
+export function collectImportedPackages(
+  report: UsageReport,
+  availablePackages: ReadonlySet<string>,
+): Set<string> {
+  const imported = new Set<string>();
+
+  const add = (source: string): void => {
+    const resolved = resolvePackageFromImportPath(source, availablePackages);
+    if (resolved === LOCAL_SOURCE || resolved === UNKNOWN_SOURCE) return;
+    imported.add(resolved);
+  };
+
+  for (const imp of report.patterns.imports.default) add(imp.source);
+  for (const imp of report.patterns.imports.named) add(imp.source);
+  for (const imp of report.patterns.imports.namespace) add(imp.source);
+  for (const imp of report.patterns.advanced.lazy) add(imp.source);
+  for (const imp of report.patterns.advanced.dynamic) add(imp.source);
+
+  return imported;
 }
 
 export function findComponentSource(
   componentName: string,
   report: UsageReport,
-  availablePackages: string[],
+  availablePackages: ReadonlySet<string>,
 ): string {
   const namedImport = report.patterns.imports.named.find(
     (imp) => imp.name === componentName,
@@ -109,36 +181,44 @@ export function findComponentSource(
  *
  * Purely transitive dependencies stay out: `isOwnedByRepo` excludes them, so
  * this is still the repo's own dependency surface rather than the whole
- * lockfile. The one exception is a transitive package explicitly named by
- * `releaseAge.enforceOn` — installed and deliberately enforced, yet owned by
- * nobody. Dropping it here would silently exempt it from compliance, so it
- * is surfaced with zero usage.
+ * lockfile. The one exception is a transitive package explicitly matched by
+ * an `error`-severity `rules['release-age']` entry — installed and
+ * deliberately made mandatory, yet owned by nobody. Dropping it here would
+ * silently exempt it from compliance, so it is surfaced with zero usage.
+ * Deliberately narrower than "any non-off entry": a `warn`/`info` catch-all
+ * like `{ severity: 'warn', patterns: ['**'] }` (or the implicit `['**']`
+ * baseline itself, `resolveReleaseAgeRule` in `src/config/overrides.ts`)
+ * must not reach into the whole transitive lockfile and flood this table
+ * with every package nobody owns — only a pattern the author wrote
+ * specifically to make something mandatory does that.
  *
- * Note this is deliberately NOT the set release-age enrichment operates on —
- * see `isReleaseAgeTarget`. Enriching every owned package would fire a
- * registry request per declared dependency, and (with the default empty
- * `enforceOn`, which marks every fetched package `severity: 'error'`) would
- * turn newly-visible overdue dependencies into mandatory compliance
- * failures for repos that pass today.
+ * This is also exactly the set release-age enrichment operates on: every
+ * package here with an installed version is looked up when release-age is
+ * on for this repo. It was once narrower — gated on `usageCount > 0` plus
+ * `enforceOn` matches — but usage counts JSX component rendering, which has
+ * nothing to do with whether an installed dependency is stale (#171).
  */
 export function calculatePackageDistribution(
   inventory: PackageInventoryEntry[],
   config?: ResolvedHermexConfig,
 ): PackageDistribution[] {
-  const enforceOnPatterns = config?.releaseAge.enforceOn ?? [];
-  const enforcesUnownedPackages =
-    (config?.releaseAge.enabled ?? false) && enforceOnPatterns.length > 0;
+  const releaseAgeRules = config?.rules['release-age'] ?? [];
+  const releaseAgePatterns = releaseAgeRules
+    .filter((r) => r.severity === 'error')
+    .flatMap((r) => r.patterns);
+  const enforcesUnownedPackages = releaseAgePatterns.length > 0;
 
   const distribution = inventory
     .filter((entry) => {
       if (entry.ignored) return false;
       if (isOwnedByRepo(entry)) return true;
-      // Transitive, but explicitly enforced. Requires an installed version:
-      // there is no release date to check without one.
+      // Transitive, but explicitly named by an authored release-age rule.
+      // Requires an installed version: there is no release date to check
+      // without one.
       return (
         enforcesUnownedPackages &&
         isInstalled(entry) &&
-        micromatch.isMatch(entry.packageName, enforceOnPatterns)
+        micromatch.isMatch(entry.packageName, releaseAgePatterns)
       );
     })
     .map((entry) => ({
@@ -148,8 +228,8 @@ export function calculatePackageDistribution(
       declaredIn: entry.declaredIn,
       componentCount: entry.componentCount,
       usageCount: entry.usageCount,
+      importingFileCount: entry.importingFileCount,
       percentage: 0,
-      internal: entry.internal,
       hasVersionConflict: entry.hasVersionConflict,
       allVersions: entry.allVersions,
     }));
@@ -168,30 +248,4 @@ export function calculatePackageDistribution(
   // self-contained rather than silently depending on that. Equal usage keeps
   // insertion order, so the zero-usage tail stays in discovery order.
   return distribution.sort((a, b) => b.usageCount - a.usageCount);
-}
-
-/**
- * Whether release-age enrichment should look this package up in the
- * registry. Deliberately narrower than `packages[]` itself (#78): that array
- * is now every package the repo owns, and enriching all of them would
- * - fire one registry request per declared dependency rather than per
- *   *used* one, and
- * - with the default empty `enforceOn` — which `enricher.ts` reads as
- *   "everything is severity `error`" — promote every newly-visible overdue
- *   dependency to a mandatory violation, flipping `comply` to a failure for
- *   repos that pass today.
- *
- * So the target set is exactly what it was before `packages[]` expanded:
- * packages with measured usage, plus `enforceOn` matches (which can be
- * installed and explicitly enforced yet never imported as a component — a
- * side-effect-only `import '@acme-ui/pulse-styles/button.css'` has no
- * specifiers, so the usage scan never sees it, and skipping it would
- * silently exempt it from compliance).
- */
-export function isReleaseAgeTarget(
-  pkg: Pick<PackageDistribution, 'packageName' | 'usageCount'>,
-  enforceOn: string[],
-): boolean {
-  if (pkg.usageCount > 0) return true;
-  return enforceOn.length > 0 && micromatch.isMatch(pkg.packageName, enforceOn);
 }

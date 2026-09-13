@@ -2,13 +2,18 @@ import { writeFileSync } from 'node:fs';
 import type { AggregatedReport } from './aggregator';
 import type { ComplianceResult } from './compliance';
 import { countMandatoryViolations } from './compliance';
-import { describeViolation, formatRuleType } from './print-rules';
+import { buildRuleRows } from './print-rules';
 import {
   describeUpgradeTarget,
   resolveCompliantTarget,
   resolveInstalledVersion,
 } from './print-packages';
-import { severityIcon, stripAnsi } from './severity-format';
+import {
+  formatSeverityTally,
+  severityIcon,
+  sortViolationsBySeverity,
+  stripAnsi,
+} from './severity-format';
 
 // A table, mirroring the Packages section below it, rather than a bullet
 // list — same shape, same scanability, in both output surfaces.
@@ -16,8 +21,8 @@ function buildRulesSection(aggregated: AggregatedReport): string {
   // Info-severity rows are excluded here (unlike the terminal `printRules`,
   // which shows everything) — a summary meant for a PR comment or job
   // summary should only surface what's actually enforceable (#31).
-  const ruleViolations = aggregated.ruleViolations.filter(
-    (v) => v.severity !== 'info',
+  const ruleViolations = sortViolationsBySeverity(
+    aggregated.ruleViolations.filter((v) => v.severity !== 'info'),
   );
 
   // Nothing to report — omit the section entirely, matching
@@ -28,6 +33,9 @@ function buildRulesSection(aggregated: AggregatedReport): string {
     return '';
   }
 
+  const rows = buildRuleRows(ruleViolations);
+  if (rows.length === 0) return '';
+
   const lines: string[] = [
     '### Rules',
     '',
@@ -35,43 +43,56 @@ function buildRulesSection(aggregated: AggregatedReport): string {
     '|---|---|---|',
   ];
 
-  for (const v of ruleViolations) {
+  // `buildRuleRows`'s `description` never includes the icon — kept in its
+  // own leading column here, same as the Packages table below, rather than
+  // embedded inline the way the terminal table (single Description column)
+  // renders it.
+  for (const row of rows) {
     lines.push(
-      `| ${severityIcon(v.severity)} | ${formatRuleType(v.type)} | ${describeViolation(v)} |`,
+      `| ${severityIcon(row.severity)} | ${row.rule} | ${row.description} |`,
     );
   }
 
-  const errorCount = ruleViolations.filter(
-    (v) => v.severity === 'error',
-  ).length;
-  const warnCount = ruleViolations.filter((v) => v.severity === 'warn').length;
-  const parts: string[] = [];
-  if (errorCount > 0)
-    parts.push(`${errorCount} error${errorCount > 1 ? 's' : ''}`);
-  if (warnCount > 0)
-    parts.push(`${warnCount} warning${warnCount > 1 ? 's' : ''}`);
-  lines.push('', parts.join(', '));
+  // Tallies `rows`, not `ruleViolations` — same reasoning as `printRules`:
+  // the count must equal what's rendered above it (#88), and release-age
+  // never renders a row here even though it's still an (info-filtered-out)
+  // member of `ruleViolations`.
+  lines.push('', formatSeverityTally(rows));
 
   return lines.join('\n') + '\n';
 }
 
-// Built directly from compliance.releaseAgeViolations rather than a
-// separately-derived filter — that's already exactly "release-age packages
-// that are mandatory failures" (src/utils/compliance.ts), so the row list
-// can never drift from the verdict's mandatory-violation count. Banned and
-// deprecated-only/not-enforced packages don't get a row here: banned ones
-// are already shown in Rules as a forbid_packages line, and
-// deprecated-only or not-enforced-overdue packages are info-level, not
-// enforceable (#31).
+// Mandatory release-age failures, found by filtering `ruleViolations` for
+// error-severity `release-age` hits and joining back to
+// `packageDistribution` by `packageName` for the rich upgrade-target detail
+// — the same join `findForbidViolation` (`print-packages.ts`) already uses
+// for `no-packages`. Release-age violations no longer have their own bucket
+// on `ComplianceResult` (#93 superseded — they're ordinary `RuleViolation`s
+// now), so this is the direct replacement for the old
+// `compliance.releaseAgeViolations` read. Banned and deprecated-only/
+// not-enforced packages don't get a row here: banned ones are already shown
+// in Rules as a no-packages line, and deprecated-only or not-enforced
+// overdue packages are info-level, not enforceable (#31).
 //
 // Bundle-impact (multiple resolved copies) and advisory nested breaches are
 // deliberately NOT included here — they're non-blocking context, and a
 // summary meant for a PR comment or CI check reads any colored row/line as
 // something that needs attention. That context belongs in the human
 // `--format human` table (stdout), not in a surface used for gating (#59).
-function buildPackagesSection(compliance: ComplianceResult): string {
-  const mandatory = compliance.releaseAgeViolations;
-  if (mandatory.length === 0) return '';
+function buildPackagesSection(aggregated: AggregatedReport): string {
+  const failingPackageNames = new Set(
+    aggregated.ruleViolations
+      .filter(
+        (v): v is Extract<typeof v, { ruleId: 'release-age' }> =>
+          v.ruleId === 'release-age' && v.severity === 'error',
+      )
+      .map((v) => v.packageName),
+  );
+  if (failingPackageNames.size === 0) return '';
+
+  const mandatory = aggregated.packageDistribution.filter((pkg) =>
+    failingPackageNames.has(pkg.packageName),
+  );
 
   const lines: string[] = [
     '### Packages',
@@ -97,12 +118,12 @@ function buildPackagesSection(compliance: ComplianceResult): string {
 
 function buildVerdictSection(compliance: ComplianceResult): string {
   if (compliance.compliant) {
-    return `### ${severityIcon('success')} COMPLIANT\n`;
+    return `### ${severityIcon('success')} Compliant\n`;
   }
 
   const mandatoryCount = countMandatoryViolations(compliance);
 
-  return `### ${severityIcon('error')} NOT COMPLIANT\n\n${mandatoryCount} mandatory violation${mandatoryCount > 1 ? 's' : ''} found\n`;
+  return `### ${severityIcon('error')} Not compliant\n\n${mandatoryCount} mandatory violation${mandatoryCount > 1 ? 's' : ''} found\n`;
 }
 
 export const DEFAULT_SUMMARY_TITLE = 'Hermex Compliance Report';
@@ -122,7 +143,7 @@ export function writeSummaryFile(
   const sections = [
     `# ${title}\n`,
     buildRulesSection(aggregated),
-    buildPackagesSection(compliance),
+    buildPackagesSection(aggregated),
     buildVerdictSection(compliance),
   ].filter((section) => section.length > 0);
 

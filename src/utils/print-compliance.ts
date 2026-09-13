@@ -13,12 +13,12 @@ export function printComplianceVerdict(result: ComplianceResult): void {
 
   if (result.compliant) {
     console.log(
-      chalk.greenBright.bold(`\n${severityIcon('success')} COMPLIANT\n`),
+      chalk.greenBright.bold(`\n${severityIcon('success')} Compliant\n`),
     );
     return;
   }
 
-  console.log(chalk.redBright.bold(`\n${severityIcon('error')} NOT COMPLIANT`));
+  console.log(chalk.redBright.bold(`\n${severityIcon('error')} Not compliant`));
   console.log(
     chalk.red(
       `  ${mandatoryCount} mandatory violation${mandatoryCount > 1 ? 's' : ''} found`,

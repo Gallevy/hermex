@@ -19,14 +19,13 @@ import { isInstalled, isOwnedByRepo, isUsed } from './package-inventory';
  * Returns `RuleViolation`s like every other rule (#77). One violation per
  * matched package, so a glob rule (`@legacy/*`) hitting three packages
  * yields three entries sharing `patterns` and differing on `packageName` —
- * `matchedFiles` stays empty because the inventory carries no file paths,
- * and a hit can be declared-only with no files at all (#75).
+ * a hit can be declared-only with no files involved at all (#75).
  */
 export function detectForbiddenPackages(
   inventory: PackageInventoryEntry[],
   config?: ResolvedHermexConfig,
 ): RuleViolation[] {
-  const forbidRules = config?.rules.forbid_packages ?? [];
+  const forbidRules = config?.rules['no-packages'] ?? [];
   if (forbidRules.length === 0) {
     return [];
   }
@@ -38,11 +37,10 @@ export function detectForbiddenPackages(
     for (const rule of forbidRules) {
       if (micromatch.isMatch(entry.packageName, rule.patterns)) {
         violations.push({
-          type: 'forbid_packages',
+          ruleId: 'no-packages',
           severity: rule.severity,
           patterns: rule.patterns,
           message: rule.message,
-          matchedFiles: [],
           packageName: entry.packageName,
         });
         break;
@@ -66,7 +64,7 @@ export function detectRequiredPackages(
   inventory: PackageInventoryEntry[],
   config?: ResolvedHermexConfig,
 ): RuleViolation[] {
-  const requireRules = config?.rules.require_packages ?? [];
+  const requireRules = config?.rules['require-packages'] ?? [];
   if (requireRules.length === 0) return [];
 
   const installedNames = inventory
@@ -80,11 +78,10 @@ export function detectRequiredPackages(
     );
     if (!satisfied) {
       violations.push({
-        type: 'require_packages',
+        ruleId: 'require-packages',
         severity: rule.severity,
         patterns: rule.patterns,
         message: rule.message,
-        matchedFiles: [],
       });
     }
   }

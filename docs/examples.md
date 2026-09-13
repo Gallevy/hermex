@@ -37,28 +37,74 @@ export default defineConfig({
 });
 ```
 
-## Internal Package Marking
+## Parser (experimental)
 
-Mark your own packages so they're visually separated in the packages table and skipped during release age checks:
+`parser` selects the AST front-end. It defaults to `'swc'`, the supported one;
+`'oxc-experimental'` swaps [@swc/core](https://swc.rs/) for
+[oxc-parser](https://oxc.rs/).
+
+```ts
+export default defineConfig({
+  parser: 'oxc-experimental',
+});
+```
+
+Only the parse step changes. oxc's ESTree AST is normalized into the node shape
+the analyzers already consume, so the same visitor, the same pattern analyzers
+and the same report generator run either way — every import, JSX usage, prop
+detail and advanced pattern comes out identical. `tests/oxc-parser/parity.test.ts`
+asserts that report-for-report against `swc` over the whole fixture corpus, and
+the e2e suite diffs a full `scan --format json` run between the two.
+
+Why it exists, and what it costs today. Measured on the fixture corpus
+(41 files, 200 rounds, ms per pass):
+
+| | `swc` | `oxc-experimental` |
+| --- | --- | --- |
+| Installed size (parser + native binding) | ~27 MB | **~3 MB** |
+| Parse, to a usable JS AST | 11.7 | **7.7** |
+| AST normalization | — | +7.0 |
+| Analysis walk | +2.3 | +3.6 |
+| **Total** | **14.0** | **18.3** |
+
+The install-size win — about 9x smaller — is the reason to reach for it today.
+
+Scans are currently *slower* end to end, and the breakdown says exactly why.
+oxc's parse is genuinely faster (7.7 vs 11.7 ms, ~1.5x), but normalizing its
+AST into the analyzers' node shape costs 7.0 ms, more than that saves. The
+analysis walk is then a further 1.3 ms slower because the normalized tree
+carries more fields than SWC's native one (63.3k vs 51.9k) and `visitChildren`
+iterates every field of every node. Net: +4.3 ms.
+
+Both costs come from normalization being an eager deep copy; removing it means
+teaching the analyzers to read oxc's AST directly. That is why the option is
+experimental and opt-in.
+
+> A note on benchmarking oxc: `parseSync().program` is a **lazy getter**.
+> Timing a parse without reading `program` measures ~2.4 ms and is not
+> comparable to SWC, which always materializes its AST — the deserialization
+> cost simply lands on whoever touches the tree first. The 7.7 ms above
+> includes materializing the AST.
+
+## Ignoring Packages
+
+Exclude packages from the packages table entirely:
 
 ```ts
 export default defineConfig({
   packages: {
-    internal: ['@myorg/*', '@company/design-system'],
     ignore: ['react', 'react-dom'], // exclude from output entirely
   },
 });
 ```
 
-Internal packages show an `[int]` badge in the packages table.
-
 `ignore` is a *reporting* filter, not an uninstall: an ignored package is left out of the packages
-table and is never flagged by `forbid_packages`, but it still counts as installed for
-`require_packages` — otherwise ignoring a package would make a rule that requires it start failing.
+table and is never flagged by `no-packages`, but it still counts as installed for
+`require-packages` — otherwise ignoring a package would make a rule that requires it start failing.
 
 ## Versus — Migration Tracking
 
-Track usage split between competing packages:
+Track how a migration between competing packages is going:
 
 ```ts
 export default defineConfig({
@@ -68,24 +114,71 @@ export default defineConfig({
       packages: ['@old/foundation', '@new/arc'],
     },
     {
-      name: 'Icon Library',
-      packages: ['@icons/heroicons', '@icons/feather'],
+      name: 'Date Library',
+      packages: ['moment', 'date-fns'],
     },
   ],
 });
 ```
 
-Output shows a neutral bar split per group — no directional assumption, just usage percentages.
+Output shows a neutral bar split per group — no directional assumption, just the share each
+package holds.
+
+**What the split is measured in.** Each package's share is **how many scanned files import it**.
+That matters because most migrations worth tracking are function-only (`moment` → `date-fns`,
+`lodash` → `es-toolkit`, `redux` → `zustand`), and those packages never appear in JSX at all —
+scored on renders, both sides of such a group read 0 forever. One unit for every group also keeps
+the two sides comparable: a group with a component library on one side and a hook library on the
+other would otherwise be measured one way on the left and another on the right.
+
+A file importing three helpers from one package still depends on it once, so consolidating an
+import does not read as progress. A file importing both packages counts for both — percentages
+are a share of the group, not of your file count.
+
+**Renders are shown too.** For a package that renders components, the render count appears beside
+the file count, because the two answer different questions:
+
+```
+  @design-system/foundation  ██████████████████████████████ 100.0% (8 files, 33 renders)
+```
+
+Files are **progress** — 7 of 15 files converted is about half done. Renders are **effort** — the
+same repo can be half converted by file and still have most of its call sites left, because the
+old library is used densely in the files nobody has touched. A package that renders nothing shows
+files alone rather than a `0 renders` that would read as a finding.
+
+**A package that isn't there.** A group can name a package this repo does not have — a typo, one
+under `packages.ignore`, or one that was never installed. That is reported as *not found in this
+repo* rather than as 0%, because "nobody has migrated yet" and "hermex cannot see this package"
+call for opposite reactions:
+
+```
+  Date Library
+  ──────────────────────────────────────────────────
+  moment      ███████████████████████░░░░░░░ 75.0% (3 files)
+  date-fns    ████████░░░░░░░░░░░░░░░░░░░░░░ 25.0% (1 file)
+
+  Icon Library
+  ──────────────────────────────────────────────────
+  @icons/heroicons  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0.0% (not found in this repo)
+  @icons/feather    ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0.0% (not found in this repo)
+  None of these packages was found in this repo.
+```
+
+In `--format json`, the same split is under `versus[].entries[]` as `count`, `renderCount`,
+`percentage` and `present`. The per-package count is also on every row of `packages[]` as `importingFileCount`,
+beside `usageCount` — the first is imports, the second is JSX renders, and for a package used
+only as a function the second is always 0.
 
 ## Overrides — Repo-Scoped Rules
 
 When one shared `hermex.config.ts` is reused across many repos, `overrides`
 lets a subset of them get adjusted rules without forking the config. Each
 entry checks the *current repo's* `package.json` `name` field against
-`match` (micromatch patterns, same matching engine as `forbid_packages`);
+`match` (micromatch patterns, same matching engine as `no-packages`);
 when it matches, the entry's `rules` are upserted into the base `rules`
 above, keyed by identity — a rule's `patterns` (or `range` for
-`engine_version`).
+`require-engine-version`).
 
 - A rule whose `patterns` don't match any existing base rule is **added**.
 - A rule whose `patterns` match an existing base rule **replaces** it
@@ -97,7 +190,7 @@ above, keyed by identity — a rule's `patterns` (or `range` for
 ```ts
 export default defineConfig({
   rules: {
-    require_packages: [
+    'require-packages': [
       { severity: 'error', patterns: ['typescript'] },
       { severity: 'error', patterns: ['@acme/shell'] },
     ],
@@ -108,7 +201,7 @@ export default defineConfig({
       // this array to add/remove repos, no other config changes needed
       match: ['@acme/checkout', '@acme/billing'],
       rules: {
-        require_packages: [
+        'require-packages': [
           { severity: 'error', patterns: ['@acme/telemetry'] },
         ],
       },
@@ -117,14 +210,14 @@ export default defineConfig({
       // legacy repo can't adopt @acme/shell yet — exempt it entirely
       match: ['@acme/legacy-app'],
       rules: {
-        require_packages: [{ severity: 'off', patterns: ['@acme/shell'] }],
+        'require-packages': [{ severity: 'off', patterns: ['@acme/shell'] }],
       },
     },
     {
       // this repo isn't ready to fail CI over it yet — nudge instead
       match: ['@acme/in-progress-app'],
       rules: {
-        require_packages: [
+        'require-packages': [
           {
             severity: 'warn',
             patterns: ['@acme/shell'],
@@ -137,7 +230,7 @@ export default defineConfig({
 });
 ```
 
-`@acme/checkout` ends up with all three `require_packages` rules
+`@acme/checkout` ends up with all three `require-packages` rules
 (`typescript` and `@acme/shell` from the base, `@acme/telemetry` from its
 override — none of the `patterns` collide, so all are added).
 `@acme/legacy-app` keeps the base `typescript` rule but loses `@acme/shell`
@@ -152,11 +245,11 @@ has no `name`, no overrides can match.
 same set of strings), not a glob comparison — write the override's
 `patterns` identically to the base rule you want to replace or cancel.
 
-Every rule type supports this (`detect_files`, `require_files`,
-`forbid_packages`, `require_packages`, `require_scripts`,
-`require_package_fields`, `forbid_package_fields`, `engine_version`). The
-exception is `codeowners`, which only ever holds a single rule — any
-matching override's `codeowners` replaces the base one outright, and
+Every rule type supports this (`no-files`, `require-files`,
+`max-file-size`, `no-packages`, `require-packages`, `require-scripts`,
+`require-package-fields`, `no-package-fields`, `require-engine-version`). The
+exception is `require-codeowners`, which only ever holds a single rule — any
+matching override's `require-codeowners` replaces the base one outright, and
 severity `'off'` clears it.
 
 When more than one override entry matches the same repo, all of them apply,
@@ -171,7 +264,7 @@ disables a rule wherever it's written:
 ```ts
 export default defineConfig({
   rules: {
-    require_packages: [
+    'require-packages': [
       { severity: 'error', patterns: ['typescript'] },
       { severity: 'off', patterns: ['@acme/shell'] }, // written, but disabled
     ],
@@ -183,7 +276,7 @@ This repo only ever gets the `typescript` rule — the `@acme/shell` entry is
 resolved away before it reaches anything that evaluates rules. It's the
 same upsert-by-identity machinery `overrides` uses, just applied to the
 base config against itself, so two rules sharing the same `patterns`
-(or `range`, for `engine_version`) also collapse to the last one written,
+(or `range`, for `require-engine-version`) also collapse to the last one written,
 last write wins — useful if you ever generate `rules` programmatically in
 `hermex.config.ts` (it's plain TypeScript) rather than hand-authoring it.
 
@@ -191,8 +284,8 @@ last write wins — useful if you ever generate `rules` programmatically in
 
 ### File Rules
 
-File rules fall into two axes: **presence-triggered** (`detect_files`) and
-**absence-triggered** (`require_files`). `detect_files` supports three
+File rules fall into two axes: **presence-triggered** (`no-files`) and
+**absence-triggered** (`require-files`). `no-files` supports three
 severities — `info` for pure tracking (never a violation-style concern,
 just recorded), `warn` for a nudge, and `error` for a hard requirement
 that a file must NOT be present.
@@ -200,7 +293,7 @@ that a file must NOT be present.
 ```ts
 export default defineConfig({
   rules: {
-    detect_files: [
+    'no-files': [
       {
         severity: 'error',
         patterns: ['jest.config.*', '.babelrc'],
@@ -213,7 +306,7 @@ export default defineConfig({
         message: 'Orbis build toolchain detected',
       },
     ],
-    require_files: [
+    'require-files': [
       { severity: 'error', patterns: ['.nvmrc', 'vitest.config.*'] },
       { severity: 'warn', patterns: ['.editorconfig'] },
     ],
@@ -221,12 +314,42 @@ export default defineConfig({
 });
 ```
 
+### File Size Limits
+
+`max-file-size` flags any file matching `patterns` that is bigger than
+`maxSize`. Sizes are written either as a plain byte count (`204800`) or with
+a unit — `'200kb'`, `'1.5mb'`, `'500b'`. Units are binary, so 1 KB is 1024 B
+(`kib`/`mib`/`gib` are accepted spellings of the same values). A file sitting
+exactly on the ceiling passes; only files strictly over it are reported.
+
+```ts
+export default defineConfig({
+  rules: {
+    'max-file-size': [
+      {
+        severity: 'error',
+        patterns: ['**/*.svg', '**/*.png'],
+        maxSize: '200kb',
+        message: 'Compress it or serve it from the CDN',
+      },
+      // Same rule, byte count instead of a unit — 50 KB.
+      { severity: 'warn', patterns: ['src/**/*.json'], maxSize: 51200 },
+    ],
+  },
+});
+```
+
+Each rule reports a single violation listing every file over its ceiling, so
+one pattern is one row in the rules table no matter how many assets it
+catches. Under `--format json` the violation also carries `maxSizeBytes` and
+an `oversizeFiles` array of `{ file, sizeBytes }`, largest first.
+
 ### Banned Packages
 
 ```ts
 export default defineConfig({
   rules: {
-    forbid_packages: [
+    'no-packages': [
       {
         severity: 'error',
         patterns: ['moment'],
@@ -238,7 +361,7 @@ export default defineConfig({
         message: 'Use lodash-es or native JS',
       },
     ],
-    require_packages: [
+    'require-packages': [
       {
         severity: 'error',
         patterns: ['typescript'],
@@ -249,26 +372,26 @@ export default defineConfig({
 });
 ```
 
-`forbid_packages` matches any package your repo owns — one that is imported in your scanned source,
+`no-packages` matches any package your repo owns — one that is imported in your scanned source,
 declared in `package.json` (`dependencies`, `devDependencies`, `peerDependencies` or
 `optionalDependencies`), **or** recorded as a direct dependency by your lockfile. Build-only tooling
 that is never imported — something run via `npx`, an npm script or a git hook — is covered, so there is
-no need to spell it out as `forbid_package_fields: ['dependencies.x', 'devDependencies.x']`.
+no need to spell it out as `'no-package-fields': ['dependencies.x', 'devDependencies.x']`.
 
 Purely transitive dependencies are never flagged: they arrive through another package, so removing one
 isn't something your repo can do. Packages excluded by `packages.ignore` are never flagged either.
 
-Every banned package appears in the Rules and Compliance sections. Those with measured usage also get a
-`[BANNED]` or `[RESTRICTED]` badge in the packages table, which since #78 lists every package the repo
-owns — so a declared-but-unimported banned package now has a row there too.
+Every banned package appears in the Rules and Compliance sections, and also gets a `[BANNED]` or
+`[RESTRICTED]` badge in the packages table. Since #78 that table lists every package the repo owns, so a
+declared-but-unimported banned package has a row — and a badge on it — just like an imported one.
 
-In the JSON output, each hit is an ordinary entry in `ruleViolations` with `type: "forbid_packages"` —
+In the JSON output, each hit is an ordinary entry in `ruleViolations` with `ruleId: "no-packages"` —
 `patterns` carries the rule's globs, `packageName` the package that matched, and `matchedFiles` is empty
 (a package isn't a file, and a declared-but-unimported one has none):
 
 ```jsonc
 {
-  "type": "forbid_packages",
+  "ruleId": "no-packages",
   "severity": "error",
   "patterns": ["moment"],
   "message": "Use date-fns or dayjs",
@@ -288,7 +411,7 @@ that order):
 ```ts
 export default defineConfig({
   rules: {
-    codeowners: {
+    'require-codeowners': {
       severity: 'error',
       message: 'Every scanned file must have a CODEOWNERS entry',
     },
@@ -309,7 +432,7 @@ critical paths that must be reviewed by a particular team:
 ```ts
 export default defineConfig({
   rules: {
-    codeowners: {
+    'require-codeowners': {
       severity: 'error',
       requiredOwners: ['@org/platform-team'],
       message: 'Critical paths must be owned by @org/platform-team',
@@ -329,17 +452,17 @@ who isn't in `requiredOwners`.
 ```ts
 export default defineConfig({
   rules: {
-    require_scripts: [
+    'require-scripts': [
       {
         severity: 'error',
         patterns: ['build', 'test'],
         message: 'Required npm scripts',
       },
     ],
-    require_package_fields: [
+    'require-package-fields': [
       { severity: 'warn', patterns: ['engines', 'license', 'repository'] },
     ],
-    forbid_package_fields: [
+    'no-package-fields': [
       {
         severity: 'error',
         patterns: ['scripts.preinstall', 'scripts.postinstall'],
@@ -352,7 +475,7 @@ export default defineConfig({
         message: 'Package must not be marked unlicensed/proprietary',
       },
     ],
-    engine_version: {
+    'require-engine-version': {
       severity: 'error',
       range: '>=20',
       message: 'Node 20+ required',
@@ -361,74 +484,109 @@ export default defineConfig({
 });
 ```
 
-`forbid_package_fields` is the mirror of `require_package_fields`: it fires
+`no-package-fields` is the mirror of `require-package-fields`: it fires
 when a field **is present** at the given dot-path (e.g. `scripts.preinstall`)
 — optionally scoped further with `values` (micromatch patterns the field's
-stringified value must match, same as `require_package_fields`'s `values`).
+stringified value must match, same as `require-package-fields`'s `values`).
 Omitting `values` means "forbidden if present at all, regardless of value."
 
 ## Release Age (opt-in)
 
-Fetches version timeline from the registry and flags packages that are behind:
+`release-age` is a rule, authored the same way as every other rule (`rules['release-age']`) — full `error`/`warn`/`info`/`off` severity, `patterns` naming which packages an entry governs, and its own `thresholds`/`scope`. Whether release-age runs at all is decided purely by whether this array is non-empty for a given repo — there's no separate `enabled` flag, the same way `no-files: []` already means "does nothing":
 
 ```ts
 export default defineConfig({
   releaseAge: {
-    enabled: true,
-    registry: 'https://registry.npmjs.org',
+    // Pure connection/infra settings — no policy here. Optional entirely;
+    // omit it if you don't need authToken/cache tuning.
     // authToken: process.env.NPM_TOKEN,  // for private registries
-    thresholds: {
-      patch: 30, // flag if a patch has been available for 30+ days
-      minor: 45, // flag if a minor has been available for 45+ days
-      major: 60, // flag if a major has been available for 60+ days
-      // patch: false,  // set to false to skip that level
-    },
+    // cacheTtlMs: 1000 * 60 * 60,
+  },
+  rules: {
+    'release-age': [
+      { severity: 'error', patterns: ['@my-org/*'] },
+    ],
   },
 });
 ```
 
-Adds an `Upgrades` column to the packages table. Deprecated packages get a `[DEPRECATED]` badge regardless of whether release age is enabled.
+Adds an `Upgrades` column to the packages table. Deprecated packages get a `[DEPRECATED]` badge regardless of which rule entries are configured.
 
-Use `enforceOn` to scope which packages' release age counts toward compliance (see [Compliance Checking](#compliance-checking) below) — packages matching these glob patterns get `severity: 'error'`, everything else gets `severity: 'warn'`:
+### Resolution: one governing entry per package, last match wins
+
+Unlike every other rule (where every matching entry fires independently), release-age needs exactly one governing entry per package — a package can't be simultaneously `error` under one entry and `warn` under another. When more than one entry's `patterns` match a package, **the last one listed wins** — the same order-decides-priority convention as ESLint's `overrides`/flat config:
 
 ```ts
-export default defineConfig({
-  releaseAge: {
-    enabled: true,
-    thresholds: { patch: 30, minor: 45, major: 60 },
-    enforceOn: ['@my-org/*'], // only these block `hermex comply`
-  },
-});
+rules: {
+  'release-age': [
+    { severity: 'warn', patterns: ['**'] },              // baseline for everything
+    { severity: 'error', patterns: ['@my-org/*'] },       // org packages are mandatory
+    { severity: 'off', patterns: ['@my-org/legacy-*'] },  // except these, listed last so they win
+  ],
+},
 ```
 
-If `enforceOn` is omitted, every package's release age counts toward compliance (current behavior).
+**You don't need to write a `['**']` catch-all to get "check everything."** Any package that no authored entry matches falls through to an implicit baseline — `{ severity: 'warn', patterns: ['**'], thresholds: { patch: 30, minor: 45, major: 60 }, scope: 'root' }` — so a single entry naming just the packages you care about is enough; everything else is still fetched and shown, advisory-only, for free:
 
-`enforceOn` matches are checked against the lockfile directly, not just packages hermex found imported as components — so a CSS-only or side-effect-only dependency (e.g. `import '@my-org/styles/button.css'`) still gets checked and can still fail `hermex comply`, even though it never shows up in component usage.
+```ts
+rules: {
+  // Only this entry authored — @my-org/* is mandatory, every other
+  // installed package is still checked and shown, just advisory (the
+  // implicit baseline), with no need to spell that out.
+  'release-age': [{ severity: 'error', patterns: ['@my-org/*'] }],
+},
+```
 
-`enforceOn` only decides *severity* (mandatory vs. advisory) for a package that's already being enforced under the current `scope` — it doesn't override `scope` itself. Under `scope: 'root'` (the default), a package matching `enforceOn` that's only ever pulled in transitively (never a direct dependency in your `package.json`) still can't fail `comply` — there's no root copy to hold accountable. It still shows up as advisory context (see below), it just doesn't block the build.
+`severity: 'off'` genuinely exempts the packages it matches — unlike other rules, an `'off'` release-age entry is never silently dropped, since dropping it would just hand those packages back to a broader entry or the baseline instead of exempting them.
+
+Per-entry `thresholds` and `scope` override the schema defaults (`{ patch: 30, minor: 45, major: 60 }`, `scope: 'root'`) for just the packages that entry governs:
+
+```ts
+rules: {
+  'release-age': [
+    { severity: 'error', patterns: ['@my-org/*'] },
+    {
+      severity: 'error',
+      patterns: ['legacy-widget'],
+      thresholds: { patch: 30, minor: 45, major: 120 }, // slower cadence for this one
+      scope: 'tree',
+    },
+  ],
+},
+```
+
+Rule-entry patterns are checked against the lockfile directly, not just packages hermex found imported as components — so a CSS-only or side-effect-only dependency (e.g. `import '@my-org/styles/button.css'`) still gets checked and can still fail `hermex comply`, even though it never shows up in component usage.
+
+Which entry governs a package decides *severity, thresholds and scope* — never *whether the package is checked*, once release-age is on for the repo at all. Every package in the packages table with an installed version gets its release age looked up, so a dependency imported purely as functions or hooks (`@my-org/toolkit`) shows a Target like any other — advisory `[not enforced]` under the baseline, mandatory when a specific entry names it `error`. Before v3 that lookup was gated on JSX component usage, which had nothing to do with whether an installed version is stale and silently exempted every function-only dependency ([#171](https://github.com/Gallevy/hermex/issues/171)). The cost is one registry request per installed dependency rather than per rendered one.
+
+Severity only decides mandatory vs. advisory for a package that's already being enforced under its governing entry's `scope` — it doesn't override `scope` itself. Under `scope: 'root'` (the default), a package matched by an `error` entry that's only ever pulled in transitively (never a direct dependency in your `package.json`) still can't fail `comply` — there's no root copy to hold accountable. It still shows up as advisory context (see below), it just doesn't block the build.
+
+### Rules-table display: none — see the Packages table instead
+
+`release-age` never renders a row in the `🔍 Rules` table, unlike every other rule — its per-package data (installed vs. target version, days overdue, upgrade path) doesn't compress into that table's one-line-per-violation format without losing the thing you came for. This is a declared choice in `print-rules.ts`'s per-rule-id renderer dispatch, the same kind every rule makes (some fold into one row and truncate, some render one row per violation) — release-age's choice is just "render in the Packages table instead." Release-age violations still count toward the error/warning tally and the overall compliance verdict; they just don't get their own Rules-table line.
 
 ### Root vs. tree scope
 
-hermex's lockfile parsing always resolves **complete** data for every package, for all three package managers (npm, yarn, pnpm): both the version your root `package.json` resolves to, and every distinct version found anywhere in the lockfile. `scope` then decides which of that data counts toward `comply` — it's a policy choice layered on top of already-complete data, not a limit on what hermex extracts:
+hermex's lockfile parsing always resolves **complete** data for every package, for all three package managers (npm, yarn, pnpm): both the version your root `package.json` resolves to, and every distinct version found anywhere in the lockfile. A rule entry's `scope` then decides which of that data counts toward `comply` — it's a policy choice layered on top of already-complete data, not a limit on what hermex extracts:
 
 ```ts
-export default defineConfig({
-  releaseAge: {
-    enabled: true,
-    scope: 'root', // default — only the root-installed version can fail comply
-    // scope: 'tree', // check every resolved copy; fail if any is overdue
-    scopeExceptions: ['@vendor/pinned-*'], // these packages use the OPPOSITE scope
-  },
-});
+rules: {
+  'release-age': [
+    { severity: 'error', patterns: ['**'], scope: 'root' }, // default — only the root-installed version can fail comply
+    // scope: 'tree' checks every resolved copy; fail if any is overdue
+    { severity: 'error', patterns: ['@vendor/pinned-*'], scope: 'tree' }, // this subset uses the opposite scope
+  ],
+},
 ```
 
 - **`scope: 'root'`** (default) — only each package's direct/root-installed version is enforced. This matches how npm and pnpm (v9+) lockfiles already resolve dependencies. Nested duplicate copies pulled in by transitive dependencies never independently fail `comply`.
 - **`scope: 'tree'`** — every resolved copy in the lockfile is enforced; `comply` fails if *any* installed copy is overdue.
-- **`scopeExceptions`** — glob patterns (matched like `enforceOn`) naming packages that use the *opposite* of the configured `scope`. Useful when most of your tree should be checked exhaustively but a handful of packages have transitive pins you don't control down to the root, or vice versa.
+
+To give a subset of packages the opposite scope from your general policy, give them their own rule entry with `scope` set explicitly — listed after the broader entry so it wins for those packages (last match wins, above). Useful when most of your tree should be checked exhaustively but a handful of packages have transitive pins you don't control down to the root, or vice versa.
 
 **Root scope never hides nested duplicates from local output.** The human `--format human` table always shows a single **Installed** version (the exact copy the verdict was measured against — the enforced baseline, which under `scope: 'tree'` may be a nested copy rather than the root version) alongside the **Target** (recommended upgrade). When a package has multiple resolved versions, or an overdue nested copy the current scope doesn't enforce, that context is printed as a Notes line beneath the table — informational, not part of the pass/fail verdict. Notes are stdout-only: `--summary-file` (meant for a PR comment or CI check) only ever shows mandatory violations, so a reviewer never sees non-blocking context rendered as if it needed attention.
 
-For **yarn**, root-version resolution works by reading the root `package.json`'s declared dependency range and matching it exactly against the corresponding entry in the already-parsed `yarn.lock` — yarn.lock itself retains no root/nested distinction, unlike npm's and pnpm's lockfile formats. If `package.json` can't be read, or a package isn't a direct dependency at all (purely transitive), hermex falls back to the highest resolved version found in the lockfile — but only for *display* (the `--format human` table, and `scan`'s Version column). That fallback is never treated as an enforced root version: under `scope: 'root'`, a package with no true root resolution can never fail `comply`, regardless of whether it matches `enforceOn`. Pre-v9 pnpm lockfiles (no `importers` field) are always treated as root-only regardless of `scope` — those legacy formats don't retain a root/nested distinction either.
+For **yarn**, root-version resolution works by reading the root `package.json`'s declared dependency range and matching it exactly against the corresponding entry in the already-parsed `yarn.lock` — yarn.lock itself retains no root/nested distinction, unlike npm's and pnpm's lockfile formats. If `package.json` can't be read, or a package isn't a direct dependency at all (purely transitive), hermex falls back to the highest resolved version found in the lockfile — but only for *display* (the `--format human` table, and `scan`'s Version column). That fallback is never treated as an enforced root version: under `scope: 'root'`, a package with no true root resolution can never fail `comply`, regardless of which rule entry governs it. Pre-v9 pnpm lockfiles (no `importers` field) are always treated as root-only regardless of `scope` — those legacy formats don't retain a root/nested distinction either.
 
 ## Compliance Checking
 
@@ -454,19 +612,18 @@ Both `hermex scan --format json` and `hermex comply --format json` emit a top-le
   "compliant": true,        // mirrors the `comply` exit code (0 ⇔ true)
   "counts": {
     "errorRuleViolations": 0,
-    "releaseAgeViolations": 0,        // enforced (severity 'error') + overdue
     "warningRuleViolations": 0
   }
 }
 ```
 
 - **`non-compliant`** — at least one mandatory (`error`) violation. Exactly `compliant === false`; the condition `comply` exits `1` on.
-- **`warning`** — passes `comply` (exit `0`), but a `warn`-severity **rule** violation is present. A non-enforced (`severity: 'warn'`) overdue release-age package or a not-yet-due `pendingUpgrade` is advisory data — it is **not** a warning and does **not** demote `compliant` → `warning`.
+- **`warning`** — passes `comply` (exit `0`), but a `warn`-severity violation is present, release-age included: a non-enforced (`severity: 'warn'`) overdue release-age package counts toward `warningRuleViolations` the same way a `warn`-severity `no-packages` hit does. A not-yet-due `pendingUpgrade` is still pure advisory display data (Packages-table only) — it never becomes a violation at any severity, so it can't affect this on its own.
 - **`compliant`** — no mandatory violations and nothing flagged at `warn`.
 
 `status: 'warning'` never changes the exit code — it exists so dashboards and sheet syncs can surface a three-state signal that still agrees with `comply` on pass/fail.
 
-The `counts` buckets are disjoint, so `errorRuleViolations + releaseAgeViolations` is the number of comply-failing violations — the same number the CLI prints as "N mandatory violations found".
+`errorRuleViolations` alone is the number of comply-failing violations — the same number the CLI prints as "N mandatory violations found". There's no separate release-age bucket: release-age violations are ordinary entries in `ruleViolations` (`ruleId: 'release-age'`), so they're already counted here like any other rule.
 
 Severity is the only thing that decides which bucket a rule violation lands in; the rule's `type` never does. An `error`-severity violation of any type counts toward `errorRuleViolations`, a `warn`-severity one toward `warningRuleViolations`, and an `info`-severity one toward neither while still appearing in `ruleViolations`.
 
@@ -481,10 +638,38 @@ Severity is the only thing that decides which bucket a rule violation lands in; 
 | `packages` | Every package the repo owns — see below. Carries version, `declaredIn`, usage counts, and `releaseAge` when enrichment ran. |
 | `components` | Every component found, with its source package, usage count and the files using it. The one place component names live. |
 | `versus` | Head-to-head comparisons configured under `versus`. |
-| `ruleViolations` | **Every rule hit, in one list** — `detect_files`, `require_files`, `require_packages`, `forbid_packages`, `require_scripts`, `require_package_fields`, `forbid_package_fields`, `engine_version`, `codeowners`. Filter on `type`. |
+| `ruleViolations` | **Every rule hit, in one list** — `no-files`, `require-files`, `max-file-size`, `require-packages`, `no-packages`, `require-scripts`, `require-package-fields`, `no-package-fields`, `require-engine-version`, `require-codeowners`. Filter on `ruleId`. |
 | `compliance` | The canonical verdict — see above. |
 
-`ruleViolations` is the single source of truth for rule hits. Entries share a common shape (`type`, `severity`, `patterns`, `message?`, `matchedFiles`) and add per-type fields where they apply: `packageName` for `forbid_packages`, `fieldPath`/`actualValue` for the package-field rules, `installedRange`/`requiredRange` for `engine_version`.
+`ruleViolations` is the single source of truth for rule hits. Entries share a common shape (`ruleId`, `severity`, `patterns`, `message?`, `matchedFiles`) and add per-type fields where they apply: `packageName` for `no-packages`, `fieldPath`/`actualValue` for the package-field rules, `maxSizeBytes`/`oversizeFiles` for `max-file-size`, `installedRange`/`requiredRange` for `require-engine-version`.
+
+#### Trimming the JSON with `output.*`
+
+The [output section toggles](#output-control) apply to `--format json` exactly as they do to the human printers. A section switched off is **omitted from the payload**, not emitted as an empty array — the point is a smaller file, and on a large repo `components[]` and `packages[]` are the bulk of it:
+
+```ts
+export default defineConfig({
+  output: {
+    format: 'json',
+    components: false, // no `components` key at all
+    packages: false, // no `packages` key at all
+  },
+});
+```
+
+| Config | Effect on the JSON |
+|---|---|
+| `output.packages: false` | omits `packages` |
+| `output.components: false` | omits `components` |
+| `output.versus: false` | omits `versus` |
+| `output.patterns: false` **and** `output.details: false` | omits `summary.patternCounts` |
+| `output.rules`, `output.summary` | **no effect** — see below |
+
+`patternCounts` is the one field that answers to two toggles, because both human sections render that same array — the Patterns section as a table/chart, the Details section as a flat list. It therefore only drops when *both* are off; gating on `output.patterns` alone would strip it from the JSON while the terminal still printed it under Details. (`output.details` has no other effect on JSON — despite the name, that section prints pattern totals, not per-file records.)
+
+`version`, the `summary` counters, `ruleViolations` and `compliance` are always emitted. They are the machine-readable verdict, and `comply` prints rules in human mode regardless of `output.rules`, so gating them here would make the JSON lossier than the terminal output it mirrors — a silent way to blind CI. `output.summary` has no counterpart either: the human Summary table shows derived metrics (package count, external components, total usages) that share only `filesAnalyzed` with the counters serialized here, so there is no JSON field it cleanly owns.
+
+Because a disabled section is absent rather than empty, narrow before reading it — `result.components ?? []` — and note that `TypeScript`'s `HermexScanResult` marks exactly these fields optional.
 
 #### What `packages[]` contains
 
@@ -498,7 +683,6 @@ Every package the repo **owns**: declared in `package.json` (any dependency buck
   "usageCount": 0,                    // component usage — see the caveat below
   "componentCount": 0,
   "percentage": 0,
-  "internal": false,
   "hasVersionConflict": false,
   "allVersions": ["2.29.4"]
 }
@@ -555,6 +739,8 @@ export default defineConfig({
 });
 ```
 
+These are not human-format-only: `packages`, `components`, `patterns` and `versus` also drop the matching field from `--format json` — see [Trimming the JSON with `output.*`](#trimming-the-json-with-output).
+
 ## Full Example
 
 ```ts
@@ -564,8 +750,9 @@ export default defineConfig({
   includes: ['src/**/*.{tsx,jsx,ts,js}'],
   excludes: ['**/node_modules/**', '**/dist/**', '**/*.test.*'],
 
+  parser: 'swc',
+
   packages: {
-    internal: ['@myorg/*'],
     ignore: [],
   },
 
@@ -574,20 +761,19 @@ export default defineConfig({
   ],
 
   rules: {
-    detect_files: [
+    'no-files': [
       { severity: 'error', patterns: ['jest.config.*'], message: 'Use vitest' },
     ],
-    require_files: [{ severity: 'error', patterns: ['.nvmrc'] }],
-    forbid_packages: [
+    'require-files': [{ severity: 'error', patterns: ['.nvmrc'] }],
+    'max-file-size': [
+      { severity: 'error', patterns: ['**/*.svg'], maxSize: '200kb' },
+    ],
+    'no-packages': [
       { severity: 'warn', patterns: ['moment'], message: 'Use date-fns' },
     ],
-    require_scripts: [{ severity: 'error', patterns: ['build', 'test'] }],
-    engine_version: { severity: 'error', range: '>=20' },
-  },
-
-  releaseAge: {
-    enabled: true,
-    thresholds: { patch: 30, minor: 45, major: 60 },
+    'require-scripts': [{ severity: 'error', patterns: ['build', 'test'] }],
+    'require-engine-version': { severity: 'error', range: '>=20' },
+    'release-age': [{ severity: 'error', patterns: ['@my-org/*'] }],
   },
 
   output: {

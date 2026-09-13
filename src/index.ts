@@ -6,10 +6,13 @@ export type {
   HermexConfig,
   HermexConfigInput,
   RuleSeverity,
+  ParserName,
   RuleConfig,
   PackageFieldRule,
+  MaxFileSizeRule,
   EngineVersionRule,
   CodeownersRule,
+  ReleaseAgeRuleConfig,
   PackagesConfig,
   VersusConfig,
   RulesConfig,
@@ -31,6 +34,23 @@ export function defineConfig(config: HermexConfigInput): HermexConfigInput {
   return config;
 }
 
+/**
+ * The plugin surface (#102). A plugin is inert data — a plain object with a
+ * canonical `name` and a `hooks` envelope — so it can be declared inline in
+ * `hermex.config.ts` with no import at all, which is what keeps a config
+ * loadable under `npx` in a repo that has not installed anything: only
+ * `node:` builtins and `import type` resolve there.
+ */
+export type {
+  HermexPlugin,
+  HermexPluginHooks,
+  PluginContext,
+  PluginInventoryView,
+  PluginViolation,
+  PluginViolationInput,
+  PluginViolationLocation,
+} from './plugins/types';
+
 export type { PatternCount } from './utils/pattern-counter';
 export type {
   ComponentUsage,
@@ -48,7 +68,14 @@ export interface HermexScanComponent extends Omit<
   files: string[];
 }
 
-/** Shape of the JSON emitted by `hermex scan --format json` (see `printJson`) */
+/**
+ * Shape of the JSON emitted by `hermex scan --format json` (see `printJson`).
+ *
+ * The optional fields are the ones `output.*` can switch off (#63, #91): a
+ * disabled section is omitted from the payload entirely rather than emitted
+ * empty, so narrow the field before reading it. They are all present under
+ * the default config — only an explicit `output.<section>: false` removes one.
+ */
 export interface HermexScanResult {
   version: string;
   summary: {
@@ -56,24 +83,46 @@ export interface HermexScanResult {
     totalImports: number;
     totalComponents: number;
     totalUsagePatterns: number;
-    /** `totalUsagePatterns` broken down by pattern type — aggregate counts, not per-item records (#80). */
-    patternCounts: import('./utils/pattern-counter').PatternCount[];
+    /**
+     * `totalUsagePatterns` broken down by pattern type — aggregate counts,
+     * not per-item records (#80). Omitted only when `output.patterns` **and**
+     * `output.details` are both false: the Patterns and Details sections
+     * render this same array, so either one being on keeps it.
+     */
+    patternCounts?: import('./utils/pattern-counter').PatternCount[];
   };
   /**
    * Every package this repo owns — declared in `package.json`, a direct
    * dependency in the lockfile, and/or imported by scanned source (#78).
-   * Purely transitive dependencies are excluded. `usageCount` is component
-   * usage, so a package used only as a function reads 0 while still being a
-   * real dependency.
+   * Purely transitive dependencies are excluded.
+   *
+   * Two independent usage axes, and they are not interchangeable:
+   * `usageCount` is component usage, so a package used only as a function
+   * reads 0 while still being a real dependency; `importingFileCount` is how
+   * many scanned files import it, which stays meaningful for exactly those
+   * packages (#174). Omitted when `output.packages: false`.
    */
-  packages: import('./utils/package-distribution').PackageDistribution[];
+  packages?: import('./utils/package-distribution').PackageDistribution[];
   /**
    * Every component found, with the package it came from. The one place
    * component names live — `packages[]` carries only `componentCount` (#79).
+   * Omitted when `output.components: false`.
    */
-  components: HermexScanComponent[];
-  versus: import('./utils/versus').VersusResult[];
-  /** Every rule hit, in one list — filter on `type` to single out a rule. */
+  components?: HermexScanComponent[];
+  /**
+   * Each configured versus group's split. `count` — the field the
+   * percentages are computed from — is how many scanned files import the
+   * package (`importingFileCount`); `renderCount` carries the JSX render
+   * count (`usageCount`) alongside it, since files measure how much of a
+   * migration is done and renders measure how much editing is left. See
+   * `VersusEntry` (#174). Omitted when `output.versus: false`.
+   */
+  versus?: import('./utils/versus').VersusResult[];
+  /**
+   * Every rule hit, in one list — filter on `type` to single out a rule.
+   * Always present: it is part of the compliance verdict, so no `output.*`
+   * toggle (`output.rules` included) removes it.
+   */
   ruleViolations: import('./rules/evaluator').RuleViolation[];
   /**
    * The official compliance verdict — read `status` instead of re-deriving
@@ -86,7 +135,6 @@ export interface HermexScanResult {
     compliant: boolean;
     counts: {
       errorRuleViolations: number;
-      releaseAgeViolations: number;
       warningRuleViolations: number;
     };
   };

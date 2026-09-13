@@ -91,7 +91,7 @@ Running a basic scan (uses default pattern `**/*.{tsx,jsx,ts,js}`):
 ## Tech Stack
 
 - **Runtime**: Node.js 24
-- **Parser**: [@swc/core](https://swc.rs/)
+- **Parser**: [@swc/core](https://swc.rs/) — with an opt-in experimental [oxc-parser](https://oxc.rs/) front-end (`parser: 'oxc-experimental'`)
 - **CLI**: [Commander.js](https://github.com/tj/commander.js)
 - **Build**: [tsup](https://tsup.egoist.dev/)
 - **Language**: [TypeScript](https://www.typescriptlang.org/)

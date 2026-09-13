@@ -1,8 +1,7 @@
 import type { Ora } from 'ora';
 import chalk from 'chalk';
-import { parseFile } from '../swc-parser';
-import type { UsageReport } from '../swc-parser';
-import type { ParseError } from '../swc-parser/types';
+import { getParser } from '../parser';
+import type { UsageReport, ParseError } from '../swc-parser/types';
 import { aggregateReports } from '../utils/aggregator';
 import type { AggregatedReport } from '../utils/aggregator';
 import { printErrors } from '../utils/print-errors';
@@ -10,8 +9,9 @@ import { findFiles } from '../utils/file-utils';
 import { findAndParseLockfile } from '../lock-parser';
 import { evaluateRules } from '../rules/evaluator';
 import { collectDeclaredPackages } from '../rules/shared';
-import { enrichWithReleaseAge } from '../npm-registry/enricher';
+import { evaluateReleaseAge } from '../rules/release-age';
 import { applyOverrides } from '../config/overrides';
+import { runPlugins } from '../plugins';
 import type { HermexConfig } from '../config/types';
 
 const DECLARATION_FILE_RE = /\.d\.(ts|mts|cts)$/;
@@ -63,6 +63,17 @@ export async function runPipeline(
 
   spinner.succeed(chalk.green(`Found ${files.length} files`));
 
+  const parser = await getParser(resolvedConfig.parser);
+
+  // Only announced when it is not the default: an experimental front-end
+  // should never be a silent property of a run, but the supported one adds
+  // nothing to say.
+  if (parser.name !== 'swc') {
+    spinner.info(
+      chalk.yellow(`Using experimental parser: ${parser.name} (opt-in)`),
+    );
+  }
+
   if (spinner.isEnabled) spinner.start('Analyzing files...');
   const reports: UsageReport[] = [];
   const parseErrors: ParseError[] = [];
@@ -73,7 +84,7 @@ export async function runPipeline(
       spinner.text = `Analyzing files... (${i + 1}/${files.length})`;
 
     try {
-      const report = parseFile(file);
+      const report = parser.parseFile(file);
       if (report) {
         reports.push(report);
       }
@@ -111,17 +122,58 @@ export async function runPipeline(
     ...evaluatorViolations,
   ];
 
-  if (resolvedConfig.releaseAge.enabled) {
+  // `rules['release-age']` being non-empty IS "release-age enabled" — no
+  // separate flag (see src/config/schema.ts's releaseAge block comment).
+  if (resolvedConfig.rules['release-age'].length > 0) {
     if (spinner.isEnabled)
       spinner.start('Fetching release age from registry...');
-    const { enriched, skipped } = await enrichWithReleaseAge(
+    const { enriched, violations, skipped } = await evaluateReleaseAge(
       aggregated.packageDistribution,
       resolvedConfig.releaseAge,
+      resolvedConfig.rules['release-age'],
     );
     aggregated.packageDistribution = enriched;
+    aggregated.ruleViolations = [...aggregated.ruleViolations, ...violations];
     spinner.succeed(
       chalk.blue(
         `Release age fetched${skipped > 0 ? chalk.gray(` (${skipped} packages skipped — registry unreachable or not found)`) : ''}`,
+      ),
+    );
+  }
+
+  // Plugins run last, once everything hermex computes itself is finished, so
+  // a plugin sees the complete picture — and still before rendering, so what
+  // it contributes reaches the rules table and the verdict (#102).
+  //
+  // The whole block is inert when no plugins are configured, which is the
+  // default: an unconfigured run prints exactly what it printed before.
+  if (resolvedConfig.plugins.length > 0) {
+    if (spinner.isEnabled) spinner.start('Running plugins...');
+
+    const pluginViolations = await runPlugins({
+      plugins: resolvedConfig.plugins,
+      aggregated,
+      config: resolvedConfig,
+      cwd: process.cwd(),
+      files,
+      quiet: isJson,
+    });
+
+    aggregated.ruleViolations = [
+      ...aggregated.ruleViolations,
+      ...pluginViolations,
+    ];
+
+    // Attribution: third-party code just executed in the user's repo, so
+    // name it. hermex does not sandbox plugins — the config that imports
+    // them already runs as arbitrary code — which makes visibility the
+    // obligation instead (#102).
+    spinner.succeed(
+      chalk.blue(
+        `Ran ${resolvedConfig.plugins.length} plugin(s): ${resolvedConfig.plugins.map((p) => p.name).join(', ')}` +
+          (pluginViolations.length > 0
+            ? chalk.gray(` — ${pluginViolations.length} finding(s)`)
+            : ''),
       ),
     );
   }

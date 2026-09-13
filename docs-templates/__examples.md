@@ -37,20 +37,66 @@ export default defineConfig({
 });
 ```
 
-## Internal Package Marking
+## Parser (experimental)
 
-Mark your own packages so they're visually separated in the packages table and skipped during release age checks:
+`parser` selects the AST front-end. It defaults to `'swc'`, the supported one;
+`'oxc-experimental'` swaps [@swc/core](https://swc.rs/) for
+[oxc-parser](https://oxc.rs/).
+
+```ts
+export default defineConfig({
+  parser: 'oxc-experimental',
+});
+```
+
+Only the parse step changes. oxc's ESTree AST is normalized into the node shape
+the analyzers already consume, so the same visitor, the same pattern analyzers
+and the same report generator run either way — every import, JSX usage, prop
+detail and advanced pattern comes out identical. `tests/oxc-parser/parity.test.ts`
+asserts that report-for-report against `swc` over the whole fixture corpus, and
+the e2e suite diffs a full `scan --format json` run between the two.
+
+Why it exists, and what it costs today. Measured on the fixture corpus
+(41 files, 200 rounds, ms per pass):
+
+| | `swc` | `oxc-experimental` |
+| --- | --- | --- |
+| Installed size (parser + native binding) | ~27 MB | **~3 MB** |
+| Parse, to a usable JS AST | 11.7 | **7.7** |
+| AST normalization | — | +7.0 |
+| Analysis walk | +2.3 | +3.6 |
+| **Total** | **14.0** | **18.3** |
+
+The install-size win — about 9x smaller — is the reason to reach for it today.
+
+Scans are currently *slower* end to end, and the breakdown says exactly why.
+oxc's parse is genuinely faster (7.7 vs 11.7 ms, ~1.5x), but normalizing its
+AST into the analyzers' node shape costs 7.0 ms, more than that saves. The
+analysis walk is then a further 1.3 ms slower because the normalized tree
+carries more fields than SWC's native one (63.3k vs 51.9k) and `visitChildren`
+iterates every field of every node. Net: +4.3 ms.
+
+Both costs come from normalization being an eager deep copy; removing it means
+teaching the analyzers to read oxc's AST directly. That is why the option is
+experimental and opt-in.
+
+> A note on benchmarking oxc: `parseSync().program` is a **lazy getter**.
+> Timing a parse without reading `program` measures ~2.4 ms and is not
+> comparable to SWC, which always materializes its AST — the deserialization
+> cost simply lands on whoever touches the tree first. The 7.7 ms above
+> includes materializing the AST.
+
+## Ignoring Packages
+
+Exclude packages from the packages table entirely:
 
 ```ts
 export default defineConfig({
   packages: {
-    internal: ['@myorg/*', '@company/design-system'],
     ignore: ['react', 'react-dom'], // exclude from output entirely
   },
 });
 ```
-
-Internal packages show an `[int]` badge in the packages table.
 
 `ignore` is a *reporting* filter, not an uninstall: an ignored package is left out of the packages
 table and is never flagged by `forbid_packages`, but it still counts as installed for
@@ -58,7 +104,7 @@ table and is never flagged by `forbid_packages`, but it still counts as installe
 
 ## Versus — Migration Tracking
 
-Track usage split between competing packages:
+Track how a migration between competing packages is going:
 
 ```ts
 export default defineConfig({
@@ -68,14 +114,61 @@ export default defineConfig({
       packages: ['@old/foundation', '@new/arc'],
     },
     {
-      name: 'Icon Library',
-      packages: ['@icons/heroicons', '@icons/feather'],
+      name: 'Date Library',
+      packages: ['moment', 'date-fns'],
     },
   ],
 });
 ```
 
-Output shows a neutral bar split per group — no directional assumption, just usage percentages.
+Output shows a neutral bar split per group — no directional assumption, just the share each
+package holds.
+
+**What the split is measured in.** Each package's share is **how many scanned files import it**.
+That matters because most migrations worth tracking are function-only (`moment` → `date-fns`,
+`lodash` → `es-toolkit`, `redux` → `zustand`), and those packages never appear in JSX at all —
+scored on renders, both sides of such a group read 0 forever. One unit for every group also keeps
+the two sides comparable: a group with a component library on one side and a hook library on the
+other would otherwise be measured one way on the left and another on the right.
+
+A file importing three helpers from one package still depends on it once, so consolidating an
+import does not read as progress. A file importing both packages counts for both — percentages
+are a share of the group, not of your file count.
+
+**Renders are shown too.** For a package that renders components, the render count appears beside
+the file count, because the two answer different questions:
+
+```
+  @design-system/foundation  ██████████████████████████████ 100.0% (8 files, 33 renders)
+```
+
+Files are **progress** — 7 of 15 files converted is about half done. Renders are **effort** — the
+same repo can be half converted by file and still have most of its call sites left, because the
+old library is used densely in the files nobody has touched. A package that renders nothing shows
+files alone rather than a `0 renders` that would read as a finding.
+
+**A package that isn't there.** A group can name a package this repo does not have — a typo, one
+under `packages.ignore`, or one that was never installed. That is reported as *not found in this
+repo* rather than as 0%, because "nobody has migrated yet" and "hermex cannot see this package"
+call for opposite reactions:
+
+```
+  Date Library
+  ──────────────────────────────────────────────────
+  moment      ███████████████████████░░░░░░░ 75.0% (3 files)
+  date-fns    ████████░░░░░░░░░░░░░░░░░░░░░░ 25.0% (1 file)
+
+  Icon Library
+  ──────────────────────────────────────────────────
+  @icons/heroicons  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0.0% (not found in this repo)
+  @icons/feather    ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0.0% (not found in this repo)
+  None of these packages was found in this repo.
+```
+
+In `--format json`, the same split is under `versus[].entries[]` as `count`, `renderCount`,
+`percentage` and `present`. The per-package count is also on every row of `packages[]` as `importingFileCount`,
+beside `usageCount` — the first is imports, the second is JSX renders, and for a package used
+only as a function the second is always 0.
 
 ## Compliance Rules
 
@@ -110,6 +203,36 @@ export default defineConfig({
   },
 });
 ```
+
+### File Size Limits
+
+`max-file-size` flags any file matching `patterns` that is bigger than
+`maxSize`. Sizes are written either as a plain byte count (`204800`) or with
+a unit — `'200kb'`, `'1.5mb'`, `'500b'`. Units are binary, so 1 KB is 1024 B
+(`kib`/`mib`/`gib` are accepted spellings of the same values). A file sitting
+exactly on the ceiling passes; only files strictly over it are reported.
+
+```ts
+export default defineConfig({
+  rules: {
+    'max-file-size': [
+      {
+        severity: 'error',
+        patterns: ['**/*.svg', '**/*.png'],
+        maxSize: '200kb',
+        message: 'Compress it or serve it from the CDN',
+      },
+      // Same rule, byte count instead of a unit — 50 KB.
+      { severity: 'warn', patterns: ['src/**/*.json'], maxSize: 51200 },
+    ],
+  },
+});
+```
+
+Each rule reports a single violation listing every file over its ceiling, so
+one pattern is one row in the rules table no matter how many assets it
+catches. Under `--format json` the violation also carries `maxSizeBytes` and
+an `oversizeFiles` array of `{ file, sizeBytes }`, largest first.
 
 ### Banned Packages
 
@@ -270,8 +393,9 @@ export default defineConfig({
   includes: ['src/**/*.{tsx,jsx,ts,js}'],
   excludes: ['**/node_modules/**', '**/dist/**', '**/*.test.*'],
 
+  parser: 'swc',
+
   packages: {
-    internal: ['@myorg/*'],
     ignore: [],
   },
 

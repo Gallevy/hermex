@@ -56,7 +56,7 @@ export async function executeScan(
     if (!aggregated) return;
 
     if (isJson) {
-      printJson(aggregated);
+      printJson(aggregated, config.output);
     } else {
       printScanResults(aggregated, config);
     }

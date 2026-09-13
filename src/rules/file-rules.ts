@@ -9,28 +9,26 @@ export function evaluateFileRules(
 ): RuleViolation[] {
   const violations: RuleViolation[] = [];
 
-  for (const rule of rulesConfig.detect_files) {
-    const matches = findMatches(rule.patterns, repoPath, excludes);
-    if (matches.length > 0) {
+  for (const rule of rulesConfig['no-files']) {
+    for (const matchedFile of findMatches(rule.patterns, repoPath, excludes)) {
       violations.push({
-        type: 'detect_files',
+        ruleId: 'no-files',
         severity: rule.severity,
         patterns: rule.patterns,
         message: rule.message,
-        matchedFiles: matches,
+        matchedFile,
       });
     }
   }
 
-  for (const rule of rulesConfig.require_files) {
+  for (const rule of rulesConfig['require-files']) {
     const matches = findMatches(rule.patterns, repoPath, excludes);
     if (matches.length === 0) {
       violations.push({
-        type: 'require_files',
+        ruleId: 'require-files',
         severity: rule.severity,
         patterns: rule.patterns,
         message: rule.message,
-        matchedFiles: [],
       });
     }
   }

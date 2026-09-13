@@ -6,7 +6,10 @@ import lockfileLib from '@yarnpkg/lockfile';
 import { PnpmLockfileAdapter } from '../../src/lock-parser/patterns/pnpm';
 import { NpmLockfileAdapter } from '../../src/lock-parser/patterns/npm';
 import { YarnLockfileAdapter } from '../../src/lock-parser/patterns/yarn';
-import { readAndParseLockfile } from '../../src/lock-parser/lock-file-adapter';
+import {
+  readAndParseLockfile,
+  compareVersions,
+} from '../../src/lock-parser/lock-file-adapter';
 import {
   findAndParseLockfile,
   getPackageVersion,
@@ -232,7 +235,7 @@ describe('NpmLockfileAdapter', () => {
     // Hoisted to node_modules/<name> — the same depth as a direct
     // dependency — but declared by nobody. Reading depth as "direct" made
     // the repo look like it owned packages it never asked for, so
-    // forbid_packages could demand the removal of something only a
+    // no-packages could demand the removal of something only a
     // transitive parent pulls in.
     expect(resolutions['loose-envify'].rootVersion).toBeNull();
     expect(resolutions['loose-envify'].allVersions).toEqual(['1.4.0']);
@@ -525,6 +528,52 @@ describe('getPackageVersion / getPackageVersions', () => {
       'does-not-exist-pkg',
     ]);
     expect(versions).toEqual({ chalk: '5.3.0', vitest: '1.6.0' });
+  });
+});
+
+describe('compareVersions', () => {
+  it('sorts versions by semver value, not lexicographically', () => {
+    expect(['1.10.0', '1.9.0'].sort(compareVersions)).toEqual([
+      '1.9.0',
+      '1.10.0',
+    ]);
+  });
+
+  it('sorts valid semver first, non-semver strings last in lexicographic order', () => {
+    expect(['2.0.0', 'workspace:*', '1.0.0'].sort(compareVersions)).toEqual([
+      '1.0.0',
+      '2.0.0',
+      'workspace:*',
+    ]);
+  });
+
+  it('does not throw when all versions are non-semver, and returns a stable order', () => {
+    const versions = ['file:../local-pkg', 'git+https://example.com/pkg.git'];
+    expect(() => versions.sort(compareVersions)).not.toThrow();
+    expect(versions.sort(compareVersions)).toEqual([
+      'file:../local-pkg',
+      'git+https://example.com/pkg.git',
+    ]);
+  });
+
+  it('orders two non-semver strings lexicographically in both directions', () => {
+    expect(compareVersions('file:../local-pkg', 'git+https://x/pkg.git')).toBe(
+      -1,
+    );
+    expect(compareVersions('git+https://x/pkg.git', 'file:../local-pkg')).toBe(
+      1,
+    );
+  });
+
+  it('treats two identical non-semver strings as equal', () => {
+    expect(compareVersions('workspace:*', 'workspace:*')).toBe(0);
+  });
+
+  it('orders a prerelease before its final release', () => {
+    expect(['1.0.0', '1.0.0-beta.1'].sort(compareVersions)).toEqual([
+      '1.0.0-beta.1',
+      '1.0.0',
+    ]);
   });
 });
 

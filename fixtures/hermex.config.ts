@@ -22,46 +22,58 @@ export default {
     'registry/**',
     'repos/**',
   ],
-  packages: {
-    internal: ['@design-system/*'],
-  },
   versus: [
+    // Two groups on purpose, because they fail in opposite directions.
+    //
+    // The component pair is the shape versus was built for and the only one
+    // the fixtures covered — which is why #174 went unnoticed. `@new-system/arc`
+    // is deliberately absent from the lockfile: it is the "not a dependency at
+    // all" half of #174, which an exact-name lookup cannot tell from a real
+    // dependency nobody has imported yet, and both used to print a confident 0.
     {
       name: 'Design System Migration',
       packages: ['@design-system/foundation', '@new-system/arc'],
     },
+    // The function-only pair — the migrations versus is actually used for.
+    // Neither package renders anything, so on the JSX axis this group read
+    // 0 vs 0 no matter how far the migration had got (#174). See
+    // `versus/03-` … `06-function-only-*.ts`.
+    {
+      name: 'Utility Library Migration',
+      packages: ['lodash', 'es-toolkit'],
+    },
   ],
   rules: {
-    detect_files: [
+    'no-files': [
       {
         severity: 'error',
         patterns: ['jest.config.*', '.babelrc'],
         message: 'Use vitest + Vite',
       },
     ],
-    forbid_packages: [
+    'no-packages': [
       { severity: 'error', patterns: ['moment'], message: 'Use date-fns or dayjs' },
     ],
-    require_files: [
+    'require-files': [
       { severity: 'error', patterns: ['.nvmrc'] },
       { severity: 'warn', patterns: ['.editorconfig'] },
     ],
-    require_packages: [
+    'require-packages': [
       {
         severity: 'error',
         patterns: ['typescript'],
         message: 'TypeScript is required',
       },
     ],
-    require_scripts: [
+    'require-scripts': [
       {
         severity: 'error',
         patterns: ['build', 'test'],
         message: 'Required npm scripts',
       },
     ],
-    require_package_fields: [{ severity: 'warn', patterns: ['engines', 'license'] }],
-    engine_version: { severity: 'warn', range: '>=20', message: 'Minimum Node 20 required' },
+    'require-package-fields': [{ severity: 'warn', patterns: ['engines', 'license'] }],
+    'require-engine-version': { severity: 'warn', range: '>=20', message: 'Minimum Node 20 required' },
   },
   output: {
     details: false,

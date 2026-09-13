@@ -1,8 +1,6 @@
 import semver from 'semver';
-import micromatch from 'micromatch';
 import type { PackageDistribution } from '../utils/aggregator';
-import { isReleaseAgeTarget } from '../utils/package-distribution';
-import type { ReleaseAgeConfig } from '../config/types';
+import type { ReleaseAgeThresholds } from '../config/types';
 import type {
   AvailableUpgrade,
   PendingUpgrade,
@@ -11,6 +9,18 @@ import type {
   UpgradeLevel,
 } from './types';
 import { getPackageInfo, type CacheOptions } from './cache';
+
+/**
+ * Only npm is supported today — no config field exposes this URL, since a
+ * second registry is speculative extensibility with no current use; add one
+ * back if/when it's actually needed. `HERMEX_FIXTURE_REGISTRY` is an
+ * internal-only escape hatch (same pattern as `HERMEX_REGISTRY_CACHE_TTL_MS`/
+ * `HERMEX_REGISTRY_CACHE_DISABLED` below) that lets `scripts/output-review.ts`
+ * redirect fixture runs to its local mock server instead of the real
+ * registry — never documented as user-facing config.
+ */
+export const NPM_REGISTRY_URL =
+  process.env['HERMEX_FIXTURE_REGISTRY'] ?? 'https://registry.npmjs.org';
 
 const CONCURRENCY = 8;
 
@@ -38,7 +48,7 @@ function pickNewest(versions: { version: string; daysAgo: number }[]): {
 function upgradeLevel(
   daysAgo: number,
   bump: SemverBump,
-  thresholds: ReleaseAgeConfig['thresholds'],
+  thresholds: ReleaseAgeThresholds,
 ): UpgradeLevel | null {
   const threshold = thresholds[bump];
   if (threshold === false || threshold === undefined) return null;
@@ -69,7 +79,7 @@ interface ReleaseAgeForVersion {
 function computeReleaseAgeForVersion(
   installedVersion: string,
   timeMap: Record<string, string>,
-  thresholds: ReleaseAgeConfig['thresholds'],
+  thresholds: ReleaseAgeThresholds,
   distTags: Record<string, string> | undefined,
 ): ReleaseAgeForVersion {
   const byBump = new Map<SemverBump, { version: string; daysAgo: number }[]>();
@@ -244,14 +254,14 @@ const NOTHING_ENFORCED: ReleaseAgeForVersion = {
  * overdue-but-not-enforced copies via `advisoryBreaches` regardless of
  * scope (#57).
  */
-function computeReleaseAge(
+export function computeReleaseAge(
   installedVersion: string,
   allVersions: string[],
   timeMap: Record<string, string>,
   deprecated: string | undefined,
-  thresholds: ReleaseAgeConfig['thresholds'],
+  thresholds: ReleaseAgeThresholds,
   distTags: Record<string, string> | undefined,
-  severity: 'error' | 'warn',
+  severity: 'error' | 'warn' | 'info' | 'off',
   scope: 'root' | 'tree',
   hasRootVersion: boolean,
 ): ReleaseAgeEntry {
@@ -329,49 +339,49 @@ function computeReleaseAge(
   };
 }
 
-/**
- * Resolves the effective scope for a package: `scopeExceptions` (glob,
- * matched like `enforceOn`) flips the global `scope` default for packages
- * that need the opposite policy — e.g. tree-wide everywhere except a
- * package whose transitive pins can't be controlled down to root (#57).
- */
-export function resolveReleaseAgeScope(
-  packageName: string,
-  config: ReleaseAgeConfig,
-): 'root' | 'tree' {
-  if (
-    config.scopeExceptions.length > 0 &&
-    micromatch.isMatch(packageName, config.scopeExceptions)
-  ) {
-    return config.scope === 'root' ? 'tree' : 'root';
-  }
-  return config.scope;
+/** Connection/infra settings only — no policy. Mirrors the now-trimmed
+ * `releaseAge` config block (`src/config/schema.ts`). */
+export interface ReleaseAgeConnection {
+  authToken?: string;
+  cacheTtlMs?: number;
+  cacheDisabled: boolean;
 }
 
+/** A package's resolved release-age policy — from `resolveReleaseAgeRule`
+ * (`src/config/overrides.ts`), one per package, already picked from
+ * whichever rule entry governs it. */
+export interface ReleaseAgePolicy {
+  severity: 'error' | 'warn' | 'info' | 'off';
+  thresholds: ReleaseAgeThresholds;
+  scope: 'root' | 'tree';
+}
+
+/**
+ * Fetches registry data and computes `ReleaseAgeEntry` for every package
+ * with an installed version — unconditionally, regardless of policy (#171,
+ * #173): a package's `resolvePolicy` result decides only its severity,
+ * thresholds and scope, never whether it's looked up at all. Pure registry
+ * I/O plus the timeline math above; policy resolution (which rule entry
+ * governs a package) lives in `src/rules/release-age.ts`, one layer up.
+ */
 export async function enrichWithReleaseAge(
   packages: PackageDistribution[],
-  config: ReleaseAgeConfig,
+  connection: ReleaseAgeConnection,
+  resolvePolicy: (packageName: string) => ReleaseAgePolicy,
 ): Promise<{ enriched: PackageDistribution[]; skipped: number }> {
-  const registryUrl = config.registry;
   const authToken =
-    config.authToken ?? process.env['HERMEX_REGISTRY_AUTH_TOKEN'];
-  // `packages` is every package the repo owns (#78); only a subset is in
-  // scope for a registry lookup — see `isReleaseAgeTarget`. Filtering here
-  // rather than upstream keeps `packages[]` honest about what the repo
-  // depends on while leaving registry traffic and the compliance verdict
-  // exactly where they were.
-  const targets = packages.filter(
-    (p) => !p.internal && p.version && isReleaseAgeTarget(p, config.enforceOn),
-  );
+    connection.authToken ?? process.env['HERMEX_REGISTRY_AUTH_TOKEN'];
+  const targets = packages.filter((p) => p.version);
   const enriched = [...packages];
   let skipped = 0;
 
   const envTtl = Number(process.env['HERMEX_REGISTRY_CACHE_TTL_MS']);
   const cacheOptions: CacheOptions = {
-    ttlMs: Number.isFinite(envTtl) && envTtl > 0 ? envTtl : config.cacheTtlMs,
+    ttlMs:
+      Number.isFinite(envTtl) && envTtl > 0 ? envTtl : connection.cacheTtlMs,
     disabled:
       process.env['HERMEX_REGISTRY_CACHE_DISABLED'] === '1' ||
-      config.cacheDisabled === true,
+      connection.cacheDisabled === true,
   };
 
   // Process in batches of CONCURRENCY
@@ -381,7 +391,7 @@ export async function enrichWithReleaseAge(
       batch.map(async (pkg) => {
         const info = await getPackageInfo(
           pkg.packageName,
-          registryUrl,
+          NPM_REGISTRY_URL,
           authToken,
           cacheOptions,
         );
@@ -393,13 +403,8 @@ export async function enrichWithReleaseAge(
         const deprecated =
           info.versions?.[pkg.version!]?.deprecated ?? info.deprecated;
 
-        const severity: 'error' | 'warn' =
-          config.enforceOn.length === 0 ||
-          micromatch.isMatch(pkg.packageName, config.enforceOn)
-            ? 'error'
-            : 'warn';
+        const policy = resolvePolicy(pkg.packageName);
 
-        const scope = resolveReleaseAgeScope(pkg.packageName, config);
         // `undefined` (never populated — e.g. a hand-built PackageDistribution
         // in a test) is treated as "unknown, assume root" for backward
         // compatibility; only an explicit `null` — set by the real pipeline
@@ -412,10 +417,10 @@ export async function enrichWithReleaseAge(
           pkg.allVersions,
           info.time,
           typeof deprecated === 'string' ? deprecated : undefined,
-          config.thresholds,
+          policy.thresholds,
           info['dist-tags'],
-          severity,
-          scope,
+          policy.severity,
+          policy.scope,
           hasRootVersion,
         );
 
