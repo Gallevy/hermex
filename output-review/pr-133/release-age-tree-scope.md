@@ -14,7 +14,7 @@ _unchanged_
 
 **Ran** `hermex comply --config tree.config.ts` in `fixtures/repos/version-conflict` → exit 1, as asserted
 
-**Config** [`fixtures/repos/version-conflict/tree.config.ts`](https://github.com/Gallevy/hermex/blob/01f79d1aa84312d05b74bb7c3b0a1c8ac2fb499a/fixtures/repos/version-conflict/tree.config.ts) · **Fixture** [`fixtures/repos/version-conflict`](https://github.com/Gallevy/hermex/blob/01f79d1aa84312d05b74bb7c3b0a1c8ac2fb499a/fixtures/repos/version-conflict) ([overview](https://github.com/Gallevy/hermex/blob/01f79d1aa84312d05b74bb7c3b0a1c8ac2fb499a/fixtures/repos/version-conflict/README.md)) · **Case** [`release-age-tree-scope`](https://github.com/Gallevy/hermex/blob/01f79d1aa84312d05b74bb7c3b0a1c8ac2fb499a/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/01f79d1aa84312d05b74bb7c3b0a1c8ac2fb499a/fixtures/cases/release-age-tree-scope.md))
+**Config** [`fixtures/repos/version-conflict/tree.config.ts`](https://github.com/Gallevy/hermex/blob/9212ed6924f41ca9ce9fbf8ecbf99ddf987c8a74/fixtures/repos/version-conflict/tree.config.ts) · **Fixture** [`fixtures/repos/version-conflict`](https://github.com/Gallevy/hermex/blob/9212ed6924f41ca9ce9fbf8ecbf99ddf987c8a74/fixtures/repos/version-conflict) ([overview](https://github.com/Gallevy/hermex/blob/9212ed6924f41ca9ce9fbf8ecbf99ddf987c8a74/fixtures/repos/version-conflict/README.md)) · **Case** [`release-age-tree-scope`](https://github.com/Gallevy/hermex/blob/9212ed6924f41ca9ce9fbf8ecbf99ddf987c8a74/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/9212ed6924f41ca9ce9fbf8ecbf99ddf987c8a74/fixtures/cases/release-age-tree-scope.md))
 
 **Registry** offline, served from `fixtures/registry/timelines.ts` — no network
 
@@ -22,7 +22,7 @@ _unchanged_
 
 ## Config
 
-[`fixtures/repos/version-conflict/tree.config.ts`](https://github.com/Gallevy/hermex/blob/01f79d1aa84312d05b74bb7c3b0a1c8ac2fb499a/fixtures/repos/version-conflict/tree.config.ts) — resolved, as the loader sees it
+[`fixtures/repos/version-conflict/tree.config.ts`](https://github.com/Gallevy/hermex/blob/9212ed6924f41ca9ce9fbf8ecbf99ddf987c8a74/fixtures/repos/version-conflict/tree.config.ts) — resolved, as the loader sees it
 
 ```json
 {
