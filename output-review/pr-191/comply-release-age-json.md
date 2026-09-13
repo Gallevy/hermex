@@ -1,26 +1,28 @@
 ---
 layout: default
-title: "scan-json — Output Review"
+title: "comply-release-age-json — Output Review"
 ---
 
 {% raw %}
 [← all cases](./index.html)
 
-# `scan-json`
+# `comply-release-age-json`
 
-_unchanged_
+_changed_
 
-**Asserts** — The full JSON contract: summary.patternCounts (#80), every owned package in packages[], de-duplicated components (#78, #79), and the compliance block (#55). Also the imported axis (#174): packages[].importingFileCount beside usageCount — lodash and es-toolkit read non-zero on the first and 0 on the second — and versus[].count keyed on it, with present:false marking a configured package the repo does not have.
+**Asserts** — The machine-readable shape of hermex's most consequential rule, against the same recorded registry as comply-release-age — which until #189 no case pinned at all, since the only JSON case that reached this rule (comply-all-rule-types-json) covers a single package on a single path. Here the whole surface is visible at once: `packages[].releases` as policy-free facts (every resolved copy, what was published after each, `latest`) and `ruleViolations[]` as the verdict (`overdueTier`, `daysOverdue`, `measuredVersion`, `scope`). Between them these packages cover an overdue package with no in-window target (#26), one with a real cross-tier target (#57), one merely coming due, one at an 'off' entry that carries full facts and no violation, and a version conflict whose nested copy is overdue but out of scope. The split is the thing to read: identical `releases` would be produced under any thresholds, and every threshold-derived answer sits on the violation instead.
 
-**Ran** `hermex scan --format json` in `fixtures/` → exit 0, as asserted
+**Ran** `hermex comply --format json --config configs/release-age.config.ts` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/201b37e5bed1664b66c5517dff147ca6077138f9/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/201b37e5bed1664b66c5517dff147ca6077138f9/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/201b37e5bed1664b66c5517dff147ca6077138f9/fixtures/README.md)) · **Case** [`scan-json`](https://github.com/Gallevy/hermex/blob/201b37e5bed1664b66c5517dff147ca6077138f9/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/201b37e5bed1664b66c5517dff147ca6077138f9/fixtures/cases/scan-json.md))
+**Config** [`fixtures/configs/release-age.config.ts`](https://github.com/Gallevy/hermex/blob/201b37e5bed1664b66c5517dff147ca6077138f9/fixtures/configs/release-age.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/201b37e5bed1664b66c5517dff147ca6077138f9/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/201b37e5bed1664b66c5517dff147ca6077138f9/fixtures/README.md)) · **Case** [`comply-release-age-json`](https://github.com/Gallevy/hermex/blob/201b37e5bed1664b66c5517dff147ca6077138f9/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/201b37e5bed1664b66c5517dff147ca6077138f9/fixtures/cases/comply-release-age-json.md))
 
-<sub>Reproduce locally: `pnpm run test:output -- --filter scan-json`</sub>
+**Registry** offline, served from `fixtures/registry/timelines.ts` — no network
+
+<sub>Reproduce locally: `pnpm run test:output -- --filter comply-release-age-json`</sub>
 
 ## Config
 
-[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/201b37e5bed1664b66c5517dff147ca6077138f9/fixtures/hermex.config.ts) — resolved, as the loader sees it
+[`fixtures/configs/release-age.config.ts`](https://github.com/Gallevy/hermex/blob/201b37e5bed1664b66c5517dff147ca6077138f9/fixtures/configs/release-age.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -115,13 +117,188 @@ _unchanged_
       "severity": "warn",
       "range": ">=20",
       "message": "Minimum Node 20 required"
-    }
+    },
+    "no-outdated-packages": [
+      {
+        "severity": "error",
+        "patterns": [
+          "moment",
+          "react-dom"
+        ]
+      }
+    ]
   },
   "output": {
     "details": false,
     "patterns": false
+  },
+  "releaseAge": {
+    "cacheDisabled": true
   }
 }
+```
+
+## Diff against the target branch
+
+<sub>Diffs are unified format: `-` is the target branch, `+` is this run. `@@ -12,7 +12,9 @@` is a hunk header — unchanged lines were skipped, and the hunk below covers 7 lines from line 12 of the target branch and 9 lines from line 12 of this run.</sub>
+
+```diff
+--- target/stdout.json
++++ current/stdout.json
+@@ -38,28 +38,28 @@
+       "allVersions": [
+         "18.3.1"
+       ],
+-      "releaseAge": {
+-        "installedVersion": "18.3.1",
+-        "upgrades": [
++      "releases": {
++        "resolved": [
+           {
+-            "version": "19.1.0",
+-            "releasedDaysAgo": 10,
+-            "breachReleasedDaysAgo": 400,
+-            "semverBump": "major",
+-            "level": "major_overdue",
+-            "thresholdDays": 60,
+-            "isLatest": true
++            "version": "18.3.1",
++            "isRoot": true,
++            "newer": [
++              {
++                "version": "19.0.0",
++                "releasedDaysAgo": 400,
++                "semverBump": "major"
++              },
++              {
++                "version": "19.1.0",
++                "releasedDaysAgo": 10,
++                "semverBump": "major",
++                "isLatest": true
++              }
++            ]
+           }
+         ],
+-        "worstLevel": "major_overdue",
+         "latestVersion": "19.1.0",
+-        "latestReleasedDaysAgo": 10,
+-        "minCompliantVersion": "19.1.0",
+-        "minCompliantReleasedDaysAgo": 10,
+-        "minCompliantInWindow": true,
+-        "minCompliantBump": "major",
+-        "severity": "warn",
+-        "scope": "root"
++        "latestReleasedDaysAgo": 10
+       }
+     },
+     {
+@@ -75,25 +75,23 @@
+       "allVersions": [
+         "18.3.1"
+       ],
+-      "releaseAge": {
+-        "installedVersion": "18.3.1",
+-        "upgrades": [],
+-        "worstLevel": null,
+-        "pendingUpgrade": {
+-          "version": "18.3.2",
+-          "semverBump": "patch",
+-          "releasedDaysAgo": 10,
+-          "thresholdDays": 30,
+-          "daysRemaining": 20
+-        },
++      "releases": {
++        "resolved": [
++          {
++            "version": "18.3.1",
++            "isRoot": true,
++            "newer": [
++              {
++                "version": "18.3.2",
++                "releasedDaysAgo": 10,
++                "semverBump": "patch",
++                "isLatest": true
++              }
++            ]
++          }
++        ],
+         "latestVersion": "18.3.2",
+-        "latestReleasedDaysAgo": 10,
+-        "minCompliantVersion": "18.3.2",
+-        "minCompliantReleasedDaysAgo": 10,
+-        "minCompliantInWindow": true,
+-        "minCompliantBump": "patch",
+-        "severity": "error",
+-        "scope": "root"
++        "latestReleasedDaysAgo": 10
+       }
+     },
+     {
+@@ -158,27 +156,23 @@
+         "2.29.4"
+       ],
+       "deprecated": "Moment is in maintenance mode — prefer date-fns or dayjs",
+-      "releaseAge": {
+-        "installedVersion": "2.29.4",
+-        "upgrades": [
++      "releases": {
++        "resolved": [
+           {
+-            "version": "2.30.1",
+-            "releasedDaysAgo": 500,
+-            "breachReleasedDaysAgo": 500,
+-            "semverBump": "minor",
+-            "level": "minor_overdue",
+-            "thresholdDays": 45,
+-            "isLatest": true
++            "version": "2.29.4",
++            "isRoot": true,
++            "newer": [
++              {
++                "version": "2.30.1",
++                "releasedDaysAgo": 500,
++                "semverBump": "minor",
++                "isLatest": true
++              }
++            ]
+           }
+         ],
+-        "worstLevel": "minor_overdue",
+         "latestVersion": "2.30.1",
+-        "latestReleasedDaysAgo": 500,
+-        "minCompliantVersion": "2.30.1",
+-        "minCompliantReleasedDaysAgo": 500,
+-        "minCompliantInWindow": false,
+-        "severity": "error",
+-        "scope": "root"
++        "latestReleasedDaysAgo": 500
+       }
+     }
+   ],
+@@ -574,8 +568,9 @@
+         "react-dom"
+       ],
+       "packageName": "moment",
+-      "installedVersion": "2.29.4",
+-      "worstLevel": "minor_overdue",
++      "measuredVersion": "2.29.4",
++      "overdueTier": "minor",
++      "daysOverdue": 455,
+       "scope": "root"
+     },
+     {
+@@ -592,8 +587,9 @@
+         "**"
+       ],
+       "packageName": "react",
+-      "installedVersion": "18.3.1",
+-      "worstLevel": "major_overdue",
++      "measuredVersion": "18.3.1",
++      "overdueTier": "major",
++      "daysOverdue": 340,
+       "scope": "root"
+     },
+     {
 ```
 
 ## Full output
@@ -168,7 +345,30 @@ _unchanged_
       "hasVersionConflict": false,
       "allVersions": [
         "18.3.1"
-      ]
+      ],
+      "releases": {
+        "resolved": [
+          {
+            "version": "18.3.1",
+            "isRoot": true,
+            "newer": [
+              {
+                "version": "19.0.0",
+                "releasedDaysAgo": 400,
+                "semverBump": "major"
+              },
+              {
+                "version": "19.1.0",
+                "releasedDaysAgo": 10,
+                "semverBump": "major",
+                "isLatest": true
+              }
+            ]
+          }
+        ],
+        "latestVersion": "19.1.0",
+        "latestReleasedDaysAgo": 10
+      }
     },
     {
       "packageName": "react-dom",
@@ -182,7 +382,25 @@ _unchanged_
       "hasVersionConflict": false,
       "allVersions": [
         "18.3.1"
-      ]
+      ],
+      "releases": {
+        "resolved": [
+          {
+            "version": "18.3.1",
+            "isRoot": true,
+            "newer": [
+              {
+                "version": "18.3.2",
+                "releasedDaysAgo": 10,
+                "semverBump": "patch",
+                "isLatest": true
+              }
+            ]
+          }
+        ],
+        "latestVersion": "18.3.2",
+        "latestReleasedDaysAgo": 10
+      }
     },
     {
       "packageName": "lodash",
@@ -244,7 +462,26 @@ _unchanged_
       "hasVersionConflict": false,
       "allVersions": [
         "2.29.4"
-      ]
+      ],
+      "deprecated": "Moment is in maintenance mode — prefer date-fns or dayjs",
+      "releases": {
+        "resolved": [
+          {
+            "version": "2.29.4",
+            "isRoot": true,
+            "newer": [
+              {
+                "version": "2.30.1",
+                "releasedDaysAgo": 500,
+                "semverBump": "minor",
+                "isLatest": true
+              }
+            ]
+          }
+        ],
+        "latestVersion": "2.30.1",
+        "latestReleasedDaysAgo": 500
+      }
     }
   ],
   "components": [
@@ -469,67 +706,7 @@ _unchanged_
     },
     {
       "name": "CaseCond",
-      "source": "@design-system/foundation",
-      "count": 1,
-      "files": [
-        "patterns/09-jsx-in-attributes.tsx"
-      ]
-    },
-    {
-      "name": "CaseMap",
-      "source": "@design-system/foundation",
-      "count": 1,
-      "files": [
-        "patterns/09-jsx-in-attributes.tsx"
-      ]
-    },
-    {
-      "name": "CaseVar",
-      "source": "@design-system/foundation",
-      "count": 1,
-      "files": [
-        "patterns/09-jsx-in-attributes.tsx"
-      ]
-    },
-    {
-      "name": "CaseReturn",
-      "source": "@design-system/foundation",
-      "count": 1,
-      "files": [
-        "patterns/09-jsx-in-attributes.tsx"
-      ]
-    },
-    {
-      "name": "Child",
-      "source": "@design-system/foundation",
-      "count": 1,
-      "files": [
-        "patterns/09-jsx-in-attributes.tsx"
-      ]
-    },
-    {
-      "name": "CaseAttr",
-      "source": "@design-system/foundation",
-      "count": 1,
-      "files": [
-        "patterns/09-jsx-in-attributes.tsx"
-      ]
-    },
-    {
-      "name": "CaseAttrSelfClosing",
-      "source": "@design-system/foundation",
-      "count": 1,
-      "files": [
-        "patterns/09-jsx-in-attributes.tsx"
-      ]
-    },
-    {
-      "name": "CaseAttrCond",
-      "source": "@design-system/foundation",
-      "count": 1,
-      "files": [
-        "patterns/09-jsx-in-attributes.tsx"
-… 119 more line(s) — re-run locally for the full text.
+… 213 more line(s) — re-run locally for the full text.
 ```
 
 </details>
@@ -554,6 +731,8 @@ hermex v<version>
 
 Caused by:
     Syntax Error
+
+✔ Release age fetched (3 packages skipped — registry unreachable or not found)
 ```
 
 </details>

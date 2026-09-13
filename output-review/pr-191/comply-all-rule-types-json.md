@@ -14,7 +14,7 @@ _changed_
 
 **Ran** `hermex comply --format json` in `fixtures/repos/all-rule-types` → exit 1, as asserted
 
-**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/5787973564bb8d934fae57bc7eb323300c8f9cdd/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/5787973564bb8d934fae57bc7eb323300c8f9cdd/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/5787973564bb8d934fae57bc7eb323300c8f9cdd/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types-json`](https://github.com/Gallevy/hermex/blob/5787973564bb8d934fae57bc7eb323300c8f9cdd/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/5787973564bb8d934fae57bc7eb323300c8f9cdd/fixtures/cases/comply-all-rule-types-json.md))
+**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/201b37e5bed1664b66c5517dff147ca6077138f9/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/201b37e5bed1664b66c5517dff147ca6077138f9/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/201b37e5bed1664b66c5517dff147ca6077138f9/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types-json`](https://github.com/Gallevy/hermex/blob/201b37e5bed1664b66c5517dff147ca6077138f9/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/201b37e5bed1664b66c5517dff147ca6077138f9/fixtures/cases/comply-all-rule-types-json.md))
 
 **Registry** offline, served from `fixtures/registry/timelines.ts` — no network
 
@@ -22,7 +22,7 @@ _changed_
 
 ## Config
 
-[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/5787973564bb8d934fae57bc7eb323300c8f9cdd/fixtures/repos/all-rule-types/hermex.config.ts) — resolved, as the loader sees it
+[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/201b37e5bed1664b66c5517dff147ca6077138f9/fixtures/repos/all-rule-types/hermex.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -150,75 +150,95 @@ _changed_
 ```diff
 --- target/stdout.json
 +++ current/stdout.json
-@@ -23,27 +23,25 @@
+@@ -22,28 +22,28 @@
+       "allVersions": [
          "18.3.1"
        ],
-       "releaseAge": {
+-      "releaseAge": {
 -        "installedVersion": "18.3.1",
-+        "measuredVersion": "18.3.1",
-         "upgrades": [
+-        "upgrades": [
++      "releases": {
++        "resolved": [
            {
-             "version": "19.1.0",
-             "releasedDaysAgo": 10,
-             "breachReleasedDaysAgo": 400,
-             "semverBump": "major",
+-            "version": "19.1.0",
+-            "releasedDaysAgo": 10,
+-            "breachReleasedDaysAgo": 400,
+-            "semverBump": "major",
 -            "level": "major_overdue",
-             "thresholdDays": 60,
-             "isLatest": true
+-            "thresholdDays": 60,
+-            "isLatest": true
++            "version": "18.3.1",
++            "isRoot": true,
++            "newer": [
++              {
++                "version": "19.0.0",
++                "releasedDaysAgo": 400,
++                "semverBump": "major"
++              },
++              {
++                "version": "19.1.0",
++                "releasedDaysAgo": 10,
++                "semverBump": "major",
++                "isLatest": true
++              }
++            ]
            }
          ],
 -        "worstLevel": "major_overdue",
          "latestVersion": "19.1.0",
-         "latestReleasedDaysAgo": 10,
+-        "latestReleasedDaysAgo": 10,
 -        "minCompliantVersion": "19.1.0",
 -        "minCompliantReleasedDaysAgo": 10,
 -        "minCompliantInWindow": true,
 -        "minCompliantBump": "major",
 -        "severity": "error",
 -        "scope": "root"
-+        "recommendedTarget": {
-+          "version": "19.1.0",
-+          "releasedDaysAgo": 10,
-+          "semverBump": "major",
-+          "inWindow": true
-+        }
++        "latestReleasedDaysAgo": 10
        }
      },
      {
-@@ -63,26 +61,24 @@
+@@ -62,27 +62,23 @@
+         "2.29.4"
        ],
        "deprecated": "Moment is in maintenance mode — prefer date-fns or dayjs",
-       "releaseAge": {
+-      "releaseAge": {
 -        "installedVersion": "2.29.4",
-+        "measuredVersion": "2.29.4",
-         "upgrades": [
+-        "upgrades": [
++      "releases": {
++        "resolved": [
            {
-             "version": "2.30.1",
-             "releasedDaysAgo": 500,
-             "breachReleasedDaysAgo": 500,
-             "semverBump": "minor",
+-            "version": "2.30.1",
+-            "releasedDaysAgo": 500,
+-            "breachReleasedDaysAgo": 500,
+-            "semverBump": "minor",
 -            "level": "minor_overdue",
-             "thresholdDays": 45,
-             "isLatest": true
+-            "thresholdDays": 45,
+-            "isLatest": true
++            "version": "2.29.4",
++            "isRoot": true,
++            "newer": [
++              {
++                "version": "2.30.1",
++                "releasedDaysAgo": 500,
++                "semverBump": "minor",
++                "isLatest": true
++              }
++            ]
            }
          ],
 -        "worstLevel": "minor_overdue",
          "latestVersion": "2.30.1",
-         "latestReleasedDaysAgo": 500,
+-        "latestReleasedDaysAgo": 500,
 -        "minCompliantVersion": "2.30.1",
 -        "minCompliantReleasedDaysAgo": 500,
 -        "minCompliantInWindow": false,
 -        "severity": "warn",
 -        "scope": "root"
-+        "recommendedTarget": {
-+          "version": "2.30.1",
-+          "releasedDaysAgo": 500,
-+          "inWindow": false
-+        }
++        "latestReleasedDaysAgo": 500
        }
      }
    ],
-@@ -155,8 +151,8 @@
+@@ -155,8 +151,9 @@
          "react"
        ],
        "packageName": "react",
@@ -226,10 +246,11 @@ _changed_
 -      "worstLevel": "major_overdue",
 +      "measuredVersion": "18.3.1",
 +      "overdueTier": "major",
++      "daysOverdue": 340,
        "scope": "root"
      },
      {
-@@ -196,8 +192,8 @@
+@@ -196,8 +193,9 @@
          "**"
        ],
        "packageName": "moment",
@@ -237,6 +258,7 @@ _changed_
 -      "worstLevel": "minor_overdue",
 +      "measuredVersion": "2.29.4",
 +      "overdueTier": "minor",
++      "daysOverdue": 455,
        "scope": "root"
      },
      {
@@ -271,26 +293,28 @@ _changed_
       "allVersions": [
         "18.3.1"
       ],
-      "releaseAge": {
-        "measuredVersion": "18.3.1",
-        "upgrades": [
+      "releases": {
+        "resolved": [
           {
-            "version": "19.1.0",
-            "releasedDaysAgo": 10,
-            "breachReleasedDaysAgo": 400,
-            "semverBump": "major",
-            "thresholdDays": 60,
-            "isLatest": true
+            "version": "18.3.1",
+            "isRoot": true,
+            "newer": [
+              {
+                "version": "19.0.0",
+                "releasedDaysAgo": 400,
+                "semverBump": "major"
+              },
+              {
+                "version": "19.1.0",
+                "releasedDaysAgo": 10,
+                "semverBump": "major",
+                "isLatest": true
+              }
+            ]
           }
         ],
         "latestVersion": "19.1.0",
-        "latestReleasedDaysAgo": 10,
-        "recommendedTarget": {
-          "version": "19.1.0",
-          "releasedDaysAgo": 10,
-          "semverBump": "major",
-          "inWindow": true
-        }
+        "latestReleasedDaysAgo": 10
       }
     },
     {
@@ -309,25 +333,23 @@ _changed_
         "2.29.4"
       ],
       "deprecated": "Moment is in maintenance mode — prefer date-fns or dayjs",
-      "releaseAge": {
-        "measuredVersion": "2.29.4",
-        "upgrades": [
+      "releases": {
+        "resolved": [
           {
-            "version": "2.30.1",
-            "releasedDaysAgo": 500,
-            "breachReleasedDaysAgo": 500,
-            "semverBump": "minor",
-            "thresholdDays": 45,
-            "isLatest": true
+            "version": "2.29.4",
+            "isRoot": true,
+            "newer": [
+              {
+                "version": "2.30.1",
+                "releasedDaysAgo": 500,
+                "semverBump": "minor",
+                "isLatest": true
+              }
+            ]
           }
         ],
         "latestVersion": "2.30.1",
-        "latestReleasedDaysAgo": 500,
-        "recommendedTarget": {
-          "version": "2.30.1",
-          "releasedDaysAgo": 500,
-          "inWindow": false
-        }
+        "latestReleasedDaysAgo": 500
       }
     }
   ],
@@ -402,6 +424,7 @@ _changed_
       "packageName": "react",
       "measuredVersion": "18.3.1",
       "overdueTier": "major",
+      "daysOverdue": 340,
       "scope": "root"
     },
     {
@@ -443,6 +466,7 @@ _changed_
       "packageName": "moment",
       "measuredVersion": "2.29.4",
       "overdueTier": "minor",
+      "daysOverdue": 455,
       "scope": "root"
     },
     {
