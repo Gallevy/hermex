@@ -7,7 +7,9 @@ import {
 } from '../../src/utils/compliance';
 import {
   createMockPackage,
-  createMockReleaseAge,
+  createMockReleases,
+  createMockCopy,
+  createMockRelease,
   createMockNoOutdatedPackagesViolation,
 } from '../helpers/mock-reports';
 
@@ -175,7 +177,7 @@ describe('computeCompliance', () => {
     const violation = createMockNoOutdatedPackagesViolation(
       '@my-org/internal',
       {
-        worstLevel: 'major_overdue',
+        overdueTier: 'major',
         severity: 'error',
       },
     );
@@ -188,7 +190,7 @@ describe('computeCompliance', () => {
 
   it('a major_overdue on a warn-severity (not enforced) package does not affect compliance', () => {
     const violation = createMockNoOutdatedPackagesViolation('react', {
-      worstLevel: 'major_overdue',
+      overdueTier: 'major',
       severity: 'warn',
     });
     const result = computeCompliance(
@@ -201,7 +203,7 @@ describe('computeCompliance', () => {
     const violation = createMockNoOutdatedPackagesViolation(
       '@my-org/internal',
       {
-        worstLevel: 'minor_overdue',
+        overdueTier: 'minor',
         severity: 'error',
       },
     );
@@ -214,7 +216,7 @@ describe('computeCompliance', () => {
 
   it('a minor_overdue on a warn-severity (not enforced) package does not affect compliance', () => {
     const violation = createMockNoOutdatedPackagesViolation('react', {
-      worstLevel: 'minor_overdue',
+      overdueTier: 'minor',
       severity: 'warn',
     });
     const result = computeCompliance(
@@ -247,7 +249,7 @@ describe('computeCompliance — status (#55)', () => {
   it("status is 'non-compliant' when an enforced package is overdue, regardless of any warn-severity rules present", () => {
     const releaseAgeViolation = createMockNoOutdatedPackagesViolation(
       '@my-org/internal',
-      { worstLevel: 'major_overdue', severity: 'error' },
+      { overdueTier: 'major', severity: 'error' },
     );
     const warnRule: RuleViolation = {
       ruleId: 'require-files',
@@ -299,7 +301,7 @@ describe('computeCompliance — status (#55)', () => {
     // (not enforced), and pending-only @acme-ui/* entries (worstLevel null).
     // None of these are warn-severity *rules*, so the
     // official status must remain 'compliant'.
-    // A pending-only package (worstLevel: null — nothing has breached yet)
+    // A pending-only package (overdueTier: null — nothing has breached yet)
     // never becomes a `NoOutdatedPackagesViolation` at all (see
     // `evaluateOutdatedPackages`, src/rules/no-outdated-packages.ts) — `pendingUpgrade` is
     // pure Packages-table display data, so it can't appear in
@@ -312,17 +314,13 @@ describe('computeCompliance — status (#55)', () => {
       patterns: ['orbis.config.*'],
       matchedFile: 'orbis.config.ts',
     };
+    // A package with a newer release that is still well inside its window:
+    // coming due, nothing overdue, and so no violation at any severity.
     const pendingOnly = createMockPackage('@acme-ui/pulse', {
-      releaseAge: createMockReleaseAge({
-        worstLevel: null,
-        severity: 'error',
-        pendingUpgrade: {
-          version: '2.0.0',
-          semverBump: 'major',
-          releasedDaysAgo: 3,
-          thresholdDays: 30,
-          daysRemaining: 27,
-        },
+      releases: createMockReleases({
+        resolved: [
+          createMockCopy('1.0.0', [createMockRelease('2.0.0', 3, 'major')]),
+        ],
       }),
     });
 
@@ -349,7 +347,7 @@ describe('computeCompliance — status (#55)', () => {
     const violation = createMockNoOutdatedPackagesViolation(
       'react-instantsearch',
       {
-        worstLevel: 'major_overdue',
+        overdueTier: 'major',
         severity: 'warn',
       },
     );

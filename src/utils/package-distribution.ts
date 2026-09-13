@@ -1,6 +1,6 @@
 import micromatch from 'micromatch';
 import type { UsageReport } from '../swc-parser';
-import type { ReleaseAgeEntry } from '../npm-registry/types';
+import type { PackageReleases } from '../npm-registry/types';
 import type { ResolvedHermexConfig } from '../config/types';
 import type {
   DependencyBucket,
@@ -53,10 +53,17 @@ export interface PackageDistribution {
    * `rules['no-deprecated-packages']`'s job.
    *
    * Set by `enrichFromRegistry` (`src/npm-registry/enricher.ts`), never by
-   * `calculatePackageDistribution` — same as `releaseAge` below.
+   * `calculatePackageDistribution` — same as `releases` below.
    */
   deprecated?: string;
-  releaseAge?: ReleaseAgeEntry;
+  /**
+   * Registry release facts: every resolved copy and what was published
+   * after it. Policy-free — identical whatever this repo thresholds,
+   * enforces or scopes, because none of those are inputs to computing it.
+   * Absent when no registry-backed rule ran, since nothing fetched it.
+   * The verdict derived from this lives on the violation (#189).
+   */
+  releases?: PackageReleases;
 }
 
 /**

@@ -1,12 +1,10 @@
 import semver from 'semver';
 import type { PackageDistribution } from '../utils/aggregator';
-import type { ReleaseAgeThresholds } from '../config/types';
 import type {
-  AvailableUpgrade,
-  PendingUpgrade,
-  ReleaseAgeEntry,
+  PackageReleases,
+  ReleaseInfo,
+  ResolvedCopy,
   SemverBump,
-  UpgradeLevel,
 } from './types';
 import { getPackageInfo, type CacheOptions } from './cache';
 
@@ -38,56 +36,21 @@ function classifyBump(installed: string, candidate: string): SemverBump | null {
   return null;
 }
 
-function pickNewest(versions: { version: string; daysAgo: number }[]): {
-  version: string;
-  daysAgo: number;
-} {
-  return versions.reduce((a, b) => (a.daysAgo < b.daysAgo ? a : b));
-}
-
-function upgradeLevel(
-  daysAgo: number,
-  bump: SemverBump,
-  thresholds: ReleaseAgeThresholds,
-): UpgradeLevel | null {
-  const threshold = thresholds[bump];
-  if (threshold === false || threshold === undefined) return null;
-  if (daysAgo > threshold) {
-    return bump === 'major' ? 'major_overdue' : 'minor_overdue';
-  }
-  return null;
-}
-
-interface ReleaseAgeForVersion {
-  upgrades: AvailableUpgrade[];
-  worstLevel: UpgradeLevel | null;
-  pendingUpgrade?: PendingUpgrade;
-  latestVersion?: string;
-  latestReleasedDaysAgo?: number;
-  minCompliantVersion?: string;
-  minCompliantReleasedDaysAgo?: number;
-  minCompliantInWindow: boolean;
-  minCompliantBump?: SemverBump;
-}
-
 /**
- * Computes everything version-dependent for a single installed version
- * against the registry's release timeline — no notion of scope or
- * severity, which are policy facts independent of which installed copy is
- * being checked (#57). Deprecation isn't here either, and no longer passes
- * through release-age at all: it's an inventory fact recorded directly by
- * `enrichFromRegistry` below (#107).
+ * Every published release newer than `installedVersion`, oldest-first.
+ *
+ * No thresholds, no scope, no severity: which of these count as "overdue"
+ * is the rule's question, and asking it here is what used to let a verdict
+ * leak onto the packages payload (#189). Prereleases are dropped because
+ * they are not upgrade candidates by npm convention — a fact about npm, not
+ * a policy of this repo's.
  */
-function computeReleaseAgeForVersion(
+function releasesNewerThan(
   installedVersion: string,
   timeMap: Record<string, string>,
-  thresholds: ReleaseAgeThresholds,
-  distTags: Record<string, string> | undefined,
-): ReleaseAgeForVersion {
-  const byBump = new Map<SemverBump, { version: string; daysAgo: number }[]>();
-  let minCompliantVersion: string | undefined;
-  let minCompliantReleasedDaysAgo: number | undefined;
-  let minCompliantBump: SemverBump | undefined;
+  latestVersion: string | undefined,
+): ReleaseInfo[] {
+  const newer: ReleaseInfo[] = [];
 
   for (const [version, dateStr] of Object.entries(timeMap)) {
     if (version === 'created' || version === 'modified') continue;
@@ -95,247 +58,73 @@ function computeReleaseAgeForVersion(
     if (semver.prerelease(version)) continue;
     if (semver.lte(version, installedVersion)) continue;
 
-    const bump = classifyBump(installedVersion, version);
-    if (!bump) continue;
+    const semverBump = classifyBump(installedVersion, version);
+    if (!semverBump) continue;
 
-    const daysAgo = daysSince(dateStr);
-    const list = byBump.get(bump) ?? [];
-    list.push({ version, daysAgo });
-    byBump.set(bump, list);
-
-    // Track the oldest release, at whichever bump tier it belongs to, that's
-    // still within that tier's configured age threshold (#21) — generalizes
-    // what was previously a patch-only check to all three tiers, since the
-    // same "is this candidate old enough to be safely adopted" question
-    // applies identically to patch, minor, and major bumps, just against a
-    // different configured threshold per tier.
-    const threshold = thresholds[bump];
-    if (
-      threshold !== false &&
-      threshold !== undefined &&
-      daysAgo <= threshold &&
-      (minCompliantReleasedDaysAgo === undefined ||
-        daysAgo > minCompliantReleasedDaysAgo)
-    ) {
-      minCompliantVersion = version;
-      minCompliantReleasedDaysAgo = daysAgo;
-      minCompliantBump = bump;
-    }
-  }
-
-  // A bump tier is "breached" if its oldest available version is older than the
-  // tier's threshold — report the newest version in that tier as the upgrade
-  // target, not the version that happened to trigger the breach.
-  const upgrades: AvailableUpgrade[] = [];
-  for (const [bump, versions] of byBump.entries()) {
-    const oldestDaysAgo = Math.max(...versions.map((v) => v.daysAgo));
-    const level = upgradeLevel(oldestDaysAgo, bump, thresholds);
-    if (!level) continue;
-
-    const newest = pickNewest(versions);
-    upgrades.push({
-      version: newest.version,
-      releasedDaysAgo: newest.daysAgo,
-      breachReleasedDaysAgo: oldestDaysAgo,
-      semverBump: bump,
-      level,
-      thresholdDays: thresholds[bump] as number,
+    newer.push({
+      version,
+      releasedDaysAgo: daysSince(dateStr),
+      semverBump,
+      ...(version === latestVersion ? { isLatest: true } : {}),
     });
   }
 
-  const finalUpgrades = upgrades.sort(
-    (a, b) => b.releasedDaysAgo - a.releasedDaysAgo,
-  );
-
-  const latestVersion = distTags?.['latest'];
-  const latestEntry = latestVersion ? timeMap[latestVersion] : undefined;
-  const latestReleasedDaysAgo = latestEntry
-    ? daysSince(latestEntry)
-    : undefined;
-
-  // If nothing newer than installed ever fell inside its tier's threshold,
-  // the only real landing spot is latest — treat it as the compliant target
-  // even though it's itself past the window, since there's no fresher
-  // release to upgrade to instead (#26).
-  const hadInWindowCandidate = minCompliantVersion !== undefined;
-  if (
-    !hadInWindowCandidate &&
-    latestVersion &&
-    latestReleasedDaysAgo !== undefined &&
-    !semver.prerelease(latestVersion) &&
-    semver.gt(latestVersion, installedVersion)
-  ) {
-    minCompliantVersion = latestVersion;
-    minCompliantReleasedDaysAgo = latestReleasedDaysAgo;
-  }
-
-  for (const upgrade of finalUpgrades) {
-    if (latestVersion && upgrade.version === latestVersion) {
-      upgrade.isLatest = true;
-    }
-  }
-
-  // The latest-fallback above is a display convenience for "closest
-  // achievable target" — it must not also erase worstLevel. A package with
-  // breached upgrades is still overdue even when latest itself is past the
-  // threshold and there's nothing fresher to recommend instead (#29).
-  const worstLevel: UpgradeLevel | null = finalUpgrades.some(
-    (u) => u.level === 'major_overdue',
-  )
-    ? 'major_overdue'
-    : finalUpgrades.length > 0
-      ? 'minor_overdue'
-      : null;
-
-  // Only surface a "coming due" advisory when nothing has breached yet — a
-  // package that's already in violation on one tier doesn't also need an
-  // "N days remaining" note about another, unbreached tier.
-  let pendingUpgrade: PendingUpgrade | undefined;
-  if (worstLevel === null) {
-    for (const [bump, versions] of byBump.entries()) {
-      const threshold = thresholds[bump];
-      if (threshold === false || threshold === undefined) continue;
-
-      const oldestDaysAgo = Math.max(...versions.map((v) => v.daysAgo));
-      const daysRemaining = threshold - oldestDaysAgo;
-      if (daysRemaining <= 0) continue;
-
-      if (!pendingUpgrade || daysRemaining < pendingUpgrade.daysRemaining) {
-        const newest = pickNewest(versions);
-        pendingUpgrade = {
-          version: newest.version,
-          semverBump: bump,
-          releasedDaysAgo: newest.daysAgo,
-          thresholdDays: threshold,
-          daysRemaining,
-        };
-      }
-    }
-  }
-
-  return {
-    upgrades: finalUpgrades,
-    worstLevel,
-    pendingUpgrade,
-    latestVersion,
-    latestReleasedDaysAgo,
-    minCompliantVersion,
-    minCompliantReleasedDaysAgo,
-    minCompliantInWindow: hadInWindowCandidate,
-    minCompliantBump,
-  };
+  // Oldest first: every consumer of this list walks it looking for the
+  // longest-waiting release, so the order it wants is the order it gets.
+  return newer.sort((a, b) => b.releasedDaysAgo - a.releasedDaysAgo);
 }
-
-const LEVEL_RANK: Record<'null' | UpgradeLevel, number> = {
-  null: 0,
-  minor_overdue: 1,
-  major_overdue: 2,
-};
-
-function levelRank(level: UpgradeLevel | null): number {
-  return LEVEL_RANK[level ?? 'null'];
-}
-
-/** A vacuous "nothing enforced" result — worstLevel stays null regardless
- * of what the registry timeline actually says, since there's no enforced
- * baseline to measure against. */
-const NOTHING_ENFORCED: ReleaseAgeForVersion = {
-  upgrades: [],
-  worstLevel: null,
-  minCompliantInWindow: false,
-};
 
 /**
- * Resolves which of `allVersions` count toward compliance ('root': just
- * `installedVersion`, and only when `hasRootVersion` confirms it's a real
- * direct dependency — not the "fell back to the highest resolved version"
- * placeholder for a purely transitive package (#62); 'tree': every
- * resolved copy). Evaluates each candidate independently via
- * `computeReleaseAgeForVersion`, and combines them into a single verdict —
- * the worst result among the enforced versions — while still surfacing
- * overdue-but-not-enforced copies via `advisoryBreaches` regardless of
- * scope (#57).
+ * The facts for one package: every resolved copy, and what was published
+ * after each.
+ *
+ * Both the root copy and any nested duplicates are listed, flagged but
+ * unranked. Choosing which of them the verdict is measured against is the
+ * `scope` decision and belongs to the rule — collapsing them here, as this
+ * used to, meant the packages payload already encoded a policy answer (#57,
+ * #189).
  */
-export function computeReleaseAge(
+export function computePackageReleases(
   installedVersion: string,
   allVersions: string[],
+  rootVersion: string | null | undefined,
   timeMap: Record<string, string>,
-  thresholds: ReleaseAgeThresholds,
   distTags: Record<string, string> | undefined,
-  severity: 'error' | 'warn' | 'info' | 'off',
-  scope: 'root' | 'tree',
-  hasRootVersion: boolean,
-): ReleaseAgeEntry {
+): PackageReleases {
   const candidates =
     allVersions.length > 0
       ? Array.from(new Set(allVersions))
       : [installedVersion];
   if (!candidates.includes(installedVersion)) candidates.push(installedVersion);
 
-  const enforcedVersions =
-    scope === 'tree' ? candidates : hasRootVersion ? [installedVersion] : [];
+  const latestVersion = distTags?.['latest'];
+  const latestEntry = latestVersion ? timeMap[latestVersion] : undefined;
 
-  const perVersion = new Map<string, ReleaseAgeForVersion>();
-  for (const version of candidates) {
-    perVersion.set(
-      version,
-      computeReleaseAgeForVersion(version, timeMap, thresholds, distTags),
-    );
-  }
+  // `undefined` (never populated — e.g. a hand-built PackageDistribution in
+  // a test) means "unknown, assume root"; only an explicit `null`, set by
+  // the lockfile layer, marks a package as definitively not a direct
+  // dependency (#62).
+  const isRootCopy = (version: string) =>
+    rootVersion === null
+      ? false
+      : rootVersion === undefined
+        ? version === installedVersion
+        : version === rootVersion;
 
-  // No enforced baseline at all — e.g. `scope: 'root'` on a package that
-  // was never a direct dependency (only reachable transitively). Nothing
-  // can fail comply for it; every candidate below still gets a chance to
-  // surface as an advisory breach instead of vanishing silently.
-  let baselineVersion = installedVersion;
-  let baseline: ReleaseAgeForVersion = NOTHING_ENFORCED;
-  if (enforcedVersions.length > 0) {
-    baselineVersion = enforcedVersions[0];
-    baseline = perVersion.get(baselineVersion)!;
-    for (const version of enforcedVersions.slice(1)) {
-      const candidate = perVersion.get(version)!;
-      const candidateRank = levelRank(candidate.worstLevel);
-      const baselineRank = levelRank(baseline.worstLevel);
-      const candidateBreachAge =
-        candidate.upgrades[0]?.breachReleasedDaysAgo ?? 0;
-      const baselineBreachAge =
-        baseline.upgrades[0]?.breachReleasedDaysAgo ?? 0;
-      if (
-        candidateRank > baselineRank ||
-        (candidateRank === baselineRank &&
-          candidateBreachAge > baselineBreachAge)
-      ) {
-        baseline = candidate;
-        baselineVersion = version;
-      }
-    }
-  }
+  const resolved: ResolvedCopy[] = candidates.map((version) => ({
+    version,
+    isRoot: isRootCopy(version),
+    newer: releasesNewerThan(version, timeMap, latestVersion),
+  }));
 
-  const advisoryBreaches: { version: string; level: UpgradeLevel }[] = [];
-  for (const version of candidates) {
-    if (enforcedVersions.includes(version)) continue;
-    const result = perVersion.get(version)!;
-    if (result.worstLevel) {
-      advisoryBreaches.push({ version, level: result.worstLevel });
-    }
-  }
+  // Root first when there is one, so a reader meets the copy they declared
+  // before any nested duplicate.
+  resolved.sort((a, b) => Number(b.isRoot) - Number(a.isRoot));
 
   return {
-    installedVersion: baselineVersion,
-    upgrades: baseline.upgrades,
-    worstLevel: baseline.worstLevel,
-    pendingUpgrade: baseline.pendingUpgrade,
-    latestVersion: baseline.latestVersion,
-    latestReleasedDaysAgo: baseline.latestReleasedDaysAgo,
-    minCompliantVersion: baseline.minCompliantVersion,
-    minCompliantReleasedDaysAgo: baseline.minCompliantReleasedDaysAgo,
-    minCompliantInWindow: baseline.minCompliantInWindow,
-    minCompliantBump: baseline.minCompliantBump,
-    severity,
-    scope,
-    evaluatedVersions: candidates.length > 1 ? candidates : undefined,
-    advisoryBreaches:
-      advisoryBreaches.length > 0 ? advisoryBreaches : undefined,
+    resolved,
+    latestVersion,
+    latestReleasedDaysAgo: latestEntry ? daysSince(latestEntry) : undefined,
   };
 }
 
@@ -347,42 +136,31 @@ export interface ReleaseAgeConnection {
   cacheDisabled: boolean;
 }
 
-/** A package's resolved release-age policy — from `resolveReleaseAgeRule`
- * (`src/config/overrides.ts`), one per package, already picked from
- * whichever rule entry governs it. */
-export interface ReleaseAgePolicy {
-  severity: 'error' | 'warn' | 'info' | 'off';
-  thresholds: ReleaseAgeThresholds;
-  scope: 'root' | 'tree';
-}
-
 /** What one package's registry lookup produced. `found` records whether the
- * fetch itself succeeded, which is deliberately separate from whether an
- * `entry` was computed — see the merge loop below. */
+ * fetch itself succeeded, which is deliberately separate from whether
+ * release facts were computed — see the merge loop below. */
 interface RegistryResult {
   pkg: PackageDistribution;
   found: boolean;
   deprecated?: string;
-  entry?: ReleaseAgeEntry;
+  releases?: PackageReleases;
 }
 
 /**
- * One registry pass, two outputs. Deprecation is an inventory fact and is
- * always recorded; the `ReleaseAgeEntry` is computed only when
- * `resolvePolicy` is supplied — i.e. when `rules['no-outdated-packages']` is
- * non-empty for this repo. So both registry-backed rules cost one request
- * per installed package between them, not one each (#107).
+ * One registry pass, two outputs, neither of them a judgment. Deprecation
+ * is an inventory fact; `PackageReleases` is the release timeline. Both
+ * registry-backed rules read this same pass, so they cost one request per
+ * installed package between them, not one each (#107).
  *
- * Within a release-age run, enrichment stays unconditional regardless of
- * policy (#171, #173): a package's `resolvePolicy` result decides only its
- * severity, thresholds and scope, never whether it's looked up at all.
- * Pure registry I/O plus the timeline math above; policy resolution (which
- * rule entry governs a package) lives one layer up, in `src/rules/`.
+ * Takes no policy at all any more — no thresholds, no scope, no severity.
+ * Whether to call this is the gate (`needsRegistry`); what the answer
+ * *means* is the rule's, via `assessPackage`. That split is what keeps
+ * `packages[]` identical across two repos with different thresholds and the
+ * same lockfile (#189).
  */
 export async function enrichFromRegistry(
   packages: PackageDistribution[],
   connection: ReleaseAgeConnection,
-  resolvePolicy?: (packageName: string) => ReleaseAgePolicy,
 ): Promise<{ enriched: PackageDistribution[]; skipped: number }> {
   const authToken =
     connection.authToken ?? process.env['HERMEX_REGISTRY_AUTH_TOKEN'];
@@ -418,41 +196,24 @@ export async function enrichFromRegistry(
         const deprecated =
           info.versions?.[pkg.version!]?.deprecated ?? info.deprecated;
 
-        const policy = resolvePolicy?.(pkg.packageName);
-
-        // `undefined` (never populated — e.g. a hand-built PackageDistribution
-        // in a test) is treated as "unknown, assume root" for backward
-        // compatibility; only an explicit `null` — set by the real pipeline
-        // when the lockfile layer confirms this isn't a direct dependency —
-        // means "don't enforce this under root scope" (#62).
-        const hasRootVersion = pkg.rootVersion !== null;
-
-        const entry = policy
-          ? computeReleaseAge(
-              pkg.version!,
-              pkg.allVersions,
-              info.time,
-              policy.thresholds,
-              info['dist-tags'],
-              policy.severity,
-              policy.scope,
-              hasRootVersion,
-            )
-          : undefined;
-
         return {
           pkg,
           found: true,
           deprecated: typeof deprecated === 'string' ? deprecated : undefined,
-          entry,
+          releases: computePackageReleases(
+            pkg.version!,
+            pkg.allVersions,
+            pkg.rootVersion,
+            info.time,
+            info['dist-tags'],
+          ),
         };
       }),
     );
 
-    // Keyed on whether the FETCH succeeded, never on whether an entry was
-    // computed: with release-age off there is no entry for any package, and
-    // `if (!entry) continue` would silently discard every deprecation fact
-    // this pass exists to collect (#107).
+    // Keyed on whether the FETCH succeeded: a package the registry did not
+    // answer for records nothing, while one it did records both facts, even
+    // if no rule ends up judging either (#107).
     for (const result of results) {
       if (!result.found) continue;
       const idx = enriched.findIndex(
@@ -464,7 +225,7 @@ export async function enrichFromRegistry(
         ...(result.deprecated !== undefined
           ? { deprecated: result.deprecated }
           : {}),
-        ...(result.entry ? { releaseAge: result.entry } : {}),
+        ...(result.releases ? { releases: result.releases } : {}),
       };
     }
   }

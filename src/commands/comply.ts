@@ -75,11 +75,13 @@ export async function executeComply(
   try {
     // Runs the full pipeline to completion regardless of violations found —
     // comply must report everything in one pass, not fail on the first issue.
-    const aggregated = await runPipeline(config, spinner, isJson);
-    if (!aggregated) {
+    const result = await runPipeline(config, spinner, isJson);
+    if (!result) {
       process.exitCode = 2;
       return;
     }
+    const { aggregated, resolvedConfig } = result;
+    const rules = resolvedConfig.rules['no-outdated-packages'];
 
     const compliance = computeCompliance(aggregated);
 
@@ -87,13 +89,16 @@ export async function executeComply(
       printJson(aggregated, config.output, compliance);
     } else {
       printRules(aggregated);
-      // Whether release-age actually ran for this repo — `rules['no-outdated-packages']`
-      // being non-empty in the base config isn't enough on its own, since a
-      // per-repo `overrides[]` entry can turn it on even when the base is
-      // empty (and vice versa can't happen: overrides only add rules here).
-      // Checking the enriched data directly is what's actually true.
-      if (aggregated.packageDistribution.some((p) => p.releaseAge)) {
-        printPackages(aggregated, 'table');
+      // Whether `no-outdated-packages` is on for this repo, asked of the
+      // *resolved* rules so a per-repo `overrides[]` entry that turns it on
+      // counts. This used to check the enriched data instead, as a proxy for
+      // the same question — valid only while release facts were themselves
+      // gated on the policy. They no longer are (#189): the registry records
+      // a timeline whenever it is consulted, including for a
+      // `no-deprecated-packages`-only run, and reading that as "the rule ran"
+      // would grow a Packages table where there was none.
+      if (rules.length > 0) {
+        printPackages(aggregated, 'table', rules);
       }
       if (config.output.versus) {
         printVersus(aggregated);
@@ -102,7 +107,13 @@ export async function executeComply(
     }
 
     if (summaryFile) {
-      writeSummaryFile(summaryFile, aggregated, compliance, summaryTitle);
+      writeSummaryFile(
+        summaryFile,
+        aggregated,
+        compliance,
+        summaryTitle,
+        rules,
+      );
     }
 
     process.exitCode = compliance.compliant ? 0 : 1;

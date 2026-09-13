@@ -13,7 +13,10 @@ import { loadConfig } from '../config/loader';
 import { runPipeline } from './pipeline';
 import { createCommandContext } from './command-context';
 import type { CommandContextOptions } from './command-context';
-import type { HermexConfig } from '../config/types';
+import type {
+  HermexConfig,
+  ResolvedReleaseAgeRuleConfig,
+} from '../config/types';
 
 export function registerScanCommand(program: Command) {
   program
@@ -52,13 +55,18 @@ export async function executeScan(
   const { isJson, spinner } = createCommandContext(config, contextOptions);
 
   try {
-    const aggregated = await runPipeline(config, spinner, isJson);
-    if (!aggregated) return;
+    const result = await runPipeline(config, spinner, isJson);
+    if (!result) return;
+    const { aggregated, resolvedConfig } = result;
 
     if (isJson) {
       printJson(aggregated, config.output);
     } else {
-      printScanResults(aggregated, config);
+      printScanResults(
+        aggregated,
+        config,
+        resolvedConfig.rules['no-outdated-packages'],
+      );
     }
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
@@ -70,9 +78,12 @@ export async function executeScan(
 function printScanResults(
   aggregated: ReturnType<typeof aggregateReports>,
   config: HermexConfig,
+  rules: ResolvedReleaseAgeRuleConfig[],
 ) {
   if (config.output.packages) {
-    printPackages(aggregated, config.output.packages);
+    // The rule entries reach the table because a row's recommendation is
+    // policy-derived and no longer cached on the package (#189).
+    printPackages(aggregated, config.output.packages, rules);
   }
 
   if (config.output.versus) {

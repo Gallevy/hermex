@@ -4,9 +4,11 @@ import type { ComplianceResult } from './compliance';
 import { countMandatoryViolations } from './compliance';
 import { buildRuleRows } from './print-rules';
 import {
+  assessmentFor,
   describeMinimumTarget,
   resolveInstalledVersion,
 } from './print-packages';
+import type { ResolvedReleaseAgeRuleConfig } from '../config/types';
 import { collectPackageFlags, formatPackageFlags } from './package-flags';
 import {
   formatSeverityTally,
@@ -85,7 +87,10 @@ function buildRulesSection(aggregated: AggregatedReport): string {
 // ordinary row in the Rules section above, which release-age never does.
 // The Flags column below still carries it as a cross-reference on the
 // rows that ARE listed.
-function buildPackagesSection(aggregated: AggregatedReport): string {
+function buildPackagesSection(
+  aggregated: AggregatedReport,
+  rules: ResolvedReleaseAgeRuleConfig[],
+): string {
   const failingPackageNames = new Set(
     aggregated.ruleViolations
       .filter(
@@ -114,8 +119,9 @@ function buildPackagesSection(aggregated: AggregatedReport): string {
     const flags = formatPackageFlags(
       collectPackageFlags(pkg, aggregated.ruleViolations),
     );
+    const assessment = assessmentFor(pkg, rules);
     lines.push(
-      `| ${severityIcon('error')} | \`${pkg.packageName}\` | ${resolveInstalledVersion(pkg)} | ${describeMinimumTarget(pkg.releaseAge)} | ${flags} |`,
+      `| ${severityIcon('error')} | \`${pkg.packageName}\` | ${resolveInstalledVersion(pkg, assessment)} | ${describeMinimumTarget(assessment)} | ${flags} |`,
     );
   }
 
@@ -145,11 +151,12 @@ export function writeSummaryFile(
   aggregated: AggregatedReport,
   compliance: ComplianceResult,
   title: string = DEFAULT_SUMMARY_TITLE,
+  rules: ResolvedReleaseAgeRuleConfig[] = [],
 ): void {
   const sections = [
     `# ${title}\n`,
     buildRulesSection(aggregated),
-    buildPackagesSection(aggregated),
+    buildPackagesSection(aggregated, rules),
     buildVerdictSection(compliance),
   ].filter((section) => section.length > 0);
 

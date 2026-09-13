@@ -8,7 +8,6 @@ import { detectDeprecatedPackages } from '../utils/package-rules';
 import {
   evaluateOutdatedPackages,
   releaseAgeConnection,
-  resolveReleaseAgeRule,
 } from './no-outdated-packages';
 import type { RuleViolation } from './shared';
 
@@ -34,10 +33,9 @@ export function needsRegistry(rules: ResolvedRulesConfig): boolean {
  *
  * `no-outdated-packages` and `no-deprecated-packages` read different fields of the
  * same registry document, so they share one request per installed package
- * rather than paying for one each (#107). The release-age policy callback
- * is supplied only when that rule is actually configured — without it
- * `enrichFromRegistry` records the deprecation fact and skips the timeline
- * math entirely.
+ * rather than paying for one each (#107). Neither rule's policy reaches that pass:
+ * it records the release timeline and the deprecation fact for every
+ * package it can, and each rule judges what it got (#189).
  *
  * Call only when `needsRegistry` is true; with both families empty this
  * would still iterate every package to produce nothing.
@@ -52,12 +50,12 @@ export async function evaluateRegistryRules(
 }> {
   const releaseAgeRules = config.rules['no-outdated-packages'];
 
+  // No policy passes down any more: the registry layer records the release
+  // timeline for every package it can, and which of those releases count as
+  // overdue is decided above it, per rule entry (#189).
   const { enriched, skipped } = await enrichFromRegistry(
     packages,
     releaseAgeConnection(config.releaseAge),
-    releaseAgeRules.length > 0
-      ? (packageName) => resolveReleaseAgeRule(packageName, releaseAgeRules)
-      : undefined,
   );
 
   return {

@@ -21,11 +21,11 @@ describe('formatDuration', () => {
 
 describe('formatDaysOverdue', () => {
   it('pluralizes "days" when the overdue count is not 1', () => {
-    expect(formatDaysOverdue(100, 60)).toBe('40 days overdue');
+    expect(formatDaysOverdue(40)).toBe('40 days overdue');
   });
 
   it('uses the singular "day" when the overdue count is exactly 1', () => {
-    expect(formatDaysOverdue(61, 60)).toBe('1 day overdue');
+    expect(formatDaysOverdue(1)).toBe('1 day overdue');
   });
 });
 

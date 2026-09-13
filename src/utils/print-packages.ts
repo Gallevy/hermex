@@ -2,11 +2,11 @@ import chalk from 'chalk';
 import Table from 'cli-table3';
 import type { AggregatedReport, PackageDistribution } from './aggregator';
 import type { RuleViolation } from '../rules/evaluator';
-import type {
-  AvailableUpgrade,
-  ReleaseAgeEntry,
-  SemverBump,
-} from '../npm-registry/types';
+import type { PackageAssessment } from '../rules/no-outdated-packages';
+import {
+  assessPackage,
+  resolveReleaseAgeRule,
+} from '../rules/no-outdated-packages';
 import { formatDaysOverdue, formatDaysRemaining } from './format-utils';
 import { formatSeverityTally, severityIcon } from './severity-format';
 import type { PackageFlag } from './package-flags';
@@ -15,61 +15,77 @@ import {
   describeFlagDetails,
   formatPackageFlags,
 } from './package-flags';
+import type {
+  PackageColumnContext,
+  PackageColumnContributor,
+} from './package-columns';
+import type { ResolvedReleaseAgeRuleConfig } from '../config/types';
+import { DEFAULT_VERSION_COLUMNS } from './package-columns';
+import type { NoOutdatedPackagesViolation } from '../rules/shared';
+import { isPluginViolation } from '../rules/shared';
 
 function printHeader() {
   console.log(chalk.blueBright.bold('\n📦 Packages\n'));
 }
 
-// Describe the recommended upgrade for a breached tier.
-//
-// When a genuinely in-window compliant release exists (`compliantTarget`),
-// recommend THAT — even if it lives in a different, unbreached tier than the
-// one that failed (e.g. a stale 0.5.x minor line breached while a fresh 1.x
-// major sits within its window). The overdue count still reflects how long the
-// breached tier has been out of compliance, measured from its oldest breaching
-// release (#24).
-//
-// When there is no in-window target, the breached tier's own newest release
-// is still the right thing to name. Being on the newest release that exists
-// never breaches at all — nothing is newer than installed, so no tier is
-// breached and no row is produced — which means this branch is only ever
-// reached when a newer release DOES exist and has simply not been taken.
-// It used to read "no compliant release available", which contradicted the
-// version printed beside it and contradicted `minCompliantVersion`'s own
-// rule that being on latest counts as compliant (#26's wording, not its
-// arithmetic — the day count below is unchanged).
-export function describeUpgradeTarget(
-  top: AvailableUpgrade,
-  compliantTarget?: { version: string; bump: SemverBump },
-): string {
-  const version = compliantTarget?.version ?? top.version;
-  const bump = compliantTarget?.bump ?? top.semverBump;
-  // Counted from the breached tier's OLDEST release: how long the tier has
-  // been out of compliance, not how old the recommended target is (#24).
-  const overdue = formatDaysOverdue(
-    top.breachReleasedDaysAgo,
-    top.thresholdDays,
+/**
+ * This row's `no-outdated-packages` hit, if any — the join that gives the
+ * Minimum target cell its verdict.
+ *
+ * Plugin findings are excluded before the id check, not merely to narrow
+ * the type: this column joins on hermex's own rule, and a plugin's id space
+ * is its own (#102). Mirrors `findForbidViolation` in `./package-flags.ts`.
+ */
+function findOutdatedViolation(
+  packageName: string,
+  violations: RuleViolation[],
+): NoOutdatedPackagesViolation | undefined {
+  return violations.find(
+    (v): v is NoOutdatedPackagesViolation =>
+      !isPluginViolation(v) &&
+      v.ruleId === 'no-outdated-packages' &&
+      v.packageName === packageName,
   );
-  return `${version} (${bump}, ${overdue})`;
 }
 
-// Prefer a genuinely compliant, still-in-window release as the recommended
-// target — it may sit in a different tier than the one that breached (the
-// breached tier's own newest release can itself be stale). Only when no such
-// target exists does `describeUpgradeTarget` fall back to "no compliant
-// release available". Extracted so both the human table and `--summary-file`
-// derive the recommended target the same way — they diverged on this once
-// before (#57).
-export function resolveCompliantTarget(
-  releaseAge?: ReleaseAgeEntry,
-): { version: string; bump: SemverBump } | undefined {
-  if (!releaseAge?.minCompliantInWindow || !releaseAge.minCompliantVersion) {
-    return undefined;
-  }
-  return {
-    version: releaseAge.minCompliantVersion,
-    bump: releaseAge.minCompliantBump ?? releaseAge.upgrades[0]?.semverBump,
-  };
+/**
+ * This package's assessment, recomputed from its registry facts and the
+ * entry that governs it — `undefined` when the rule is off for the repo, or
+ * the registry never answered for the package.
+ *
+ * Recomputed rather than cached on `PackageDistribution`, which carries
+ * facts only (#189). `assessPackage` is the same implementation the rule
+ * uses to emit violations, so a cell and a violation cannot drift apart.
+ * Exported so `--summary-file` derives its target the same way, which is
+ * what makes "both surfaces recommend the same version" structural rather
+ * than two call sites kept in step by hand (#57).
+ */
+export function assessmentFor(
+  pkg: PackageDistribution,
+  rules: ResolvedReleaseAgeRuleConfig[],
+): PackageAssessment | undefined {
+  if (!pkg.releases || rules.length === 0) return undefined;
+  return assessPackage(
+    pkg.releases,
+    resolveReleaseAgeRule(pkg.packageName, rules),
+  );
+}
+
+// Describe the upgrade an assessment points at.
+//
+// `target` is already the right version: the oldest still-in-window release
+// when one exists — which may sit in a different, unbreached tier than the
+// one that failed (a stale 0.5.x minor line breached while a fresh 1.x major
+// sits within its window) — and otherwise the breached tier's own newest.
+// Picking between those is `assessPackage`'s job, not this function's (#189).
+//
+// The day count is the governing tier's, measured from its OLDEST breaching
+// release: how long the tier has been out of compliance, not how old the
+// recommended target is (#24).
+export function describeUpgradeTarget(assessment: PackageAssessment): string {
+  if (!assessment.target) return '';
+  const { version, semverBump } = assessment.target;
+  return `${version} (${semverBump}, ${formatDaysOverdue(assessment.daysOverdue)})`;
 }
 
 // Nested lockfile copies that are themselves overdue but aren't part of the
@@ -85,21 +101,24 @@ export function resolveCompliantTarget(
 // text, no icon — the single leading icon for the whole note line is
 // decided once by `describePackageNotes`, not per-fact.
 export function describeAdvisoryBreaches(
-  releaseAge?: ReleaseAgeEntry,
+  assessment?: PackageAssessment,
 ): string | undefined {
-  if (!releaseAge?.advisoryBreaches?.length) return undefined;
-  const n = releaseAge.advisoryBreaches.length;
+  const n = assessment?.advisoryBreaches.length ?? 0;
+  if (n === 0) return undefined;
   return `${n} nested ${n > 1 ? 'copies' : 'copy'} overdue, not enforced but recommended to resolve`;
 }
 
 // The single version a package's compliance verdict was actually measured
-// against — `releaseAge.installedVersion` when release-age ran (which, under
-// `scope: 'tree'`, may be a nested copy rather than the root version), else
-// the plain root-resolved `pkg.version`. Always a single value, never the
-// full `allVersions` list — that ambiguity (which of several installed
+// against — the assessment's `measuredVersion` when the rule ran (which,
+// under `scope: 'tree'`, may be a nested copy rather than the root version),
+// else the plain root-resolved `pkg.version`. Always a single value, never
+// the full `allVersions` list — that ambiguity (which of several installed
 // copies a cell's overdue count refers to) is exactly what #57 flagged.
-export function resolveInstalledVersion(pkg: PackageDistribution): string {
-  return pkg.releaseAge?.installedVersion ?? pkg.version ?? 'N/A';
+export function resolveInstalledVersion(
+  pkg: PackageDistribution,
+  assessment?: PackageAssessment,
+): string {
+  return assessment?.measuredVersion || pkg.version || 'N/A';
 }
 
 // Bundle-impact note for a package with more than one resolved lockfile
@@ -136,10 +155,11 @@ export interface PackageNote {
 export function describePackageNotes(
   pkg: PackageDistribution,
   flags: PackageFlag[] = [],
+  assessment?: PackageAssessment,
 ): PackageNote | undefined {
   const facts = [
     describeBundleImpact(pkg),
-    describeAdvisoryBreaches(pkg.releaseAge),
+    describeAdvisoryBreaches(assessment),
     // Appended, not prepended: a badge's long-form context (the publisher's
     // deprecation notice) elaborates on the Flags column, so it reads last,
     // after the facts about the package's own installed copies.
@@ -159,20 +179,17 @@ export function describePackageNotes(
  * what makes "both surfaces recommend the same version" structural rather
  * than a pair of call sites kept in step by hand (#57).
  */
-export function describeMinimumTarget(releaseAge?: ReleaseAgeEntry): string {
-  if (!releaseAge) return '';
-  const { worstLevel, upgrades, pendingUpgrade } = releaseAge;
+export function describeMinimumTarget(assessment?: PackageAssessment): string {
+  if (!assessment) return '';
 
-  if (!worstLevel) {
-    return pendingUpgrade
-      ? `${pendingUpgrade.version} (${pendingUpgrade.semverBump}, ${formatDaysRemaining(pendingUpgrade.daysRemaining)})`
+  if (assessment.overdueTier === null) {
+    const pending = assessment.pendingUpgrade;
+    return pending
+      ? `${pending.version} (${pending.semverBump}, ${formatDaysRemaining(pending.daysRemaining)})`
       : '';
   }
 
-  const top = upgrades[0];
-  if (!top) return '';
-
-  return describeUpgradeTarget(top, resolveCompliantTarget(releaseAge));
+  return describeUpgradeTarget(assessment);
 }
 
 /** No release-age verdict for this row at all. Deliberately not blank and
@@ -196,27 +213,91 @@ const NO_TARGET = '—';
  * it just has a date attached. Bare cells next to iconned ones read as a
  * rendering failure rather than as a deliberate absence of verdict.
  */
-export function formatMinimumTargetCell(releaseAge?: ReleaseAgeEntry): string {
-  if (!releaseAge) return NO_TARGET;
-  const { worstLevel, upgrades, severity } = releaseAge;
-  const description = describeMinimumTarget(releaseAge);
+export function formatMinimumTargetCell(
+  pkg: PackageDistribution,
+  violations: RuleViolation[],
+  assessment?: PackageAssessment,
+): string {
+  if (!assessment) return NO_TARGET;
+  const description = describeMinimumTarget(assessment);
 
-  if (!worstLevel || !upgrades[0]) {
+  if (assessment.overdueTier === null) {
     const ok = severityIcon('success');
     return description ? `${ok} ${description}` : ok;
   }
 
+  // The verdict is joined from the violation, never read off the package —
+  // the same move `collectPackageFlags` makes for the badge column, so a
+  // cell and its rules-table counterpart structurally cannot disagree
+  // (#189). A breached package with no violation is one whose governing
+  // entry is 'off': it renders the target it would have recommended, with
+  // no icon, because nothing about it is a verdict.
+  const violation = findOutdatedViolation(pkg.packageName, violations);
+  if (!violation) return description;
+
   // Severity, not which tier breached: an enforced package fails comply
-  // whether the worst breach is minor_overdue or major_overdue (#28), so it
-  // renders red — never a softer yellow just because the breached tier
-  // happens to be minor.
-  if (severity === 'off') return description;
-  return `${severityIcon(severity)} ${description}`;
+  // whether the overdue tier is minor or major (#28), so it renders red —
+  // never a softer yellow just because the breached tier happens to be minor.
+  return `${severityIcon(violation.severity)} ${description}`;
 }
 
+/**
+ * `no-outdated-packages`'s entry in the column registry — the Installed and
+ * Minimum target pair.
+ *
+ * Declared here beside the renderers it calls rather than inside
+ * `./package-columns.ts`, which would have to import them and close a cycle
+ * back to this module. That file owns the *contract*; each rule's columns
+ * are declared wherever their cells are rendered.
+ *
+ * `applies` keys off the data, not the config: a run that configured the
+ * rule but got nothing back (every package skipped, registry unreachable)
+ * keeps the plain two-column table instead of growing a column of blanks.
+ */
+const outdatedPackagesColumns: PackageColumnContributor = {
+  ruleId: 'no-outdated-packages',
+  // With the rule on, "Version" splits into "Installed" (the single version
+  // the verdict was actually measured against) and "Minimum target" (the
+  // most conservative upgrade that clears the breach) — cramming a
+  // multi-version list and an upgrade recommendation into one cell was
+  // exactly the ambiguity #57 reported. "Minimum" is load-bearing: the cell
+  // deliberately does not name the latest release (#24, #26).
+  headers: ['Installed', 'Minimum target'],
+  applies: (packages, { rules }) =>
+    rules.length > 0 && packages.some((p) => p.releases !== undefined),
+  cells: (pkg, { violations, rules }) => {
+    const assessment = assessmentFor(pkg, rules);
+    return [
+      resolveInstalledVersion(pkg, assessment),
+      formatMinimumTargetCell(pkg, violations, assessment),
+    ];
+  },
+};
+
+/**
+ * Every rule that contributes columns, in table order — the counterpart to
+ * `PACKAGE_FLAG_CONTRIBUTORS` (`./package-flags.ts`) for output that a
+ * badge cannot carry. Adding such a rule is one entry here; the table below
+ * asks the registry rather than testing for any rule by name.
+ *
+ * When none applies, `DEFAULT_VERSION_COLUMNS` renders the plain `Version`
+ * column the table has always had.
+ */
+const PACKAGE_COLUMN_CONTRIBUTORS: readonly PackageColumnContributor[] = [
+  outdatedPackagesColumns,
+];
+
+/**
+ * `rules` is the repo's resolved `no-outdated-packages` entries. The table
+ * needs them because a row's recommendation is policy-derived and is no
+ * longer cached on the package — see `PackageColumnContext`. Defaulted to
+ * empty so a caller with no rules configured, and every chart-mode call,
+ * stays a one-argument change away.
+ */
 export function printPackages(
   aggregated: AggregatedReport,
   mode: 'table' | 'chart',
+  rules: ResolvedReleaseAgeRuleConfig[] = [],
 ) {
   const packages = aggregated.packageDistribution;
   const violations = aggregated.ruleViolations;
@@ -228,7 +309,7 @@ export function printPackages(
   if (packages.length === 0) return;
 
   if (mode === 'table') {
-    printPackagesTable(packages, violations);
+    printPackagesTable(packages, { violations, rules });
   } else if (mode === 'chart') {
     printPackagesChart(packages, violations);
   }
@@ -238,26 +319,25 @@ export function printPackages(
 // `packages` array — see the "nothing to report" guard there.
 function printPackagesTable(
   packages: PackageDistribution[],
-  violations: RuleViolation[],
+  ctx: PackageColumnContext,
 ) {
+  const { violations } = ctx;
   printHeader();
 
-  const hasReleaseAge = packages.some((p) => p.releaseAge !== undefined);
   const flags = packages.map((pkg) => collectPackageFlags(pkg, violations));
   // Only worth a column once something has actually landed in it —
   // otherwise every repo with no package-rule hits grows a column of blanks
   // where it used to have a clean two-column table.
   const hasFlags = flags.some((rowFlags) => rowFlags.length > 0);
 
-  // With release age on, "Version" splits into "Installed" (the single
-  // version the verdict was actually measured against) and "Minimum target"
-  // (the most conservative upgrade that clears the breach) — cramming a
-  // multi-version list and an upgrade recommendation into one cell was
-  // exactly the ambiguity #57 reported. "Minimum" is load-bearing: the cell
-  // deliberately does not name the latest release (#24, #26).
-  const head = hasReleaseAge
-    ? ['Package', 'Installed', 'Minimum target']
-    : ['Package', 'Version'];
+  // Which rule owns the version columns is the registry's answer, not a
+  // test for any rule by name — the table no longer knows that
+  // `no-outdated-packages` exists (#189).
+  const versionColumns =
+    PACKAGE_COLUMN_CONTRIBUTORS.find((c) => c.applies(packages, ctx)) ??
+    DEFAULT_VERSION_COLUMNS;
+
+  const head = ['Package', ...versionColumns.headers];
   if (hasFlags) head.push('Flags');
 
   const table = new Table({
@@ -271,15 +351,7 @@ function printPackagesTable(
   packages.forEach((pkg, index) => {
     // Just the name. The badges that used to be glued on as prefixes are a
     // column of their own now (#86).
-    const row = [pkg.packageName];
-    if (hasReleaseAge) {
-      row.push(
-        resolveInstalledVersion(pkg),
-        formatMinimumTargetCell(pkg.releaseAge),
-      );
-    } else {
-      row.push(pkg.version || 'N/A');
-    }
+    const row = [pkg.packageName, ...versionColumns.cells(pkg, ctx)];
     if (hasFlags) row.push(formatPackageFlags(flags[index]));
     table.push(row);
   });
@@ -293,7 +365,11 @@ function printPackagesTable(
   const notes = packages
     .map((pkg, index) => ({
       pkg,
-      note: describePackageNotes(pkg, flags[index]),
+      note: describePackageNotes(
+        pkg,
+        flags[index],
+        assessmentFor(pkg, ctx.rules),
+      ),
     }))
     .filter(
       (entry): entry is { pkg: PackageDistribution; note: PackageNote } =>

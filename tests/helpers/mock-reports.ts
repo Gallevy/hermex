@@ -3,7 +3,11 @@ import type {
   PackageDistribution,
   PackageInventoryEntry,
 } from '../../src/utils/aggregator';
-import type { ReleaseAgeEntry } from '../../src/npm-registry/types';
+import type {
+  PackageReleases,
+  ReleaseInfo,
+  ResolvedCopy,
+} from '../../src/npm-registry/types';
 // From ./shared, not ./evaluator: evaluator re-exports only RuleViolation, so
 // these two named imports never actually resolved (tests aren't typechecked).
 import type {
@@ -112,27 +116,103 @@ export function createMockInventoryEntry(
 }
 
 /**
- * Creates a minimal ReleaseAgeEntry.
- * Override specific fields via the partial argument.
+ * Registry facts for one package — a single root copy at `1.0.0` with
+ * nothing newer.
+ *
+ * Note there is nothing verdict-shaped to override here: no severity, no
+ * overdue tier, no recommendation. Expressing "this package is overdue" is
+ * a matter of giving it a `newer` release old enough to breach, and then
+ * asking `assessPackage` (#189).
  */
-export function createMockReleaseAge(
-  overrides: Partial<ReleaseAgeEntry> = {},
-): ReleaseAgeEntry {
+export function createMockReleases(
+  overrides: Partial<PackageReleases> = {},
+): PackageReleases {
   return {
-    installedVersion: '1.0.0',
-    upgrades: [],
-    worstLevel: null,
-    severity: 'error',
-    scope: 'root',
+    resolved: [{ version: '1.0.0', isRoot: true, newer: [] }],
     ...overrides,
   };
 }
 
+/** The thresholds every fixture here is written against. */
+const FIXTURE_THRESHOLDS = { patch: 30, minor: 45, major: 60 };
+
 /**
- * Creates a minimal `NoOutdatedPackagesViolation` — release-age is a rule like any
- * other now (#93 superseded), so this is what a mandatory/warn-severity
- * overdue package looks like in `ruleViolations`, alongside its richer
- * `createMockReleaseAge` display counterpart on `packageDistribution`.
+ * Facts that make exactly one tier breach by a stated amount.
+ *
+ * Display tests care about the answer ("4.17.21, major, 40 days overdue"),
+ * but facts cannot state an answer — so this builds the two releases that
+ * *produce* it under `FIXTURE_THRESHOLDS`: one old enough to trip the
+ * threshold by `daysOverdue`, and a fresh one that becomes the recommended
+ * target. Nothing here is policy; the thresholds live in the rule entries
+ * the test passes alongside.
+ */
+export function createOverdueReleases(opts: {
+  copy?: string;
+  target: string;
+  targetDaysAgo?: number;
+  daysOverdue: number;
+  semverBump?: ReleaseInfo['semverBump'];
+  /** Nested copies, each overdue on its own. */
+  advisory?: string[];
+}): PackageReleases {
+  const bump = opts.semverBump ?? 'major';
+  const breachingAge = FIXTURE_THRESHOLDS[bump] + opts.daysOverdue;
+  const targetAge = opts.targetDaysAgo ?? 1;
+
+  const newer: ReleaseInfo[] = [
+    {
+      version: '0.0.1-breacher',
+      releasedDaysAgo: breachingAge,
+      semverBump: bump,
+    },
+    { version: opts.target, releasedDaysAgo: targetAge, semverBump: bump },
+  ];
+
+  return {
+    resolved: [
+      { version: opts.copy ?? '1.0.0', isRoot: true, newer },
+      ...(opts.advisory ?? []).map((version) => ({
+        version,
+        isRoot: false,
+        newer: [
+          {
+            version: '99.0.0',
+            releasedDaysAgo: 400,
+            semverBump: 'major' as const,
+          },
+        ],
+      })),
+    ],
+  };
+}
+
+/** One resolved copy, for building multi-copy (`scope: 'tree'`) fixtures. */
+export function createMockCopy(
+  version: string,
+  newer: ReleaseInfo[] = [],
+  isRoot = true,
+): ResolvedCopy {
+  return { version, isRoot, newer };
+}
+
+/**
+ * A published release newer than the copy it hangs off. `releasedDaysAgo`
+ * is what decides whether any given threshold considers it overdue — the
+ * fixture states the fact, the rule states the verdict.
+ */
+export function createMockRelease(
+  version: string,
+  releasedDaysAgo: number,
+  semverBump: ReleaseInfo['semverBump'] = 'major',
+): ReleaseInfo {
+  return { version, releasedDaysAgo, semverBump };
+}
+
+/**
+ * Creates a minimal `NoOutdatedPackagesViolation` — what a mandatory or
+ * warn-severity overdue package looks like in `ruleViolations`. This is
+ * where the verdict lives; `createMockReleases` above is its facts
+ * counterpart on `packageDistribution` (#189).
  */
 export function createMockNoOutdatedPackagesViolation(
   packageName: string,
@@ -143,8 +223,9 @@ export function createMockNoOutdatedPackagesViolation(
     severity: 'error',
     patterns: [packageName],
     packageName,
-    installedVersion: '1.0.0',
-    worstLevel: 'major_overdue',
+    measuredVersion: '1.0.0',
+    overdueTier: 'major',
+    daysOverdue: 40,
     scope: 'root',
     ...overrides,
   };

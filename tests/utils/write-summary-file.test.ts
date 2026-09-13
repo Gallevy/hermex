@@ -11,9 +11,13 @@ import {
   DEFAULT_SUMMARY_TITLE,
 } from '../../src/utils/write-summary-file';
 import { describeMinimumTarget } from '../../src/utils/print-packages';
+import type { ResolvedReleaseAgeRuleConfig } from '../../src/config/types';
 import {
   createMockPackage,
-  createMockReleaseAge,
+  createMockReleases,
+  createMockCopy,
+  createMockRelease,
+  createOverdueReleases,
   createMockNoOutdatedPackagesViolation,
   createMockDeprecatedViolation,
 } from '../helpers/mock-reports';
@@ -67,12 +71,26 @@ describe('writeSummaryFile', () => {
     chalk.level = originalChalkLevel;
   });
 
+  /**
+   * The Packages section recomputes each row's target from facts plus the
+   * governing entry, so the rule entries have to reach it (#189).
+   */
+  const OUTDATED_RULES: ResolvedReleaseAgeRuleConfig[] = [
+    {
+      severity: 'error',
+      patterns: ['**'],
+      thresholds: { patch: 30, minor: 45, major: 60 },
+      scope: 'root',
+    },
+  ];
+
   function write(aggregated: AggregatedReport, title?: string): string {
     writeSummaryFile(
       summaryPath,
       aggregated,
       computeCompliance(aggregated),
       title,
+      OUTDATED_RULES,
     );
     return readFileSync(summaryPath, 'utf8');
   }
@@ -251,7 +269,7 @@ describe('writeSummaryFile', () => {
     it('excludes a deprecated-only package (no breached tier)', () => {
       const deprecated = createMockPackage('left-pad', {
         deprecated: 'no longer maintained',
-        releaseAge: createMockReleaseAge({}),
+        releases: createMockReleases(),
       });
       const content = write(
         makeAggregated({ packageDistribution: [deprecated] }),
@@ -262,19 +280,11 @@ describe('writeSummaryFile', () => {
 
     it('excludes a not-enforced (severity: warn) overdue package', () => {
       const overdueWarn = createMockPackage('lodash', {
-        releaseAge: createMockReleaseAge({
-          worstLevel: 'minor_overdue',
-          severity: 'warn',
-          upgrades: [
-            {
-              version: '4.17.21',
-              releasedDaysAgo: 10,
-              breachReleasedDaysAgo: 100,
-              semverBump: 'minor',
-              level: 'minor_overdue',
-              thresholdDays: 60,
-            },
-          ],
+        releases: createOverdueReleases({
+          target: '4.17.21',
+          targetDaysAgo: 10,
+          daysOverdue: 40,
+          semverBump: 'minor',
         }),
       });
       const content = write(
@@ -286,19 +296,11 @@ describe('writeSummaryFile', () => {
 
     it('shows an enforced (severity: error) overdue package with the upgrade description', () => {
       const overdueError = createMockPackage('my-internal-pkg', {
-        releaseAge: createMockReleaseAge({
-          worstLevel: 'major_overdue',
-          severity: 'error',
-          upgrades: [
-            {
-              version: '4.2.0',
-              releasedDaysAgo: 10,
-              breachReleasedDaysAgo: 100,
-              semverBump: 'major',
-              level: 'major_overdue',
-              thresholdDays: 60,
-            },
-          ],
+        releases: createOverdueReleases({
+          target: '4.2.0',
+          targetDaysAgo: 10,
+          daysOverdue: 40,
+          semverBump: 'major',
         }),
       });
       const content = write(
@@ -306,7 +308,7 @@ describe('writeSummaryFile', () => {
           packageDistribution: [overdueError],
           ruleViolations: [
             createMockNoOutdatedPackagesViolation('my-internal-pkg', {
-              worstLevel: 'major_overdue',
+              overdueTier: 'major',
               severity: 'error',
             }),
           ],
@@ -324,19 +326,11 @@ describe('writeSummaryFile', () => {
     it('shows a deprecated overdue package as a deprecated badge in Flags, not crammed into the target cell', () => {
       const both = createMockPackage('my-internal-pkg', {
         deprecated: 'no longer maintained',
-        releaseAge: createMockReleaseAge({
-          worstLevel: 'major_overdue',
-          severity: 'error',
-          upgrades: [
-            {
-              version: '4.2.0',
-              releasedDaysAgo: 10,
-              breachReleasedDaysAgo: 100,
-              semverBump: 'major',
-              level: 'major_overdue',
-              thresholdDays: 60,
-            },
-          ],
+        releases: createOverdueReleases({
+          target: '4.2.0',
+          targetDaysAgo: 10,
+          daysOverdue: 40,
+          semverBump: 'major',
         }),
       });
       const content = write(
@@ -344,7 +338,7 @@ describe('writeSummaryFile', () => {
           packageDistribution: [both],
           ruleViolations: [
             createMockNoOutdatedPackagesViolation('my-internal-pkg', {
-              worstLevel: 'major_overdue',
+              overdueTier: 'major',
               severity: 'error',
             }),
             createMockDeprecatedViolation('my-internal-pkg'),
@@ -360,22 +354,18 @@ describe('writeSummaryFile', () => {
     });
 
     it('leaves the target cell empty when a mandatory violation has no upgrade candidates', () => {
-      // worstLevel non-null but upgrades empty is a defensive/edge shape —
-      // exercises the `top` guard independently of the deprecated reason.
+      // A violation exists but the facts carry nothing newer — a defensive
+      // edge shape that exercises the empty-target guard on its own.
       const deprecatedOnlyBreach = createMockPackage('my-internal-pkg', {
         deprecated: 'no longer maintained',
-        releaseAge: createMockReleaseAge({
-          worstLevel: 'major_overdue',
-          severity: 'error',
-          upgrades: [],
-        }),
+        releases: createMockReleases(),
       });
       const content = write(
         makeAggregated({
           packageDistribution: [deprecatedOnlyBreach],
           ruleViolations: [
             createMockNoOutdatedPackagesViolation('my-internal-pkg', {
-              worstLevel: 'major_overdue',
+              overdueTier: 'major',
               severity: 'error',
             }),
             createMockDeprecatedViolation('my-internal-pkg'),
@@ -412,19 +402,11 @@ describe('writeSummaryFile', () => {
 
     it('never uses the "(issues only)" qualifier in the header', () => {
       const overdueError = createMockPackage('my-internal-pkg', {
-        releaseAge: createMockReleaseAge({
-          worstLevel: 'major_overdue',
-          severity: 'error',
-          upgrades: [
-            {
-              version: '4.2.0',
-              releasedDaysAgo: 10,
-              breachReleasedDaysAgo: 100,
-              semverBump: 'major',
-              level: 'major_overdue',
-              thresholdDays: 60,
-            },
-          ],
+        releases: createOverdueReleases({
+          target: '4.2.0',
+          targetDaysAgo: 10,
+          daysOverdue: 40,
+          semverBump: 'major',
         }),
       });
       const content = write(
@@ -432,7 +414,7 @@ describe('writeSummaryFile', () => {
           packageDistribution: [overdueError],
           ruleViolations: [
             createMockNoOutdatedPackagesViolation('my-internal-pkg', {
-              worstLevel: 'major_overdue',
+              overdueTier: 'major',
               severity: 'error',
             }),
           ],
@@ -449,21 +431,13 @@ describe('writeSummaryFile', () => {
     // when a genuinely compliant release plainly existed in a different tier.
     it('recommends the cross-tier compliant target, not "no compliant release available" (#57 regression)', () => {
       const pkg = createMockPackage('some-lib', {
-        releaseAge: createMockReleaseAge({
-          worstLevel: 'minor_overdue',
-          severity: 'error',
-          minCompliantInWindow: true,
-          minCompliantVersion: '1.0.0',
-          minCompliantBump: 'major',
-          upgrades: [
-            {
-              version: '0.5.7',
-              releasedDaysAgo: 200,
-              breachReleasedDaysAgo: 200,
-              semverBump: 'minor',
-              level: 'minor_overdue',
-              thresholdDays: 45,
-            },
+        version: '0.3.30',
+        releases: createMockReleases({
+          resolved: [
+            createMockCopy('0.3.30', [
+              createMockRelease('0.5.7', 200, 'minor'),
+              createMockRelease('1.0.0', 50, 'major'),
+            ]),
           ],
         }),
       });
@@ -472,7 +446,7 @@ describe('writeSummaryFile', () => {
           packageDistribution: [pkg],
           ruleViolations: [
             createMockNoOutdatedPackagesViolation('some-lib', {
-              worstLevel: 'minor_overdue',
+              overdueTier: 'minor',
               severity: 'error',
             }),
           ],
@@ -488,32 +462,18 @@ describe('writeSummaryFile', () => {
     // this once before (#57) because only one call site passed the
     // compliantTarget argument.
     it('renders the exact string describeMinimumTarget produces, not a re-derived one', () => {
-      const releaseAge = createMockReleaseAge({
-        worstLevel: 'minor_overdue',
-        severity: 'error',
-        minCompliantInWindow: true,
-        minCompliantVersion: '1.0.0',
-        minCompliantBump: 'major',
-        upgrades: [
-          {
-            version: '0.5.7',
-            releasedDaysAgo: 200,
-            breachReleasedDaysAgo: 200,
-            semverBump: 'minor',
-            level: 'minor_overdue',
-            thresholdDays: 45,
-          },
-        ],
+      const releaseAge = createOverdueReleases({
+        target: '0.5.7',
+        targetDaysAgo: 200,
+        daysOverdue: 155,
+        semverBump: 'minor',
       });
       const pkg = createMockPackage('some-lib', { releaseAge });
       const content = write(
         makeAggregated({
           packageDistribution: [pkg],
           ruleViolations: [
-            createMockNoOutdatedPackagesViolation('some-lib', {
-              worstLevel: 'minor_overdue',
-              severity: 'error',
-            }),
+            createMockNoOutdatedPackagesViolation('some-lib', {}),
           ],
         }),
       );
@@ -538,11 +498,15 @@ describe('writeSummaryFile', () => {
       const advisoryOnly = createMockPackage('multi-version-lib', {
         hasVersionConflict: true,
         allVersions: ['1.0.0', '3.0.0'],
-        releaseAge: createMockReleaseAge({
-          worstLevel: null,
-          severity: 'error',
-          scope: 'root',
-          advisoryBreaches: [{ version: '1.0.0', level: 'major_overdue' }],
+        releases: createMockReleases({
+          resolved: [
+            createMockCopy('1.0.0', []),
+            createMockCopy(
+              '1.0.0',
+              [createMockRelease('99.0.0', 400, 'major')],
+              false,
+            ),
+          ],
         }),
       });
       const content = write(
@@ -564,22 +528,13 @@ describe('writeSummaryFile', () => {
       const both = createMockPackage('multi-version-lib', {
         hasVersionConflict: true,
         allVersions: ['1.0.0', '2.0.0'],
-        releaseAge: createMockReleaseAge({
-          worstLevel: 'major_overdue',
-          severity: 'error',
-          scope: 'root',
-          installedVersion: '1.0.0',
-          upgrades: [
-            {
-              version: '2.0.0',
-              releasedDaysAgo: 10,
-              breachReleasedDaysAgo: 400,
-              semverBump: 'major',
-              level: 'major_overdue',
-              thresholdDays: 60,
-            },
-          ],
-          advisoryBreaches: [{ version: '2.0.0', level: 'major_overdue' }],
+        releases: createOverdueReleases({
+          copy: '1.0.0',
+          target: '2.0.0',
+          targetDaysAgo: 10,
+          daysOverdue: 340,
+          semverBump: 'major',
+          advisory: ['2.0.0'],
         }),
       });
       const content = write(
@@ -587,7 +542,7 @@ describe('writeSummaryFile', () => {
           packageDistribution: [both],
           ruleViolations: [
             createMockNoOutdatedPackagesViolation('multi-version-lib', {
-              worstLevel: 'major_overdue',
+              overdueTier: 'major',
               severity: 'error',
             }),
           ],

@@ -759,13 +759,59 @@ Severity is the only thing that decides which bucket a rule violation lands in; 
 |---|---|
 | `version` | The hermex version that produced the report. |
 | `summary` | Aggregate counts: `filesAnalyzed`, `totalImports`, `totalComponents`, `totalUsagePatterns`, plus `patternCounts` — per-pattern-type usage counts (`imports.named`, `usage.jsx`, …). |
-| `packages` | Every package the repo owns — see below. Carries version, `declaredIn`, usage counts, `deprecated` (npm's notice, when the registry was consulted) and `releaseAge` when the rule ran. |
+| `packages` | Every package the repo owns — see below. Carries version, `declaredIn`, usage counts, `deprecated` (npm's notice, when the registry was consulted) and `releases` — the registry timeline — whenever the registry was consulted. |
 | `components` | Every component found, with its source package, usage count and the files using it. The one place component names live. |
 | `versus` | Head-to-head comparisons configured under `versus`. |
 | `ruleViolations` | **Every rule hit, in one list** — `no-files`, `require-files`, `max-file-size`, `require-packages`, `no-packages`, `no-deprecated-packages`, `require-scripts`, `require-package-fields`, `no-package-fields`, `require-engine-version`, `require-codeowners`, `no-outdated-packages`. Filter on `ruleId`. |
 | `compliance` | The canonical verdict — see above. |
 
-`ruleViolations` is the single source of truth for rule hits. Entries share a common shape (`ruleId`, `severity`, `patterns`, `message?`, `matchedFiles`) and add per-type fields where they apply: `packageName` for `no-packages`, `packageName`/`deprecated` for `no-deprecated-packages`, `fieldPath`/`actualValue` for the package-field rules, `maxSizeBytes`/`oversizeFiles` for `max-file-size`, `installedRange`/`requiredRange` for `require-engine-version`.
+`ruleViolations` is the single source of truth for rule hits. Entries share a common shape (`ruleId`, `severity`, `patterns`, `message?`, `matchedFiles`) and add per-type fields where they apply: `packageName` for `no-packages`, `packageName`/`deprecated` for `no-deprecated-packages`, `fieldPath`/`actualValue` for the package-field rules, `maxSizeBytes`/`oversizeFiles` for `max-file-size`, `installedRange`/`requiredRange` for `require-engine-version`, `measuredVersion`/`overdueTier`/`scope` for `no-outdated-packages`.
+
+#### Facts vs. verdict
+
+`packages[].releases` and `ruleViolations[]` answer two different questions, and the split is strict.
+
+**`packages[].releases` is facts — and only facts.** What the registry published, measured against what is installed:
+
+```jsonc
+"releases": {
+  "resolved": [
+    {
+      "version": "18.3.1",
+      "isRoot": true,
+      "newer": [
+        { "version": "19.0.0", "releasedDaysAgo": 400, "semverBump": "major" },
+        { "version": "19.1.0", "releasedDaysAgo": 10, "semverBump": "major", "isLatest": true }
+      ]
+    },
+    { "version": "17.0.2", "isRoot": false, "newer": [ /* … */ ] }
+  ],
+  "latestVersion": "19.1.0",
+  "latestReleasedDaysAgo": 10
+}
+```
+
+Every resolved copy is listed, root and nested alike, flagged but unranked. **This object does not depend on your config.** Two repos with the same lockfile get the same `releases` whatever their thresholds, severities or scope say, because none of those are inputs to producing it. The one way config affects it: it is absent entirely when no registry-backed rule ran, since nothing fetched it.
+
+**`ruleViolations[]` is the verdict**, and the only place policy has been applied:
+
+```jsonc
+{
+  "ruleId": "no-outdated-packages",
+  "severity": "error",
+  "packageName": "moment",
+  "measuredVersion": "2.29.4",
+  "overdueTier": "minor",
+  "daysOverdue": 946,
+  "scope": "root"
+}
+```
+
+`measuredVersion` is the copy the verdict was measured against — the root one under `scope: 'root'`, the worst offending one under `'tree'`. `overdueTier` is `'minor'` or `'major'`; a breached *patch* tier reports `'minor'`, since the tier names how far the upgrade moves you and patch and minor are the same answer to "is this breaking". `daysOverdue` is how far past its threshold the governing tier is.
+
+So "does this package fail `comply`?" is whether a violation exists for it. A package with newer releases and no violation is either compliant under your thresholds, or governed by an entry at `severity: 'off'` — and if you need to tell those apart, apply your own thresholds to `releases`, which is exactly what hermex does.
+
+Deriving anything else from `releases` is deliberate: hermex does not cache its own answer there. That is what keeps the payload a description of your repo rather than a description of your config.
 
 #### Trimming the JSON with `output.*`
 

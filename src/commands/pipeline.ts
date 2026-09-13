@@ -12,7 +12,7 @@ import { collectDeclaredPackages } from '../rules/shared';
 import { evaluateRegistryRules, needsRegistry } from '../rules/registry-rules';
 import { applyOverrides } from '../config/overrides';
 import { runPlugins } from '../plugins';
-import type { HermexConfig } from '../config/types';
+import type { HermexConfig, ResolvedHermexConfig } from '../config/types';
 
 const DECLARATION_FILE_RE = /\.d\.(ts|mts|cts)$/;
 
@@ -21,7 +21,20 @@ function isDeclarationFile(filePath: string): boolean {
 }
 
 /**
- * Runs the shared parse → aggregate → rules → release-age pipeline used by
+ * The report, plus the config the run actually resolved against.
+ *
+ * Callers need the resolved rules, not the authored ones: the Packages
+ * table recomputes each row's recommendation from facts plus the entry
+ * that governs it, and only the resolved config has `overrides[]` applied
+ * (#189).
+ */
+export interface PipelineResult {
+  aggregated: AggregatedReport;
+  resolvedConfig: ResolvedHermexConfig;
+}
+
+/**
+ * Runs the shared parse → aggregate → rules → registry pipeline used by
  * both `scan` and `comply`. Returns `null` if no files matched (the spinner
  * has already reported the failure); throws on unexpected errors.
  */
@@ -29,7 +42,7 @@ export async function runPipeline(
   config: HermexConfig,
   spinner: Ora,
   isJson: boolean,
-): Promise<AggregatedReport | null> {
+): Promise<PipelineResult | null> {
   // Repo-scoped rule overrides are resolved here, against the repo actually
   // being analyzed (process.cwd()) — not in the loader, which only knows
   // where the config file itself came from and may be pointed elsewhere via
@@ -185,5 +198,5 @@ export async function runPipeline(
     );
   }
 
-  return aggregated;
+  return { aggregated, resolvedConfig };
 }

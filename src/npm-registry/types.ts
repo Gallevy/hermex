@@ -1,87 +1,67 @@
-export type UpgradeLevel = 'minor_overdue' | 'major_overdue';
+/**
+ * Which semver tier a package is overdue on — the `no-outdated-packages`
+ * verdict. It rides on the violation (`src/rules/shared.ts`) and nowhere
+ * else: a tier is overdue only relative to a configured threshold, which is
+ * policy, and policy never reaches the facts below (#189).
+ *
+ * A breached *patch* tier reports `'minor'`. There is no `'patch'` member on
+ * purpose — the tier names how far the upgrade moves you, and patch and
+ * minor are the same answer to "is this breaking".
+ */
+export type OverdueTier = 'minor' | 'major';
+
 export type SemverBump = 'patch' | 'minor' | 'major';
 
-export interface AvailableUpgrade {
+/** One published release, newer than the installed copy it hangs off. */
+export interface ReleaseInfo {
   version: string;
   releasedDaysAgo: number;
-  /**
-   * Age (in days) of the oldest release in this bump tier — the one that
-   * actually breached `thresholdDays` and drove `level`. Distinct from
-   * `releasedDaysAgo`, which is the newest/recommended upgrade target and
-   * may be much younger than the release that triggered the breach (#24).
-   */
-  breachReleasedDaysAgo: number;
+  /** Relative to the resolved copy this sits under, not to any other. */
   semverBump: SemverBump;
-  level: UpgradeLevel;
-  thresholdDays: number;
   isLatest?: boolean;
 }
 
-/** An upgrade candidate that hasn't yet breached its bump tier's age threshold. */
-export interface PendingUpgrade {
+/**
+ * One installed copy of a package, with everything published after it.
+ *
+ * Every resolved copy is listed, root and nested alike, with no judgment
+ * about which ones *count* — that is the `scope` decision, and it belongs to
+ * the rule (#189). A consumer reading this sees the same thing whether the
+ * repo enforces `root`, `tree`, or nothing at all.
+ */
+export interface ResolvedCopy {
   version: string;
-  semverBump: SemverBump;
-  releasedDaysAgo: number;
-  thresholdDays: number;
-  daysRemaining: number;
+  /** Whether this is the version the root/direct dependency resolved to.
+   * `false` for a nested duplicate reachable only transitively (#62). */
+  isRoot: boolean;
+  /**
+   * Every published release newer than `version`, oldest-first.
+   *
+   * Prereleases are excluded — not as policy, but because they are not
+   * upgrade candidates by npm convention, the same reason `semver.gt`
+   * ordering alone would not be enough here.
+   */
+  newer: ReleaseInfo[];
 }
 
-export interface ReleaseAgeEntry {
-  installedVersion: string;
-  upgrades: AvailableUpgrade[];
-  /**
-   * `null` only when there are no breached upgrades at all. Independent of
-   * whether `minCompliantVersion` fell back to `latestVersion` — a package
-   * can still be overdue on a breached tier even when latest itself is past
-   * that tier's threshold and there's nothing fresher to recommend instead
-   * (#29).
-   */
-  worstLevel: UpgradeLevel | null;
-  pendingUpgrade?: PendingUpgrade;
+/**
+ * What the registry says about one package, measured against what is
+ * installed. **Facts only, and policy-free in the strict sense**: this
+ * object is byte-identical whatever the repo's thresholds, severity or
+ * scope say, because none of them are inputs to producing it (#189).
+ *
+ * It is absent entirely when no registry-backed rule ran, since nothing
+ * fetched it — absent or present is the only way config can affect it. The
+ * verdict derived from it lives on the violation; the arithmetic that gets
+ * there is `assessPackage` in `src/rules/no-outdated-packages.ts`, and both
+ * the rule and the Packages table call that one function rather than
+ * caching its answer here.
+ */
+export interface PackageReleases {
+  /** Every distinct installed copy, the root one first when there is one. */
+  resolved: ResolvedCopy[];
   latestVersion?: string;
   latestReleasedDaysAgo?: number;
-  /**
-   * The oldest release (across any bump tier) that's still within its
-   * threshold, i.e. a safe upgrade target. Falls back to `latestVersion`
-   * when no release has ever qualified — upgrading to (or already being
-   * on) latest is always treated as compliant, since nothing fresher
-   * exists to require instead (#26).
-   */
-  minCompliantVersion?: string;
-  minCompliantReleasedDaysAgo?: number;
-  /**
-   * `true` when `minCompliantVersion` is a genuine still-in-window upgrade
-   * target — something you could adopt right now and be compliant. `false`
-   * when it only fell back to `latestVersion` because every candidate is
-   * itself past its threshold (#26): in that case there is no compliant
-   * release to recommend, so the display says so rather than pointing at a
-   * target that wouldn't actually clear the breach.
-   */
-  minCompliantInWindow?: boolean;
-  /** Bump tier of `minCompliantVersion` relative to installed — for labeling
-   * the recommended target when it differs from the breached tier. */
-  minCompliantBump?: SemverBump;
-  /** The governing rule entry's severity (see `resolveReleaseAgeRule`,
-   * `src/config/overrides.ts`) — 'off' still populates this entry (every
-   * package is fetched and shown regardless of policy), it just never
-   * becomes a `NoOutdatedPackagesViolation`. */
-  severity: 'error' | 'warn' | 'info' | 'off';
-  /**
-   * Which lockfile copies count toward this verdict: 'root' checks only
-   * `installedVersion`; 'tree' checks every resolved copy. From the
-   * governing `rules['no-outdated-packages']` entry's own `scope` field (#57).
-   */
-  scope: 'root' | 'tree';
-  /** Every distinct installed version considered — only set when more than one exists. */
-  evaluatedVersions?: string[];
-  /**
-   * Versions from `evaluatedVersions` that breached their own threshold but
-   * are NOT part of this verdict (i.e. not in scope) — e.g. nested
-   * duplicates under `scope: 'root'`. Always computed when there's a
-   * conflict, regardless of scope, so overdue nested copies are never
-   * silently invisible just because they don't block `comply` (#57).
-   */
-  advisoryBreaches?: { version: string; level: UpgradeLevel }[];
 }
 
 export interface RegistryPackageInfo {
