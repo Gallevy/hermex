@@ -7,11 +7,7 @@ import { isPluginViolation, groupKeyFor } from '../rules/shared';
 import type { PluginViolation } from '../plugins/types';
 import { formatBytes } from './byte-size';
 import { formatTruncatedList } from './format-utils';
-import {
-  formatSeverityTally,
-  severityIcon,
-  sortViolationsBySeverity,
-} from './severity-format';
+import { formatSeverityTally, severityIcon } from './severity-format';
 
 export function formatRuleType(violation: RuleViolation): string {
   // A plugin's rule id is its own namespace (`oxlint/no-unused-vars`) and
@@ -212,9 +208,9 @@ export function describeViolation(v: RuleViolation): string {
  * zero rows for `no-outdated-packages` (its display is the Packages table). Shared
  * by the terminal table (`printRules`) and `--summary-file`
  * (`write-summary-file.ts`) so the two surfaces can never render a
- * different row count for the same violations — pass violations
- * pre-sorted (`sortViolationsBySeverity`) if row order matters to the
- * caller.
+ * different row count for the same violations. Row order follows the order
+ * of `violations`, which `runPipeline` has already sorted by severity — so
+ * callers pass `aggregated.ruleViolations` straight through (#147).
  */
 export function buildRuleRows(violations: RuleViolation[]): Row[] {
   const rows: Row[] = [];
@@ -275,7 +271,7 @@ export function printRules(aggregated: AggregatedReport): void {
   // boilerplate, indistinguishable from "no rules were ever configured."
   if (ruleViolations.length === 0) return;
 
-  const rows = buildRuleRows(sortViolationsBySeverity(ruleViolations));
+  const rows = buildRuleRows(ruleViolations);
   if (rows.length === 0) return; // everything present was release-age
 
   console.log(chalk.blueBright.bold('\n🔍 Rules\n'));

@@ -44,11 +44,12 @@ export interface RuleRunResult {
  * This is the only place that knows the rule families exist. Adding one means
  * adding a line here — there is no second site to choose between (#84).
  *
- * The array order below IS the emission order: it reaches the JSON
- * `ruleViolations` array directly, and the human Rules table through
- * `sortViolationsBySeverity`, which is stable and so preserves it *within* each
- * severity bucket. Changing it changes output. It is chosen here, deliberately,
- * rather than falling out of which call site happened to run first.
+ * The array order below is the detection order. `runPipeline` sorts the
+ * assembled list by severity once (#147), and that sort is stable — so this
+ * order survives as the tiebreak *within* each severity bucket and does reach
+ * every rendered surface. Changing it changes output. It is chosen here,
+ * deliberately, rather than falling out of which call site happened to run
+ * first.
  */
 export async function runRules({
   repoPath,

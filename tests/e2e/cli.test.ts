@@ -816,6 +816,42 @@ describe('plugins (end to end)', () => {
     expect(finding.plugin).toBe('fake-linter');
   });
 
+  // #147: the list is sorted once, on the way into AggregatedReport, so every
+  // consumer inherits one order. Plugin findings are appended before that sort
+  // rather than after it — a plugin's error is not ranked below hermex's info
+  // merely for having been produced last.
+  //
+  // The ordering fixture makes detection order and severity order disagree:
+  // hermex contributes warn then info, the plugin contributes the only error,
+  // last. An unsorted list would come back warn → info → error.
+  it('sorts ruleViolations by severity, plugin findings interleaved', () => {
+    const orderingConfig = join(
+      ROOT,
+      'tests',
+      'e2e',
+      'hermex-plugin-ordering.config.ts',
+    );
+    const result = run([
+      'scan',
+      '--config',
+      orderingConfig,
+      '--format',
+      'json',
+    ]);
+    const parsed = JSON.parse(result.stdout);
+
+    expect(
+      parsed.ruleViolations.map(
+        (v: { ruleId: string; severity: string }) =>
+          `${v.severity}:${v.ruleId}`,
+      ),
+    ).toEqual([
+      'error:late-linter/no-debugger',
+      'warn:require-files',
+      'info:require-files',
+    ]);
+  });
+
   it('aborts with exit 2 when a plugin throws', () => {
     // Not a degradation (#129 does not model this): a run that could not
     // complete every declared plugin reports neither pass nor fail.

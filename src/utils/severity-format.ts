@@ -89,12 +89,16 @@ const SEVERITY_RANK: Record<RuleViolation['severity'], number> = {
 /**
  * Sorts rule violations by severity descending (error → warn → info), with
  * detection order as the tiebreak so runs stay deterministic and diffable
- * (#87). Render-time only — `ruleViolations` on `AggregatedReport` itself
- * stays in detection order, so nothing upstream (compliance counting,
- * further aggregation) has to account for a sort. Every rendered surface —
- * the terminal table (`printRules`), `--summary-file`, and `--format json` —
- * routes through this one helper, so none of them can drift from each other
- * or from a second, differently-ordered notion of "the" rule violations.
+ * (#87).
+ *
+ * Called once, by `runPipeline`, on the way into `AggregatedReport` — not by
+ * each renderer at render time (#147). `ruleViolations` therefore has one
+ * order, and the terminal table, `--summary-file` and `--format json` cannot
+ * drift from each other because none of them decides an order at all. A
+ * consumer added later inherits it instead of having to remember this helper.
+ *
+ * Kept exported for the rare caller that assembles its own list; anything
+ * reading `aggregated.ruleViolations` is already sorted.
  */
 export function sortViolationsBySeverity<T extends RuleViolation>(
   violations: T[],

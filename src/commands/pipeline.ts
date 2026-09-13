@@ -5,6 +5,7 @@ import type { UsageReport, ParseError } from '../swc-parser/types';
 import { aggregateReports } from '../utils/aggregator';
 import type { AggregatedReport, AnalysisFacts } from '../utils/aggregator';
 import { printErrors } from '../utils/print-errors';
+import { sortViolationsBySeverity } from '../utils/severity-format';
 import { findFiles } from '../utils/file-utils';
 import { findAndParseLockfile } from '../lock-parser';
 import { collectDeclaredPackages } from '../rules/shared';
@@ -167,10 +168,20 @@ export async function runPipeline(
 
   // The one place an AggregatedReport is built. Nothing reassigns a field on
   // it afterwards, so no caller can observe a partial violation list (#84).
+  //
+  // Sorted here, once, rather than by each renderer at render time (#147):
+  // `ruleViolations` has a single order, and a consumer added later inherits
+  // it instead of having to remember a helper. Plugin findings are appended
+  // before the sort, so they interleave by severity like any other violation
+  // — a plugin's own `error` is not ranked below hermex's `info` merely for
+  // having been produced last.
   return {
     aggregated: {
       ...facts,
-      ruleViolations: [...violations, ...pluginViolations],
+      ruleViolations: sortViolationsBySeverity([
+        ...violations,
+        ...pluginViolations,
+      ]),
     },
     resolvedConfig,
   };

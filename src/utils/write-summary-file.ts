@@ -13,7 +13,6 @@ import { collectPackageFlags, formatPackageFlags } from './package-flags';
 import {
   formatSeverityTally,
   severityIcon,
-  sortViolationsBySeverity,
   stripAnsi,
 } from './severity-format';
 
@@ -23,8 +22,11 @@ function buildRulesSection(aggregated: AggregatedReport): string {
   // Info-severity rows are excluded here (unlike the terminal `printRules`,
   // which shows everything) — a summary meant for a PR comment or job
   // summary should only surface what's actually enforceable (#31).
-  const ruleViolations = sortViolationsBySeverity(
-    aggregated.ruleViolations.filter((v) => v.severity !== 'info'),
+  //
+  // Filtering preserves the severity order `runPipeline` already applied
+  // (#147), so there is nothing to re-sort here.
+  const ruleViolations = aggregated.ruleViolations.filter(
+    (v) => v.severity !== 'info',
   );
 
   // Nothing to report — omit the section entirely, matching
