@@ -8,13 +8,13 @@ title: "comply-deprecated-packages — Output Review"
 
 # `comply-deprecated-packages`
 
-_changed_
+_unchanged_
 
 **Asserts** — Deprecation detection with release-age switched off entirely — the #107 case. Before, deprecation was a by-product of release-age enrichment, so this configuration found nothing at all and this run would have been silently compliant on that axis. Now the registry is consulted for deprecation alone: a no-deprecated-packages row appears in the Rules table carrying npm own notice, and at severity error it fails comply on its own. The only case where the registry is reached without release-age, which is exactly the path that did not exist before.
 
 **Ran** `hermex comply --config configs/deprecated-packages.config.ts` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/configs/deprecated-packages.config.ts`](https://github.com/Gallevy/hermex/blob/201b37e5bed1664b66c5517dff147ca6077138f9/fixtures/configs/deprecated-packages.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/201b37e5bed1664b66c5517dff147ca6077138f9/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/201b37e5bed1664b66c5517dff147ca6077138f9/fixtures/README.md)) · **Case** [`comply-deprecated-packages`](https://github.com/Gallevy/hermex/blob/201b37e5bed1664b66c5517dff147ca6077138f9/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/201b37e5bed1664b66c5517dff147ca6077138f9/fixtures/cases/comply-deprecated-packages.md))
+**Config** [`fixtures/configs/deprecated-packages.config.ts`](https://github.com/Gallevy/hermex/blob/840a3f671522f942261495bbcca880b851190d44/fixtures/configs/deprecated-packages.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/840a3f671522f942261495bbcca880b851190d44/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/840a3f671522f942261495bbcca880b851190d44/fixtures/README.md)) · **Case** [`comply-deprecated-packages`](https://github.com/Gallevy/hermex/blob/840a3f671522f942261495bbcca880b851190d44/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/840a3f671522f942261495bbcca880b851190d44/fixtures/cases/comply-deprecated-packages.md))
 
 **Registry** offline, served from `fixtures/registry/timelines.ts` — no network
 
@@ -22,7 +22,7 @@ _changed_
 
 ## Config
 
-[`fixtures/configs/deprecated-packages.config.ts`](https://github.com/Gallevy/hermex/blob/201b37e5bed1664b66c5517dff147ca6077138f9/fixtures/configs/deprecated-packages.config.ts) — resolved, as the loader sees it
+[`fixtures/configs/deprecated-packages.config.ts`](https://github.com/Gallevy/hermex/blob/840a3f671522f942261495bbcca880b851190d44/fixtures/configs/deprecated-packages.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -137,45 +137,6 @@ _changed_
 }
 ```
 
-## Diff against the target branch
-
-<sub>Diffs are unified format: `-` is the target branch, `+` is this run. `@@ -12,7 +12,9 @@` is a hunk header — unchanged lines were skipped, and the hunk below covers 7 lines from line 12 of the target branch and 9 lines from line 12 of this run.</sub>
-
-```diff
---- target/stdout.txt
-+++ current/stdout.txt
-@@ -36,6 +36,29 @@
- 
- 4 errors, 1 warning
- 
-+📦 Packages
-+
-+┌───────────────────────────┬───────────┬────────────────┬────────────────────────────┐
-+│ Package                   │ Installed │ Minimum target │ Flags                      │
-+├───────────────────────────┼───────────┼────────────────┼────────────────────────────┤
-+│ @design-system/foundation │ 2.5.3     │ —              │                            │
-+├───────────────────────────┼───────────┼────────────────┼────────────────────────────┤
-+│ react                     │ 18.3.1    │ —              │                            │
-+├───────────────────────────┼───────────┼────────────────┼────────────────────────────┤
-+│ react-dom                 │ 18.3.1    │ —              │                            │
-+├───────────────────────────┼───────────┼────────────────┼────────────────────────────┤
-+│ lodash                    │ 4.17.21   │ —              │                            │
-+├───────────────────────────┼───────────┼────────────────┼────────────────────────────┤
-+│ es-toolkit                │ 1.39.10   │ —              │                            │
-+├───────────────────────────┼───────────┼────────────────┼────────────────────────────┤
-+│ eslint                    │ N/A       │ —              │                            │
-+├───────────────────────────┼───────────┼────────────────┼────────────────────────────┤
-+│ moment                    │ 2.29.4    │ —              │ 🔴 forbidden 🔴 deprecated │
-+└───────────────────────────┴───────────┴────────────────┴────────────────────────────┘
-+
-+Notes:
-+  🔵 moment → deprecated: Moment is in maintenance mode — prefer date-fns or dayjs
-+
- ⚖️ Versus
- 
-   Design System Migration
-```
-
 ## Full output
 
 <details markdown="1"><summary><code>stdout.txt</code></summary>
@@ -218,29 +179,6 @@ Caused by:
 └────────────────────────┴────────────────────────────────────────────────────────────────────────────────────┘
 
 4 errors, 1 warning
-
-📦 Packages
-
-┌───────────────────────────┬───────────┬────────────────┬────────────────────────────┐
-│ Package                   │ Installed │ Minimum target │ Flags                      │
-├───────────────────────────┼───────────┼────────────────┼────────────────────────────┤
-│ @design-system/foundation │ 2.5.3     │ —              │                            │
-├───────────────────────────┼───────────┼────────────────┼────────────────────────────┤
-│ react                     │ 18.3.1    │ —              │                            │
-├───────────────────────────┼───────────┼────────────────┼────────────────────────────┤
-│ react-dom                 │ 18.3.1    │ —              │                            │
-├───────────────────────────┼───────────┼────────────────┼────────────────────────────┤
-│ lodash                    │ 4.17.21   │ —              │                            │
-├───────────────────────────┼───────────┼────────────────┼────────────────────────────┤
-│ es-toolkit                │ 1.39.10   │ —              │                            │
-├───────────────────────────┼───────────┼────────────────┼────────────────────────────┤
-│ eslint                    │ N/A       │ —              │                            │
-├───────────────────────────┼───────────┼────────────────┼────────────────────────────┤
-│ moment                    │ 2.29.4    │ —              │ 🔴 forbidden 🔴 deprecated │
-└───────────────────────────┴───────────┴────────────────┴────────────────────────────┘
-
-Notes:
-  🔵 moment → deprecated: Moment is in maintenance mode — prefer date-fns or dayjs
 
 ⚖️ Versus
 
