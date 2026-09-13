@@ -10,89 +10,118 @@ title: "scan-human-default — Output Review"
 
 _unchanged_
 
-**Asserts** — Baseline human output: the sections a repo gets with no output config of its own.
+**Asserts** — Baseline human output: the sections a repo gets with no output config of its own. Includes both Versus groups — a component pair and a function-only one — which is where #174 is visible: the function-only group reports a real split off files-that-import, where it used to read 0 vs 0 off JSX renders, and the package named by no lockfile entry says so instead of reporting a confident 0%.
 
 **Ran** `hermex scan` in `fixtures/` → exit 0, as asserted
 
-**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/3604555224ef1773506011d12942b23aafe03963/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/3604555224ef1773506011d12942b23aafe03963/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/3604555224ef1773506011d12942b23aafe03963/fixtures/README.md)) · **Case** [`scan-human-default`](https://github.com/Gallevy/hermex/blob/3604555224ef1773506011d12942b23aafe03963/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/3604555224ef1773506011d12942b23aafe03963/fixtures/cases/scan-human-default.md))
+**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/318100cbf03ea7098d207d6235a0c56aad4352f8/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/318100cbf03ea7098d207d6235a0c56aad4352f8/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/318100cbf03ea7098d207d6235a0c56aad4352f8/fixtures/README.md)) · **Case** [`scan-human-default`](https://github.com/Gallevy/hermex/blob/318100cbf03ea7098d207d6235a0c56aad4352f8/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/318100cbf03ea7098d207d6235a0c56aad4352f8/fixtures/cases/scan-human-default.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter scan-human-default`</sub>
 
 ## Config
 
-[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/3604555224ef1773506011d12942b23aafe03963/fixtures/hermex.config.ts)
+[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/318100cbf03ea7098d207d6235a0c56aad4352f8/fixtures/hermex.config.ts) — resolved, as the loader sees it
 
-```ts
-import type { HermexConfigInput } from '../src/config/types.ts';
-
-/**
- * The primary fixture repo's config: a deliberately non-compliant policy
- * over a deliberately messy repo, so `scan` and `comply` both have
- * something to say. Variants that change one thing at a time live in
- * `./configs/` and spread this object — see `fixtures/README.md`.
- */
-export default {
-  // Spelled out rather than left to the schema defaults because this repo
-  // now contains fixture *machinery* alongside the code under analysis:
-  // the case manifest, the alternate configs, the recorded registry
-  // timelines, and the secondary repos that cases scan with their own cwd.
-  // None of it is code this repo "uses", and without these entries the
-  // primary output would grow rows every time a case is added.
-  excludes: [
-    '**/node_modules/**',
-    '**/dist/**',
-    '**/build/**',
-    'cases.ts',
-    'configs/**',
-    'registry/**',
-    'repos/**',
+```json
+{
+  "excludes": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "cases.ts",
+    "configs/**",
+    "registry/**",
+    "repos/**"
   ],
-  packages: {
-    internal: ['@design-system/*'],
-  },
-  versus: [
+  "versus": [
     {
-      name: 'Design System Migration',
-      packages: ['@design-system/foundation', '@new-system/arc'],
+      "name": "Design System Migration",
+      "packages": [
+        "@design-system/foundation",
+        "@new-system/arc"
+      ]
     },
+    {
+      "name": "Utility Library Migration",
+      "packages": [
+        "lodash",
+        "es-toolkit"
+      ]
+    }
   ],
-  rules: {
-    detect_files: [
+  "rules": {
+    "no-files": [
       {
-        severity: 'error',
-        patterns: ['jest.config.*', '.babelrc'],
-        message: 'Use vitest + Vite',
-      },
+        "severity": "error",
+        "patterns": [
+          "jest.config.*",
+          ".babelrc"
+        ],
+        "message": "Use vitest + Vite"
+      }
     ],
-    forbid_packages: [
-      { severity: 'error', patterns: ['moment'], message: 'Use date-fns or dayjs' },
-    ],
-    require_files: [
-      { severity: 'error', patterns: ['.nvmrc'] },
-      { severity: 'warn', patterns: ['.editorconfig'] },
-    ],
-    require_packages: [
+    "no-packages": [
       {
-        severity: 'error',
-        patterns: ['typescript'],
-        message: 'TypeScript is required',
-      },
+        "severity": "error",
+        "patterns": [
+          "moment"
+        ],
+        "message": "Use date-fns or dayjs"
+      }
     ],
-    require_scripts: [
+    "require-files": [
       {
-        severity: 'error',
-        patterns: ['build', 'test'],
-        message: 'Required npm scripts',
+        "severity": "error",
+        "patterns": [
+          ".nvmrc"
+        ]
       },
+      {
+        "severity": "warn",
+        "patterns": [
+          ".editorconfig"
+        ]
+      }
     ],
-    require_package_fields: [{ severity: 'warn', patterns: ['engines', 'license'] }],
-    engine_version: { severity: 'warn', range: '>=20', message: 'Minimum Node 20 required' },
+    "require-packages": [
+      {
+        "severity": "error",
+        "patterns": [
+          "typescript"
+        ],
+        "message": "TypeScript is required"
+      }
+    ],
+    "require-scripts": [
+      {
+        "severity": "error",
+        "patterns": [
+          "build",
+          "test"
+        ],
+        "message": "Required npm scripts"
+      }
+    ],
+    "require-package-fields": [
+      {
+        "severity": "warn",
+        "patterns": [
+          "engines",
+          "license"
+        ]
+      }
+    ],
+    "require-engine-version": {
+      "severity": "warn",
+      "range": ">=20",
+      "message": "Minimum Node 20 required"
+    }
   },
-  output: {
-    details: false,
-    patterns: false,
-  },
-} satisfies HermexConfigInput;
+  "output": {
+    "details": false,
+    "patterns": false
+  }
+}
 ```
 
 ## Full output
@@ -102,9 +131,9 @@ export default {
 ```text
 hermex v<version>
 - Parsing lockfile...
-✔ Found pnpm lockfile (supports: v5, v6, v9) - 5 packages
-✔ Found 18 files
-✔ Analysis complete! Analyzed 17/18 files
+✔ Found pnpm lockfile (supports: v5, v6, v9) - 7 packages
+✔ Found 22 files
+✔ Analysis complete! Analyzed 21/22 files
 
 ⚠ 1 file(s) failed to parse:
   broken/unparseable.tsx
@@ -121,28 +150,35 @@ Caused by:
 
 📦 Packages
 
-┌─────────────────────────────────┬─────────┐
-│ Package                         │ Version │
-├─────────────────────────────────┼─────────┤
-│ [int] @design-system/foundation │ 2.5.3   │
-├─────────────────────────────────┼─────────┤
-│ react                           │ 18.3.1  │
-├─────────────────────────────────┼─────────┤
-│ eslint                          │ N/A     │
-├─────────────────────────────────┼─────────┤
-│ [BANNED] moment                 │ 2.29.4  │
-├─────────────────────────────────┼─────────┤
-│ react-dom                       │ 18.3.1  │
-└─────────────────────────────────┴─────────┘
-
-Total: 5 packages
+┌───────────────────────────┬─────────┐
+│ Package                   │ Version │
+├───────────────────────────┼─────────┤
+│ @design-system/foundation │ 2.5.3   │
+├───────────────────────────┼─────────┤
+│ react                     │ 18.3.1  │
+├───────────────────────────┼─────────┤
+│ react-dom                 │ 18.3.1  │
+├───────────────────────────┼─────────┤
+│ lodash                    │ 4.17.21 │
+├───────────────────────────┼─────────┤
+│ es-toolkit                │ 1.39.10 │
+├───────────────────────────┼─────────┤
+│ eslint                    │ N/A     │
+├───────────────────────────┼─────────┤
+│ [BANNED] moment           │ 2.29.4  │
+└───────────────────────────┴─────────┘
 
 ⚖️ Versus
 
   Design System Migration
   ──────────────────────────────────────────────────
-  @design-system/foundation  ██████████████████████████████ 100.0% (33 usages)
-  @new-system/arc            ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0.0% (0 usages)
+  @design-system/foundation  ██████████████████████████████ 100.0% (8 files, 33 renders)
+  @new-system/arc            ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0.0% (not found in this repo)
+
+  Utility Library Migration
+  ──────────────────────────────────────────────────
+  lodash      ███████████████████████░░░░░░░ 75.0% (3 files)
+  es-toolkit  ████████░░░░░░░░░░░░░░░░░░░░░░ 25.0% (1 file)
 
 
 🔍 Rules
@@ -150,13 +186,13 @@ Total: 5 packages
 ┌──────────────────┬──────────────────────────────────────────────────────┐
 │ Rule             │ Description                                          │
 ├──────────────────┼──────────────────────────────────────────────────────┤
-│ forbid_packages  │ 🔴 moment is forbidden — Use date-fns or dayjs       │
+│ no-packages      │ 🔴 moment is forbidden — Use date-fns or dayjs       │
 ├──────────────────┼──────────────────────────────────────────────────────┤
-│ require_packages │ 🔴 typescript not installed — TypeScript is required │
+│ require-packages │ 🔴 typescript not installed — TypeScript is required │
 ├──────────────────┼──────────────────────────────────────────────────────┤
-│ require_files    │ 🔴 .nvmrc not found                                  │
+│ require-files    │ 🔴 .nvmrc not found                                  │
 ├──────────────────┼──────────────────────────────────────────────────────┤
-│ require_files    │ 🟡 .editorconfig not found                           │
+│ require-files    │ 🟡 .editorconfig not found                           │
 └──────────────────┴──────────────────────────────────────────────────────┘
 
 3 errors, 1 warning
@@ -210,9 +246,9 @@ Total: 5 packages
 ┌─────────────────────┬───────┐
 │ Metric              │ Count │
 ├─────────────────────┼───────┤
-│ Files Analyzed      │ 17    │
+│ Files Analyzed      │ 21    │
 ├─────────────────────┼───────┤
-│ Packages            │ 5     │
+│ Packages            │ 7     │
 ├─────────────────────┼───────┤
 │ External Components │ 19    │
 ├─────────────────────┼───────┤

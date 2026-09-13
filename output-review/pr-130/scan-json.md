@@ -10,89 +10,118 @@ title: "scan-json — Output Review"
 
 _unchanged_
 
-**Asserts** — The full JSON contract: summary.patternCounts (#80), every owned package in packages[], de-duplicated components (#78, #79), and the compliance block (#55).
+**Asserts** — The full JSON contract: summary.patternCounts (#80), every owned package in packages[], de-duplicated components (#78, #79), and the compliance block (#55). Also the imported axis (#174): packages[].importingFileCount beside usageCount — lodash and es-toolkit read non-zero on the first and 0 on the second — and versus[].count keyed on it, with present:false marking a configured package the repo does not have.
 
 **Ran** `hermex scan --format json` in `fixtures/` → exit 0, as asserted
 
-**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/3604555224ef1773506011d12942b23aafe03963/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/3604555224ef1773506011d12942b23aafe03963/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/3604555224ef1773506011d12942b23aafe03963/fixtures/README.md)) · **Case** [`scan-json`](https://github.com/Gallevy/hermex/blob/3604555224ef1773506011d12942b23aafe03963/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/3604555224ef1773506011d12942b23aafe03963/fixtures/cases/scan-json.md))
+**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/318100cbf03ea7098d207d6235a0c56aad4352f8/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/318100cbf03ea7098d207d6235a0c56aad4352f8/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/318100cbf03ea7098d207d6235a0c56aad4352f8/fixtures/README.md)) · **Case** [`scan-json`](https://github.com/Gallevy/hermex/blob/318100cbf03ea7098d207d6235a0c56aad4352f8/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/318100cbf03ea7098d207d6235a0c56aad4352f8/fixtures/cases/scan-json.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter scan-json`</sub>
 
 ## Config
 
-[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/3604555224ef1773506011d12942b23aafe03963/fixtures/hermex.config.ts)
+[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/318100cbf03ea7098d207d6235a0c56aad4352f8/fixtures/hermex.config.ts) — resolved, as the loader sees it
 
-```ts
-import type { HermexConfigInput } from '../src/config/types.ts';
-
-/**
- * The primary fixture repo's config: a deliberately non-compliant policy
- * over a deliberately messy repo, so `scan` and `comply` both have
- * something to say. Variants that change one thing at a time live in
- * `./configs/` and spread this object — see `fixtures/README.md`.
- */
-export default {
-  // Spelled out rather than left to the schema defaults because this repo
-  // now contains fixture *machinery* alongside the code under analysis:
-  // the case manifest, the alternate configs, the recorded registry
-  // timelines, and the secondary repos that cases scan with their own cwd.
-  // None of it is code this repo "uses", and without these entries the
-  // primary output would grow rows every time a case is added.
-  excludes: [
-    '**/node_modules/**',
-    '**/dist/**',
-    '**/build/**',
-    'cases.ts',
-    'configs/**',
-    'registry/**',
-    'repos/**',
+```json
+{
+  "excludes": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "cases.ts",
+    "configs/**",
+    "registry/**",
+    "repos/**"
   ],
-  packages: {
-    internal: ['@design-system/*'],
-  },
-  versus: [
+  "versus": [
     {
-      name: 'Design System Migration',
-      packages: ['@design-system/foundation', '@new-system/arc'],
+      "name": "Design System Migration",
+      "packages": [
+        "@design-system/foundation",
+        "@new-system/arc"
+      ]
     },
+    {
+      "name": "Utility Library Migration",
+      "packages": [
+        "lodash",
+        "es-toolkit"
+      ]
+    }
   ],
-  rules: {
-    detect_files: [
+  "rules": {
+    "no-files": [
       {
-        severity: 'error',
-        patterns: ['jest.config.*', '.babelrc'],
-        message: 'Use vitest + Vite',
-      },
+        "severity": "error",
+        "patterns": [
+          "jest.config.*",
+          ".babelrc"
+        ],
+        "message": "Use vitest + Vite"
+      }
     ],
-    forbid_packages: [
-      { severity: 'error', patterns: ['moment'], message: 'Use date-fns or dayjs' },
-    ],
-    require_files: [
-      { severity: 'error', patterns: ['.nvmrc'] },
-      { severity: 'warn', patterns: ['.editorconfig'] },
-    ],
-    require_packages: [
+    "no-packages": [
       {
-        severity: 'error',
-        patterns: ['typescript'],
-        message: 'TypeScript is required',
-      },
+        "severity": "error",
+        "patterns": [
+          "moment"
+        ],
+        "message": "Use date-fns or dayjs"
+      }
     ],
-    require_scripts: [
+    "require-files": [
       {
-        severity: 'error',
-        patterns: ['build', 'test'],
-        message: 'Required npm scripts',
+        "severity": "error",
+        "patterns": [
+          ".nvmrc"
+        ]
       },
+      {
+        "severity": "warn",
+        "patterns": [
+          ".editorconfig"
+        ]
+      }
     ],
-    require_package_fields: [{ severity: 'warn', patterns: ['engines', 'license'] }],
-    engine_version: { severity: 'warn', range: '>=20', message: 'Minimum Node 20 required' },
+    "require-packages": [
+      {
+        "severity": "error",
+        "patterns": [
+          "typescript"
+        ],
+        "message": "TypeScript is required"
+      }
+    ],
+    "require-scripts": [
+      {
+        "severity": "error",
+        "patterns": [
+          "build",
+          "test"
+        ],
+        "message": "Required npm scripts"
+      }
+    ],
+    "require-package-fields": [
+      {
+        "severity": "warn",
+        "patterns": [
+          "engines",
+          "license"
+        ]
+      }
+    ],
+    "require-engine-version": {
+      "severity": "warn",
+      "range": ">=20",
+      "message": "Minimum Node 20 required"
+    }
   },
-  output: {
-    details: false,
-    patterns: false,
-  },
-} satisfies HermexConfigInput;
+  "output": {
+    "details": false,
+    "patterns": false
+  }
+}
 ```
 
 ## Full output
@@ -103,92 +132,10 @@ export default {
 {
   "version": "<version>",
   "summary": {
-    "filesAnalyzed": 17,
-    "totalImports": 80,
+    "filesAnalyzed": 21,
+    "totalImports": 86,
     "totalComponents": 35,
-    "totalUsagePatterns": 284,
-    "patternCounts": [
-      {
-        "patternType": "usage.jsx",
-        "displayName": "JSX Usage",
-        "count": 64
-      },
-      {
-        "patternType": "imports.default",
-        "displayName": "Default Imports",
-        "count": 39
-      },
-      {
-        "patternType": "imports.named",
-        "displayName": "Named Imports",
-        "count": 37
-      },
-      {
-        "patternType": "usage.objects",
-        "displayName": "Object Mappings",
-        "count": 19
-      },
-      {
-        "patternType": "advanced.dynamic",
-        "displayName": "Dynamic Imports",
-        "count": 19
-      },
-      {
-        "patternType": "usage.variables",
-        "displayName": "Variable Assignments",
-        "count": 9
-      },
-      {
-        "patternType": "usage.conditional",
-        "displayName": "Conditional Usage",
-        "count": 7
-      },
-      {
-        "patternType": "imports.aliased",
-        "displayName": "Aliased Imports",
-        "count": 6
-      },
-      {
-        "patternType": "advanced.lazy",
-        "displayName": "Lazy Loading",
-        "count": 6
-      },
-      {
-        "patternType": "advanced.hoc",
-        "displayName": "Higher-Order Components",
-        "count": 5
-      },
-      {
-        "patternType": "imports.namespace",
-        "displayName": "Namespace Imports",
-        "count": 4
-      },
-      {
-        "patternType": "usage.destructuring",
-        "displayName": "Destructuring",
-        "count": 2
-      },
-      {
-        "patternType": "usage.arrays",
-        "displayName": "Array Mappings",
-        "count": 2
-      },
-      {
-        "patternType": "advanced.portal",
-        "displayName": "Portal Usage",
-        "count": 1
-      },
-      {
-        "patternType": "advanced.memo",
-        "displayName": "Memoized Components",
-        "count": 0
-      },
-      {
-        "patternType": "advanced.forwardRef",
-        "displayName": "Forward Refs",
-        "count": 0
-      }
-    ]
+    "totalUsagePatterns": 291
   },
   "packages": [
     {
@@ -200,8 +147,8 @@ export default {
       ],
       "componentCount": 18,
       "usageCount": 33,
+      "importingFileCount": 8,
       "percentage": 91.66666666666666,
-      "internal": true,
       "hasVersionConflict": false,
       "allVersions": [
         "2.5.3"
@@ -216,11 +163,57 @@ export default {
       ],
       "componentCount": 1,
       "usageCount": 3,
+      "importingFileCount": 6,
       "percentage": 8.333333333333332,
-      "internal": false,
       "hasVersionConflict": false,
       "allVersions": [
         "18.3.1"
+      ]
+    },
+    {
+      "packageName": "react-dom",
+      "version": "18.3.1",
+      "rootVersion": "18.3.1",
+      "declaredIn": [],
+      "componentCount": 0,
+      "usageCount": 0,
+      "importingFileCount": 1,
+      "percentage": 0,
+      "hasVersionConflict": false,
+      "allVersions": [
+        "18.3.1"
+      ]
+    },
+    {
+      "packageName": "lodash",
+      "version": "4.17.21",
+      "rootVersion": "4.17.21",
+      "declaredIn": [
+        "dependencies"
+      ],
+      "componentCount": 0,
+      "usageCount": 0,
+      "importingFileCount": 3,
+      "percentage": 0,
+      "hasVersionConflict": false,
+      "allVersions": [
+        "4.17.21"
+      ]
+    },
+    {
+      "packageName": "es-toolkit",
+      "version": "1.39.10",
+      "rootVersion": "1.39.10",
+      "declaredIn": [
+        "dependencies"
+      ],
+      "componentCount": 0,
+      "usageCount": 0,
+      "importingFileCount": 1,
+      "percentage": 0,
+      "hasVersionConflict": false,
+      "allVersions": [
+        "1.39.10"
       ]
     },
     {
@@ -232,8 +225,8 @@ export default {
       ],
       "componentCount": 0,
       "usageCount": 0,
+      "importingFileCount": 0,
       "percentage": 0,
-      "internal": false,
       "hasVersionConflict": false,
       "allVersions": []
     },
@@ -246,25 +239,11 @@ export default {
       ],
       "componentCount": 0,
       "usageCount": 0,
+      "importingFileCount": 0,
       "percentage": 0,
-      "internal": false,
       "hasVersionConflict": false,
       "allVersions": [
         "2.29.4"
-      ]
-    },
-    {
-      "packageName": "react-dom",
-      "version": "18.3.1",
-      "rootVersion": "18.3.1",
-      "declaredIn": [],
-      "componentCount": 0,
-      "usageCount": 0,
-      "percentage": 0,
-      "internal": false,
-      "hasVersionConflict": false,
-      "allVersions": [
-        "18.3.1"
       ]
     }
   ],
@@ -500,7 +479,57 @@ export default {
       "name": "CaseMap",
       "source": "@design-system/foundation",
       "count": 1,
-… 146 more line(s) — full text in tests/__output_baselines__/
+      "files": [
+        "patterns/09-jsx-in-attributes.tsx"
+      ]
+    },
+    {
+      "name": "CaseVar",
+      "source": "@design-system/foundation",
+      "count": 1,
+      "files": [
+        "patterns/09-jsx-in-attributes.tsx"
+      ]
+    },
+    {
+      "name": "CaseReturn",
+      "source": "@design-system/foundation",
+      "count": 1,
+      "files": [
+        "patterns/09-jsx-in-attributes.tsx"
+      ]
+    },
+    {
+      "name": "Child",
+      "source": "@design-system/foundation",
+      "count": 1,
+      "files": [
+        "patterns/09-jsx-in-attributes.tsx"
+      ]
+    },
+    {
+      "name": "CaseAttr",
+      "source": "@design-system/foundation",
+      "count": 1,
+      "files": [
+        "patterns/09-jsx-in-attributes.tsx"
+      ]
+    },
+    {
+      "name": "CaseAttrSelfClosing",
+      "source": "@design-system/foundation",
+      "count": 1,
+      "files": [
+        "patterns/09-jsx-in-attributes.tsx"
+      ]
+    },
+    {
+      "name": "CaseAttrCond",
+      "source": "@design-system/foundation",
+      "count": 1,
+      "files": [
+        "patterns/09-jsx-in-attributes.tsx"
+… 119 more line(s) — re-run locally for the full text.
 ```
 
 </details>
@@ -510,9 +539,9 @@ export default {
 ```text
 hermex v<version>
 - Parsing lockfile...
-✔ Found pnpm lockfile (supports: v5, v6, v9) - 5 packages
-✔ Found 18 files
-✔ Analysis complete! Analyzed 17/18 files
+✔ Found pnpm lockfile (supports: v5, v6, v9) - 7 packages
+✔ Found 22 files
+✔ Analysis complete! Analyzed 21/22 files
 
 ⚠ 1 file(s) failed to parse:
   broken/unparseable.tsx

@@ -14,32 +14,117 @@ _unchanged_
 
 **Ran** `hermex comply --config configs/no-files.config.ts` in `fixtures/` → exit 2, as asserted
 
-**Config** [`fixtures/configs/no-files.config.ts`](https://github.com/Gallevy/hermex/blob/3604555224ef1773506011d12942b23aafe03963/fixtures/configs/no-files.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/3604555224ef1773506011d12942b23aafe03963/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/3604555224ef1773506011d12942b23aafe03963/fixtures/README.md)) · **Case** [`comply-exit-2`](https://github.com/Gallevy/hermex/blob/3604555224ef1773506011d12942b23aafe03963/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/3604555224ef1773506011d12942b23aafe03963/fixtures/cases/comply-exit-2.md))
+**Config** [`fixtures/configs/no-files.config.ts`](https://github.com/Gallevy/hermex/blob/318100cbf03ea7098d207d6235a0c56aad4352f8/fixtures/configs/no-files.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/318100cbf03ea7098d207d6235a0c56aad4352f8/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/318100cbf03ea7098d207d6235a0c56aad4352f8/fixtures/README.md)) · **Case** [`comply-exit-2`](https://github.com/Gallevy/hermex/blob/318100cbf03ea7098d207d6235a0c56aad4352f8/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/318100cbf03ea7098d207d6235a0c56aad4352f8/fixtures/cases/comply-exit-2.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-exit-2`</sub>
 
 ## Config
 
-[`fixtures/configs/no-files.config.ts`](https://github.com/Gallevy/hermex/blob/3604555224ef1773506011d12942b23aafe03963/fixtures/configs/no-files.config.ts)
+[`fixtures/configs/no-files.config.ts`](https://github.com/Gallevy/hermex/blob/318100cbf03ea7098d207d6235a0c56aad4352f8/fixtures/configs/no-files.config.ts) — resolved, as the loader sees it
 
-```ts
-import type { HermexConfigInput } from '../../src/config/types.ts';
-import base from '../hermex.config.ts';
-
-/**
- * `includes` that match nothing. The pipeline bails before analysis, which
- * `comply` reports as exit **2** — pipeline failure, distinct from exit 1
- * (non-compliant). A consumer that treats any non-zero exit as "policy
- * violation" would report a clean repo as failing, so the two codes need to
- * stay distinguishable and reviewed.
- *
- * `scan` takes the same path and exits 0. That asymmetry is deliberate but
- * easy to break, which is why both halves are cases.
- */
-export default {
-  ...base,
-  includes: ['no-such-directory/**/*.{tsx,jsx,ts,js}'],
-} satisfies HermexConfigInput;
+```json
+{
+  "excludes": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "cases.ts",
+    "configs/**",
+    "registry/**",
+    "repos/**"
+  ],
+  "versus": [
+    {
+      "name": "Design System Migration",
+      "packages": [
+        "@design-system/foundation",
+        "@new-system/arc"
+      ]
+    },
+    {
+      "name": "Utility Library Migration",
+      "packages": [
+        "lodash",
+        "es-toolkit"
+      ]
+    }
+  ],
+  "rules": {
+    "no-files": [
+      {
+        "severity": "error",
+        "patterns": [
+          "jest.config.*",
+          ".babelrc"
+        ],
+        "message": "Use vitest + Vite"
+      }
+    ],
+    "no-packages": [
+      {
+        "severity": "error",
+        "patterns": [
+          "moment"
+        ],
+        "message": "Use date-fns or dayjs"
+      }
+    ],
+    "require-files": [
+      {
+        "severity": "error",
+        "patterns": [
+          ".nvmrc"
+        ]
+      },
+      {
+        "severity": "warn",
+        "patterns": [
+          ".editorconfig"
+        ]
+      }
+    ],
+    "require-packages": [
+      {
+        "severity": "error",
+        "patterns": [
+          "typescript"
+        ],
+        "message": "TypeScript is required"
+      }
+    ],
+    "require-scripts": [
+      {
+        "severity": "error",
+        "patterns": [
+          "build",
+          "test"
+        ],
+        "message": "Required npm scripts"
+      }
+    ],
+    "require-package-fields": [
+      {
+        "severity": "warn",
+        "patterns": [
+          "engines",
+          "license"
+        ]
+      }
+    ],
+    "require-engine-version": {
+      "severity": "warn",
+      "range": ">=20",
+      "message": "Minimum Node 20 required"
+    }
+  },
+  "output": {
+    "details": false,
+    "patterns": false
+  },
+  "includes": [
+    "no-such-directory/**/*.{tsx,jsx,ts,js}"
+  ]
+}
 ```
 
 ## Full output
@@ -49,7 +134,7 @@ export default {
 ```text
 hermex v<version>
 - Parsing lockfile...
-✔ Found pnpm lockfile (supports: v5, v6, v9) - 5 packages
+✔ Found pnpm lockfile (supports: v5, v6, v9) - 7 packages
 ✖ No files found matching includes: no-such-directory/**/*.{tsx,jsx,ts,js}
 ```
 

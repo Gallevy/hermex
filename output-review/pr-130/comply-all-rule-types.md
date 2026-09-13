@@ -10,87 +10,129 @@ title: "comply-all-rule-types — Output Review"
 
 _unchanged_
 
-**Asserts** — Every one of the nine rule types in one table, at three severities — the only case that renders engine_version, codeowners and both package-field shapes.
+**Asserts** — Every one of the eleven rule types in one run, at three severities — the only case that renders max-file-size, require-engine-version, codeowners, both package-field shapes, and release-age together. release-age itself never gets a Rules-table row (its display is the Packages table) — that split is what this case pins.
 
 **Ran** `hermex comply` in `fixtures/repos/all-rule-types` → exit 1, as asserted
 
-**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/3604555224ef1773506011d12942b23aafe03963/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/3604555224ef1773506011d12942b23aafe03963/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/3604555224ef1773506011d12942b23aafe03963/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types`](https://github.com/Gallevy/hermex/blob/3604555224ef1773506011d12942b23aafe03963/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/3604555224ef1773506011d12942b23aafe03963/fixtures/cases/comply-all-rule-types.md))
+**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/318100cbf03ea7098d207d6235a0c56aad4352f8/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/318100cbf03ea7098d207d6235a0c56aad4352f8/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/318100cbf03ea7098d207d6235a0c56aad4352f8/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types`](https://github.com/Gallevy/hermex/blob/318100cbf03ea7098d207d6235a0c56aad4352f8/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/318100cbf03ea7098d207d6235a0c56aad4352f8/fixtures/cases/comply-all-rule-types.md))
+
+**Registry** offline, served from `fixtures/registry/timelines.ts` — no network
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-all-rule-types`</sub>
 
 ## Config
 
-[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/3604555224ef1773506011d12942b23aafe03963/fixtures/repos/all-rule-types/hermex.config.ts)
+[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/318100cbf03ea7098d207d6235a0c56aad4352f8/fixtures/repos/all-rule-types/hermex.config.ts) — resolved, as the loader sees it
 
-```ts
-import type { HermexConfigInput } from '../../../src/config/types.ts';
-
-/**
- * Every rule type hermex has, all firing at once, at three different
- * severities. The primary fixture repo only ever trips three of the nine —
- * so without this repo the rules table has never been reviewed with an
- * `engine_version` row, a `codeowners` row, or either of the
- * package-field shapes in it, and nothing would catch a renderer that
- * mishandles `fieldPath` / `installedRange` / a long `matchedFiles` list.
- *
- * Scoped to `src/` so `jest.config.js` is found by `detect_files` without
- * also being parsed as source.
- */
-export default {
-  includes: ['src/**/*.{tsx,jsx,ts,js}'],
-  rules: {
-    detect_files: [
+```json
+{
+  "includes": [
+    "src/**/*.{tsx,jsx,ts,js}"
+  ],
+  "releaseAge": {
+    "cacheDisabled": true
+  },
+  "rules": {
+    "release-age": [
       {
-        severity: 'error',
-        patterns: ['jest.config.*', '.babelrc'],
-        message: 'Use vitest + Vite',
-      },
+        "severity": "error",
+        "patterns": [
+          "react"
+        ]
+      }
     ],
-    require_files: [{ severity: 'error', patterns: ['.nvmrc'] }],
-    forbid_packages: [
-      { severity: 'error', patterns: ['moment'], message: 'Use date-fns or dayjs' },
-    ],
-    require_packages: [
-      { severity: 'error', patterns: ['typescript'], message: 'TypeScript is required' },
-    ],
-    require_scripts: [
-      { severity: 'error', patterns: ['build', 'test'], message: 'Required npm scripts' },
-    ],
-    // Missing outright, so the violation reports the absence.
-    require_package_fields: [{ severity: 'warn', patterns: ['license'] }],
-    // Present, so the violation reports the offending value — the other
-    // half of the package-field renderer.
-    forbid_package_fields: [
+    "no-files": [
       {
-        severity: 'warn',
-        patterns: ['publishConfig.registry'],
-        message: 'Publish to the public registry',
-      },
+        "severity": "error",
+        "patterns": [
+          "jest.config.*",
+          ".babelrc"
+        ],
+        "message": "Use vitest + Vite"
+      }
     ],
-    // engines.node is ">=16", so this reports both ranges rather than the
-    // "not specified" shape.
-    engine_version: { severity: 'error', range: '>=20', message: 'Minimum Node 20 required' },
-    // CODEOWNERS covers two of the three scanned files, and one of those
-    // belongs to a team outside `requiredOwners` — so this produces both
-    // codeowners violations, unowned and wrong-owner.
-    //
-    // The baseline currently describes both as "have no owner", which is
-    // wrong for src/legacy.tsx: it has an owner, just not a required one.
-    // That is #95, left unfixed on purpose — the recorded output is the
-    // evidence, and refreshing this baseline is how the fix gets reviewed.
-    codeowners: {
-      severity: 'info',
-      requiredOwners: ['@org/platform'],
-      message: 'Every file needs a platform owner',
+    "require-files": [
+      {
+        "severity": "error",
+        "patterns": [
+          ".nvmrc"
+        ]
+      }
+    ],
+    "max-file-size": [
+      {
+        "severity": "warn",
+        "patterns": [
+          "assets/**/*.svg"
+        ],
+        "maxSize": "1kb",
+        "message": "Compress it or serve it from the CDN"
+      }
+    ],
+    "no-packages": [
+      {
+        "severity": "error",
+        "patterns": [
+          "moment"
+        ],
+        "message": "Use date-fns or dayjs"
+      }
+    ],
+    "require-packages": [
+      {
+        "severity": "error",
+        "patterns": [
+          "typescript"
+        ],
+        "message": "TypeScript is required"
+      }
+    ],
+    "require-scripts": [
+      {
+        "severity": "error",
+        "patterns": [
+          "build",
+          "test"
+        ],
+        "message": "Required npm scripts"
+      }
+    ],
+    "require-package-fields": [
+      {
+        "severity": "warn",
+        "patterns": [
+          "license"
+        ]
+      }
+    ],
+    "no-package-fields": [
+      {
+        "severity": "warn",
+        "patterns": [
+          "publishConfig.registry"
+        ],
+        "message": "Publish to the public registry"
+      }
+    ],
+    "require-engine-version": {
+      "severity": "error",
+      "range": ">=20",
+      "message": "Minimum Node 20 required"
     },
+    "require-codeowners": {
+      "severity": "info",
+      "requiredOwners": [
+        "@org/platform"
+      ],
+      "message": "Every file needs a platform owner"
+    }
   },
-  output: {
-    packages: false,
-    components: false,
-    patterns: false,
-    versus: false,
-  },
-} satisfies HermexConfigInput;
+  "output": {
+    "components": false,
+    "patterns": false,
+    "versus": false
+  }
+}
 ```
 
 ## Full output
@@ -103,37 +145,52 @@ hermex v<version>
 ✔ Found pnpm lockfile (supports: v5, v6, v9) - 2 packages
 ✔ Found 3 files
 ✔ Analysis complete! Analyzed 3/3 files
+✔ Release age fetched
 
 🔍 Rules
 
-┌──────────────────┬───────────────────────────────────────────────────────────────────────────────────────────────┐
-│ Rule             │ Description                                                                                   │
-├──────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
-│ forbid_packages  │ 🔴 moment is forbidden — Use date-fns or dayjs                                                │
-├──────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
-│ require_packages │ 🔴 typescript not installed — TypeScript is required                                          │
-├──────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
-│ detect_files     │ 🔴 jest.config.*, .babelrc detected (jest.config.js, .babelrc) — Use vitest + Vite            │
-├──────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
-│ require_files    │ 🔴 .nvmrc not found                                                                           │
-├──────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
-│ require_scripts  │ 🔴 script build, test missing in package.json — Required npm scripts                          │
-├──────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
-│ package_fields   │ 🟡 field license missing in package.json                                                      │
-├──────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
-│ package_fields   │ 🟡 field publishConfig.registry is forbidden in package.json — Publish to the public registry │
-├──────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
-│ engine_version   │ 🔴 engines.node is >=16, required >=20 — Minimum Node 20 required                             │
-├──────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
-│ codeowners       │ 🔵 1 scanned file(s) have no owner: src/orphan.tsx — Every file needs a platform owner        │
-├──────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
-│ codeowners       │ 🔵 1 scanned file(s) have no owner: src/legacy.tsx — Every file needs a platform owner        │
-└──────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────┘
+┌────────────────────────┬───────────────────────────────────────────────────────────────────────────────────────────────┐
+│ Rule                   │ Description                                                                                   │
+├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ no-packages            │ 🔴 moment is forbidden — Use date-fns or dayjs                                                │
+├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ require-packages       │ 🔴 typescript not installed — TypeScript is required                                          │
+├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ no-files               │ 🔴 jest.config.*, .babelrc detected (jest.config.js, .babelrc) — Use vitest + Vite            │
+├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ require-files          │ 🔴 .nvmrc not found                                                                           │
+├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ require-scripts        │ 🔴 script build, test missing in package.json — Required npm scripts                          │
+├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ require-engine-version │ 🔴 engines.node is >=16, required >=20 — Minimum Node 20 required                             │
+├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ max-file-size          │ 🟡 assets/**/*.svg over 1 KB (logo.svg at 1.4 KB) — Compress it or serve it from the CDN      │
+├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ package-fields         │ 🟡 field license missing in package.json                                                      │
+├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ package-fields         │ 🟡 field publishConfig.registry is forbidden in package.json — Publish to the public registry │
+├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ require-codeowners     │ 🔵 1 scanned file(s) have no owner: src/orphan.tsx — Every file needs a platform owner        │
+├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ require-codeowners     │ 🔵 1 scanned file(s) have the wrong owner: src/legacy.tsx — Every file needs a platform owner │
+└────────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────┘
 
-6 errors, 2 warnings
+6 errors, 3 warnings, 2 info
 
-🔴 NOT COMPLIANT
-  6 mandatory violations found
+📦 Packages
+
+┌──────────────────────────────┬───────────┬─────────────────────────────────────────────────────────────────┐
+│ Package                      │ Installed │ Target                                                          │
+├──────────────────────────────┼───────────┼─────────────────────────────────────────────────────────────────┤
+│ react                        │ 18.3.1    │ 🔴 major 19.1.0 (340 days overdue)                              │
+├──────────────────────────────┼───────────┼─────────────────────────────────────────────────────────────────┤
+│ [DEPRECATED] [BANNED] moment │ 2.29.4    │ 🟡 minor 2.30.1 (no compliant release available) [not enforced] │
+└──────────────────────────────┴───────────┴─────────────────────────────────────────────────────────────────┘
+
+1 error, 1 warning
+
+🔴 Not compliant
+  8 mandatory violations found
 ```
 
 </details>

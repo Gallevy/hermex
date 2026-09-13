@@ -14,49 +14,136 @@ _unchanged_
 
 **Ran** `hermex comply --config configs/overrides.config.ts` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/configs/overrides.config.ts`](https://github.com/Gallevy/hermex/blob/3604555224ef1773506011d12942b23aafe03963/fixtures/configs/overrides.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/3604555224ef1773506011d12942b23aafe03963/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/3604555224ef1773506011d12942b23aafe03963/fixtures/README.md)) · **Case** [`comply-overrides`](https://github.com/Gallevy/hermex/blob/3604555224ef1773506011d12942b23aafe03963/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/3604555224ef1773506011d12942b23aafe03963/fixtures/cases/comply-overrides.md))
+**Config** [`fixtures/configs/overrides.config.ts`](https://github.com/Gallevy/hermex/blob/318100cbf03ea7098d207d6235a0c56aad4352f8/fixtures/configs/overrides.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/318100cbf03ea7098d207d6235a0c56aad4352f8/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/318100cbf03ea7098d207d6235a0c56aad4352f8/fixtures/README.md)) · **Case** [`comply-overrides`](https://github.com/Gallevy/hermex/blob/318100cbf03ea7098d207d6235a0c56aad4352f8/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/318100cbf03ea7098d207d6235a0c56aad4352f8/fixtures/cases/comply-overrides.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-overrides`</sub>
 
 ## Config
 
-[`fixtures/configs/overrides.config.ts`](https://github.com/Gallevy/hermex/blob/3604555224ef1773506011d12942b23aafe03963/fixtures/configs/overrides.config.ts)
+[`fixtures/configs/overrides.config.ts`](https://github.com/Gallevy/hermex/blob/318100cbf03ea7098d207d6235a0c56aad4352f8/fixtures/configs/overrides.config.ts) — resolved, as the loader sees it
 
-```ts
-import type { HermexConfigInput } from '../../src/config/types.ts';
-import base from '../hermex.config.ts';
-
-/**
- * Repo-scoped rule adjustments. `match` is checked against the current
- * repo's package.json "name", which for the primary fixture repo is
- * `hermex-fixtures`, so both entries below apply and the rules table has to
- * show the *resolved* severities rather than the ones authored in the base
- * config:
- *
- * - `forbid_packages` on `moment` drops from error to warn.
- * - `require_files` on `.editorconfig` is switched off entirely and must
- *   disappear from the output, not appear greyed out.
- *
- * The remaining error-severity rules are left alone on purpose — an
- * override that made the repo compliant would prove the rules vanished, not
- * that they were re-scoped.
- */
-export default {
-  ...base,
-  overrides: [
-    {
-      match: ['hermex-fixtures'],
-      rules: {
-        forbid_packages: {
-          severity: 'warn',
-          patterns: ['moment'],
-          message: 'Use date-fns or dayjs (scheduled for removal)',
-        },
-        require_files: { severity: 'off', patterns: ['.editorconfig'] },
-      },
-    },
+```json
+{
+  "excludes": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "cases.ts",
+    "configs/**",
+    "registry/**",
+    "repos/**"
   ],
-} satisfies HermexConfigInput;
+  "versus": [
+    {
+      "name": "Design System Migration",
+      "packages": [
+        "@design-system/foundation",
+        "@new-system/arc"
+      ]
+    },
+    {
+      "name": "Utility Library Migration",
+      "packages": [
+        "lodash",
+        "es-toolkit"
+      ]
+    }
+  ],
+  "rules": {
+    "no-files": [
+      {
+        "severity": "error",
+        "patterns": [
+          "jest.config.*",
+          ".babelrc"
+        ],
+        "message": "Use vitest + Vite"
+      }
+    ],
+    "no-packages": [
+      {
+        "severity": "error",
+        "patterns": [
+          "moment"
+        ],
+        "message": "Use date-fns or dayjs"
+      }
+    ],
+    "require-files": [
+      {
+        "severity": "error",
+        "patterns": [
+          ".nvmrc"
+        ]
+      },
+      {
+        "severity": "warn",
+        "patterns": [
+          ".editorconfig"
+        ]
+      }
+    ],
+    "require-packages": [
+      {
+        "severity": "error",
+        "patterns": [
+          "typescript"
+        ],
+        "message": "TypeScript is required"
+      }
+    ],
+    "require-scripts": [
+      {
+        "severity": "error",
+        "patterns": [
+          "build",
+          "test"
+        ],
+        "message": "Required npm scripts"
+      }
+    ],
+    "require-package-fields": [
+      {
+        "severity": "warn",
+        "patterns": [
+          "engines",
+          "license"
+        ]
+      }
+    ],
+    "require-engine-version": {
+      "severity": "warn",
+      "range": ">=20",
+      "message": "Minimum Node 20 required"
+    }
+  },
+  "output": {
+    "details": false,
+    "patterns": false
+  },
+  "overrides": [
+    {
+      "match": [
+        "hermex-fixtures"
+      ],
+      "rules": {
+        "no-packages": {
+          "severity": "warn",
+          "patterns": [
+            "moment"
+          ],
+          "message": "Use date-fns or dayjs (scheduled for removal)"
+        },
+        "require-files": {
+          "severity": "off",
+          "patterns": [
+            ".editorconfig"
+          ]
+        }
+      }
+    }
+  ]
+}
 ```
 
 ## Full output
@@ -66,9 +153,9 @@ export default {
 ```text
 hermex v<version>
 - Parsing lockfile...
-✔ Found pnpm lockfile (supports: v5, v6, v9) - 5 packages
-✔ Found 18 files
-✔ Analysis complete! Analyzed 17/18 files
+✔ Found pnpm lockfile (supports: v5, v6, v9) - 7 packages
+✔ Found 22 files
+✔ Analysis complete! Analyzed 21/22 files
 
 ⚠ 1 file(s) failed to parse:
   broken/unparseable.tsx
@@ -88,11 +175,11 @@ Caused by:
 ┌──────────────────┬────────────────────────────────────────────────────────────────────────┐
 │ Rule             │ Description                                                            │
 ├──────────────────┼────────────────────────────────────────────────────────────────────────┤
-│ forbid_packages  │ 🟡 moment is forbidden — Use date-fns or dayjs (scheduled for removal) │
+│ require-packages │ 🔴 typescript not installed — TypeScript is required                   │
 ├──────────────────┼────────────────────────────────────────────────────────────────────────┤
-│ require_packages │ 🔴 typescript not installed — TypeScript is required                   │
+│ require-files    │ 🔴 .nvmrc not found                                                    │
 ├──────────────────┼────────────────────────────────────────────────────────────────────────┤
-│ require_files    │ 🔴 .nvmrc not found                                                    │
+│ no-packages      │ 🟡 moment is forbidden — Use date-fns or dayjs (scheduled for removal) │
 └──────────────────┴────────────────────────────────────────────────────────────────────────┘
 
 2 errors, 1 warning
@@ -101,11 +188,16 @@ Caused by:
 
   Design System Migration
   ──────────────────────────────────────────────────
-  @design-system/foundation  ██████████████████████████████ 100.0% (33 usages)
-  @new-system/arc            ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0.0% (0 usages)
+  @design-system/foundation  ██████████████████████████████ 100.0% (8 files, 33 renders)
+  @new-system/arc            ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0.0% (not found in this repo)
+
+  Utility Library Migration
+  ──────────────────────────────────────────────────
+  lodash      ███████████████████████░░░░░░░ 75.0% (3 files)
+  es-toolkit  ████████░░░░░░░░░░░░░░░░░░░░░░ 25.0% (1 file)
 
 
-🔴 NOT COMPLIANT
+🔴 Not compliant
   2 mandatory violations found
 ```
 

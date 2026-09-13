@@ -14,7 +14,7 @@ _unchanged_
 
 **Ran** `hermex scan --config configs/minimal.config.ts` in `fixtures/` → exit 0, as asserted
 
-**Config** [`fixtures/configs/minimal.config.ts`](https://github.com/Gallevy/hermex/blob/3604555224ef1773506011d12942b23aafe03963/fixtures/configs/minimal.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/3604555224ef1773506011d12942b23aafe03963/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/3604555224ef1773506011d12942b23aafe03963/fixtures/README.md)) · **Case** [`scan-human-minimal`](https://github.com/Gallevy/hermex/blob/3604555224ef1773506011d12942b23aafe03963/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/3604555224ef1773506011d12942b23aafe03963/fixtures/cases/scan-human-minimal.md))
+**Config** [`fixtures/configs/minimal.config.ts`](https://github.com/Gallevy/hermex/blob/318100cbf03ea7098d207d6235a0c56aad4352f8/fixtures/configs/minimal.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/318100cbf03ea7098d207d6235a0c56aad4352f8/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/318100cbf03ea7098d207d6235a0c56aad4352f8/fixtures/README.md)) · **Case** [`scan-human-minimal`](https://github.com/Gallevy/hermex/blob/318100cbf03ea7098d207d6235a0c56aad4352f8/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/318100cbf03ea7098d207d6235a0c56aad4352f8/fixtures/cases/scan-human-minimal.md))
 
 **Must not appear anywhere in stdout** `📦 Packages`, `⚛️ Components`, `🔍 Rules`, `⚖️ Versus`
 
@@ -22,30 +22,113 @@ _unchanged_
 
 ## Config
 
-[`fixtures/configs/minimal.config.ts`](https://github.com/Gallevy/hermex/blob/3604555224ef1773506011d12942b23aafe03963/fixtures/configs/minimal.config.ts)
+[`fixtures/configs/minimal.config.ts`](https://github.com/Gallevy/hermex/blob/318100cbf03ea7098d207d6235a0c56aad4352f8/fixtures/configs/minimal.config.ts) — resolved, as the loader sees it
 
-```ts
-import type { HermexConfigInput } from '../../src/config/types.ts';
-import base from '../hermex.config.ts';
-
-/**
- * Every output section off except the summary. Regression cover for #63:
- * a section that is switched off must actually be absent, not rendered
- * empty or rendered anyway. Used twice — once as human output, once as
- * `--format json`, since the JSON payload has to honour the same toggles.
- */
-export default {
-  ...base,
-  output: {
-    summary: 'log',
-    packages: false,
-    components: false,
-    patterns: false,
-    details: false,
-    versus: false,
-    rules: false,
+```json
+{
+  "excludes": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "cases.ts",
+    "configs/**",
+    "registry/**",
+    "repos/**"
+  ],
+  "versus": [
+    {
+      "name": "Design System Migration",
+      "packages": [
+        "@design-system/foundation",
+        "@new-system/arc"
+      ]
+    },
+    {
+      "name": "Utility Library Migration",
+      "packages": [
+        "lodash",
+        "es-toolkit"
+      ]
+    }
+  ],
+  "rules": {
+    "no-files": [
+      {
+        "severity": "error",
+        "patterns": [
+          "jest.config.*",
+          ".babelrc"
+        ],
+        "message": "Use vitest + Vite"
+      }
+    ],
+    "no-packages": [
+      {
+        "severity": "error",
+        "patterns": [
+          "moment"
+        ],
+        "message": "Use date-fns or dayjs"
+      }
+    ],
+    "require-files": [
+      {
+        "severity": "error",
+        "patterns": [
+          ".nvmrc"
+        ]
+      },
+      {
+        "severity": "warn",
+        "patterns": [
+          ".editorconfig"
+        ]
+      }
+    ],
+    "require-packages": [
+      {
+        "severity": "error",
+        "patterns": [
+          "typescript"
+        ],
+        "message": "TypeScript is required"
+      }
+    ],
+    "require-scripts": [
+      {
+        "severity": "error",
+        "patterns": [
+          "build",
+          "test"
+        ],
+        "message": "Required npm scripts"
+      }
+    ],
+    "require-package-fields": [
+      {
+        "severity": "warn",
+        "patterns": [
+          "engines",
+          "license"
+        ]
+      }
+    ],
+    "require-engine-version": {
+      "severity": "warn",
+      "range": ">=20",
+      "message": "Minimum Node 20 required"
+    }
   },
-} satisfies HermexConfigInput;
+  "output": {
+    "summary": "log",
+    "packages": false,
+    "components": false,
+    "patterns": false,
+    "details": false,
+    "versus": false,
+    "rules": false
+  }
+}
 ```
 
 ## Full output
@@ -55,9 +138,9 @@ export default {
 ```text
 hermex v<version>
 - Parsing lockfile...
-✔ Found pnpm lockfile (supports: v5, v6, v9) - 5 packages
-✔ Found 18 files
-✔ Analysis complete! Analyzed 17/18 files
+✔ Found pnpm lockfile (supports: v5, v6, v9) - 7 packages
+✔ Found 22 files
+✔ Analysis complete! Analyzed 21/22 files
 
 ⚠ 1 file(s) failed to parse:
   broken/unparseable.tsx
@@ -77,9 +160,9 @@ Caused by:
 ┌─────────────────────┬───────┐
 │ Metric              │ Count │
 ├─────────────────────┼───────┤
-│ Files Analyzed      │ 17    │
+│ Files Analyzed      │ 21    │
 ├─────────────────────┼───────┤
-│ Packages            │ 5     │
+│ Packages            │ 7     │
 ├─────────────────────┼───────┤
 │ External Components │ 19    │
 ├─────────────────────┼───────┤
