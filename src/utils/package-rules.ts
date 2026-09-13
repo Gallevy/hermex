@@ -105,7 +105,7 @@ export function detectRequiredPackages(
  * distribution is the axis enrichment writes to.
  *
  * Resolution is last-match-wins against an implicit `['**']` baseline
- * (`resolveDeprecatedPackagesRule`), the same governance `release-age`
+ * (`resolveDeprecatedPackagesRule`), the same governance `no-outdated-packages`
  * uses, rather than "every matching entry fires" — so exactly one entry
  * governs a package and `severity: 'off'` genuinely exempts it. The
  * baseline is why a deprecated package stays visible with no rule authored

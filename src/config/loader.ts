@@ -1,8 +1,23 @@
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import chalk from 'chalk';
 import { HermexConfigSchema } from './schema';
+import { migrateDeprecatedConfig } from './deprecations';
 import type { HermexConfig } from './schema';
+
+/**
+ * Parses a raw config after migrating any deprecated keys onto their
+ * current names, warning once per deprecation. Warnings go to stderr so
+ * they never contaminate `--format json` on stdout.
+ */
+function parseConfig(raw: unknown): HermexConfig {
+  const { config, warnings } = migrateDeprecatedConfig(raw);
+  for (const warning of warnings) {
+    console.error(chalk.yellow(`⚠ ${warning}`));
+  }
+  return HermexConfigSchema.parse(config);
+}
 
 export async function loadConfig(
   cwd: string,
@@ -30,8 +45,8 @@ export async function loadConfig(
       );
     }
 
-    return HermexConfigSchema.parse(mod.default);
+    return parseConfig(mod.default);
   }
 
-  return HermexConfigSchema.parse({});
+  return parseConfig({});
 }

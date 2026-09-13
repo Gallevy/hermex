@@ -95,13 +95,13 @@ export interface RequireEngineVersionViolation extends BaseViolation<'require-en
 }
 
 /**
- * One violation per overdue package — see `src/rules/release-age.ts`.
+ * One violation per overdue package — see `src/rules/no-outdated-packages.ts`.
  * Renders only in the Packages table (`print-packages.ts`), never in the
- * Rules table: `RULE_RENDERERS['release-age']` in `print-rules.ts` returns
+ * Rules table: `RULE_RENDERERS['no-outdated-packages']` in `print-rules.ts` returns
  * no rows for it, the same kind of declared, first-class rendering choice
  * every other rule type makes, not a special case bolted on separately.
  */
-export interface ReleaseAgeViolation extends BaseViolation<'release-age'> {
+export interface NoOutdatedPackagesViolation extends BaseViolation<'no-outdated-packages'> {
   packageName: string;
   installedVersion: string;
   worstLevel: 'minor_overdue' | 'major_overdue';
@@ -124,7 +124,7 @@ export type CoreRuleViolation =
   | NoPackageFieldsViolation
   | RequireEngineVersionViolation
   | RequireCodeownersViolation
-  | ReleaseAgeViolation;
+  | NoOutdatedPackagesViolation;
 
 /**
  * Everything the rules table and the compliance verdict see, hermex's own

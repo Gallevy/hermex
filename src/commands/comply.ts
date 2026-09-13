@@ -87,7 +87,7 @@ export async function executeComply(
       printJson(aggregated, config.output, compliance);
     } else {
       printRules(aggregated);
-      // Whether release-age actually ran for this repo — `rules['release-age']`
+      // Whether release-age actually ran for this repo — `rules['no-outdated-packages']`
       // being non-empty in the base config isn't enough on its own, since a
       // per-repo `overrides[]` entry can turn it on even when the base is
       // empty (and vice versa can't happen: overrides only add rules here).

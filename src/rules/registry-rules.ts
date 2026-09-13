@@ -6,10 +6,10 @@ import type { PackageDistribution } from '../utils/aggregator';
 import { enrichFromRegistry } from '../npm-registry/enricher';
 import { detectDeprecatedPackages } from '../utils/package-rules';
 import {
-  evaluateReleaseAge,
+  evaluateOutdatedPackages,
   releaseAgeConnection,
   resolveReleaseAgeRule,
-} from './release-age';
+} from './no-outdated-packages';
 import type { RuleViolation } from './shared';
 
 /**
@@ -24,7 +24,7 @@ import type { RuleViolation } from './shared';
  */
 export function needsRegistry(rules: ResolvedRulesConfig): boolean {
   return (
-    rules['release-age'].length > 0 ||
+    rules['no-outdated-packages'].length > 0 ||
     rules['no-deprecated-packages'].length > 0
   );
 }
@@ -32,7 +32,7 @@ export function needsRegistry(rules: ResolvedRulesConfig): boolean {
 /**
  * Runs every registry-backed rule off a single enrichment pass.
  *
- * `release-age` and `no-deprecated-packages` read different fields of the
+ * `no-outdated-packages` and `no-deprecated-packages` read different fields of the
  * same registry document, so they share one request per installed package
  * rather than paying for one each (#107). The release-age policy callback
  * is supplied only when that rule is actually configured — without it
@@ -50,7 +50,7 @@ export async function evaluateRegistryRules(
   violations: RuleViolation[];
   skipped: number;
 }> {
-  const releaseAgeRules = config.rules['release-age'];
+  const releaseAgeRules = config.rules['no-outdated-packages'];
 
   const { enriched, skipped } = await enrichFromRegistry(
     packages,
@@ -63,7 +63,7 @@ export async function evaluateRegistryRules(
   return {
     enriched,
     violations: [
-      ...evaluateReleaseAge(enriched, releaseAgeRules),
+      ...evaluateOutdatedPackages(enriched, releaseAgeRules),
       ...detectDeprecatedPackages(
         enriched,
         config.rules['no-deprecated-packages'],

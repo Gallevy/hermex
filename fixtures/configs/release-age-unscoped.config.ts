@@ -11,6 +11,6 @@ export default {
     // stays the "release-age is on, nothing enforced" path even though
     // release-age.config.ts's own `['**']` baseline would do the same thing
     // by default.
-    'release-age': [{ severity: 'warn', patterns: ['**'] }],
+    'no-outdated-packages': [{ severity: 'warn', patterns: ['**'] }],
   },
 } satisfies HermexConfigInput;

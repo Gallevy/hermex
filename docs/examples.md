@@ -441,18 +441,18 @@ rules: {
 },
 ```
 
-Like [release-age](#release-age-opt-in) — and unlike every other rule — exactly one entry governs a
+Like [no-outdated-packages](#outdated-packages-opt-in) — and unlike every other rule — exactly one entry governs a
 package, **last match wins**. That is why `'off'` genuinely exempts a package here rather than falling
 through to the baseline.
 
 **The baseline decides severity, not whether hermex looks.** Deprecation is a registry fact, so it costs
 one request per installed dependency. That request is only made when `rules['no-deprecated-packages']` or
-`rules['release-age']` is non-empty for the repo — a run that configures neither makes no network calls
+`rules['no-outdated-packages']` is non-empty for the repo — a run that configures neither makes no network calls
 at all. When either is configured, both rules read the same fetched document, so enabling the second one
 costs nothing extra.
 
 Before v3 deprecation had no rule of its own: it was detected as a by-product of release-age enrichment,
-so turning release-age off silently turned deprecation detection off with it, even though the two have
+so turning the rule off silently turned deprecation detection off with it, even though the two have
 nothing to do with each other ([#107](https://github.com/Gallevy/hermex/issues/107)).
 
 Purely transitive packages are out of scope, for the same reason they are for `no-packages`: you can't
@@ -485,7 +485,7 @@ ordinary `ruleViolations` entry:
 └─────────┴───────────┴─────────────────────────────────────┴───────────────┘
 ```
 
-**Installed** and **Minimum target** appear only when release-age ran; they are that rule's display, and
+**Installed** and **Minimum target** appear only when the rule ran; they are that rule's display, and
 its icon sits beside the target it judges. **Flags** is where every *other* package rule reports — one
 badge per rule that flagged the row, blank when none did.
 
@@ -502,7 +502,7 @@ The icons mean the same thing everywhere in hermex's output:
 | 🔵 | Reported at `info` — counted in the tally, never part of the verdict. |
 | 🟡 | Reported at `warn` — counted, and drops `compliance.status` to `"warning"`, but `comply` still exits 0. |
 | 🔴 | Reported at `error` — `comply` exits 1. |
-| *(none)* | No rule is judging this. A release-age entry at `'off'` still shows the target it would have recommended, with no icon, because nothing about it is a verdict. |
+| *(none)* | No rule is judging this. A no-outdated-packages entry at `'off'` still shows the target it would have recommended, with no icon, because nothing about it is a verdict. |
 | `—` | Nothing was checked: the package has no installed version, or the registry never answered for it. Distinct from 🟢, which is the claim that hermex looked and found nothing to do. |
 
 Anything a badge can't hold — npm's deprecation notice, a package with several resolved copies, an
@@ -598,9 +598,9 @@ when a field **is present** at the given dot-path (e.g. `scripts.preinstall`)
 stringified value must match, same as `require-package-fields`'s `values`).
 Omitting `values` means "forbidden if present at all, regardless of value."
 
-## Release Age (opt-in)
+## Outdated Packages (opt-in)
 
-`release-age` is a rule, authored the same way as every other rule (`rules['release-age']`) — full `error`/`warn`/`info`/`off` severity, `patterns` naming which packages an entry governs, and its own `thresholds`/`scope`. Whether release-age runs at all is decided purely by whether this array is non-empty for a given repo — there's no separate `enabled` flag, the same way `no-files: []` already means "does nothing":
+`no-outdated-packages` is a rule, authored the same way as every other rule (`rules['no-outdated-packages']`) — full `error`/`warn`/`info`/`off` severity, `patterns` naming which packages an entry governs, and its own `thresholds`/`scope`. Whether the rule runs at all is decided purely by whether this array is non-empty for a given repo — there's no separate `enabled` flag, the same way `no-files: []` already means "does nothing":
 
 ```ts
 export default defineConfig({
@@ -611,7 +611,7 @@ export default defineConfig({
     // cacheTtlMs: 1000 * 60 * 60,
   },
   rules: {
-    'release-age': [
+    'no-outdated-packages': [
       { severity: 'error', patterns: ['@my-org/*'] },
     ],
   },
@@ -626,13 +626,23 @@ is the most conservative release that clears the breach, not the newest one avai
 Deprecation is a separate rule, [`no-deprecated-packages`](#deprecated-packages). It shares this rule's
 registry request but does not depend on it.
 
+> **Not the same set as `npm outdated`.** `npm outdated` lists a package the moment anything newer is
+> published. This rule deliberately waits: a newer release only counts once it has aged past the
+> threshold for its bump tier, so a patch published yesterday is not a violation. The thresholds are the
+> policy — the rule is quieter than `npm outdated` by design.
+
+> **Renamed in v3.** This rule was `release-age`. The old key still works and behaves identically but
+> warns on load — rename `rules['release-age']` to `rules['no-outdated-packages']`. It was the only rule
+> id naming the thing measured rather than the policy, and `minimumReleaseAge` (Renovate, pnpm) means the
+> *opposite* check: don't install anything *younger* than N days.
+
 ### Resolution: one governing entry per package, last match wins
 
-Unlike every other rule (where every matching entry fires independently), release-age needs exactly one governing entry per package — a package can't be simultaneously `error` under one entry and `warn` under another. When more than one entry's `patterns` match a package, **the last one listed wins** — the same order-decides-priority convention as ESLint's `overrides`/flat config:
+Unlike every other rule (where every matching entry fires independently), no-outdated-packages needs exactly one governing entry per package — a package can't be simultaneously `error` under one entry and `warn` under another. When more than one entry's `patterns` match a package, **the last one listed wins** — the same order-decides-priority convention as ESLint's `overrides`/flat config:
 
 ```ts
 rules: {
-  'release-age': [
+  'no-outdated-packages': [
     { severity: 'warn', patterns: ['**'] },              // baseline for everything
     { severity: 'error', patterns: ['@my-org/*'] },       // org packages are mandatory
     { severity: 'off', patterns: ['@my-org/legacy-*'] },  // except these, listed last so they win
@@ -647,17 +657,17 @@ rules: {
   // Only this entry authored — @my-org/* is mandatory, every other
   // installed package is still checked and shown, just advisory (the
   // implicit baseline), with no need to spell that out.
-  'release-age': [{ severity: 'error', patterns: ['@my-org/*'] }],
+  'no-outdated-packages': [{ severity: 'error', patterns: ['@my-org/*'] }],
 },
 ```
 
-`severity: 'off'` genuinely exempts the packages it matches — unlike other rules, an `'off'` release-age entry is never silently dropped, since dropping it would just hand those packages back to a broader entry or the baseline instead of exempting them.
+`severity: 'off'` genuinely exempts the packages it matches — unlike other rules, an `'off'` no-outdated-packages entry is never silently dropped, since dropping it would just hand those packages back to a broader entry or the baseline instead of exempting them.
 
 Per-entry `thresholds` and `scope` override the schema defaults (`{ patch: 30, minor: 45, major: 60 }`, `scope: 'root'`) for just the packages that entry governs:
 
 ```ts
 rules: {
-  'release-age': [
+  'no-outdated-packages': [
     { severity: 'error', patterns: ['@my-org/*'] },
     {
       severity: 'error',
@@ -671,13 +681,13 @@ rules: {
 
 Rule-entry patterns are checked against the lockfile directly, not just packages hermex found imported as components — so a CSS-only or side-effect-only dependency (e.g. `import '@my-org/styles/button.css'`) still gets checked and can still fail `hermex comply`, even though it never shows up in component usage.
 
-Which entry governs a package decides *severity, thresholds and scope* — never *whether the package is checked*, once release-age is on for the repo at all. Every package in the packages table with an installed version gets its release age looked up, so a dependency imported purely as functions or hooks (`@my-org/toolkit`) shows a Minimum target like any other — advisory 🟡 under the baseline, mandatory 🔴 when a specific entry names it `error`. Before v3 that lookup was gated on JSX component usage, which had nothing to do with whether an installed version is stale and silently exempted every function-only dependency ([#171](https://github.com/Gallevy/hermex/issues/171)). The cost is one registry request per installed dependency rather than per rendered one.
+Which entry governs a package decides *severity, thresholds and scope* — never *whether the package is checked*, once the rule is on for the repo at all. Every package in the packages table with an installed version gets its release age looked up, so a dependency imported purely as functions or hooks (`@my-org/toolkit`) shows a Minimum target like any other — advisory 🟡 under the baseline, mandatory 🔴 when a specific entry names it `error`. Before v3 that lookup was gated on JSX component usage, which had nothing to do with whether an installed version is stale and silently exempted every function-only dependency ([#171](https://github.com/Gallevy/hermex/issues/171)). The cost is one registry request per installed dependency rather than per rendered one.
 
 Severity only decides mandatory vs. advisory for a package that's already being enforced under its governing entry's `scope` — it doesn't override `scope` itself. Under `scope: 'root'` (the default), a package matched by an `error` entry that's only ever pulled in transitively (never a direct dependency in your `package.json`) still can't fail `comply` — there's no root copy to hold accountable. It still shows up as advisory context (see below), it just doesn't block the build.
 
 ### Rules-table display: none — see the Packages table instead
 
-`release-age` never renders a row in the `🔍 Rules` table, unlike every other rule — its per-package data (installed vs. target version, days overdue, upgrade path) doesn't compress into that table's one-line-per-violation format without losing the thing you came for. This is a declared choice in `print-rules.ts`'s per-rule-id renderer dispatch, the same kind every rule makes (some fold into one row and truncate, some render one row per violation) — release-age's choice is just "render in the Packages table instead." Release-age violations still count toward the error/warning tally and the overall compliance verdict; they just don't get their own Rules-table line.
+`no-outdated-packages` never renders a row in the `🔍 Rules` table, unlike every other rule — its per-package data (installed vs. target version, days overdue, upgrade path) doesn't compress into that table's one-line-per-violation format without losing the thing you came for. This is a declared choice in `print-rules.ts`'s per-rule-id renderer dispatch, the same kind every rule makes (some fold into one row and truncate, some render one row per violation) — its choice is just "render in the Packages table instead." Violations from it still count toward the error/warning tally and the overall compliance verdict; they just don't get their own Rules-table line.
 
 ### Root vs. tree scope
 
@@ -685,7 +695,7 @@ hermex's lockfile parsing always resolves **complete** data for every package, f
 
 ```ts
 rules: {
-  'release-age': [
+  'no-outdated-packages': [
     { severity: 'error', patterns: ['**'], scope: 'root' }, // default — only the root-installed version can fail comply
     // scope: 'tree' checks every resolved copy; fail if any is overdue
     { severity: 'error', patterns: ['@vendor/pinned-*'], scope: 'tree' }, // this subset uses the opposite scope
@@ -704,13 +714,13 @@ For **yarn**, root-version resolution works by reading the root `package.json`'s
 
 ## Compliance Checking
 
-`hermex scan` is purely informational and always exits `0`. Use `hermex comply` to gate CI on your rules and release-age policy — it runs the same analysis pipeline, reports every violation (it does not stop at the first one), then exits based on the result:
+`hermex scan` is purely informational and always exits `0`. Use `hermex comply` to gate CI on your rules and outdated-package policy — it runs the same analysis pipeline, reports every violation (it does not stop at the first one), then exits based on the result:
 
 ```bash
 hermex comply
 ```
 
-- **Exit `0`** — compliant: no `error`-severity rule violations (banned packages included), no `error`-severity release-age threshold breaches (minor/patch or major).
+- **Exit `0`** — compliant: no `error`-severity rule violations (banned packages included), no `error`-severity outdated-package threshold breaches (minor/patch or major).
 - **Exit `1`** — not compliant: at least one mandatory violation found.
 - **Exit `2`** — hermex couldn't run the check at all (no files matched, or an internal error).
 
@@ -732,12 +742,12 @@ Both `hermex scan --format json` and `hermex comply --format json` emit a top-le
 ```
 
 - **`non-compliant`** — at least one mandatory (`error`) violation. Exactly `compliant === false`; the condition `comply` exits `1` on.
-- **`warning`** — passes `comply` (exit `0`), but a `warn`-severity violation is present, release-age included: a non-enforced (`severity: 'warn'`) overdue release-age package counts toward `warningRuleViolations` the same way a `warn`-severity `no-packages` hit does. A not-yet-due `pendingUpgrade` is still pure advisory display data (Packages-table only) — it never becomes a violation at any severity, so it can't affect this on its own.
+- **`warning`** — passes `comply` (exit `0`), but a `warn`-severity violation is present, no-outdated-packages included: a non-enforced (`severity: 'warn'`) overdue package counts toward `warningRuleViolations` the same way a `warn`-severity `no-packages` hit does. A not-yet-due `pendingUpgrade` is still pure advisory display data (Packages-table only) — it never becomes a violation at any severity, so it can't affect this on its own.
 - **`compliant`** — no mandatory violations and nothing flagged at `warn`.
 
 `status: 'warning'` never changes the exit code — it exists so dashboards and sheet syncs can surface a three-state signal that still agrees with `comply` on pass/fail.
 
-`errorRuleViolations` alone is the number of comply-failing violations — the same number the CLI prints as "N mandatory violations found". There's no separate release-age bucket: release-age violations are ordinary entries in `ruleViolations` (`ruleId: 'release-age'`), so they're already counted here like any other rule.
+`errorRuleViolations` alone is the number of comply-failing violations — the same number the CLI prints as "N mandatory violations found". There's no separate outdated-packages bucket: no-outdated-packages violations are ordinary entries in `ruleViolations` (`ruleId: 'no-outdated-packages'`), so they're already counted here like any other rule.
 
 Severity is the only thing that decides which bucket a rule violation lands in; the rule's `type` never does. An `error`-severity violation of any type counts toward `errorRuleViolations`, a `warn`-severity one toward `warningRuleViolations`, and an `info`-severity one toward neither while still appearing in `ruleViolations`.
 
@@ -749,10 +759,10 @@ Severity is the only thing that decides which bucket a rule violation lands in; 
 |---|---|
 | `version` | The hermex version that produced the report. |
 | `summary` | Aggregate counts: `filesAnalyzed`, `totalImports`, `totalComponents`, `totalUsagePatterns`, plus `patternCounts` — per-pattern-type usage counts (`imports.named`, `usage.jsx`, …). |
-| `packages` | Every package the repo owns — see below. Carries version, `declaredIn`, usage counts, `deprecated` (npm's notice, when the registry was consulted) and `releaseAge` when release-age ran. |
+| `packages` | Every package the repo owns — see below. Carries version, `declaredIn`, usage counts, `deprecated` (npm's notice, when the registry was consulted) and `releaseAge` when the rule ran. |
 | `components` | Every component found, with its source package, usage count and the files using it. The one place component names live. |
 | `versus` | Head-to-head comparisons configured under `versus`. |
-| `ruleViolations` | **Every rule hit, in one list** — `no-files`, `require-files`, `max-file-size`, `require-packages`, `no-packages`, `no-deprecated-packages`, `require-scripts`, `require-package-fields`, `no-package-fields`, `require-engine-version`, `require-codeowners`, `release-age`. Filter on `ruleId`. |
+| `ruleViolations` | **Every rule hit, in one list** — `no-files`, `require-files`, `max-file-size`, `require-packages`, `no-packages`, `no-deprecated-packages`, `require-scripts`, `require-package-fields`, `no-package-fields`, `require-engine-version`, `require-codeowners`, `no-outdated-packages`. Filter on `ruleId`. |
 | `compliance` | The canonical verdict — see above. |
 
 `ruleViolations` is the single source of truth for rule hits. Entries share a common shape (`ruleId`, `severity`, `patterns`, `message?`, `matchedFiles`) and add per-type fields where they apply: `packageName` for `no-packages`, `packageName`/`deprecated` for `no-deprecated-packages`, `fieldPath`/`actualValue` for the package-field rules, `maxSizeBytes`/`oversizeFiles` for `max-file-size`, `installedRange`/`requiredRange` for `require-engine-version`.
@@ -887,7 +897,7 @@ export default defineConfig({
     ],
     'require-scripts': [{ severity: 'error', patterns: ['build', 'test'] }],
     'require-engine-version': { severity: 'error', range: '>=20' },
-    'release-age': [{ severity: 'error', patterns: ['@my-org/*'] }],
+    'no-outdated-packages': [{ severity: 'error', patterns: ['@my-org/*'] }],
   },
 
   output: {

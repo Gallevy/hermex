@@ -148,7 +148,7 @@ const OverrideRulesSchema = z
       .union([EngineVersionRuleSchema, z.array(EngineVersionRuleSchema)])
       .optional(),
     'require-codeowners': CodeownersRuleSchema.optional(),
-    'release-age': ReleaseAgeRuleOrArraySchema.optional(),
+    'no-outdated-packages': ReleaseAgeRuleOrArraySchema.optional(),
   })
   .strict()
   .default(() => ({}));
@@ -303,7 +303,7 @@ export const HermexConfigSchema = z
          * Judges the deprecation notice registry enrichment records on each
          * package. `patterns` match package names, like `no-packages`.
          *
-         * Governed the way `release-age` is — one winning entry per package
+         * Governed the way `no-outdated-packages` is — one winning entry per package
          * against an implicit `['**']` baseline at severity 'info' (see
          * `resolveDeprecatedPackagesRule`, ./overrides) — so 'off' exempts a
          * package rather than being dropped. That baseline sets severity,
@@ -319,7 +319,7 @@ export const HermexConfigSchema = z
           .union([EngineVersionRuleSchema, z.array(EngineVersionRuleSchema)])
           .optional(),
         'require-codeowners': CodeownersRuleSchema.optional(),
-        'release-age': ReleaseAgeRuleOrArraySchema.default([]),
+        'no-outdated-packages': ReleaseAgeRuleOrArraySchema.default([]),
       })
       .strict()
       .default(() => ({
@@ -332,7 +332,7 @@ export const HermexConfigSchema = z
         'require-scripts': [] as RuleConfig[],
         'require-package-fields': [] as PackageFieldRule[],
         'no-package-fields': [] as PackageFieldRule[],
-        'release-age': [] as ReleaseAgeRuleConfig[],
+        'no-outdated-packages': [] as ReleaseAgeRuleConfig[],
       })),
 
     output: z
@@ -365,9 +365,9 @@ export const HermexConfigSchema = z
       })),
 
     /**
-     * Connection/infra settings for the `release-age` rule (`rules['release-age']`
+     * Connection/infra settings for the `no-outdated-packages` rule (`rules['no-outdated-packages']`
      * above) — nothing policy-related lives here. Whether release-age runs
-     * at all is decided by whether `rules['release-age']` resolves to a
+     * at all is decided by whether `rules['no-outdated-packages']` resolves to a
      * non-empty array for a repo, not a flag here — same as every other
      * rule, where an empty rule list means "does nothing." Only npm is
      * supported today, so the registry URL isn't configurable; add it back

@@ -7,7 +7,7 @@ import type { HermexConfigInput } from '../../../src/config/types.ts';
  * `require-engine-version` row, a `require-codeowners` row, or either of the
  * package-field shapes in it, and nothing would catch a renderer that
  * mishandles `fieldPath` / `installedRange` / a long `matchedFiles` list.
- * `release-age` is the only rule that never renders a Rules-table row at
+ * `no-outdated-packages` is the only rule that never renders a Rules-table row at
  * all (its display is the Packages table) — this is the only case that
  * exercises it alongside the other eleven in one run. `moment` is both
  * forbidden and deprecated here, which makes it the one row anywhere in the
@@ -27,7 +27,7 @@ export default {
     // compliant target still in-window (19.1.0) — the only rule whose
     // display lives in the Packages table rather than the Rules table (see
     // src/utils/print-rules.ts's renderer dispatch).
-    'release-age': [{ severity: 'error', patterns: ['react'] }],
+    'no-outdated-packages': [{ severity: 'error', patterns: ['react'] }],
     // moment@2.29.4 carries a deprecation notice in the fixture registry,
     // and is already forbidden below — so its Packages row renders both
     // badges at once, at two different severities, which is the only place

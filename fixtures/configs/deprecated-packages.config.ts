@@ -2,7 +2,7 @@ import type { HermexConfigInput } from '../../src/config/types.ts';
 import base from '../hermex.config.ts';
 
 /**
- * `no-deprecated-packages` with `release-age` left empty — the #107 case.
+ * `no-deprecated-packages` with `no-outdated-packages` left empty — the #107 case.
  *
  * Deprecation used to be a by-product of release-age enrichment, so this
  * configuration detected nothing at all: turning release-age off silently

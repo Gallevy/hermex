@@ -4,7 +4,7 @@
 // away, and every downstream consumer trusts that via ResolvedRulesConfig /
 // ResolvedHermexConfig instead of re-checking at runtime.
 //
-// Two rule families are deliberately absent below: `release-age` and
+// Two rule families are deliberately absent below: `no-outdated-packages` and
 // `no-deprecated-packages` resolve by last-match-wins governance against an
 // implicit `['**']` baseline, so for them 'off' must SURVIVE resolution in
 // order to exempt a package — dropping it would fall through to the

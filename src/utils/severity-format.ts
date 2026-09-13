@@ -117,7 +117,7 @@ export function sortViolationsBySeverity<T extends RuleViolation>(
  * anything with a `severity` field, not just `RuleViolation` — `printRules`
  * and `buildRulesSection` (`write-summary-file.ts`) tally `Row[]` (what
  * actually got rendered) rather than the raw, pre-grouping violation list,
- * since `release-age` violations count toward compliance but never render
+ * since `no-outdated-packages` violations count toward compliance but never render
  * as a Rules-table row (their display is the Packages table) — tallying the
  * raw list would disagree with the table above it (#88's own invariant).
  */

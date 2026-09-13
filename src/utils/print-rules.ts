@@ -42,8 +42,8 @@ export function formatRuleType(violation: RuleViolation): string {
       return 'require-engine-version';
     case 'require-codeowners':
       return 'require-codeowners';
-    case 'release-age':
-      return 'release-age';
+    case 'no-outdated-packages':
+      return 'no-outdated-packages';
   }
 }
 
@@ -165,7 +165,7 @@ function describePlugin(v: PluginViolation): string {
 /** Rule types whose atomic violations render one row each rather than being
  * folded into one row per group — see `describeIndividual`. Every rule not
  * listed here uses the fold-and-truncate display (`describeGroup`), and
- * `release-age` renders nothing here at all (see `printRules`) — its display
+ * `no-outdated-packages` renders nothing here at all (see `printRules`) — its display
  * is the Packages table, not this one. This table is the single place that
  * declares each rule's rendering strategy. */
 const ONE_ROW_PER_VIOLATION = new Set<CoreRuleViolation['ruleId']>([
@@ -193,7 +193,7 @@ export interface Row {
  * any absence rule) it describes that one violation in isolation, as if it
  * were the only member of its group — useful for callers that already have
  * a single violation in hand and don't need `buildRuleRows`'s grouping.
- * `release-age` has no dedicated description here since it never renders in
+ * `no-outdated-packages` has no dedicated description here since it never renders in
  * this table at all (see `printRules`); it falls through to the generic
  * "not present" default, same as any other unhandled shape.
  */
@@ -209,7 +209,7 @@ export function describeViolation(v: RuleViolation): string {
  * `require-codeowners`, and every absence rule, which are always
  * single-member groups), one row per violation for the package and field
  * rules in `ONE_ROW_PER_VIOLATION`, one row per finding for plugins, and
- * zero rows for `release-age` (its display is the Packages table). Shared
+ * zero rows for `no-outdated-packages` (its display is the Packages table). Shared
  * by the terminal table (`printRules`) and `--summary-file`
  * (`write-summary-file.ts`) so the two surfaces can never render a
  * different row count for the same violations — pass violations
@@ -236,7 +236,7 @@ export function buildRuleRows(violations: RuleViolation[]): Row[] {
     // table (formatUpgradeCell/print-packages.ts), not this one. This is a
     // declared choice, the same kind every rule below makes, not a filter
     // bolted on for one rule id.
-    if (v.ruleId === 'release-age') continue;
+    if (v.ruleId === 'no-outdated-packages') continue;
 
     if (ONE_ROW_PER_VIOLATION.has(v.ruleId)) {
       rows.push({

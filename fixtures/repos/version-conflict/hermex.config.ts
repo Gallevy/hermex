@@ -5,7 +5,7 @@ export default {
     cacheDisabled: true,
   },
   rules: {
-    'release-age': [{ severity: 'error', patterns: ['react'], scope: 'root' }],
+    'no-outdated-packages': [{ severity: 'error', patterns: ['react'], scope: 'root' }],
   },
   output: {
     components: false,

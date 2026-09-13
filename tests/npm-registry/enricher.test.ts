@@ -839,7 +839,7 @@ describe('enrichFromRegistry â€” overdue basis uses oldest breach, not newe
 
 // `resolveReleaseAgeScope` (a global `scope` + `scopeExceptions` glob-flip)
 // no longer exists — scope is now a plain field on whichever
-// `rules['release-age']` entry governs a package (`resolveReleaseAgeRule`,
+// `rules['no-outdated-packages']` entry governs a package (`resolveReleaseAgeRule`,
 // src/config/overrides.ts). Equivalent per-package scope-resolution
 // coverage, including the old flip-by-pattern scenarios reframed as
 // "a more specific rule entry sets its own scope", lives in

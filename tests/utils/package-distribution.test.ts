@@ -515,7 +515,7 @@ describe('calculatePackageDistribution — lockfile-only release-age rule matche
     const componentUsageMap = new Map<string, ComponentUsage>();
     const config = createConfig({
       rules: {
-        'release-age': [
+        'no-outdated-packages': [
           { severity: 'error', patterns: ['@acme-ui/pulse-styles'] },
         ],
       },
@@ -545,7 +545,9 @@ describe('calculatePackageDistribution — lockfile-only release-age rule matche
   it('surfaces a declared-but-uninstalled package with a null version', () => {
     const componentUsageMap = new Map<string, ComponentUsage>();
     const config = createConfig({
-      rules: { 'release-age': [{ severity: 'error', patterns: ['eslint'] }] },
+      rules: {
+        'no-outdated-packages': [{ severity: 'error', patterns: ['eslint'] }],
+      },
     });
 
     const distribution = buildDistribution(
@@ -568,7 +570,7 @@ describe('calculatePackageDistribution — lockfile-only release-age rule matche
 
   it('does not surface lockfile-only packages when release-age is off (no rule entries)', () => {
     const componentUsageMap = new Map<string, ComponentUsage>();
-    const config = createConfig({ rules: { 'release-age': [] } });
+    const config = createConfig({ rules: { 'no-outdated-packages': [] } });
 
     const distribution = buildDistribution(
       componentUsageMap,
@@ -583,7 +585,9 @@ describe('calculatePackageDistribution — lockfile-only release-age rule matche
     const componentUsageMap = new Map<string, ComponentUsage>();
     const config = createConfig({
       rules: {
-        'release-age': [{ severity: 'error', patterns: ['unrelated-package'] }],
+        'no-outdated-packages': [
+          { severity: 'error', patterns: ['unrelated-package'] },
+        ],
       },
     });
 
@@ -602,7 +606,7 @@ describe('calculatePackageDistribution — lockfile-only release-age rule matche
     ]);
     const config = createConfig({
       rules: {
-        'release-age': [
+        'no-outdated-packages': [
           { severity: 'error', patterns: ['@acme-ui/pulse-styles'] },
         ],
       },
@@ -624,7 +628,7 @@ describe('calculatePackageDistribution — lockfile-only release-age rule matche
     const config = createConfig({
       packages: { ignore: ['@acme-ui/pulse-styles'] },
       rules: {
-        'release-age': [
+        'no-outdated-packages': [
           { severity: 'error', patterns: ['@acme-ui/pulse-styles'] },
         ],
       },
@@ -643,7 +647,7 @@ describe('calculatePackageDistribution — lockfile-only release-age rule matche
     const componentUsageMap = new Map<string, ComponentUsage>();
     const config = createConfig({
       rules: {
-        'release-age': [
+        'no-outdated-packages': [
           { severity: 'error', patterns: ['@acme-ui/pulse-styles'] },
         ],
       },
@@ -671,7 +675,9 @@ describe('calculatePackageDistribution — lockfile-only release-age rule matche
     const componentUsageMap = new Map<string, ComponentUsage>();
     const config = createConfig({
       rules: {
-        'release-age': [{ severity: 'error', patterns: ['@acme-ui/dio'] }],
+        'no-outdated-packages': [
+          { severity: 'error', patterns: ['@acme-ui/dio'] },
+        ],
       },
     });
 
@@ -691,7 +697,9 @@ describe('calculatePackageDistribution — lockfile-only release-age rule matche
     const componentUsageMap = new Map<string, ComponentUsage>();
     const config = createConfig({
       rules: {
-        'release-age': [{ severity: 'error', patterns: ['@acme-ui/dio'] }],
+        'no-outdated-packages': [
+          { severity: 'error', patterns: ['@acme-ui/dio'] },
+        ],
       },
     });
 
@@ -710,7 +718,7 @@ describe('calculatePackageDistribution — lockfile-only release-age rule matche
     const componentUsageMap = new Map<string, ComponentUsage>();
     const config = createConfig({
       rules: {
-        'release-age': [
+        'no-outdated-packages': [
           { severity: 'error', patterns: ['@acme-ui/pulse-styles'] },
         ],
       },
@@ -733,7 +741,7 @@ describe('calculatePackageDistribution — lockfile-only release-age rule matche
     ]);
     const config = createConfig({
       rules: {
-        'release-age': [
+        'no-outdated-packages': [
           { severity: 'error', patterns: ['@acme-ui/pulse-styles'] },
         ],
       },

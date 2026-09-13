@@ -14,7 +14,7 @@ import { describeMinimumTarget } from '../../src/utils/print-packages';
 import {
   createMockPackage,
   createMockReleaseAge,
-  createMockReleaseAgeViolation,
+  createMockNoOutdatedPackagesViolation,
   createMockDeprecatedViolation,
 } from '../helpers/mock-reports';
 
@@ -305,7 +305,7 @@ describe('writeSummaryFile', () => {
         makeAggregated({
           packageDistribution: [overdueError],
           ruleViolations: [
-            createMockReleaseAgeViolation('my-internal-pkg', {
+            createMockNoOutdatedPackagesViolation('my-internal-pkg', {
               worstLevel: 'major_overdue',
               severity: 'error',
             }),
@@ -343,7 +343,7 @@ describe('writeSummaryFile', () => {
         makeAggregated({
           packageDistribution: [both],
           ruleViolations: [
-            createMockReleaseAgeViolation('my-internal-pkg', {
+            createMockNoOutdatedPackagesViolation('my-internal-pkg', {
               worstLevel: 'major_overdue',
               severity: 'error',
             }),
@@ -374,7 +374,7 @@ describe('writeSummaryFile', () => {
         makeAggregated({
           packageDistribution: [deprecatedOnlyBreach],
           ruleViolations: [
-            createMockReleaseAgeViolation('my-internal-pkg', {
+            createMockNoOutdatedPackagesViolation('my-internal-pkg', {
               worstLevel: 'major_overdue',
               severity: 'error',
             }),
@@ -431,7 +431,7 @@ describe('writeSummaryFile', () => {
         makeAggregated({
           packageDistribution: [overdueError],
           ruleViolations: [
-            createMockReleaseAgeViolation('my-internal-pkg', {
+            createMockNoOutdatedPackagesViolation('my-internal-pkg', {
               worstLevel: 'major_overdue',
               severity: 'error',
             }),
@@ -471,7 +471,7 @@ describe('writeSummaryFile', () => {
         makeAggregated({
           packageDistribution: [pkg],
           ruleViolations: [
-            createMockReleaseAgeViolation('some-lib', {
+            createMockNoOutdatedPackagesViolation('some-lib', {
               worstLevel: 'minor_overdue',
               severity: 'error',
             }),
@@ -510,7 +510,7 @@ describe('writeSummaryFile', () => {
         makeAggregated({
           packageDistribution: [pkg],
           ruleViolations: [
-            createMockReleaseAgeViolation('some-lib', {
+            createMockNoOutdatedPackagesViolation('some-lib', {
               worstLevel: 'minor_overdue',
               severity: 'error',
             }),
@@ -586,7 +586,7 @@ describe('writeSummaryFile', () => {
         makeAggregated({
           packageDistribution: [both],
           ruleViolations: [
-            createMockReleaseAgeViolation('multi-version-lib', {
+            createMockNoOutdatedPackagesViolation('multi-version-lib', {
               worstLevel: 'major_overdue',
               severity: 'error',
             }),
