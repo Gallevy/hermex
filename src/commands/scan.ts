@@ -1,6 +1,6 @@
 import { Command, Option } from 'commander';
 import chalk from 'chalk';
-import { aggregateReports } from '../utils/aggregator';
+import type { AggregatedReport } from '../utils/aggregator';
 import { printSummary } from '../utils/print-summary';
 import { printDetails } from '../utils/print-details';
 import { printComponents } from '../utils/print-components';
@@ -76,7 +76,7 @@ export async function executeScan(
 }
 
 function printScanResults(
-  aggregated: ReturnType<typeof aggregateReports>,
+  aggregated: AggregatedReport,
   config: HermexConfig,
   rules: ResolvedReleaseAgeRuleConfig[],
 ) {

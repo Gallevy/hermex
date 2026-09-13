@@ -3,13 +3,13 @@ import chalk from 'chalk';
 import { getParser } from '../parser';
 import type { UsageReport, ParseError } from '../swc-parser/types';
 import { aggregateReports } from '../utils/aggregator';
-import type { AggregatedReport } from '../utils/aggregator';
+import type { AggregatedReport, AnalysisFacts } from '../utils/aggregator';
 import { printErrors } from '../utils/print-errors';
 import { findFiles } from '../utils/file-utils';
 import { findAndParseLockfile } from '../lock-parser';
-import { evaluateRules } from '../rules/evaluator';
 import { collectDeclaredPackages } from '../rules/shared';
-import { evaluateRegistryRules, needsRegistry } from '../rules/registry-rules';
+import type { RuleViolation } from '../rules/shared';
+import { runRules } from '../rules/run';
 import { applyOverrides } from '../config/overrides';
 import { runPlugins } from '../plugins';
 import type { HermexConfig, ResolvedHermexConfig } from '../config/types';
@@ -115,7 +115,7 @@ export async function runPipeline(
 
   printErrors(parseErrors, isJson);
 
-  const aggregated = aggregateReports(
+  const analysis = aggregateReports(
     reports,
     lockfileResult.versions,
     resolvedConfig,
@@ -124,79 +124,100 @@ export async function runPipeline(
     declaredPackages,
   );
 
-  const evaluatorViolations = evaluateRules(
-    process.cwd(),
-    resolvedConfig.rules,
-    resolvedConfig.excludes,
+  // Every rule hermex ships, evaluated in one place against one set of facts.
+  // The spinner lines stay here; the rule layer reports progress through
+  // callbacks rather than importing ora (#84).
+  const { violations, packages } = await runRules({
+    repoPath: process.cwd(),
+    config: resolvedConfig,
     files,
+    inventory: analysis.packageInventory,
+    packages: analysis.packageDistribution,
+    events: {
+      onRegistryStart: ({ forReleaseAge }) => {
+        if (spinner.isEnabled)
+          spinner.start(
+            forReleaseAge
+              ? 'Fetching release age from registry...'
+              : 'Checking the registry for deprecated packages...',
+          );
+      },
+      onRegistryFinish: ({ forReleaseAge, skipped }) => {
+        spinner.succeed(
+          chalk.blue(
+            `${forReleaseAge ? 'Release age fetched' : 'Registry checked'}${skipped > 0 ? chalk.gray(` (${skipped} packages skipped — registry unreachable or not found)`) : ''}`,
+          ),
+        );
+      },
+    },
+  });
+
+  // Registry enrichment replaces the package list; everything else is as
+  // aggregation left it.
+  const facts: AnalysisFacts = { ...analysis, packageDistribution: packages };
+
+  const pluginViolations = await runPluginPhase(
+    resolvedConfig,
+    facts,
+    violations,
+    files,
+    spinner,
+    isJson,
   );
-  aggregated.ruleViolations = [
-    ...aggregated.ruleViolations,
-    ...evaluatorViolations,
-  ];
 
-  // A rule family being non-empty IS "that rule enabled" — no separate
-  // flag (see src/config/schema.ts's releaseAge block comment). Both
-  // registry-backed families share one enrichment pass, so the gate is
-  // "does anything need the registry", not "is release-age on" (#107).
-  if (needsRegistry(resolvedConfig.rules)) {
-    const forReleaseAge =
-      resolvedConfig.rules['no-outdated-packages'].length > 0;
-    if (spinner.isEnabled)
-      spinner.start(
-        forReleaseAge
-          ? 'Fetching release age from registry...'
-          : 'Checking the registry for deprecated packages...',
-      );
-    const { enriched, violations, skipped } = await evaluateRegistryRules(
-      aggregated.packageDistribution,
-      resolvedConfig,
-    );
-    aggregated.packageDistribution = enriched;
-    aggregated.ruleViolations = [...aggregated.ruleViolations, ...violations];
-    spinner.succeed(
-      chalk.blue(
-        `${forReleaseAge ? 'Release age fetched' : 'Registry checked'}${skipped > 0 ? chalk.gray(` (${skipped} packages skipped — registry unreachable or not found)`) : ''}`,
-      ),
-    );
-  }
+  // The one place an AggregatedReport is built. Nothing reassigns a field on
+  // it afterwards, so no caller can observe a partial violation list (#84).
+  return {
+    aggregated: {
+      ...facts,
+      ruleViolations: [...violations, ...pluginViolations],
+    },
+    resolvedConfig,
+  };
+}
 
-  // Plugins run last, once everything hermex computes itself is finished, so
-  // a plugin sees the complete picture — and still before rendering, so what
-  // it contributes reaches the rules table and the verdict (#102).
-  //
-  // The whole block is inert when no plugins are configured, which is the
-  // default: an unconfigured run prints exactly what it printed before.
-  if (resolvedConfig.plugins.length > 0) {
-    if (spinner.isEnabled) spinner.start('Running plugins...');
+/**
+ * Plugins run last, once everything hermex computes itself is finished, so a
+ * plugin sees the complete picture — and still before rendering, so what it
+ * contributes reaches the rules table and the verdict (#102).
+ *
+ * Inert when no plugins are configured, which is the default: an unconfigured
+ * run prints exactly what it printed before.
+ */
+async function runPluginPhase(
+  resolvedConfig: ResolvedHermexConfig,
+  facts: AnalysisFacts,
+  violations: RuleViolation[],
+  files: string[],
+  spinner: Ora,
+  isJson: boolean,
+): Promise<RuleViolation[]> {
+  if (resolvedConfig.plugins.length === 0) return [];
 
-    const pluginViolations = await runPlugins({
-      plugins: resolvedConfig.plugins,
-      aggregated,
-      config: resolvedConfig,
-      cwd: process.cwd(),
-      files,
-      quiet: isJson,
-    });
+  if (spinner.isEnabled) spinner.start('Running plugins...');
 
-    aggregated.ruleViolations = [
-      ...aggregated.ruleViolations,
-      ...pluginViolations,
-    ];
+  const pluginViolations = await runPlugins({
+    plugins: resolvedConfig.plugins,
+    facts,
+    violations,
+    config: resolvedConfig,
+    cwd: process.cwd(),
+    files,
+    quiet: isJson,
+  });
 
-    // Attribution: third-party code just executed in the user's repo, so
-    // name it. hermex does not sandbox plugins — the config that imports
-    // them already runs as arbitrary code — which makes visibility the
-    // obligation instead (#102).
-    spinner.succeed(
-      chalk.blue(
-        `Ran ${resolvedConfig.plugins.length} plugin(s): ${resolvedConfig.plugins.map((p) => p.name).join(', ')}` +
-          (pluginViolations.length > 0
-            ? chalk.gray(` — ${pluginViolations.length} finding(s)`)
-            : ''),
-      ),
-    );
-  }
+  // Attribution: third-party code just executed in the user's repo, so name
+  // it. hermex does not sandbox plugins — the config that imports them already
+  // runs as arbitrary code — which makes visibility the obligation instead
+  // (#102).
+  spinner.succeed(
+    chalk.blue(
+      `Ran ${resolvedConfig.plugins.length} plugin(s): ${resolvedConfig.plugins.map((p) => p.name).join(', ')}` +
+        (pluginViolations.length > 0
+          ? chalk.gray(` — ${pluginViolations.length} finding(s)`)
+          : ''),
+    ),
+  );
 
-  return { aggregated, resolvedConfig };
+  return pluginViolations;
 }

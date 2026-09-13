@@ -1,13 +1,11 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { runPlugins, PluginError } from '../../src/plugins';
 import type { HermexPlugin, PluginContext } from '../../src/plugins';
-import type { AggregatedReport } from '../../src/utils/aggregator';
+import type { AnalysisFacts } from '../../src/utils/aggregator';
 import type { ResolvedHermexConfig } from '../../src/config/overrides';
 import type { RuleViolation } from '../../src/rules/shared';
 
-function aggregated(
-  overrides: Partial<AggregatedReport> = {},
-): AggregatedReport {
+function facts(overrides: Partial<AnalysisFacts> = {}): AnalysisFacts {
   return {
     filesAnalyzed: 3,
     totalImports: 7,
@@ -19,7 +17,6 @@ function aggregated(
     packageInventory: [],
     packageDistribution: [],
     versusResults: [],
-    ruleViolations: [],
     reports: [],
     ...overrides,
   };
@@ -28,10 +25,16 @@ function aggregated(
 /** Only the fields the runner actually reads off the config. */
 const config = {} as ResolvedHermexConfig;
 
-function run(plugins: HermexPlugin[], agg = aggregated()) {
+/**
+ * Facts and hermex's own violations arrive as separate arguments — the runner
+ * is handed a complete list rather than digging it out of a report that is
+ * still being assembled (#84).
+ */
+function run(plugins: HermexPlugin[], violations: RuleViolation[] = []) {
   return runPlugins({
     plugins,
-    aggregated: agg,
+    facts: facts(),
+    violations,
     config,
     cwd: '/repo',
     files: ['a.tsx', 'b.tsx'],
@@ -186,7 +189,7 @@ describe('runPlugins', () => {
 
       await run(
         [plugin('reporter', (ctx) => void (seen = ctx.inventory.violations))],
-        aggregated({ ruleViolations: [core] }),
+        [core],
       );
 
       expect(seen).toEqual([core]);
@@ -236,7 +239,8 @@ describe('runPlugins', () => {
 
       await runPlugins({
         plugins: [plugin('chatty', (ctx) => ctx.logger.info('hello'))],
-        aggregated: aggregated(),
+        facts: facts(),
+        violations: [],
         config,
         cwd: '/repo',
         files: [],
