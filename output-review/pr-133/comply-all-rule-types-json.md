@@ -14,7 +14,7 @@ _unchanged_
 
 **Ran** `hermex comply --format json` in `fixtures/repos/all-rule-types` → exit 1, as asserted
 
-**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/66567196a9140ceecd3abfa421b905ddc6ee11ff/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/66567196a9140ceecd3abfa421b905ddc6ee11ff/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/66567196a9140ceecd3abfa421b905ddc6ee11ff/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types-json`](https://github.com/Gallevy/hermex/blob/66567196a9140ceecd3abfa421b905ddc6ee11ff/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/66567196a9140ceecd3abfa421b905ddc6ee11ff/fixtures/cases/comply-all-rule-types-json.md))
+**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/01f79d1aa84312d05b74bb7c3b0a1c8ac2fb499a/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/01f79d1aa84312d05b74bb7c3b0a1c8ac2fb499a/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/01f79d1aa84312d05b74bb7c3b0a1c8ac2fb499a/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types-json`](https://github.com/Gallevy/hermex/blob/01f79d1aa84312d05b74bb7c3b0a1c8ac2fb499a/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/01f79d1aa84312d05b74bb7c3b0a1c8ac2fb499a/fixtures/cases/comply-all-rule-types-json.md))
 
 **Registry** offline, served from `fixtures/registry/timelines.ts` — no network
 
@@ -22,7 +22,7 @@ _unchanged_
 
 ## Config
 
-[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/66567196a9140ceecd3abfa421b905ddc6ee11ff/fixtures/repos/all-rule-types/hermex.config.ts) — resolved, as the loader sees it
+[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/01f79d1aa84312d05b74bb7c3b0a1c8ac2fb499a/fixtures/repos/all-rule-types/hermex.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -172,28 +172,28 @@ _unchanged_
       "allVersions": [
         "18.3.1"
       ],
-      "releaseAge": {
-        "installedVersion": "18.3.1",
-        "upgrades": [
+      "releases": {
+        "resolved": [
           {
-            "version": "19.1.0",
-            "releasedDaysAgo": 10,
-            "breachReleasedDaysAgo": 400,
-            "semverBump": "major",
-            "level": "major_overdue",
-            "thresholdDays": 60,
-            "isLatest": true
+            "version": "18.3.1",
+            "isRoot": true,
+            "newer": [
+              {
+                "version": "19.0.0",
+                "releasedDaysAgo": 400,
+                "semverBump": "major"
+              },
+              {
+                "version": "19.1.0",
+                "releasedDaysAgo": 10,
+                "semverBump": "major",
+                "isLatest": true
+              }
+            ]
           }
         ],
-        "worstLevel": "major_overdue",
         "latestVersion": "19.1.0",
-        "latestReleasedDaysAgo": 10,
-        "minCompliantVersion": "19.1.0",
-        "minCompliantReleasedDaysAgo": 10,
-        "minCompliantInWindow": true,
-        "minCompliantBump": "major",
-        "severity": "error",
-        "scope": "root"
+        "latestReleasedDaysAgo": 10
       }
     },
     {
@@ -212,27 +212,23 @@ _unchanged_
         "2.29.4"
       ],
       "deprecated": "Moment is in maintenance mode — prefer date-fns or dayjs",
-      "releaseAge": {
-        "installedVersion": "2.29.4",
-        "upgrades": [
+      "releases": {
+        "resolved": [
           {
-            "version": "2.30.1",
-            "releasedDaysAgo": 500,
-            "breachReleasedDaysAgo": 500,
-            "semverBump": "minor",
-            "level": "minor_overdue",
-            "thresholdDays": 45,
-            "isLatest": true
+            "version": "2.29.4",
+            "isRoot": true,
+            "newer": [
+              {
+                "version": "2.30.1",
+                "releasedDaysAgo": 500,
+                "semverBump": "minor",
+                "isLatest": true
+              }
+            ]
           }
         ],
-        "worstLevel": "minor_overdue",
         "latestVersion": "2.30.1",
-        "latestReleasedDaysAgo": 500,
-        "minCompliantVersion": "2.30.1",
-        "minCompliantReleasedDaysAgo": 500,
-        "minCompliantInWindow": false,
-        "severity": "warn",
-        "scope": "root"
+        "latestReleasedDaysAgo": 500
       }
     }
   ],
@@ -305,8 +301,9 @@ _unchanged_
         "react"
       ],
       "packageName": "react",
-      "installedVersion": "18.3.1",
-      "worstLevel": "major_overdue",
+      "measuredVersion": "18.3.1",
+      "overdueTier": "major",
+      "daysOverdue": 340,
       "scope": "root"
     },
     {
@@ -346,8 +343,9 @@ _unchanged_
         "**"
       ],
       "packageName": "moment",
-      "installedVersion": "2.29.4",
-      "worstLevel": "minor_overdue",
+      "measuredVersion": "2.29.4",
+      "overdueTier": "minor",
+      "daysOverdue": 455,
       "scope": "root"
     },
     {
