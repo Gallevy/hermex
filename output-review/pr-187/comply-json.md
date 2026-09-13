@@ -14,13 +14,13 @@ _unchanged_
 
 **Ran** `hermex comply --format json` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/4e4d3848bd75e0eb0b3f50ffd816816703aa7003/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/4e4d3848bd75e0eb0b3f50ffd816816703aa7003/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/4e4d3848bd75e0eb0b3f50ffd816816703aa7003/fixtures/README.md)) · **Case** [`comply-json`](https://github.com/Gallevy/hermex/blob/4e4d3848bd75e0eb0b3f50ffd816816703aa7003/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/4e4d3848bd75e0eb0b3f50ffd816816703aa7003/fixtures/cases/comply-json.md))
+**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/4d21502903ba13325b043c5f89b8870609586269/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/4d21502903ba13325b043c5f89b8870609586269/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/4d21502903ba13325b043c5f89b8870609586269/fixtures/README.md)) · **Case** [`comply-json`](https://github.com/Gallevy/hermex/blob/4d21502903ba13325b043c5f89b8870609586269/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/4d21502903ba13325b043c5f89b8870609586269/fixtures/cases/comply-json.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter comply-json`</sub>
 
 ## Config
 
-[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/4e4d3848bd75e0eb0b3f50ffd816816703aa7003/fixtures/hermex.config.ts) — resolved, as the loader sees it
+[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/4d21502903ba13325b043c5f89b8870609586269/fixtures/hermex.config.ts) — resolved, as the loader sees it
 
 ```json
 {

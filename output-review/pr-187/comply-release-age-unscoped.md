@@ -14,7 +14,7 @@ _changed_
 
 **Ran** `hermex comply --config configs/release-age-unscoped.config.ts` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/configs/release-age-unscoped.config.ts`](https://github.com/Gallevy/hermex/blob/4e4d3848bd75e0eb0b3f50ffd816816703aa7003/fixtures/configs/release-age-unscoped.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/4e4d3848bd75e0eb0b3f50ffd816816703aa7003/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/4e4d3848bd75e0eb0b3f50ffd816816703aa7003/fixtures/README.md)) · **Case** [`comply-release-age-unscoped`](https://github.com/Gallevy/hermex/blob/4e4d3848bd75e0eb0b3f50ffd816816703aa7003/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/4e4d3848bd75e0eb0b3f50ffd816816703aa7003/fixtures/cases/comply-release-age-unscoped.md))
+**Config** [`fixtures/configs/release-age-unscoped.config.ts`](https://github.com/Gallevy/hermex/blob/4d21502903ba13325b043c5f89b8870609586269/fixtures/configs/release-age-unscoped.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/4d21502903ba13325b043c5f89b8870609586269/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/4d21502903ba13325b043c5f89b8870609586269/fixtures/README.md)) · **Case** [`comply-release-age-unscoped`](https://github.com/Gallevy/hermex/blob/4d21502903ba13325b043c5f89b8870609586269/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/4d21502903ba13325b043c5f89b8870609586269/fixtures/cases/comply-release-age-unscoped.md))
 
 **Registry** offline, served from `fixtures/registry/timelines.ts` — no network
 
@@ -22,7 +22,7 @@ _changed_
 
 ## Config
 
-[`fixtures/configs/release-age-unscoped.config.ts`](https://github.com/Gallevy/hermex/blob/4e4d3848bd75e0eb0b3f50ffd816816703aa7003/fixtures/configs/release-age-unscoped.config.ts) — resolved, as the loader sees it
+[`fixtures/configs/release-age-unscoped.config.ts`](https://github.com/Gallevy/hermex/blob/4d21502903ba13325b043c5f89b8870609586269/fixtures/configs/release-age-unscoped.config.ts) — resolved, as the loader sees it
 
 ```json
 {

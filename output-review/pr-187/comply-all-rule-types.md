@@ -14,7 +14,7 @@ _changed_
 
 **Ran** `hermex comply` in `fixtures/repos/all-rule-types` → exit 1, as asserted
 
-**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/4e4d3848bd75e0eb0b3f50ffd816816703aa7003/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/4e4d3848bd75e0eb0b3f50ffd816816703aa7003/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/4e4d3848bd75e0eb0b3f50ffd816816703aa7003/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types`](https://github.com/Gallevy/hermex/blob/4e4d3848bd75e0eb0b3f50ffd816816703aa7003/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/4e4d3848bd75e0eb0b3f50ffd816816703aa7003/fixtures/cases/comply-all-rule-types.md))
+**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/4d21502903ba13325b043c5f89b8870609586269/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/4d21502903ba13325b043c5f89b8870609586269/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/4d21502903ba13325b043c5f89b8870609586269/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types`](https://github.com/Gallevy/hermex/blob/4d21502903ba13325b043c5f89b8870609586269/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/4d21502903ba13325b043c5f89b8870609586269/fixtures/cases/comply-all-rule-types.md))
 
 **Registry** offline, served from `fixtures/registry/timelines.ts` — no network
 
@@ -22,7 +22,7 @@ _changed_
 
 ## Config
 
-[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/4e4d3848bd75e0eb0b3f50ffd816816703aa7003/fixtures/repos/all-rule-types/hermex.config.ts) — resolved, as the loader sees it
+[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/4d21502903ba13325b043c5f89b8870609586269/fixtures/repos/all-rule-types/hermex.config.ts) — resolved, as the loader sees it
 
 ```json
 {
