@@ -67,7 +67,7 @@ export interface ResolvedRulesConfig {
   'no-package-fields': ResolvedPackageFieldRule[];
   'require-engine-version': ResolvedEngineVersionRule[];
   'require-codeowners': ResolvedCodeownersRule | undefined;
-  'release-age': ResolvedReleaseAgeRuleConfig[];
+  'no-outdated-packages': ResolvedReleaseAgeRuleConfig[];
 }
 
 /** What `applyOverrides` returns: `HermexConfig` with `rules` resolved. */
@@ -109,7 +109,7 @@ function upsertPatternRules<T extends { severity: string; patterns: string[] }>(
  * Same identity/replacement semantics as {@link upsertPatternRules} (keyed
  * by `patterns`), but never drops an 'off' entry — for the two families
  * resolved by last-match-wins governance against an implicit baseline
- * (`release-age`, `no-deprecated-packages`). See
+ * (`no-outdated-packages`, `no-deprecated-packages`). See
  * `ResolvedReleaseAgeRuleConfig` above for why those need 'off' to remain a
  * real, resolvable entry instead of vanishing from the array.
  */
@@ -191,7 +191,10 @@ function resolveRules(rules: RulesConfig): ResolvedRulesConfig {
       toArray(rules['require-engine-version']),
     ),
     'require-codeowners': resolveCodeowners(rules['require-codeowners']),
-    'release-age': upsertGoverningRules([], toArray(rules['release-age'])),
+    'no-outdated-packages': upsertGoverningRules(
+      [],
+      toArray(rules['no-outdated-packages']),
+    ),
   };
 }
 
@@ -289,10 +292,10 @@ export function applyOverrides(
             o['require-codeowners'],
           );
         }
-        if (o['release-age'] !== undefined) {
-          rules['release-age'] = upsertGoverningRules(
-            rules['release-age'],
-            toArray(o['release-age']),
+        if (o['no-outdated-packages'] !== undefined) {
+          rules['no-outdated-packages'] = upsertGoverningRules(
+            rules['no-outdated-packages'],
+            toArray(o['no-outdated-packages']),
           );
         }
       }
@@ -303,10 +306,10 @@ export function applyOverrides(
 }
 
 /**
- * The default policy for any package no authored `rules['release-age']`
+ * The default policy for any package no authored `rules['no-outdated-packages']`
  * entry matches: checked, advisory-only, at the schema's own default
  * thresholds/scope. This is what makes "check everything" the zero-config
- * behavior once release-age is on for a repo (i.e. `rules['release-age']`
+ * behavior once release-age is on for a repo (i.e. `rules['no-outdated-packages']`
  * is non-empty) — an author only needs a `['**']` entry of their own to
  * override this, never to opt into checking in the first place.
  */
@@ -318,8 +321,8 @@ const RELEASE_AGE_BASELINE: ResolvedReleaseAgeRuleConfig = {
 };
 
 /**
- * Resolves which single `release-age` rule entry governs `packageName`,
- * among `resolvedRules` (from `ResolvedRulesConfig['release-age']`, already
+ * Resolves which single `no-outdated-packages` rule entry governs `packageName`,
+ * among `resolvedRules` (from `ResolvedRulesConfig['no-outdated-packages']`, already
  * upserted through `resolveRules`/`applyOverrides` above) plus the implicit
  * `['**']` baseline. Unlike every other rule family — where every matching
  * entry fires independently — release-age needs exactly one governing
@@ -334,7 +337,7 @@ const RELEASE_AGE_BASELINE: ResolvedReleaseAgeRuleConfig = {
  *
  * Only call this once you've confirmed release-age is actually on for the
  * repo (`resolvedRules.length > 0`) — the baseline is not itself a reason
- * to run release-age; an empty `rules['release-age']` means off, not "check
+ * to run release-age; an empty `rules['no-outdated-packages']` means off, not "check
  * everything by default."
  */
 export function resolveReleaseAgeRule(

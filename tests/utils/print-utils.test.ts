@@ -33,7 +33,7 @@ import { computeCompliance } from '../../src/utils/compliance';
 import {
   createMockPackage,
   createMockReleaseAge,
-  createMockReleaseAgeViolation,
+  createMockNoOutdatedPackagesViolation,
   createMockDeprecatedViolation,
 } from '../helpers/mock-reports';
 
@@ -223,11 +223,11 @@ describe('printPackages', () => {
         }),
       ],
       ruleViolations: [
-        createMockReleaseAgeViolation('moment', {
+        createMockNoOutdatedPackagesViolation('moment', {
           worstLevel: 'major_overdue',
           severity: 'error',
         }),
-        createMockReleaseAgeViolation('react', {
+        createMockNoOutdatedPackagesViolation('react', {
           worstLevel: 'minor_overdue',
           severity: 'warn',
         }),
@@ -1686,7 +1686,7 @@ describe('printComplianceVerdict', () => {
       severity: 'error',
       patterns: ['.nvmrc'],
     };
-    const releaseAgeViolation = createMockReleaseAgeViolation(
+    const releaseAgeViolation = createMockNoOutdatedPackagesViolation(
       '@my-org/internal',
       { worstLevel: 'major_overdue', severity: 'error' },
     );

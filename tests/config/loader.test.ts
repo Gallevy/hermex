@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -136,5 +136,42 @@ describe('loadConfig', () => {
     const cwd = scratchDir();
     const configPath = writeConfig(cwd, `export default { parser: 'babel' };`);
     await expect(loadConfig(cwd, configPath)).rejects.toThrow();
+  });
+
+  // The deprecated-key migration runs inside loadConfig, before Zod — these
+  // pin the seam itself, not just `migrateDeprecatedConfig` in isolation
+  // (tests/config/deprecations.test.ts covers the migration rules).
+  it('migrates a legacy `release-age` rule and warns on stderr', async () => {
+    const cwd = scratchDir();
+    const configPath = writeConfig(
+      cwd,
+      `export default { rules: { 'release-age': [{ severity: 'error', patterns: ['moment'] }] } };`,
+    );
+    const warn = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await loadConfig(cwd, configPath);
+
+    expect(result.rules['no-outdated-packages']).toEqual([
+      expect.objectContaining({ severity: 'error', patterns: ['moment'] }),
+    ]);
+    // Warnings go to stderr so `--format json` on stdout stays parseable.
+    expect(warn).toHaveBeenCalledOnce();
+    expect(warn.mock.calls[0][0]).toContain("rules['release-age']");
+    warn.mockRestore();
+  });
+
+  it('loads a config using the current rule key without warning', async () => {
+    const cwd = scratchDir();
+    const configPath = writeConfig(
+      cwd,
+      `export default { rules: { 'no-outdated-packages': [{ severity: 'warn', patterns: ['**'] }] } };`,
+    );
+    const warn = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await loadConfig(cwd, configPath);
+
+    expect(result.rules['no-outdated-packages']).toHaveLength(1);
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
   });
 });

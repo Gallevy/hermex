@@ -5,6 +5,6 @@ export default {
   ...base,
   rules: {
     ...base.rules,
-    'release-age': [{ severity: 'error', patterns: ['react'], scope: 'tree' }],
+    'no-outdated-packages': [{ severity: 'error', patterns: ['react'], scope: 'tree' }],
   },
 } satisfies HermexConfigInput;

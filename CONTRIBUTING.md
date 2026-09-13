@@ -43,7 +43,7 @@ All contributions must adhere to the following directory structure:
 | `/src/config`        | Config loading and zod schema         |
 | `/src/rules`         | Compliance rules engine               |
 | `/src/swc-parser`    | SWC-based AST parsing engine          |
-| `/src/npm-registry`  | Registry client, cache, release-age enrichment |
+| `/src/npm-registry`  | Registry client, cache, release-age enrichment (`no-outdated-packages`, `no-deprecated-packages`) |
 | `/src/lock-parser`   | npm/yarn/pnpm lockfile adapters       |
 | `/src/utils`         | Shared utilities and output formatting |
 | `/tests`             | All tests (mirrors `/src`) |

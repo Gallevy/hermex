@@ -65,7 +65,7 @@ Options:
 Commands:
   scan [options]             Scan and analyze local files
   comply [options]           Check compliance with hermex.config.ts rules and
-                              release-age policy (exits non-zero if not
+                              outdated-package policy (exits non-zero if not
                               compliant)
   help [command]              display help for command
 ```
@@ -79,7 +79,7 @@ Both `scan` and `comply` share the same options:
 | `--no-color` | Disable colored output (see also the `NO_COLOR` env var) |
 
 All scan behavior — which files to include/exclude, which output sections
-to show, compliance rules, release-age thresholds — is controlled by
+to show, compliance rules, outdated-package thresholds — is controlled by
 `hermex.config.ts`, not CLI flags. See
 [docs/examples.md](docs/examples.md) for the full config reference.
 

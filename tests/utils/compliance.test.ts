@@ -8,7 +8,7 @@ import {
 import {
   createMockPackage,
   createMockReleaseAge,
-  createMockReleaseAgeViolation,
+  createMockNoOutdatedPackagesViolation,
 } from '../helpers/mock-reports';
 
 function makeAggregated(
@@ -172,10 +172,13 @@ describe('computeCompliance', () => {
   // — no special bucket, no packageDistribution reads. computeCompliance
   // sorts them by severity exactly like every other rule.
   it('is non-compliant when an enforced package has a major_overdue breach', () => {
-    const violation = createMockReleaseAgeViolation('@my-org/internal', {
-      worstLevel: 'major_overdue',
-      severity: 'error',
-    });
+    const violation = createMockNoOutdatedPackagesViolation(
+      '@my-org/internal',
+      {
+        worstLevel: 'major_overdue',
+        severity: 'error',
+      },
+    );
     const result = computeCompliance(
       makeAggregated({ ruleViolations: [violation] }),
     );
@@ -184,7 +187,7 @@ describe('computeCompliance', () => {
   });
 
   it('a major_overdue on a warn-severity (not enforced) package does not affect compliance', () => {
-    const violation = createMockReleaseAgeViolation('react', {
+    const violation = createMockNoOutdatedPackagesViolation('react', {
       worstLevel: 'major_overdue',
       severity: 'warn',
     });
@@ -195,10 +198,13 @@ describe('computeCompliance', () => {
   });
 
   it('is non-compliant when an enforced package has a minor_overdue breach', () => {
-    const violation = createMockReleaseAgeViolation('@my-org/internal', {
-      worstLevel: 'minor_overdue',
-      severity: 'error',
-    });
+    const violation = createMockNoOutdatedPackagesViolation(
+      '@my-org/internal',
+      {
+        worstLevel: 'minor_overdue',
+        severity: 'error',
+      },
+    );
     const result = computeCompliance(
       makeAggregated({ ruleViolations: [violation] }),
     );
@@ -207,7 +213,7 @@ describe('computeCompliance', () => {
   });
 
   it('a minor_overdue on a warn-severity (not enforced) package does not affect compliance', () => {
-    const violation = createMockReleaseAgeViolation('react', {
+    const violation = createMockNoOutdatedPackagesViolation('react', {
       worstLevel: 'minor_overdue',
       severity: 'warn',
     });
@@ -239,7 +245,7 @@ describe('computeCompliance — status (#55)', () => {
   });
 
   it("status is 'non-compliant' when an enforced package is overdue, regardless of any warn-severity rules present", () => {
-    const releaseAgeViolation = createMockReleaseAgeViolation(
+    const releaseAgeViolation = createMockNoOutdatedPackagesViolation(
       '@my-org/internal',
       { worstLevel: 'major_overdue', severity: 'error' },
     );
@@ -294,8 +300,8 @@ describe('computeCompliance — status (#55)', () => {
     // None of these are warn-severity *rules*, so the
     // official status must remain 'compliant'.
     // A pending-only package (worstLevel: null — nothing has breached yet)
-    // never becomes a `ReleaseAgeViolation` at all (see
-    // `evaluateReleaseAge`, src/rules/release-age.ts) — `pendingUpgrade` is
+    // never becomes a `NoOutdatedPackagesViolation` at all (see
+    // `evaluateOutdatedPackages`, src/rules/no-outdated-packages.ts) — `pendingUpgrade` is
     // pure Packages-table display data, so it can't appear in
     // `ruleViolations` no matter its severity. Only the info-severity
     // no-files signal is a real violation here, and info never demotes
@@ -340,10 +346,13 @@ describe('computeCompliance — status (#55)', () => {
   // exactly like a warn-severity `no-packages` hit: it demotes `compliant`
   // → `warning`, consistent with every other rule.
   it("status is 'warning' when a non-enforced (warn-severity) release-age breach is the only violation present", () => {
-    const violation = createMockReleaseAgeViolation('react-instantsearch', {
-      worstLevel: 'major_overdue',
-      severity: 'warn',
-    });
+    const violation = createMockNoOutdatedPackagesViolation(
+      'react-instantsearch',
+      {
+        worstLevel: 'major_overdue',
+        severity: 'warn',
+      },
+    );
     const result = computeCompliance(
       makeAggregated({ ruleViolations: [violation] }),
     );

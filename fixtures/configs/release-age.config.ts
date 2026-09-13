@@ -10,6 +10,6 @@ export default {
     ...base.rules,
     // Everything else installed still gets checked, advisory-only, via the
     // implicit `['**']` baseline — no need to author it explicitly.
-    'release-age': [{ severity: 'error', patterns: ['moment', 'react-dom'] }],
+    'no-outdated-packages': [{ severity: 'error', patterns: ['moment', 'react-dom'] }],
   },
 } satisfies HermexConfigInput;

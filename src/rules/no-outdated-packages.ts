@@ -25,11 +25,11 @@ export function releaseAgeConnection(
 }
 
 /**
- * Evaluates the `release-age` rule over packages already enriched by
+ * Evaluates the `no-outdated-packages` rule over packages already enriched by
  * `enrichFromRegistry`: for each one that breached its threshold, resolves
  * which rule entry governs it (`resolveReleaseAgeRule`, last-match-wins
  * against the implicit `['**']` baseline) and — unless that entry's
- * severity is `'off'` — emits one atomic `ReleaseAgeViolation`.
+ * severity is `'off'` — emits one atomic `NoOutdatedPackagesViolation`.
  *
  * Pure and synchronous. The registry I/O it used to own now lives in
  * `enrichFromRegistry`, shared with `no-deprecated-packages` so the two
@@ -38,7 +38,7 @@ export function releaseAgeConnection(
  * regardless of whether a violation was also produced — it's the Packages
  * table's display data, not a verdict.
  */
-export function evaluateReleaseAge(
+export function evaluateOutdatedPackages(
   packages: PackageDistribution[],
   rules: ResolvedReleaseAgeRuleConfig[],
 ): RuleViolation[] {
@@ -52,7 +52,7 @@ export function evaluateReleaseAge(
 
     const rule = resolveReleaseAgeRule(pkg.packageName, rules);
     violations.push({
-      ruleId: 'release-age',
+      ruleId: 'no-outdated-packages',
       severity: entry.severity,
       patterns: rule.patterns,
       message: rule.message,

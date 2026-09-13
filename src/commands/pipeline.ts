@@ -127,7 +127,8 @@ export async function runPipeline(
   // registry-backed families share one enrichment pass, so the gate is
   // "does anything need the registry", not "is release-age on" (#107).
   if (needsRegistry(resolvedConfig.rules)) {
-    const forReleaseAge = resolvedConfig.rules['release-age'].length > 0;
+    const forReleaseAge =
+      resolvedConfig.rules['no-outdated-packages'].length > 0;
     if (spinner.isEnabled)
       spinner.start(
         forReleaseAge

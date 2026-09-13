@@ -63,7 +63,7 @@ function buildRulesSection(aggregated: AggregatedReport): string {
 }
 
 // Mandatory release-age failures, found by filtering `ruleViolations` for
-// error-severity `release-age` hits and joining back to
+// error-severity `no-outdated-packages` hits and joining back to
 // `packageDistribution` by `packageName` for the rich upgrade-target detail
 // — the same join `findForbidViolation` (`print-packages.ts`) already uses
 // for `no-packages`. Release-age violations no longer have their own bucket
@@ -89,8 +89,8 @@ function buildPackagesSection(aggregated: AggregatedReport): string {
   const failingPackageNames = new Set(
     aggregated.ruleViolations
       .filter(
-        (v): v is Extract<typeof v, { ruleId: 'release-age' }> =>
-          v.ruleId === 'release-age' && v.severity === 'error',
+        (v): v is Extract<typeof v, { ruleId: 'no-outdated-packages' }> =>
+          v.ruleId === 'no-outdated-packages' && v.severity === 'error',
       )
       .map((v) => v.packageName),
   );

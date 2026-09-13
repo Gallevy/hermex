@@ -264,7 +264,7 @@ describe('aggregateReports — package distribution', () => {
     const report = reportWithNamedImport('Button', 'react');
     const config = createConfig({
       rules: {
-        'release-age': [
+        'no-outdated-packages': [
           { severity: 'error', patterns: ['@acme-ui/pulse-styles'] },
         ],
       },

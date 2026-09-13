@@ -94,9 +94,9 @@ const deprecatedFlag: Contribute = (pkg, violations) => {
  * order IS badge order on the row — a Record would make that ordering
  * implicit and fragile.
  *
- * `release-age` deliberately has no entry. Its verdict is a version
+ * `no-outdated-packages` deliberately has no entry. Its verdict is a version
  * comparison, not a flag, so its display is the Installed/Minimum target
- * columns — the same kind of declared rendering choice `ReleaseAgeViolation`
+ * columns — the same kind of declared rendering choice `NoOutdatedPackagesViolation`
  * (`src/rules/shared.ts`) already makes about it rendering no rules-table
  * row either.
  */

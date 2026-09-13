@@ -369,7 +369,7 @@ interface RegistryResult {
 /**
  * One registry pass, two outputs. Deprecation is an inventory fact and is
  * always recorded; the `ReleaseAgeEntry` is computed only when
- * `resolvePolicy` is supplied — i.e. when `rules['release-age']` is
+ * `resolvePolicy` is supplied — i.e. when `rules['no-outdated-packages']` is
  * non-empty for this repo. So both registry-backed rules cost one request
  * per installed package between them, not one each (#107).
  *

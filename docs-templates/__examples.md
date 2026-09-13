@@ -316,7 +316,7 @@ export default defineConfig({
 });
 ```
 
-## Release Age (opt-in)
+## Outdated Packages (opt-in)
 
 Fetches version timeline from the registry and flags packages that are behind:
 
@@ -354,13 +354,13 @@ If `enforceOn` is omitted, every package's release age counts toward compliance 
 
 ## Compliance Checking
 
-`<!-- @package name --> scan` is purely informational and always exits `0`. Use `<!-- @package name --> comply` to gate CI on your rules and release-age policy — it runs the same analysis pipeline, reports every violation (it does not stop at the first one), then exits based on the result:
+`<!-- @package name --> scan` is purely informational and always exits `0`. Use `<!-- @package name --> comply` to gate CI on your rules and outdated-package policy — it runs the same analysis pipeline, reports every violation (it does not stop at the first one), then exits based on the result:
 
 ```bash
 <!-- @package name --> comply
 ```
 
-- **Exit `0`** — compliant: no `error`-severity rule violations (banned packages included), no `error`-severity release-age threshold breaches (minor/patch or major).
+- **Exit `0`** — compliant: no `error`-severity rule violations (banned packages included), no `error`-severity outdated-package threshold breaches (minor/patch or major).
 - **Exit `1`** — not compliant: at least one mandatory violation found.
 - **Exit `2`** — hermex couldn't run the check at all (no files matched, or an internal error).
 

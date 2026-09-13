@@ -26,13 +26,13 @@ export interface ComplianceResult {
 }
 
 /**
- * A package is a compliance failure when its governing `release-age` rule
+ * A package is a compliance failure when its governing `no-outdated-packages` rule
  * entry resolves to severity 'error' AND it has any breached threshold at
  * all (worstLevel is non-null) — both 'minor_overdue' and 'major_overdue'
  * fail comply for an enforced package; only severity decides mandatory vs
  * advisory, not which tier breached (#28). This is no longer special-cased
- * here at all: `ReleaseAgeViolation`s are ordinary `RuleViolation`s in
- * `aggregated.ruleViolations` (`src/rules/release-age.ts`), so they fall
+ * here at all: `NoOutdatedPackagesViolation`s are ordinary `RuleViolation`s in
+ * `aggregated.ruleViolations` (`src/rules/no-outdated-packages.ts`), so they fall
  * out of the same severity grouping as every other rule.
  *
  * The `warning` tier is deliberately narrow: it covers only warn-severity

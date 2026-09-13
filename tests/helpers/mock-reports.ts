@@ -8,7 +8,7 @@ import type { ReleaseAgeEntry } from '../../src/npm-registry/types';
 // these two named imports never actually resolved (tests aren't typechecked).
 import type {
   NoDeprecatedPackagesViolation,
-  ReleaseAgeViolation,
+  NoOutdatedPackagesViolation,
 } from '../../src/rules/shared';
 
 /**
@@ -129,17 +129,17 @@ export function createMockReleaseAge(
 }
 
 /**
- * Creates a minimal `ReleaseAgeViolation` — release-age is a rule like any
+ * Creates a minimal `NoOutdatedPackagesViolation` — release-age is a rule like any
  * other now (#93 superseded), so this is what a mandatory/warn-severity
  * overdue package looks like in `ruleViolations`, alongside its richer
  * `createMockReleaseAge` display counterpart on `packageDistribution`.
  */
-export function createMockReleaseAgeViolation(
+export function createMockNoOutdatedPackagesViolation(
   packageName: string,
-  overrides: Partial<ReleaseAgeViolation> = {},
-): ReleaseAgeViolation {
+  overrides: Partial<NoOutdatedPackagesViolation> = {},
+): NoOutdatedPackagesViolation {
   return {
-    ruleId: 'release-age',
+    ruleId: 'no-outdated-packages',
     severity: 'error',
     patterns: [packageName],
     packageName,

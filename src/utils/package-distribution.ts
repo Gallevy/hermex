@@ -48,7 +48,7 @@ export interface PackageDistribution {
    * npm's deprecation notice for the installed version, falling back to the
    * package-level one. An inventory fact, not a policy verdict: recorded
    * whenever the registry is consulted at all, independent of whether
-   * `release-age` is configured (#107) — that coupling is what used to make
+   * `no-outdated-packages` is configured (#107) — that coupling is what used to make
    * deprecation vanish the moment release-age was turned off. Judging it is
    * `rules['no-deprecated-packages']`'s job.
    *
@@ -194,7 +194,7 @@ export function findComponentSource(
  * Purely transitive dependencies stay out: `isOwnedByRepo` excludes them, so
  * this is still the repo's own dependency surface rather than the whole
  * lockfile. The one exception is a transitive package explicitly matched by
- * an `error`-severity `rules['release-age']` entry — installed and
+ * an `error`-severity `rules['no-outdated-packages']` entry — installed and
  * deliberately made mandatory, yet owned by nobody. Dropping it here would
  * silently exempt it from compliance, so it is surfaced with zero usage.
  * Deliberately narrower than "any non-off entry": a `warn`/`info` catch-all
@@ -214,7 +214,7 @@ export function calculatePackageDistribution(
   inventory: PackageInventoryEntry[],
   config?: ResolvedHermexConfig,
 ): PackageDistribution[] {
-  const releaseAgeRules = config?.rules['release-age'] ?? [];
+  const releaseAgeRules = config?.rules['no-outdated-packages'] ?? [];
   const releaseAgePatterns = releaseAgeRules
     .filter((r) => r.severity === 'error')
     .flatMap((r) => r.patterns);

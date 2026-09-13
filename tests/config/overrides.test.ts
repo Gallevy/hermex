@@ -936,11 +936,13 @@ describe('overrides schema validation', () => {
     try {
       const config = createConfig({
         rules: {
-          'release-age': [{ severity: 'off', patterns: ['@internal/*'] }],
+          'no-outdated-packages': [
+            { severity: 'off', patterns: ['@internal/*'] },
+          ],
         },
       });
       const result = applyOverrides(config, dir);
-      expect(result.rules['release-age']).toEqual([
+      expect(result.rules['no-outdated-packages']).toEqual([
         {
           severity: 'off',
           patterns: ['@internal/*'],
@@ -958,19 +960,21 @@ describe('overrides schema validation', () => {
     try {
       const config = createConfig({
         rules: {
-          'release-age': [{ severity: 'warn', patterns: ['@acme/*'] }],
+          'no-outdated-packages': [{ severity: 'warn', patterns: ['@acme/*'] }],
         },
         overrides: [
           {
             match: ['@acme/internal-tools-*'],
             rules: {
-              'release-age': [{ severity: 'off', patterns: ['@acme/*'] }],
+              'no-outdated-packages': [
+                { severity: 'off', patterns: ['@acme/*'] },
+              ],
             },
           },
         ],
       });
       const result = applyOverrides(config, dir);
-      expect(result.rules['release-age']).toEqual([
+      expect(result.rules['no-outdated-packages']).toEqual([
         {
           severity: 'off',
           patterns: ['@acme/*'],

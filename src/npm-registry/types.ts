@@ -64,12 +64,12 @@ export interface ReleaseAgeEntry {
   /** The governing rule entry's severity (see `resolveReleaseAgeRule`,
    * `src/config/overrides.ts`) — 'off' still populates this entry (every
    * package is fetched and shown regardless of policy), it just never
-   * becomes a `ReleaseAgeViolation`. */
+   * becomes a `NoOutdatedPackagesViolation`. */
   severity: 'error' | 'warn' | 'info' | 'off';
   /**
    * Which lockfile copies count toward this verdict: 'root' checks only
    * `installedVersion`; 'tree' checks every resolved copy. From the
-   * governing `rules['release-age']` entry's own `scope` field (#57).
+   * governing `rules['no-outdated-packages']` entry's own `scope` field (#57).
    */
   scope: 'root' | 'tree';
   /** Every distinct installed version considered — only set when more than one exists. */

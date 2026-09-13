@@ -317,7 +317,7 @@ function printPackagesTable(
   // compliance and didn't add up with anything else on screen — this does:
   // Rules-tally + Packages-tally always equals the overall mandatory count.
   const releaseAgeViolations = violations.filter(
-    (v) => v.ruleId === 'release-age',
+    (v) => v.ruleId === 'no-outdated-packages',
   );
   const tally = formatSeverityTally(releaseAgeViolations, {
     includeInfo: true,
