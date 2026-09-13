@@ -13,7 +13,6 @@ import {
   describePackageNotes,
   describeMinimumTarget,
   formatMinimumTargetCell,
-  resolveCompliantTarget,
   resolveInstalledVersion,
 } from '../../src/utils/print-packages';
 import { enrichFromRegistry } from '../../src/npm-registry/enricher';
@@ -32,10 +31,41 @@ import { printComplianceVerdict } from '../../src/utils/print-compliance';
 import { computeCompliance } from '../../src/utils/compliance';
 import {
   createMockPackage,
-  createMockReleaseAge,
+  createMockReleases,
+  createMockCopy,
+  createMockRelease,
+  createOverdueReleases,
   createMockNoOutdatedPackagesViolation,
   createMockDeprecatedViolation,
 } from '../helpers/mock-reports';
+
+import type { ResolvedReleaseAgeRuleConfig } from '../../src/config/types';
+import type { PackageReleases } from '../../src/npm-registry/types';
+import { assessPackage } from '../../src/rules/no-outdated-packages';
+
+/**
+ * The table recomputes each row's recommendation from facts plus the entry
+ * governing it, so the rule entries have to reach it (#189). A single
+ * advisory catch-all is enough for the text; the icon comes from whatever
+ * violations a case supplies.
+ */
+/** Facts plus this repo's thresholds, i.e. what the display now consumes. */
+const assess = (releases?: PackageReleases) =>
+  releases
+    ? assessPackage(releases, {
+        thresholds: { patch: 30, minor: 45, major: 60 },
+        scope: 'root',
+      })
+    : undefined;
+
+const OUTDATED_RULES: ResolvedReleaseAgeRuleConfig[] = [
+  {
+    severity: 'warn',
+    patterns: ['**'],
+    thresholds: { patch: 30, minor: 45, major: 60 },
+    scope: 'root',
+  },
+];
 
 // Drive the "user report" test end-to-end through the real enricher, so it
 // uses the exact version strings from the report rather than a hand-built
@@ -153,7 +183,9 @@ describe('printPackages', () => {
         }),
       ],
     });
-    expect(() => printPackages(aggregated, 'table')).not.toThrow();
+    expect(() =>
+      printPackages(aggregated, 'table', OUTDATED_RULES),
+    ).not.toThrow();
     expect(consoleSpy).toHaveBeenCalled();
     const output = consoleSpy.mock.calls
       .map((call) => call.join(' '))
@@ -171,7 +203,7 @@ describe('printPackages', () => {
         }),
       ],
     });
-    printPackages(aggregated, 'table');
+    printPackages(aggregated, 'table', OUTDATED_RULES);
     const output = consoleSpy.mock.calls
       .map((call) => call.join(' '))
       .join('\n');
@@ -193,7 +225,7 @@ describe('printPackages', () => {
         createMockPackage('vue', { componentCount: 1, usageCount: 1 }),
       ],
     });
-    printPackages(aggregated, 'table');
+    printPackages(aggregated, 'table', OUTDATED_RULES);
     const output = consoleSpy.mock.calls
       .map((call) => call.join(' '))
       .join('\n');
@@ -210,10 +242,10 @@ describe('printPackages', () => {
     const aggregated = makeAggregated({
       packageDistribution: [
         createMockPackage('moment', {
-          releaseAge: createMockReleaseAge({}),
+          releases: createMockReleases(),
         }),
         createMockPackage('react', {
-          releaseAge: createMockReleaseAge({}),
+          releases: createMockReleases(),
         }),
       ],
       ruleViolations: [
@@ -227,7 +259,7 @@ describe('printPackages', () => {
         }),
       ],
     });
-    printPackages(aggregated, 'table');
+    printPackages(aggregated, 'table', OUTDATED_RULES);
     const output = stripAnsi(
       consoleSpy.mock.calls.map((call) => call.join(' ')).join('\n'),
     );
@@ -239,21 +271,16 @@ describe('printPackages', () => {
     const aggregated = makeAggregated({
       packageDistribution: [
         createMockPackage('lodash', {
-          releaseAge: createMockReleaseAge({
-            upgrades: [
-              {
-                version: '4.17.21',
-                releasedDaysAgo: 10,
-                breachReleasedDaysAgo: 100,
-                semverBump: 'major',
-                thresholdDays: 60,
-              },
-            ],
+          releases: createOverdueReleases({
+            target: '4.17.21',
+            targetDaysAgo: 10,
+            daysOverdue: 40,
+            semverBump: 'major',
           }),
         }),
       ],
     });
-    printPackages(aggregated, 'table');
+    printPackages(aggregated, 'table', OUTDATED_RULES);
     const output = consoleSpy.mock.calls
       .map((call) => call.join(' '))
       .join('\n');
@@ -269,21 +296,16 @@ describe('printPackages', () => {
     const aggregated = makeAggregated({
       packageDistribution: [
         createMockPackage('@acme-ui/feature-toggle-fe', {
-          releaseAge: createMockReleaseAge({
-            upgrades: [
-              {
-                version: '4.0.16',
-                releasedDaysAgo: 14,
-                breachReleasedDaysAgo: 1000,
-                semverBump: 'major',
-                thresholdDays: 60,
-              },
-            ],
+          releases: createOverdueReleases({
+            target: '4.0.16',
+            targetDaysAgo: 14,
+            daysOverdue: 940,
+            semverBump: 'major',
           }),
         }),
       ],
     });
-    printPackages(aggregated, 'table');
+    printPackages(aggregated, 'table', OUTDATED_RULES);
     const output = consoleSpy.mock.calls
       .map((call) => call.join(' '))
       .join('\n');
@@ -300,21 +322,16 @@ describe('printPackages', () => {
     const aggregated = makeAggregated({
       packageDistribution: [
         createMockPackage('react', {
-          releaseAge: createMockReleaseAge({
-            upgrades: [
-              {
-                version: '18.0.0',
-                releasedDaysAgo: 90,
-                breachReleasedDaysAgo: 90,
-                semverBump: 'major',
-                thresholdDays: 60,
-              },
-            ],
+          releases: createOverdueReleases({
+            target: '18.0.0',
+            targetDaysAgo: 90,
+            daysOverdue: 30,
+            semverBump: 'major',
           }),
         }),
       ],
     });
-    printPackages(aggregated, 'table');
+    printPackages(aggregated, 'table', OUTDATED_RULES);
     const output = consoleSpy.mock.calls
       .map((call) => call.join(' '))
       .join('\n');
@@ -326,19 +343,17 @@ describe('printPackages', () => {
     const aggregated = makeAggregated({
       packageDistribution: [
         createMockPackage('axios', {
-          releaseAge: createMockReleaseAge({
-            pendingUpgrade: {
-              version: '1.6.0',
-              semverBump: 'minor',
-              releasedDaysAgo: 33,
-              thresholdDays: 45,
-              daysRemaining: 12,
-            },
+          releases: createMockReleases({
+            resolved: [
+              createMockCopy('1.0.0', [
+                createMockRelease('1.6.0', 33, 'minor'),
+              ]),
+            ],
           }),
         }),
       ],
     });
-    printPackages(aggregated, 'table');
+    printPackages(aggregated, 'table', OUTDATED_RULES);
     const output = consoleSpy.mock.calls
       .map((call) => call.join(' '))
       .join('\n');
@@ -354,7 +369,7 @@ describe('printPackages', () => {
         createMockPackage('react', { usageCount: 8, percentage: 100 }),
       ],
     });
-    printPackages(aggregated, 'chart');
+    printPackages(aggregated, 'chart', OUTDATED_RULES);
     const output = consoleSpy.mock.calls
       .map((call) => call.join(' '))
       .join('\n');
@@ -371,7 +386,7 @@ describe('printPackages', () => {
         }),
       ],
     });
-    printPackages(aggregated, 'table');
+    printPackages(aggregated, 'table', OUTDATED_RULES);
     const output = consoleSpy.mock.calls
       .map((call) => call.join(' '))
       .join('\n');
@@ -395,7 +410,7 @@ describe('printPackages', () => {
         }),
       ],
     });
-    printPackages(aggregated, 'table');
+    printPackages(aggregated, 'table', OUTDATED_RULES);
     const output = consoleSpy.mock.calls
       .map((call) => call.join(' '))
       .join('\n');
@@ -415,15 +430,20 @@ describe('printPackages', () => {
           hasVersionConflict: true,
           allVersions: ['1.0.0', '3.0.0'],
           version: '3.0.0',
-          releaseAge: createMockReleaseAge({
-            scope: 'root',
-            measuredVersion: '3.0.0',
-            advisoryBreaches: [{ version: '1.0.0', tier: 'major' }],
+          releases: createMockReleases({
+            resolved: [
+              createMockCopy('3.0.0', []),
+              createMockCopy(
+                '1.0.0',
+                [createMockRelease('99.0.0', 400, 'major')],
+                false,
+              ),
+            ],
           }),
         }),
       ],
     });
-    printPackages(aggregated, 'table');
+    printPackages(aggregated, 'table', OUTDATED_RULES);
     const output = consoleSpy.mock.calls
       .map((call) => call.join(' '))
       .join('\n');
@@ -449,7 +469,7 @@ describe('the Flags column (#86)', () => {
     const aggregated = makeAggregated({
       packageDistribution: [createMockPackage('react', { version: '18.3.1' })],
     });
-    printPackages(aggregated, 'table');
+    printPackages(aggregated, 'table', OUTDATED_RULES);
     const output = consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n');
     expect(output).not.toContain('Flags');
   });
@@ -462,7 +482,7 @@ describe('the Flags column (#86)', () => {
       ],
       ruleViolations: [forbidViolation('moment', 'error')],
     });
-    printPackages(aggregated, 'table');
+    printPackages(aggregated, 'table', OUTDATED_RULES);
     const output = stripAnsi(
       consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n'),
     );
@@ -483,7 +503,7 @@ describe('the Flags column (#86)', () => {
         createMockDeprecatedViolation('moment', { deprecated: 'use dayjs' }),
       ],
     });
-    printPackages(aggregated, 'table');
+    printPackages(aggregated, 'table', OUTDATED_RULES);
     const output = stripAnsi(
       consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n'),
     );
@@ -507,7 +527,7 @@ describe('the Flags column (#86)', () => {
         }),
       ],
     });
-    printPackages(aggregated, 'table');
+    printPackages(aggregated, 'table', OUTDATED_RULES);
     const output = stripAnsi(
       consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n'),
     );
@@ -533,7 +553,7 @@ describe('printPackages chart — label alignment (#86)', () => {
       ],
       ruleViolations: [forbidViolation('@design-system/foundation', 'error')],
     });
-    printPackages(aggregated, 'chart');
+    printPackages(aggregated, 'chart', OUTDATED_RULES);
     const lines = consoleSpy.mock.calls
       .map((c) => stripAnsi(c.join(' ')))
       .filter((l) => l.includes('█') || l.includes('░'));
@@ -556,7 +576,7 @@ describe('printPackages chart — label alignment (#86)', () => {
       ],
       ruleViolations: [forbidViolation('moment', 'error')],
     });
-    printPackages(aggregated, 'chart');
+    printPackages(aggregated, 'chart', OUTDATED_RULES);
     const line = consoleSpy.mock.calls
       .map((c) => stripAnsi(c.join(' ')))
       .find((l) => l.includes('█'));
@@ -570,7 +590,7 @@ describe('printPackages chart — label alignment (#86)', () => {
         createMockPackage('react', { usageCount: 5, percentage: 100 }),
       ],
     });
-    printPackages(aggregated, 'chart');
+    printPackages(aggregated, 'chart', OUTDATED_RULES);
     const line = consoleSpy.mock.calls
       .map((c) => stripAnsi(c.join(' ')))
       .find((l) => l.includes('█'));
@@ -584,66 +604,43 @@ describe('describeMinimumTarget', () => {
   });
 
   it('returns an empty string when nothing is breached or pending', () => {
-    expect(
-      describeMinimumTarget(createMockReleaseAge({ overdueTier: null })),
-    ).toBe('');
+    expect(describeMinimumTarget(assess(createMockReleases()))).toBe('');
   });
 
   // The summary file renders its own severity in a leading column, so it
   // takes the text alone — sharing this function with the human table is
   // what keeps the two from recommending different versions (#57).
-  it('never carries an icon, at any severity', () => {
-    const majorOverdueUpgrade = {
-      version: '2.0.0',
-      releasedDaysAgo: 10,
-      breachReleasedDaysAgo: 100,
-      semverBump: 'major' as const,
-      thresholdDays: 60,
-    };
-    for (const severity of ['error', 'warn', 'info', 'off'] as const) {
-      const text = describeMinimumTarget(
-        createMockReleaseAge({
-          severity,
-          upgrades: [majorOverdueUpgrade],
-        }),
-      );
-      expect(text).toBe('2.0.0 (major, 40 days overdue)');
-    }
+  //
+  // There is no longer any way for severity to reach this at all: it takes
+  // an assessment, which is threshold-derived but severity-free (#189).
+  it('never carries an icon', () => {
+    const text = describeMinimumTarget(
+      assess(createOverdueReleases({ target: '2.0.0', daysOverdue: 40 })),
+    );
+    expect(text).toBe('2.0.0 (major, 40 days overdue)');
+    expect(text).not.toMatch(/[🔴🟡🔵🟢]/u);
   });
 });
 
 describe('formatMinimumTargetCell', () => {
-  const majorOverdueUpgrade = {
-    version: '2.0.0',
-    releasedDaysAgo: 10,
-    breachReleasedDaysAgo: 100,
-    semverBump: 'major' as const,
-    thresholdDays: 60,
-  };
-
-  const minorOverdueUpgrade = {
-    version: '1.1.0',
-    releasedDaysAgo: 10,
-    breachReleasedDaysAgo: 50,
-    semverBump: 'minor' as const,
-    thresholdDays: 30,
-  };
-
   /**
    * The cell reads its verdict by joining `violations`, never off the
-   * package (#189) — so these pass the two separately, exactly as
-   * `printPackagesTable` does.
+   * package (#189) — so these pass the facts and the violations separately,
+   * exactly as `printPackagesTable` does.
    */
   function cellFor(
-    releaseAge?: ReturnType<typeof createMockReleaseAge>,
+    releases?: PackageReleases,
     severity?: 'error' | 'warn' | 'info',
   ): string {
-    const pkg = createMockPackage('acme', { version: '1.0.0', releaseAge });
+    const pkg = createMockPackage('acme', { version: '1.0.0', releases });
     const violations = severity
       ? [createMockNoOutdatedPackagesViolation('acme', { severity })]
       : [];
-    return formatMinimumTargetCell(pkg, violations);
+    return formatMinimumTargetCell(pkg, violations, assess(releases));
   }
+
+  const overdue = () =>
+    createOverdueReleases({ target: '2.0.0', daysOverdue: 40 });
 
   // An em dash, not a blank and not 🟢: hermex has no opinion here, either
   // because the package has no installed version or because the registry
@@ -652,10 +649,8 @@ describe('formatMinimumTargetCell', () => {
     expect(cellFor(undefined)).toBe('—');
   });
 
-  // `upgrades` holds breached tiers only, so an empty list is the all-clear
-  // on its own — there is no separate verdict field to consult.
   it('returns a success icon when no tier is breached', () => {
-    expect(cellFor(createMockReleaseAge({ upgrades: [] }))).toBe('🟢');
+    expect(cellFor(createMockReleases())).toBe('🟢');
   });
 
   // A pending upgrade is not a verdict — nothing is overdue and no rule has
@@ -663,28 +658,18 @@ describe('formatMinimumTargetCell', () => {
   // unrelated things in one report (#86).
   it('renders a pending upgrade with the all-clear icon', () => {
     const cell = cellFor(
-      createMockReleaseAge({
-        upgrades: [],
-        pendingUpgrade: {
-          version: '2.0.0',
-          semverBump: 'major',
-          releasedDaysAgo: 48,
-          thresholdDays: 60,
-          daysRemaining: 12,
-        },
+      createMockReleases({
+        resolved: [
+          createMockCopy('1.0.0', [createMockRelease('2.0.0', 48, 'major')]),
+        ],
       }),
     );
     expect(cell).toBe('🟢 2.0.0 (major, due in 12 days)');
-    // 🔵 used to mean both "an upgrade is coming due" and "an info-severity
-    // violation exists" — it now means only the second (#86).
     expect(cell).not.toContain('🔵');
   });
 
   it('uses the warn icon (not error) for an overdue major at warn severity', () => {
-    const cell = cellFor(
-      createMockReleaseAge({ upgrades: [majorOverdueUpgrade] }),
-      'warn',
-    );
+    const cell = cellFor(overdue(), 'warn');
     expect(cell).toContain('🟡');
     expect(cell).not.toContain('🔴');
   });
@@ -693,18 +678,18 @@ describe('formatMinimumTargetCell', () => {
   // does not fail comply, and every other surface lets the icon carry
   // severity on its own (#86).
   it('no longer appends a [not enforced] suffix at warn severity', () => {
-    const cell = cellFor(
-      createMockReleaseAge({ upgrades: [minorOverdueUpgrade] }),
-      'warn',
-    );
-    expect(cell).not.toContain('not enforced');
+    expect(cellFor(overdue(), 'warn')).not.toContain('not enforced');
   });
 
   // Severity, not which tier breached: an enforced package fails comply
   // whether the overdue tier is minor or major (#28).
-  it('uses the error icon for an enforced overdue minor (#28)', () => {
+  it('uses the error icon for an enforced overdue tier (#28)', () => {
     const cell = cellFor(
-      createMockReleaseAge({ upgrades: [minorOverdueUpgrade] }),
+      createOverdueReleases({
+        target: '1.1.0',
+        daysOverdue: 5,
+        semverBump: 'minor',
+      }),
       'error',
     );
     expect(cell).toContain('🔴');
@@ -715,10 +700,7 @@ describe('formatMinimumTargetCell', () => {
   // severity-is-warn-else-error ternary that swept info and off into the
   // error branch (#86).
   it('uses the info icon for a breach governed by an info-severity entry', () => {
-    const cell = cellFor(
-      createMockReleaseAge({ upgrades: [majorOverdueUpgrade] }),
-      'info',
-    );
+    const cell = cellFor(overdue(), 'info');
     expect(cell).toContain('🔵');
     expect(cell).not.toContain('🔴');
   });
@@ -727,99 +709,50 @@ describe('formatMinimumTargetCell', () => {
   // which is precisely how the cell knows to claim no verdict. It still
   // renders the target it would have recommended.
   it('renders no icon at all for a breach governed by an off entry', () => {
-    const cell = cellFor(
-      createMockReleaseAge({ upgrades: [majorOverdueUpgrade] }),
-    );
-    expect(cell).toBe('2.0.0 (major, 40 days overdue)');
+    expect(cellFor(overdue())).toBe('2.0.0 (major, 40 days overdue)');
   });
 });
 
 describe('describeUpgradeTarget', () => {
   it('leads with the version, then the bump and how overdue it is', () => {
-    expect(
-      describeUpgradeTarget({
-        version: '4.2.0',
-        releasedDaysAgo: 10,
-        breachReleasedDaysAgo: 100,
-        semverBump: 'major',
-        thresholdDays: 60,
-      }),
-    ).toBe('4.2.0 (major, 40 days overdue)');
+    const assessment = assess(
+      createOverdueReleases({ target: '4.2.0', daysOverdue: 40 }),
+    )!;
+    expect(describeUpgradeTarget(assessment)).toBe(
+      '4.2.0 (major, 40 days overdue)',
+    );
   });
 
-  it('names the newest release in the breached tier when no in-window candidate exists (#26)', () => {
-    expect(
-      describeUpgradeTarget({
-        version: '18.0.0',
-        releasedDaysAgo: 90,
-        breachReleasedDaysAgo: 90,
-        semverBump: 'major',
-        thresholdDays: 60,
+  // With no in-window candidate the breached tier's own newest release is
+  // still the right thing to name — picking between the two is
+  // `assessPackage`'s job, so this just renders whichever it chose (#26).
+  it('names the breached tier newest when no in-window candidate exists (#26)', () => {
+    const assessment = assess(
+      createMockReleases({
+        resolved: [
+          createMockCopy('1.0.0', [
+            createMockRelease('17.0.0', 400, 'major'),
+            createMockRelease('18.0.0', 90, 'major'),
+          ]),
+        ],
       }),
-    ).toBe('18.0.0 (major, 30 days overdue)');
+    )!;
+    expect(assessment.targetClearsBreach).toBe(false);
+    expect(describeUpgradeTarget(assessment)).toBe(
+      '18.0.0 (major, 340 days overdue)',
+    );
+  });
+
+  it('renders nothing when the assessment has no target', () => {
+    expect(describeUpgradeTarget(assess(createMockReleases())!)).toBe('');
   });
 });
 
-describe('resolveCompliantTarget (#57)', () => {
-  it('returns undefined when releaseAge is undefined', () => {
-    expect(resolveCompliantTarget(undefined)).toBeUndefined();
-  });
-
-  // The latest-fallback target: a real recommendation, but not one that
-  // clears the breach — so it is not a "compliant target" (#26).
-  it('returns undefined when the recommended target is not in window', () => {
-    const releaseAge = createMockReleaseAge({
-      recommendedTarget: {
-        version: '2.0.0',
-        releasedDaysAgo: 500,
-        inWindow: false,
-      },
-    });
-    expect(resolveCompliantTarget(releaseAge)).toBeUndefined();
-  });
-
-  it('returns undefined when there is no recommended target at all', () => {
-    expect(resolveCompliantTarget(createMockReleaseAge())).toBeUndefined();
-  });
-
-  it('returns the compliant target with its own bump when set', () => {
-    const releaseAge = createMockReleaseAge({
-      recommendedTarget: {
-        version: '1.0.0',
-        releasedDaysAgo: 10,
-        semverBump: 'major',
-        inWindow: true,
-      },
-    });
-    expect(resolveCompliantTarget(releaseAge)).toEqual({
-      version: '1.0.0',
-      bump: 'major',
-    });
-  });
-
-  it("falls back to the top upgrade's bump when the target carries none", () => {
-    const releaseAge = createMockReleaseAge({
-      recommendedTarget: {
-        version: '1.0.0',
-        releasedDaysAgo: 10,
-        inWindow: true,
-      },
-      upgrades: [
-        {
-          version: '0.5.7',
-          releasedDaysAgo: 200,
-          breachReleasedDaysAgo: 200,
-          semverBump: 'minor',
-          thresholdDays: 45,
-        },
-      ],
-    });
-    expect(resolveCompliantTarget(releaseAge)).toEqual({
-      version: '1.0.0',
-      bump: 'minor',
-    });
-  });
-});
+// `resolveCompliantTarget` is gone: choosing between the in-window release
+// and the breached tier's newest happens once, inside `assessPackage`, and
+// is asserted there (`targetClearsBreach` in
+// tests/rules/no-outdated-packages.test.ts). The display no longer makes
+// that choice, so it no longer needs a helper for it (#189).
 
 describe('describeAdvisoryBreaches (#57)', () => {
   it('returns undefined when releaseAge is undefined', () => {
@@ -827,17 +760,28 @@ describe('describeAdvisoryBreaches (#57)', () => {
   });
 
   it('returns undefined when advisoryBreaches is empty or missing', () => {
-    expect(describeAdvisoryBreaches(createMockReleaseAge())).toBeUndefined();
     expect(
-      describeAdvisoryBreaches(createMockReleaseAge({ advisoryBreaches: [] })),
+      describeAdvisoryBreaches(assess(createMockReleases())),
+    ).toBeUndefined();
+    expect(
+      describeAdvisoryBreaches(assess(createMockReleases())),
     ).toBeUndefined();
   });
 
   it('uses singular "copy" wording for exactly one advisory breach, with no icon of its own', () => {
     const text = describeAdvisoryBreaches(
-      createMockReleaseAge({
-        advisoryBreaches: [{ version: '1.4.5', tier: 'major' }],
-      }),
+      assess(
+        createMockReleases({
+          resolved: [
+            createMockCopy('1.0.0', []),
+            createMockCopy(
+              '1.4.5',
+              [createMockRelease('99.0.0', 400, 'major')],
+              false,
+            ),
+          ],
+        }),
+      ),
     );
     // Bare fact text — the single leading icon for the whole Notes line is
     // decided once by describePackageNotes, not per-fact.
@@ -851,12 +795,23 @@ describe('describeAdvisoryBreaches (#57)', () => {
 
   it('uses plural "copies" wording for multiple advisory breaches, without re-listing versions', () => {
     const text = describeAdvisoryBreaches(
-      createMockReleaseAge({
-        advisoryBreaches: [
-          { version: '1.4.5', tier: 'major' },
-          { version: '2.1.9', tier: 'major' },
-        ],
-      }),
+      assess(
+        createMockReleases({
+          resolved: [
+            createMockCopy('1.0.0', []),
+            createMockCopy(
+              '1.4.5',
+              [createMockRelease('99.0.0', 400, 'major')],
+              false,
+            ),
+            createMockCopy(
+              '2.1.9',
+              [createMockRelease('99.0.0', 400, 'major')],
+              false,
+            ),
+          ],
+        }),
+      ),
     );
     expect(text).toContain('2 nested copies overdue');
     expect(text).not.toContain('1.4.5');
@@ -865,14 +820,28 @@ describe('describeAdvisoryBreaches (#57)', () => {
 });
 
 describe('resolveInstalledVersion (#57)', () => {
-  it('uses releaseAge.measuredVersion when release age ran', () => {
+  it('uses the measured version from the assessment when the rule ran', () => {
     const pkg = createMockPackage('multi-version-lib', {
       version: '3.0.0',
-      releaseAge: createMockReleaseAge({ measuredVersion: '1.0.0' }),
+      allVersions: ['3.0.0', '1.0.0'],
+      releases: createMockReleases({
+        resolved: [
+          createMockCopy('3.0.0', [], false),
+          createMockCopy(
+            '1.0.0',
+            [createMockRelease('99.0.0', 400, 'major')],
+            false,
+          ),
+        ],
+      }),
     });
     // Under tree scope the enforced baseline can be a nested copy, not the
-    // root version — resolveInstalledVersion must reflect THAT, not pkg.version.
-    expect(resolveInstalledVersion(pkg)).toBe('1.0.0');
+    // root version — the cell must reflect THAT, not pkg.version.
+    const assessment = assessPackage(pkg.releases!, {
+      thresholds: { patch: 30, minor: 45, major: 60 },
+      scope: 'tree',
+    });
+    expect(resolveInstalledVersion(pkg, assessment)).toBe('1.0.0');
   });
 
   it('falls back to pkg.version when release age did not run', () => {
@@ -913,11 +882,18 @@ describe('describePackageNotes (#57)', () => {
     const pkg = createMockPackage('multi-version-lib', {
       hasVersionConflict: true,
       allVersions: ['1.0.0', '3.0.0'],
-      releaseAge: createMockReleaseAge({
-        advisoryBreaches: [{ version: '1.0.0', tier: 'major' }],
+      releases: createMockReleases({
+        resolved: [
+          createMockCopy('1.0.0', []),
+          createMockCopy(
+            '1.0.0',
+            [createMockRelease('99.0.0', 400, 'major')],
+            false,
+          ),
+        ],
       }),
     });
-    const note = describePackageNotes(pkg)!;
+    const note = describePackageNotes(pkg, [], assess(pkg.releases))!;
     // Notes are stdout-only advisory context (never shown in
     // --summary-file), so nothing here should read as a warning.
     expect(note.icon).toBe('🔵');
@@ -963,22 +939,23 @@ describe('formatMinimumTargetCell — stale 0.x minor line beneath a compliant n
       versions: {},
     });
 
-    const { enriched } = await enrichFromRegistry(
-      [pkg],
-      { cacheDisabled: false },
-      () => ({
-        thresholds: { patch: 30, minor: 45, major: 60 },
-        scope: 'root',
-      }),
-    );
+    // The enricher takes no policy now — the thresholds are applied by
+    // `assess` below, on the facts it recorded (#189).
+    const { enriched } = await enrichFromRegistry([pkg], {
+      cacheDisabled: false,
+    });
 
     // Enforced, so the cell must find an error-severity violation to
     // render red — the verdict is joined, never read off the entry (#189).
-    const cell = formatMinimumTargetCell(enriched[0], [
-      createMockNoOutdatedPackagesViolation(enriched[0].packageName, {
-        severity: 'error',
-      }),
-    ]);
+    const cell = formatMinimumTargetCell(
+      enriched[0],
+      [
+        createMockNoOutdatedPackagesViolation(enriched[0].packageName, {
+          severity: 'error',
+        }),
+      ],
+      assess(enriched[0].releases),
+    );
 
     // Correct target: the compliant major, not the stale minor.
     expect(cell).toContain('1.0.0');
@@ -2216,10 +2193,10 @@ describe('printJson', () => {
     const aggregated = makeAggregated({
       packageDistribution: [
         createMockPackage('react-router-dom', {
-          releaseAge: createMockReleaseAge({}),
+          releases: createMockReleases(),
         }),
         createMockPackage('@acme-ui/pulse', {
-          releaseAge: createMockReleaseAge({}),
+          releases: createMockReleases(),
         }),
       ],
     });
@@ -2230,12 +2207,12 @@ describe('printJson', () => {
     expect(parsed.compliance.compliant).toBe(true);
   });
 
-  it('exposes deprecation as a package-level fact, not under releaseAge (#107)', () => {
+  it('exposes deprecation as a package-level fact, not under releases (#107)', () => {
     const aggregated = makeAggregated({
       packageDistribution: [
         createMockPackage('request', {
           deprecated: 'request has been deprecated',
-          releaseAge: createMockReleaseAge({ overdueTier: null }),
+          releases: createMockReleases(),
         }),
       ],
     });
@@ -2243,7 +2220,9 @@ describe('printJson', () => {
 
     const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
     expect(parsed.packages[0].deprecated).toBe('request has been deprecated');
-    expect(parsed.packages[0].releaseAge.deprecated).toBeUndefined();
+    // Deprecation is an inventory fact of its own; the release timeline
+    // never carried it and now structurally cannot (#107).
+    expect(parsed.packages[0].releases.deprecated).toBeUndefined();
   });
 
   it('passes an explicitly provided compliance result straight through (#55)', () => {

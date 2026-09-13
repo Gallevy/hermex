@@ -108,9 +108,15 @@ export interface NoOutdatedPackagesViolation extends BaseViolation<'no-outdated-
    * `scope: 'root'`, the worst offending copy under `'tree'` (#57). */
   measuredVersion: string;
   /** Which semver tier is overdue. The verdict itself: it lives here, on
-   * the violation, and not on `PackageDistribution.releaseAge`, which
-   * carries registry facts only (#189). */
+   * the violation, and not on `PackageDistribution.releases`, which carries
+   * registry facts only (#189). */
   overdueTier: OverdueTier;
+  /** How far past its threshold the governing tier is — the one number the
+   * two raw policy values it replaces (`breachReleasedDaysAgo` minus
+   * `thresholdDays`) were only ever subtracted to produce. */
+  daysOverdue: number;
+  /** Which copies the verdict counted: 'root' only the direct dependency,
+   * 'tree' every resolved copy (#57). */
   scope: 'root' | 'tree';
 }
 

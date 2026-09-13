@@ -2,11 +2,28 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { DEFAULT_VERSION_COLUMNS } from '../../src/utils/package-columns';
 import { printPackages } from '../../src/utils/print-packages';
 import type { AggregatedReport } from '../../src/utils/aggregator';
+import type { ResolvedReleaseAgeRuleConfig } from '../../src/config/types';
 import {
   createMockPackage,
-  createMockReleaseAge,
+  createMockReleases,
+  createOverdueReleases,
   createMockNoOutdatedPackagesViolation,
 } from '../helpers/mock-reports';
+
+/**
+ * The table recomputes each row's recommendation from facts plus the entry
+ * governing it, so the rule entries have to reach it (#189). An advisory
+ * catch-all is enough for the cell text; the icon comes from whatever
+ * violations a case supplies.
+ */
+const OUTDATED_RULES: ResolvedReleaseAgeRuleConfig[] = [
+  {
+    severity: 'warn',
+    patterns: ['**'],
+    thresholds: { patch: 30, minor: 45, major: 60 },
+    scope: 'root',
+  },
+];
 
 function makeAggregated(
   overrides: Partial<AggregatedReport> = {},
@@ -37,8 +54,11 @@ afterEach(() => {
   consoleSpy.mockRestore();
 });
 
-function render(aggregated: AggregatedReport): string {
-  printPackages(aggregated, 'table');
+function render(
+  aggregated: AggregatedReport,
+  rules: ResolvedReleaseAgeRuleConfig[] = OUTDATED_RULES,
+): string {
+  printPackages(aggregated, 'table', rules);
   return consoleSpy.mock.calls.map((call) => call.join(' ')).join('\n');
 }
 
@@ -85,7 +105,7 @@ describe('packages table column selection', () => {
         packageDistribution: [
           createMockPackage('acme', {
             version: '1.0.0',
-            releaseAge: createMockReleaseAge({ measuredVersion: '1.0.0' }),
+            releases: createMockReleases(),
           }),
         ],
       }),
@@ -97,11 +117,10 @@ describe('packages table column selection', () => {
 
   // `applies` keys off the data, not the config: a configured run that got
   // nothing back keeps the clean two-column table.
-  it('keeps the plain column when the rule ran but produced no entries', () => {
+  it('keeps the plain column when the rule ran but produced no facts', () => {
     const output = render(
       makeAggregated({
         packageDistribution: [createMockPackage('acme', { version: '1.0.0' })],
-        ruleViolations: [],
       }),
     );
 
@@ -109,25 +128,19 @@ describe('packages table column selection', () => {
     expect(output).not.toContain('Minimum target');
   });
 
-  // The icon in the cell comes from the joined violation, so a row whose
-  // rule entry is 'off' (no violation) renders the target with no verdict.
+  // The icon comes from the joined violation, so a row whose rule entry is
+  // 'off' (no violation) renders its target with no verdict attached.
   it('renders the target without an icon when no violation was emitted', () => {
-    const releaseAge = createMockReleaseAge({
-      measuredVersion: '1.0.0',
-      upgrades: [
-        {
-          version: '2.0.0',
-          releasedDaysAgo: 10,
-          breachReleasedDaysAgo: 100,
-          semverBump: 'major',
-          thresholdDays: 60,
-        },
-      ],
-    });
     const output = render(
       makeAggregated({
         packageDistribution: [
-          createMockPackage('acme', { version: '1.0.0', releaseAge }),
+          createMockPackage('acme', {
+            version: '1.0.0',
+            releases: createOverdueReleases({
+              target: '2.0.0',
+              daysOverdue: 40,
+            }),
+          }),
         ],
       }),
     );
@@ -137,22 +150,16 @@ describe('packages table column selection', () => {
   });
 
   it('takes the cell icon from the joined violation severity', () => {
-    const releaseAge = createMockReleaseAge({
-      measuredVersion: '1.0.0',
-      upgrades: [
-        {
-          version: '2.0.0',
-          releasedDaysAgo: 10,
-          breachReleasedDaysAgo: 100,
-          semverBump: 'major',
-          thresholdDays: 60,
-        },
-      ],
-    });
     const output = render(
       makeAggregated({
         packageDistribution: [
-          createMockPackage('acme', { version: '1.0.0', releaseAge }),
+          createMockPackage('acme', {
+            version: '1.0.0',
+            releases: createOverdueReleases({
+              target: '2.0.0',
+              daysOverdue: 40,
+            }),
+          }),
         ],
         ruleViolations: [
           createMockNoOutdatedPackagesViolation('acme', { severity: 'error' }),
@@ -161,5 +168,30 @@ describe('packages table column selection', () => {
     );
 
     expect(output).toContain('🔴');
+  });
+
+  // The same facts under a laxer threshold produce a different cell — which
+  // is only possible because the cell is recomputed per run rather than
+  // cached on the package (#189).
+  it('recomputes the cell when the governing thresholds differ', () => {
+    const packageDistribution = [
+      createMockPackage('acme', {
+        version: '1.0.0',
+        releases: createOverdueReleases({ target: '2.0.0', daysOverdue: 40 }),
+      }),
+    ];
+
+    const strict = render(makeAggregated({ packageDistribution }));
+    expect(strict).toContain('40 days overdue');
+
+    consoleSpy.mockClear();
+
+    const lenient = render(makeAggregated({ packageDistribution }), [
+      {
+        ...OUTDATED_RULES[0],
+        thresholds: { patch: 30, minor: 45, major: 600 },
+      },
+    ]);
+    expect(lenient).not.toContain('days overdue');
   });
 });

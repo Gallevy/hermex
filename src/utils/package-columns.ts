@@ -1,5 +1,23 @@
 import type { PackageDistribution } from './package-distribution';
 import type { CoreRuleViolation, RuleViolation } from '../rules/shared';
+import type { ResolvedReleaseAgeRuleConfig } from '../config/types';
+
+/**
+ * Everything a column contributor may consult beyond the row itself.
+ *
+ * Carries the resolved rule entries, not just the violations, because a
+ * contributor may need to answer for rows that produced **no** violation —
+ * an `'off'` entry still renders a recommendation. Since
+ * `PackageDistribution` holds registry facts only (#189), that answer has
+ * to be recomputed from facts plus policy, and this is where the policy
+ * arrives.
+ */
+export interface PackageColumnContext {
+  violations: RuleViolation[];
+  /** The repo's resolved `no-outdated-packages` entries. Empty when the
+   * rule is off, in which case no contributor keyed to it applies. */
+  rules: ResolvedReleaseAgeRuleConfig[];
+}
 
 /**
  * How a package rule contributes *columns* to the Packages table — the
@@ -17,7 +35,7 @@ import type { CoreRuleViolation, RuleViolation } from '../rules/shared';
  * comparison — where you are, and the oldest release that would clear the
  * breach — which is the primary answer the rule exists to give, not an
  * annotation on a row. Squeezing it into a badge would have cost the
- * recommended version, the tier and the day count (#189).
+ * recommended version, the tier and the day count.
  */
 export interface PackageColumnContributor {
   ruleId: CoreRuleViolation['ruleId'];
@@ -30,7 +48,7 @@ export interface PackageColumnContributor {
    * column of blanks where the table used to be clean.
    */
   applies: (packages: PackageDistribution[]) => boolean;
-  cells: (pkg: PackageDistribution, violations: RuleViolation[]) => string[];
+  cells: (pkg: PackageDistribution, ctx: PackageColumnContext) => string[];
 }
 
 /**

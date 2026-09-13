@@ -17,15 +17,16 @@ export function formatDuration(seconds: number): string {
 }
 
 /**
- * Format how far an upgrade candidate is past its age threshold
+ * Format how far a tier is past its age threshold.
+ *
+ * Takes the difference, not the two policy numbers it used to subtract
+ * (`releasedDaysAgo` and `thresholdDays`): the threshold is config, and the
+ * only thing any caller ever wanted was the gap (#189).
+ *
  * @returns Formatted string (e.g., "40 days overdue", "1 day overdue")
  */
-export function formatDaysOverdue(
-  releasedDaysAgo: number,
-  thresholdDays: number,
-): string {
-  const overdue = releasedDaysAgo - thresholdDays;
-  return `${overdue} day${overdue === 1 ? '' : 's'} overdue`;
+export function formatDaysOverdue(daysOverdue: number): string {
+  return `${daysOverdue} day${daysOverdue === 1 ? '' : 's'} overdue`;
 }
 
 /**

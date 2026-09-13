@@ -1,9 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { deriveOverdueTier } from '../../src/rules/no-outdated-packages';
+import { assessPackage } from '../../src/rules/no-outdated-packages';
 import {
   createMockReport,
   createMockPackage,
-  createMockReleaseAge,
+  createMockCopy,
+  createMockRelease,
+  createMockReleases,
 } from './mock-reports';
 
 describe('mock report factory', () => {
@@ -26,22 +28,29 @@ describe('mock report factory', () => {
   // The entry carries facts only — there is no verdict field to set. A
   // breached tier is expressed by the upgrade that breached it, and the
   // verdict is derived from that (#189).
-  it('createMockReleaseAge returns a valid ReleaseAgeEntry', () => {
-    const entry = createMockReleaseAge();
-    expect(entry.measuredVersion).toBe('1.0.0');
-    expect(deriveOverdueTier(entry.upgrades)).toBeNull();
+  // The facts factory has nothing verdict-shaped to produce: "overdue" is
+  // not a property of the fixture, it is what `assessPackage` concludes
+  // once a threshold is applied to it (#189).
+  it('createMockReleases returns policy-free registry facts', () => {
+    const releases = createMockReleases();
+    expect(releases.resolved).toEqual([
+      { version: '1.0.0', isRoot: true, newer: [] },
+    ]);
 
-    const overdue = createMockReleaseAge({
-      upgrades: [
-        {
-          version: '1.1.0',
-          releasedDaysAgo: 10,
-          breachReleasedDaysAgo: 60,
-          semverBump: 'minor',
-          thresholdDays: 45,
-        },
+    const THRESHOLDS = { patch: 30, minor: 45, major: 60 };
+    expect(
+      assessPackage(releases, { thresholds: THRESHOLDS, scope: 'root' })
+        .overdueTier,
+    ).toBeNull();
+
+    const withOldRelease = createMockReleases({
+      resolved: [
+        createMockCopy('1.0.0', [createMockRelease('1.1.0', 60, 'minor')]),
       ],
     });
-    expect(deriveOverdueTier(overdue.upgrades)).toBe('minor');
+    expect(
+      assessPackage(withOldRelease, { thresholds: THRESHOLDS, scope: 'root' })
+        .overdueTier,
+    ).toBe('minor');
   });
 });

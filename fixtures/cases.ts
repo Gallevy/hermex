@@ -121,6 +121,21 @@ export const cases: FixtureCase[] = [
     expectExit: 1,
   },
   {
+    name: 'comply-release-age-json',
+    proves:
+      "The machine-readable shape of hermex's most consequential rule, against the same recorded registry as comply-release-age — which until #189 no case pinned at all, since the only JSON case that reached this rule (comply-all-rule-types-json) covers a single package on a single path. Here the whole surface is visible at once: `packages[].releases` as policy-free facts (every resolved copy, what was published after each, `latest`) and `ruleViolations[]` as the verdict (`overdueTier`, `daysOverdue`, `measuredVersion`, `scope`). Between them these packages cover an overdue package with no in-window target (#26), one with a real cross-tier target (#57), one merely coming due, one at an 'off' entry that carries full facts and no violation, and a version conflict whose nested copy is overdue but out of scope. The split is the thing to read: identical `releases` would be produced under any thresholds, and every threshold-derived answer sits on the violation instead.",
+    cwd: '.',
+    args: [
+      'comply',
+      '--format',
+      'json',
+      '--config',
+      'configs/release-age.config.ts',
+    ],
+    registry: true,
+    expectExit: 1,
+  },
+  {
     name: 'comply-release-age-unscoped',
     proves:
       'An authored catch-all at severity `warn` (no package-specific `error` entry) enforces nothing, rather than enforcing everything: every installed package is still fetched and reported, every release-age row is advisory, and the exit code comes from rule violations alone. Includes moment — declared, installed, never imported — which release age never even looked up before #171. The only case covering the nothing-enforced path, which is the one path where #171 can move a verdict.',

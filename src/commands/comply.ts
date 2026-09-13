@@ -75,11 +75,13 @@ export async function executeComply(
   try {
     // Runs the full pipeline to completion regardless of violations found —
     // comply must report everything in one pass, not fail on the first issue.
-    const aggregated = await runPipeline(config, spinner, isJson);
-    if (!aggregated) {
+    const result = await runPipeline(config, spinner, isJson);
+    if (!result) {
       process.exitCode = 2;
       return;
     }
+    const { aggregated, resolvedConfig } = result;
+    const rules = resolvedConfig.rules['no-outdated-packages'];
 
     const compliance = computeCompliance(aggregated);
 
@@ -92,8 +94,8 @@ export async function executeComply(
       // per-repo `overrides[]` entry can turn it on even when the base is
       // empty (and vice versa can't happen: overrides only add rules here).
       // Checking the enriched data directly is what's actually true.
-      if (aggregated.packageDistribution.some((p) => p.releaseAge)) {
-        printPackages(aggregated, 'table');
+      if (aggregated.packageDistribution.some((p) => p.releases)) {
+        printPackages(aggregated, 'table', rules);
       }
       if (config.output.versus) {
         printVersus(aggregated);
@@ -102,7 +104,13 @@ export async function executeComply(
     }
 
     if (summaryFile) {
-      writeSummaryFile(summaryFile, aggregated, compliance, summaryTitle);
+      writeSummaryFile(
+        summaryFile,
+        aggregated,
+        compliance,
+        summaryTitle,
+        rules,
+      );
     }
 
     process.exitCode = compliance.compliant ? 0 : 1;
