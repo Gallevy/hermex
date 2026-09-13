@@ -42,12 +42,22 @@ export interface PackageColumnContributor {
   /** Column headers, left to right. `cells` must return exactly this many. */
   headers: readonly string[];
   /**
-   * Whether these columns appear in this run at all. Keyed off the data
-   * rather than the config so a rule that was configured but produced
-   * nothing (every package skipped, registry unreachable) doesn't grow a
-   * column of blanks where the table used to be clean.
+   * Whether these columns appear in this run at all.
+   *
+   * Needs **both** halves, and gets the context for that reason: the rule
+   * has to be configured (otherwise its columns belong to nobody) *and*
+   * there has to be data to put in them (otherwise a configured rule whose
+   * every package was skipped grows a column of blanks).
+   *
+   * Asking only the data was a bug: registry facts are recorded whenever
+   * the registry is consulted, including for a
+   * `no-deprecated-packages`-only run, so "there are facts" stopped meaning
+   * "this rule is on" the moment facts were decoupled from policy (#189).
    */
-  applies: (packages: PackageDistribution[]) => boolean;
+  applies: (
+    packages: PackageDistribution[],
+    ctx: PackageColumnContext,
+  ) => boolean;
   cells: (pkg: PackageDistribution, ctx: PackageColumnContext) => string[];
 }
 

@@ -115,8 +115,8 @@ describe('packages table column selection', () => {
     expect(output).toContain('Minimum target');
   });
 
-  // `applies` keys off the data, not the config: a configured run that got
-  // nothing back keeps the clean two-column table.
+  // `applies` needs both halves. Configured but nothing came back (every
+  // package skipped, registry unreachable) keeps the clean two-column table.
   it('keeps the plain column when the rule ran but produced no facts', () => {
     const output = render(
       makeAggregated({
@@ -126,6 +126,31 @@ describe('packages table column selection', () => {
 
     expect(output).toContain('Version');
     expect(output).not.toContain('Minimum target');
+  });
+
+  // The other half, and the one that actually broke: registry facts exist
+  // for any run that consults the registry — a `no-deprecated-packages`-only
+  // run included — so facts alone must not claim this rule's columns, or
+  // they render as a column of em dashes belonging to nobody (#189).
+  it('keeps the plain column when facts exist but the rule is not configured', () => {
+    const output = render(
+      makeAggregated({
+        packageDistribution: [
+          createMockPackage('acme', {
+            version: '1.0.0',
+            releases: createOverdueReleases({
+              target: '2.0.0',
+              daysOverdue: 40,
+            }),
+          }),
+        ],
+      }),
+      [],
+    );
+
+    expect(output).toContain('Version');
+    expect(output).not.toContain('Minimum target');
+    expect(output).not.toContain('—');
   });
 
   // The icon comes from the joined violation, so a row whose rule entry is

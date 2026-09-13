@@ -263,7 +263,8 @@ const outdatedPackagesColumns: PackageColumnContributor = {
   // exactly the ambiguity #57 reported. "Minimum" is load-bearing: the cell
   // deliberately does not name the latest release (#24, #26).
   headers: ['Installed', 'Minimum target'],
-  applies: (packages) => packages.some((p) => p.releases !== undefined),
+  applies: (packages, { rules }) =>
+    rules.length > 0 && packages.some((p) => p.releases !== undefined),
   cells: (pkg, { violations, rules }) => {
     const assessment = assessmentFor(pkg, rules);
     return [
@@ -333,7 +334,7 @@ function printPackagesTable(
   // test for any rule by name — the table no longer knows that
   // `no-outdated-packages` exists (#189).
   const versionColumns =
-    PACKAGE_COLUMN_CONTRIBUTORS.find((c) => c.applies(packages)) ??
+    PACKAGE_COLUMN_CONTRIBUTORS.find((c) => c.applies(packages, ctx)) ??
     DEFAULT_VERSION_COLUMNS;
 
   const head = ['Package', ...versionColumns.headers];

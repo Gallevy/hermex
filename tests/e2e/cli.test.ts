@@ -259,6 +259,22 @@ describe('comply command', () => {
     expect(outdated.stdout).toContain('Minimum target');
   });
 
+  // `scan` gates the table on `output.packages`, not on any rule, so it is
+  // the path where facts-without-a-rule actually reaches the renderer. The
+  // columns belong to `no-outdated-packages`; with it off they must not
+  // appear, however much registry data another rule caused to be fetched.
+  it('scan shows the plain Version column when only no-deprecated-packages is on', () => {
+    const result = run([
+      'scan',
+      '--config',
+      'configs/deprecated-packages.config.ts',
+    ]);
+    expect(result.stdout).toContain('📦 Packages');
+    expect(result.stdout).toContain('Version');
+    expect(result.stdout).not.toContain('Minimum target');
+    expect(result.stdout).not.toContain('Installed');
+  });
+
   it('exits 1 when an error-severity rule violation is present', () => {
     const configPath = join(
       ROOT,
