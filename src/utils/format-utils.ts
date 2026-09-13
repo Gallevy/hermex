@@ -30,10 +30,10 @@ export function formatDaysOverdue(
 
 /**
  * Format how long until an upgrade candidate breaches its age threshold
- * @returns Formatted string (e.g., "12 days remaining", "1 day remaining")
+ * @returns Formatted string (e.g., "due in 12 days", "due in 1 day")
  */
 export function formatDaysRemaining(daysRemaining: number): string {
-  return `${daysRemaining} day${daysRemaining === 1 ? '' : 's'} remaining`;
+  return `due in ${daysRemaining} day${daysRemaining === 1 ? '' : 's'}`;
 }
 
 /**

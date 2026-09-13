@@ -33,21 +33,21 @@ describe('package status badges', () => {
     expect(formatPackageStatus([])).toBe('');
   });
 
-  it('badges a banned package FORBIDDEN at the severity of its own violation', () => {
+  it('badges a banned package as forbidden at the severity of its own violation', () => {
     const pkg = createMockPackage('moment');
     const statuses = collectPackageStatuses(pkg, [
       forbidViolation('moment', 'warn'),
     ]);
     expect(statuses).toEqual([
-      { ruleId: 'no-packages', severity: 'warn', label: 'FORBIDDEN' },
+      { ruleId: 'no-packages', severity: 'warn', label: 'forbidden' },
     ]);
-    expect(stripAnsi(formatPackageStatus(statuses))).toBe('🟡 FORBIDDEN');
+    expect(stripAnsi(formatPackageStatus(statuses))).toBe('🟡 forbidden');
   });
 
   // The single badge #86 asked for: one rule, one word, severity in the
   // icon. [RESTRICTED] named a config concept that never existed, and
   // collapsed warn and info into the same string.
-  it('uses the same FORBIDDEN word at every severity, varying only the icon', () => {
+  it('uses the same word at every severity, varying only the icon', () => {
     const pkg = createMockPackage('moment');
     const render = (severity: RuleViolation['severity']) =>
       stripAnsi(
@@ -55,12 +55,12 @@ describe('package status badges', () => {
           collectPackageStatuses(pkg, [forbidViolation('moment', severity)]),
         ),
       );
-    expect(render('error')).toBe('🔴 FORBIDDEN');
-    expect(render('warn')).toBe('🟡 FORBIDDEN');
-    expect(render('info')).toBe('🔵 FORBIDDEN');
+    expect(render('error')).toBe('🔴 forbidden');
+    expect(render('warn')).toBe('🟡 forbidden');
+    expect(render('info')).toBe('🔵 forbidden');
   });
 
-  it('badges a deprecated package DEPRECATED and carries the publisher notice as detail', () => {
+  it('badges a deprecated package and carries the publisher notice as detail', () => {
     const pkg = createMockPackage('request', {
       deprecated: 'request has been deprecated',
     });
@@ -69,10 +69,10 @@ describe('package status badges', () => {
         deprecated: 'request has been deprecated',
       }),
     ]);
-    expect(statuses[0].label).toBe('DEPRECATED');
+    expect(statuses[0].label).toBe('deprecated');
     expect(statuses[0].severity).toBe('info');
     expect(statuses[0].detail).toBe('request has been deprecated');
-    expect(stripAnsi(formatPackageStatus(statuses))).toBe('🔵 DEPRECATED');
+    expect(stripAnsi(formatPackageStatus(statuses))).toBe('🔵 deprecated');
   });
 
   it('renders both badges in contributor order when a package is banned and deprecated', () => {
@@ -84,7 +84,7 @@ describe('package status badges', () => {
     // Declaration order in PACKAGE_STATUS_CONTRIBUTORS, not the order the
     // violations happened to arrive in.
     expect(stripAnsi(formatPackageStatus(statuses))).toBe(
-      '🔴 FORBIDDEN 🔵 DEPRECATED',
+      '🔴 forbidden 🔵 deprecated',
     );
   });
 

@@ -317,7 +317,7 @@ describe('writeSummaryFile', () => {
         '| | Package | Installed | Minimum target | Status |',
       );
       expect(content).toContain(
-        '| 🔴 | `my-internal-pkg` | 1.0.0 | major 4.2.0 (40 days overdue) |  |',
+        '| 🔴 | `my-internal-pkg` | 1.0.0 | 4.2.0 (major, 40 days overdue) |  |',
       );
     });
 
@@ -355,7 +355,7 @@ describe('writeSummaryFile', () => {
         .split('\n')
         .find((l) => l.includes('my-internal-pkg'));
       expect(line).toBe(
-        '| 🔴 | `my-internal-pkg` | 1.0.0 | major 4.2.0 (40 days overdue) | 🔵 DEPRECATED |',
+        '| 🔴 | `my-internal-pkg` | 1.0.0 | 4.2.0 (major, 40 days overdue) | 🔵 deprecated |',
       );
     });
 
@@ -386,7 +386,7 @@ describe('writeSummaryFile', () => {
         .split('\n')
         .find((l) => l.includes('my-internal-pkg'));
       expect(line).toBe(
-        '| 🔴 | `my-internal-pkg` | 1.0.0 |  | 🔵 DEPRECATED |',
+        '| 🔴 | `my-internal-pkg` | 1.0.0 |  | 🔵 deprecated |',
       );
     });
 
@@ -478,7 +478,7 @@ describe('writeSummaryFile', () => {
           ],
         }),
       );
-      expect(content).toContain('major 1.0.0 (155 days overdue)');
+      expect(content).toContain('1.0.0 (major, 155 days overdue)');
       expect(content).not.toContain('no compliant release available');
     });
 
@@ -595,7 +595,7 @@ describe('writeSummaryFile', () => {
       );
       const tableLine = content.split('\n').find((l) => l.startsWith('| 🔴 |'));
       expect(tableLine).toBe(
-        '| 🔴 | `multi-version-lib` | 1.0.0 | major 2.0.0 (340 days overdue) |  |',
+        '| 🔴 | `multi-version-lib` | 1.0.0 | 2.0.0 (major, 340 days overdue) |  |',
       );
       expect(content).not.toContain('Notes:');
       expect(content).not.toContain('bundle impact');

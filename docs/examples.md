@@ -382,7 +382,7 @@ no need to spell it out as `'no-package-fields': ['dependencies.x', 'devDependen
 Purely transitive dependencies are never flagged: they arrive through another package, so removing one
 isn't something your repo can do. Packages excluded by `packages.ignore` are never flagged either.
 
-Every banned package appears in the Rules and Compliance sections, and also gets a `FORBIDDEN` badge in
+Every banned package appears in the Rules and Compliance sections, and also gets a `forbidden` badge in
 the packages table's **Status** column. Since #78 that table lists every package the repo owns, so a
 declared-but-unimported banned package has a row — and a badge on it — just like an imported one.
 
@@ -475,19 +475,24 @@ ordinary `ruleViolations` entry:
 ### Reading the packages table
 
 ```
-┌─────────┬───────────┬───────────────────────────────────┬───────────────┐
-│ Package │ Installed │ Minimum target                    │ Status        │
-├─────────┼───────────┼───────────────────────────────────┼───────────────┤
-│ react   │ 18.3.1    │ 🟢                                │               │
-│ zod     │ 3.23.8    │ minor 3.24.0 (12 days remaining)  │               │
-│ moment  │ 2.29.4    │ 🔴 major 4.2.0 (40 days overdue)  │ 🔵 DEPRECATED │
-│ eslint  │ 8.57.0    │ 🟢                                │ 🔴 FORBIDDEN  │
-└─────────┴───────────┴───────────────────────────────────┴───────────────┘
+┌─────────┬───────────┬─────────────────────────────────────┬───────────────┐
+│ Package │ Installed │ Minimum target                      │ Status        │
+├─────────┼───────────┼─────────────────────────────────────┼───────────────┤
+│ react   │ 18.3.1    │ 🟢                                  │               │
+│ zod     │ 3.23.8    │ 🟢 3.24.0 (minor, due in 12 days)   │               │
+│ moment  │ 2.29.4    │ 🔴 4.2.0 (major, 40 days overdue)   │ 🔵 deprecated │
+│ eslint  │ N/A       │ —                                   │ 🔴 forbidden  │
+└─────────┴───────────┴─────────────────────────────────────┴───────────────┘
 ```
 
 **Installed** and **Minimum target** appear only when release-age ran; they are that rule's display, and
 its icon sits beside the target it judges. **Status** is where every *other* package rule reports — one
 badge per rule that flagged the row, blank when none did.
+
+The target names the version to move to, then why: the bump tier, and how long the breached tier has
+been out of compliance (counted from its *oldest* release, not from the recommended one — see
+[#24](https://github.com/Gallevy/hermex/issues/24)). `N/A` under **Installed** means the package is
+declared in `package.json` but missing from the lockfile, so there is no installed version to check.
 
 The icons mean the same thing everywhere in hermex's output:
 
@@ -497,7 +502,8 @@ The icons mean the same thing everywhere in hermex's output:
 | 🔵 | Reported at `info` — counted in the tally, never part of the verdict. |
 | 🟡 | Reported at `warn` — counted, and drops `compliance.status` to `"warning"`, but `comply` still exits 0. |
 | 🔴 | Reported at `error` — `comply` exits 1. |
-| *(none)* | No rule is judging this. A release-age entry at `'off'` still shows you the target it would have recommended, with no icon, because nothing about it is a verdict. |
+| *(none)* | No rule is judging this. A release-age entry at `'off'` still shows the target it would have recommended, with no icon, because nothing about it is a verdict. |
+| `—` | Nothing was checked: the package has no installed version, or the registry never answered for it. Distinct from 🟢, which is the claim that hermex looked and found nothing to do. |
 
 Anything a badge can't hold — npm's deprecation notice, a package with several resolved copies, an
 overdue nested copy the current scope doesn't enforce — is printed as a **Notes** line under the table.

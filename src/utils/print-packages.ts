@@ -29,25 +29,28 @@ function printHeader() {
 // breached tier has been out of compliance, measured from its oldest breaching
 // release (#24).
 //
-// Only when there's no in-window target at all does the "no compliant release
-// available" wording apply — every candidate is itself past its threshold, so
-// a day count would imply a countdown that was never achievable (#26).
+// When there is no in-window target, the breached tier's own newest release
+// is still the right thing to name. Being on the newest release that exists
+// never breaches at all — nothing is newer than installed, so no tier is
+// breached and no row is produced — which means this branch is only ever
+// reached when a newer release DOES exist and has simply not been taken.
+// It used to read "no compliant release available", which contradicted the
+// version printed beside it and contradicted `minCompliantVersion`'s own
+// rule that being on latest counts as compliant (#26's wording, not its
+// arithmetic — the day count below is unchanged).
 export function describeUpgradeTarget(
   top: AvailableUpgrade,
   compliantTarget?: { version: string; bump: SemverBump },
 ): string {
-  if (compliantTarget) {
-    const overdue = formatDaysOverdue(
-      top.breachReleasedDaysAgo,
-      top.thresholdDays,
-    );
-    return `${compliantTarget.bump} ${compliantTarget.version} (${overdue})`;
-  }
-  const overdue =
-    top.releasedDaysAgo > top.thresholdDays
-      ? 'no compliant release available'
-      : formatDaysOverdue(top.breachReleasedDaysAgo, top.thresholdDays);
-  return `${top.semverBump} ${top.version} (${overdue})`;
+  const version = compliantTarget?.version ?? top.version;
+  const bump = compliantTarget?.bump ?? top.semverBump;
+  // Counted from the breached tier's OLDEST release: how long the tier has
+  // been out of compliance, not how old the recommended target is (#24).
+  const overdue = formatDaysOverdue(
+    top.breachReleasedDaysAgo,
+    top.thresholdDays,
+  );
+  return `${version} (${bump}, ${overdue})`;
 }
 
 // Prefer a genuinely compliant, still-in-window release as the recommended
@@ -162,7 +165,7 @@ export function describeMinimumTarget(releaseAge?: ReleaseAgeEntry): string {
 
   if (!worstLevel) {
     return pendingUpgrade
-      ? `${pendingUpgrade.semverBump} ${pendingUpgrade.version} (${formatDaysRemaining(pendingUpgrade.daysRemaining)})`
+      ? `${pendingUpgrade.version} (${pendingUpgrade.semverBump}, ${formatDaysRemaining(pendingUpgrade.daysRemaining)})`
       : '';
   }
 
@@ -172,27 +175,35 @@ export function describeMinimumTarget(releaseAge?: ReleaseAgeEntry): string {
   return describeUpgradeTarget(top, resolveCompliantTarget(releaseAge));
 }
 
+/** No release-age verdict for this row at all. Deliberately not blank and
+ * not 🟢: an em dash says hermex has no opinion here — either the package
+ * has no installed version to check (declared but absent from the lockfile,
+ * which the Installed column shows as `N/A`) or the registry never answered
+ * for it. 🟢 is the opposite claim: it looked, and there is nothing to do. */
+const NO_TARGET = '—';
+
 /**
  * The human table's "Minimum target" cell: `describeMinimumTarget` prefixed
- * by release-age's own verdict, or 🟢 when there is no breach at all.
+ * by release-age's own verdict.
  *
  * An icon here means a rule is judging this package, and which icon means
  * how hard. So an entry at severity 'off' renders the target text with no
  * icon at all — it produced no violation, and inheriting red from a
- * fallback ternary (as it used to) claimed a verdict nobody made. A merely
- * pending upgrade goes bare for the same reason: nothing is overdue yet.
+ * fallback ternary (as it used to) claimed a verdict nobody made.
+ *
+ * A pending upgrade keeps the all-clear icon rather than going bare or
+ * borrowing a severity: nothing is overdue, so the row is genuinely fine —
+ * it just has a date attached. Bare cells next to iconned ones read as a
+ * rendering failure rather than as a deliberate absence of verdict.
  */
 export function formatMinimumTargetCell(releaseAge?: ReleaseAgeEntry): string {
-  if (!releaseAge) return '';
+  if (!releaseAge) return NO_TARGET;
   const { worstLevel, upgrades, severity } = releaseAge;
   const description = describeMinimumTarget(releaseAge);
 
-  // Nothing breached — 🟢 when there is nothing to say at all, and the
-  // bare pending countdown otherwise. Carrying the info icon on a pending
-  // upgrade made 🔵 mean two unrelated things in the same report: "an
-  // upgrade is coming due" and "an info-severity violation exists" (#86).
   if (!worstLevel || !upgrades[0]) {
-    return description || severityIcon('success');
+    const ok = severityIcon('success');
+    return description ? `${ok} ${description}` : ok;
   }
 
   // Severity, not which tier breached: an enforced package fails comply

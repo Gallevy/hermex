@@ -303,7 +303,12 @@ describe('printPackages', () => {
     expect(output).not.toContain('14 days overdue');
   });
 
-  it('omits a day count when even the recommended target is past its own threshold (#26)', () => {
+  // This branch is only ever reached when a newer release DOES exist and
+  // has not been taken — being on the newest release that exists breaches
+  // nothing, so no row is produced at all. Naming the version and then
+  // denying one was available contradicted both the cell beside it and
+  // `minCompliantVersion`'s own rule that latest counts as compliant.
+  it('still names a target and counts the days when no in-window candidate exists (#26)', () => {
     const aggregated = makeAggregated({
       packageDistribution: [
         createMockPackage('react', {
@@ -328,11 +333,11 @@ describe('printPackages', () => {
     const output = consoleSpy.mock.calls
       .map((call) => call.join(' '))
       .join('\n');
-    expect(output).toContain('no compliant release available');
-    expect(output).not.toContain('days overdue');
+    expect(output).toContain('18.0.0 (major, 30 days overdue)');
+    expect(output).not.toContain('no compliant release available');
   });
 
-  it('renders "days remaining" for a package approaching its threshold', () => {
+  it('renders a due date for a package approaching its threshold', () => {
     const aggregated = makeAggregated({
       packageDistribution: [
         createMockPackage('axios', {
@@ -354,7 +359,10 @@ describe('printPackages', () => {
     const output = consoleSpy.mock.calls
       .map((call) => call.join(' '))
       .join('\n');
-    expect(output).toContain('12 days remaining');
+    expect(output).toContain('1.6.0 (minor, due in 12 days)');
+    // Not a verdict — nothing is overdue, so it keeps the all-clear icon
+    // rather than borrowing a severity or going bare (#86).
+    expect(output).toContain('🟢 1.6.0');
   });
 
   it('renders chart mode with a populated package entry', () => {
@@ -477,7 +485,7 @@ describe('the Status column (#86)', () => {
       consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n'),
     );
     expect(output).toContain('Status');
-    expect(output).toContain('🔴 FORBIDDEN');
+    expect(output).toContain('🔴 forbidden');
   });
 
   it('keeps the package name cell bare — no prefixes glued to the name', () => {
@@ -500,7 +508,7 @@ describe('the Status column (#86)', () => {
     expect(output).not.toContain('[BANNED]');
     expect(output).not.toContain('[RESTRICTED]');
     expect(output).not.toContain('[DEPRECATED]');
-    expect(output).toContain('🔴 FORBIDDEN 🔵 DEPRECATED');
+    expect(output).toContain('🔴 forbidden 🔵 deprecated');
   });
 
   it('surfaces the publisher notice as a Notes line rather than in a cell', () => {
@@ -571,7 +579,7 @@ describe('printPackages chart — label alignment (#86)', () => {
       .map((c) => stripAnsi(c.join(' ')))
       .find((l) => l.includes('█'));
     expect(line).toMatch(/^moment /);
-    expect(line?.trimEnd()).toMatch(/🔴 FORBIDDEN$/);
+    expect(line?.trimEnd()).toMatch(/🔴 forbidden$/);
   });
 
   it('adds nothing after the percentage when no rule flagged the package', () => {
@@ -619,7 +627,7 @@ describe('describeMinimumTarget', () => {
           upgrades: [majorOverdueUpgrade],
         }),
       );
-      expect(text).toBe('major 2.0.0 (40 days overdue)');
+      expect(text).toBe('2.0.0 (major, 40 days overdue)');
     }
   });
 });
@@ -646,8 +654,11 @@ describe('formatMinimumTargetCell', () => {
     thresholdDays: 30,
   };
 
-  it('returns an empty string when there is no release-age data', () => {
-    expect(formatMinimumTargetCell(undefined)).toBe('');
+  // An em dash, not a blank and not 🟢: hermex has no opinion here, either
+  // because the package has no installed version or because the registry
+  // never answered. 🟢 is the opposite claim — it looked, nothing to do.
+  it('returns an em dash when there is no release-age data at all', () => {
+    expect(formatMinimumTargetCell(undefined)).toBe('—');
   });
 
   it('returns a success icon when there is no worst level and no pending upgrade', () => {
@@ -667,7 +678,7 @@ describe('formatMinimumTargetCell', () => {
   // A pending upgrade is not a verdict — nothing is overdue and no rule has
   // anything to say yet. Carrying the info icon here made 🔵 mean two
   // unrelated things in one report (#86).
-  it('renders a pending upgrade with no icon at all', () => {
+  it('renders a pending upgrade with the all-clear icon', () => {
     const cell = formatMinimumTargetCell(
       createMockReleaseAge({
         worstLevel: null,
@@ -680,7 +691,9 @@ describe('formatMinimumTargetCell', () => {
         },
       }),
     );
-    expect(cell).toBe('major 2.0.0 (12 days remaining)');
+    expect(cell).toBe('🟢 2.0.0 (major, due in 12 days)');
+    // 🔵 used to mean both "an upgrade is coming due" and "an info-severity
+    // violation exists" — it now means only the second (#86).
     expect(cell).not.toContain('🔵');
   });
 
@@ -745,12 +758,12 @@ describe('formatMinimumTargetCell', () => {
         upgrades: [majorOverdueUpgrade],
       }),
     );
-    expect(cell).toBe('major 2.0.0 (40 days overdue)');
+    expect(cell).toBe('2.0.0 (major, 40 days overdue)');
   });
 });
 
 describe('describeUpgradeTarget', () => {
-  it('formats the semver bump, version, and days overdue', () => {
+  it('leads with the version, then the bump and how overdue it is', () => {
     expect(
       describeUpgradeTarget({
         version: '4.2.0',
@@ -760,10 +773,10 @@ describe('describeUpgradeTarget', () => {
         level: 'major_overdue',
         thresholdDays: 60,
       }),
-    ).toBe('major 4.2.0 (40 days overdue)');
+    ).toBe('4.2.0 (major, 40 days overdue)');
   });
 
-  it('reports "no compliant release available" when even the recommended target is past its own threshold (#26)', () => {
+  it('names the newest release in the breached tier when no in-window candidate exists (#26)', () => {
     expect(
       describeUpgradeTarget({
         version: '18.0.0',
@@ -773,7 +786,7 @@ describe('describeUpgradeTarget', () => {
         level: 'major_overdue',
         thresholdDays: 60,
       }),
-    ).toBe('major 18.0.0 (no compliant release available)');
+    ).toBe('18.0.0 (major, 30 days overdue)');
   });
 });
 

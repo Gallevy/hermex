@@ -12,8 +12,13 @@ import { severityColor, severityIcon } from './severity-format';
  * the icon beside it carries how hard the rule is enforced, which is what
  * every other surface already does. `[BANNED]`/`[RESTRICTED]` failed that
  * test — one rule, two adjectives, and no config concept behind either
- * (#86). */
-export type PackageStatusLabel = 'FORBIDDEN' | 'DEPRECATED';
+ * (#86).
+ *
+ * Lowercase, matching the semver words in the Minimum target column beside
+ * it and the rule ids these come from. The icon is already doing the
+ * shouting; uppercasing the word too just put two casing conventions in one
+ * row. */
+export type PackageStatusLabel = 'forbidden' | 'deprecated';
 
 export interface PackageStatus {
   ruleId: CoreRuleViolation['ruleId'];
@@ -66,7 +71,7 @@ function findDeprecatedViolation(
 const forbiddenStatus: Contribute = (pkg, violations) => {
   const violation = findForbidViolation(pkg.packageName, violations);
   if (!violation) return undefined;
-  return { severity: violation.severity, label: 'FORBIDDEN' };
+  return { severity: violation.severity, label: 'forbidden' };
 };
 
 const deprecatedStatus: Contribute = (pkg, violations) => {
@@ -74,7 +79,7 @@ const deprecatedStatus: Contribute = (pkg, violations) => {
   if (!violation) return undefined;
   return {
     severity: violation.severity,
-    label: 'DEPRECATED',
+    label: 'deprecated',
     detail: violation.deprecated,
   };
 };
@@ -137,5 +142,5 @@ export function formatPackageStatus(statuses: PackageStatus[]): string {
 export function describeStatusDetails(statuses: PackageStatus[]): string[] {
   return statuses
     .filter((status) => status.detail !== undefined)
-    .map((status) => `${status.label.toLowerCase()}: ${status.detail}`);
+    .map((status) => `${status.label}: ${status.detail}`);
 }
