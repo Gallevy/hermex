@@ -4,10 +4,10 @@ import type { ComplianceResult } from './compliance';
 import { countMandatoryViolations } from './compliance';
 import { buildRuleRows } from './print-rules';
 import {
-  describeUpgradeTarget,
-  resolveCompliantTarget,
+  describeMinimumTarget,
   resolveInstalledVersion,
 } from './print-packages';
+import { collectPackageStatuses, formatPackageStatus } from './package-status';
 import {
   formatSeverityTally,
   severityIcon,
@@ -79,6 +79,12 @@ function buildRulesSection(aggregated: AggregatedReport): string {
 // summary meant for a PR comment or CI check reads any colored row/line as
 // something that needs attention. That context belongs in the human
 // `--format human` table (stdout), not in a surface used for gating (#59).
+//
+// A mandatory `no-deprecated-packages` hit doesn't get a row of its own
+// here either, for the same reason banned packages don't: it renders an
+// ordinary row in the Rules section above, which release-age never does.
+// The Status column below still carries it as a cross-reference on the
+// rows that ARE listed.
 function buildPackagesSection(aggregated: AggregatedReport): string {
   const failingPackageNames = new Set(
     aggregated.ruleViolations
@@ -97,19 +103,19 @@ function buildPackagesSection(aggregated: AggregatedReport): string {
   const lines: string[] = [
     '### Packages',
     '',
-    '| | Package | Installed | Target |',
-    '|---|---|---|---|',
+    '| | Package | Installed | Minimum target | Status |',
+    '|---|---|---|---|---|',
   ];
+  // The target cell comes from the same function the human table renders,
+  // rather than re-deriving it from the same two helpers — which makes
+  // #57's "both surfaces recommend the same version" a structural
+  // property instead of two call sites kept in step by hand.
   for (const pkg of mandatory) {
-    const top = pkg.releaseAge?.upgrades[0];
-    const reasons: string[] = [];
-    if (top)
-      reasons.push(
-        describeUpgradeTarget(top, resolveCompliantTarget(pkg.releaseAge)),
-      );
-    if (pkg.releaseAge?.deprecated) reasons.push('deprecated');
+    const status = formatPackageStatus(
+      collectPackageStatuses(pkg, aggregated.ruleViolations),
+    );
     lines.push(
-      `| ${severityIcon('error')} | \`${pkg.packageName}\` | ${resolveInstalledVersion(pkg)} | ${reasons.join(', ')} |`,
+      `| ${severityIcon('error')} | \`${pkg.packageName}\` | ${resolveInstalledVersion(pkg)} | ${describeMinimumTarget(pkg.releaseAge)} | ${status} |`,
     );
   }
 

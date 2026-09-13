@@ -2,7 +2,7 @@
 import semver from 'semver';
 import micromatch from 'micromatch';
 import {
-  enrichWithReleaseAge,
+  enrichFromRegistry,
   type ReleaseAgeConnection,
   type ReleaseAgePolicy,
 } from '../../src/npm-registry/enricher';
@@ -24,8 +24,8 @@ const DEFAULT_THRESHOLDS = { patch: 30, minor: 45, major: 60 };
 /**
  * Adapts this file's pre-rule-ification config shape (enforceOn/scope/
  * scopeExceptions as a flat global object) onto the current
- * `enrichWithReleaseAge(packages, connection, resolvePolicy)` signature —
- * `resolvePolicy` here replicates exactly what `enrichWithReleaseAge` used
+ * `enrichFromRegistry(packages, connection, resolvePolicy)` signature —
+ * `resolvePolicy` here replicates exactly what `enrichFromRegistry` used
  * to compute internally before policy resolution moved to
  * `resolveReleaseAgeRule` (`src/config/overrides.ts`): severity from a
  * plain `enforceOn` glob match (no special-casing empty — `#173`), scope
@@ -65,7 +65,7 @@ function callEnrich(
         : config.scope;
     return { severity, thresholds: config.thresholds, scope };
   };
-  return enrichWithReleaseAge(packages, connection, resolvePolicy);
+  return enrichFromRegistry(packages, connection, resolvePolicy);
 }
 
 function daysAgo(n: number): string {
@@ -76,7 +76,7 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe('enrichWithReleaseAge â€” skipped packages', () => {
+describe('enrichFromRegistry â€” skipped packages', () => {
   it('skips packages with no version', async () => {
     const pkg = createMockPackage('react', { version: null });
     const { enriched } = await callEnrich([pkg], BASE_CONFIG);
@@ -202,7 +202,7 @@ describe('enrichWithReleaseAge â€” skipped packages', () => {
   });
 });
 
-describe('enrichWithReleaseAge â€” upgrade detection', () => {
+describe('enrichFromRegistry â€” upgrade detection', () => {
   it('no upgrade when all newer versions are within threshold', async () => {
     const pkg = createMockPackage('react', { version: '18.0.0' });
     mockFetch.mockResolvedValueOnce({
@@ -277,7 +277,7 @@ describe('enrichWithReleaseAge â€” upgrade detection', () => {
     expect(enriched[0].releaseAge?.pendingUpgrade).toBeUndefined();
   });
 
-  it('surfaces deprecation notice from versions field', async () => {
+  it('records a version-specific deprecation notice as an inventory fact, not on releaseAge (#107)', async () => {
     const pkg = createMockPackage('old-pkg', { version: '1.0.0' });
     mockFetch.mockResolvedValueOnce({
       name: 'old-pkg',
@@ -285,11 +285,64 @@ describe('enrichWithReleaseAge â€” upgrade detection', () => {
       versions: { '1.0.0': { deprecated: 'Use new-pkg instead' } },
     });
     const { enriched } = await callEnrich([pkg], BASE_CONFIG);
-    expect(enriched[0].releaseAge?.deprecated).toBe('Use new-pkg instead');
+    expect(enriched[0].deprecated).toBe('Use new-pkg instead');
+    // It used to ride along on the release-age entry, which is exactly the
+    // coupling #107 removed.
+    expect('deprecated' in (enriched[0].releaseAge ?? {})).toBe(false);
+  });
+
+  it('falls back to the package-level deprecation notice when the installed version has none', async () => {
+    const pkg = createMockPackage('old-pkg', { version: '1.0.0' });
+    mockFetch.mockResolvedValueOnce({
+      name: 'old-pkg',
+      time: { '1.0.0': daysAgo(500) },
+      deprecated: 'this package is no longer maintained',
+      versions: { '1.0.0': {} },
+    });
+    const { enriched } = await callEnrich([pkg], BASE_CONFIG);
+    expect(enriched[0].deprecated).toBe('this package is no longer maintained');
+  });
+
+  it('ignores a non-string deprecated field (npm historically used booleans)', async () => {
+    const pkg = createMockPackage('old-pkg', { version: '1.0.0' });
+    mockFetch.mockResolvedValueOnce({
+      name: 'old-pkg',
+      time: { '1.0.0': daysAgo(500) },
+      deprecated: true,
+      versions: { '1.0.0': {} },
+    });
+    const { enriched } = await callEnrich([pkg], BASE_CONFIG);
+    expect(enriched[0].deprecated).toBeUndefined();
+  });
+
+  it('records deprecation with no release-age policy at all — the #107 core', async () => {
+    const pkg = createMockPackage('old-pkg', { version: '1.0.0' });
+    mockFetch.mockResolvedValueOnce({
+      name: 'old-pkg',
+      time: { '1.0.0': daysAgo(500) },
+      versions: { '1.0.0': { deprecated: 'Use new-pkg instead' } },
+    });
+    // No resolvePolicy: release-age is off for this repo. Deprecation must
+    // still be recorded — turning release-age off used to silently take
+    // deprecation detection with it.
+    const { enriched } = await enrichFromRegistry([pkg], {
+      cacheDisabled: false,
+    });
+    expect(enriched[0].deprecated).toBe('Use new-pkg instead');
+    expect(enriched[0].releaseAge).toBeUndefined();
+  });
+
+  it('records neither deprecation nor releaseAge when the fetch itself fails', async () => {
+    const pkg = createMockPackage('old-pkg', { version: '1.0.0' });
+    mockFetch.mockResolvedValueOnce(null);
+    const { enriched, skipped } = await callEnrich([pkg], BASE_CONFIG);
+    expect(skipped).toBe(1);
+    expect(enriched[0].deprecated).toBeUndefined();
+    expect(enriched[0].releaseAge).toBeUndefined();
   });
 });
 
-describe('enrichWithReleaseAge â€” batching', () => {
+describe('enrichFromRegistry â€” batching', () => {
   it('processes multiple packages and returns all enriched', async () => {
     const packages = [
       createMockPackage('react', { version: '18.0.0' }),
@@ -307,7 +360,7 @@ describe('enrichWithReleaseAge â€” batching', () => {
   });
 });
 
-describe('enrichWithReleaseAge â€” latest version reporting (#14)', () => {
+describe('enrichFromRegistry â€” latest version reporting (#14)', () => {
   it('surfaces the newest stable release per tier, not the original alpha/rc', async () => {
     const pkg = createMockPackage('react-router-dom', { version: '5.3.4' });
     mockFetch.mockResolvedValueOnce({
@@ -367,7 +420,7 @@ describe('enrichWithReleaseAge â€” latest version reporting (#14)', () => {
   });
 });
 
-describe('enrichWithReleaseAge â€” prerelease exclusion (#20)', () => {
+describe('enrichFromRegistry â€” prerelease exclusion (#20)', () => {
   it('minCompliantVersion skips a prerelease even when it is the most recent qualifying version', async () => {
     const pkg = createMockPackage('@acme-ui/localize', { version: '4.1.12' });
     mockFetch.mockResolvedValueOnce({
@@ -418,7 +471,7 @@ describe('enrichWithReleaseAge â€” prerelease exclusion (#20)', () => {
   });
 });
 
-describe('enrichWithReleaseAge â€” minCompliantVersion for all bump tiers (#21)', () => {
+describe('enrichFromRegistry â€” minCompliantVersion for all bump tiers (#21)', () => {
   it('finds a compliant release inside an intermediate major line, not just the latest', async () => {
     // A real-world shape: installed 10.x. 11.0.0 is old enough (400d) to
     // breach the 60-day major threshold and drive worstLevel to
@@ -544,7 +597,7 @@ describe('enrichWithReleaseAge â€” minCompliantVersion for all bump tiers (
   });
 });
 
-describe('enrichWithReleaseAge â€” minCompliantVersion falls back to latest (#26)', () => {
+describe('enrichFromRegistry â€” minCompliantVersion falls back to latest (#26)', () => {
   it('falls back minCompliantVersion to latest for display but still reports major_overdue when a breached major tier exists (#29)', async () => {
     const pkg = createMockPackage('@acme-ui/stale-lib', { version: '1.0.0' });
     mockFetch.mockResolvedValueOnce({
@@ -635,7 +688,7 @@ describe('enrichWithReleaseAge â€” minCompliantVersion falls back to latest
   });
 });
 
-describe('enrichWithReleaseAge â€” enforceOn severity scoping (#18)', () => {
+describe('enrichFromRegistry â€” enforceOn severity scoping (#18)', () => {
   it('marks matched packages error and everything else warn when enforceOn is set', async () => {
     const packages = [
       createMockPackage('@my-org/internal-pkg', { version: '1.0.0' }),
@@ -723,7 +776,7 @@ describe('enrichWithReleaseAge â€” enforceOn severity scoping (#18)', () =>
   });
 });
 
-describe('enrichWithReleaseAge â€” overdue basis uses oldest breach, not newest target (#24)', () => {
+describe('enrichFromRegistry â€” overdue basis uses oldest breach, not newest target (#24)', () => {
   it('reports breachReleasedDaysAgo from the oldest release in the tier while releasedDaysAgo stays on the newest target', async () => {
     // A real-world shape: the major line breached its 60-day threshold
     // ~1000 days ago, but the recommended upgrade target (latest) was only
@@ -792,7 +845,7 @@ describe('enrichWithReleaseAge â€” overdue basis uses oldest breach, not ne
 // "a more specific rule entry sets its own scope", lives in
 // tests/rules/release-age.test.ts.
 
-describe('enrichWithReleaseAge â€” scope (#57)', () => {
+describe('enrichFromRegistry â€” scope (#57)', () => {
   // Shared fixture: relative to '1.0.0', both '2.0.0' (400d old) and '3.0.0'
   // (200d old) are major bumps past the 60-day threshold â€” so '1.0.0' alone
   // is major_overdue. Relative to '3.0.0', there's nothing newer at all, so

@@ -1,6 +1,11 @@
 import micromatch from 'micromatch';
-import type { ResolvedHermexConfig } from '../config/types';
+import type {
+  ResolvedDeprecatedPackagesRuleConfig,
+  ResolvedHermexConfig,
+} from '../config/types';
+import { resolveDeprecatedPackagesRule } from '../config/overrides';
 import type { RuleViolation } from '../rules/evaluator';
+import type { PackageDistribution } from './package-distribution';
 import type { PackageInventoryEntry } from './package-inventory';
 import { isInstalled, isOwnedByRepo, isUsed } from './package-inventory';
 
@@ -84,6 +89,51 @@ export function detectRequiredPackages(
         message: rule.message,
       });
     }
+  }
+  return violations;
+}
+
+/**
+ * Judges the deprecation notice registry enrichment already recorded on
+ * each package. A pure, synchronous rule over `PackageDistribution.deprecated`
+ * — it performs no I/O of its own (#107).
+ *
+ * Unlike its siblings above it cannot run during `aggregateReports`:
+ * `deprecated` doesn't exist until `enrichFromRegistry` has run, so the
+ * pipeline calls this from the registry block instead. That's also why it
+ * takes `PackageDistribution[]` rather than the inventory — the
+ * distribution is the axis enrichment writes to.
+ *
+ * Resolution is last-match-wins against an implicit `['**']` baseline
+ * (`resolveDeprecatedPackagesRule`), the same governance `release-age`
+ * uses, rather than "every matching entry fires" — so exactly one entry
+ * governs a package and `severity: 'off'` genuinely exempts it. The
+ * baseline is why a deprecated package stays visible with no rule authored
+ * at all, at 'info', never affecting the verdict.
+ *
+ * Scope matches `detectForbiddenPackages`: only packages the repo owns
+ * reach here, since `calculatePackageDistribution` already selected them. A
+ * purely transitive deprecated package isn't the repo's to fix.
+ */
+export function detectDeprecatedPackages(
+  packages: PackageDistribution[],
+  rules: ResolvedDeprecatedPackagesRuleConfig[],
+): RuleViolation[] {
+  const violations: RuleViolation[] = [];
+  for (const pkg of packages) {
+    if (!pkg.deprecated) continue;
+
+    const rule = resolveDeprecatedPackagesRule(pkg.packageName, rules);
+    if (rule.severity === 'off') continue;
+
+    violations.push({
+      ruleId: 'no-deprecated-packages',
+      severity: rule.severity,
+      patterns: rule.patterns,
+      message: rule.message,
+      packageName: pkg.packageName,
+      deprecated: pkg.deprecated,
+    });
   }
   return violations;
 }

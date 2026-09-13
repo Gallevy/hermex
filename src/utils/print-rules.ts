@@ -30,6 +30,8 @@ export function formatRuleType(violation: RuleViolation): string {
       return 'require-packages';
     case 'no-packages':
       return 'no-packages';
+    case 'no-deprecated-packages':
+      return 'no-deprecated-packages';
     case 'require-scripts':
       return 'require-scripts';
     case 'require-package-fields':
@@ -125,9 +127,9 @@ function describeGroup(group: CoreRuleViolation[]): string {
   }
 }
 
-/** One row per violation — each subject (a forbidden package, a forbidden
- * field) is individually actionable, so folding them would hide which
- * specific ones to fix. Matches today's existing display for these rules,
+/** One row per violation — each subject (a forbidden package, a deprecated
+ * package, a forbidden field) is individually actionable, so folding them
+ * would hide which specific ones to fix. Matches today's existing display for these rules,
  * which already emit one violation per subject. */
 function describeIndividual(v: CoreRuleViolation): string {
   const patterns = v.patterns.join(', ');
@@ -135,6 +137,13 @@ function describeIndividual(v: CoreRuleViolation): string {
 
   if (v.ruleId === 'no-packages')
     return `${v.packageName ?? patterns} is forbidden${suffix}`;
+  // The publisher's notice stands in for a message only when the policy
+  // author wrote none: two gray em-dash clauses in a row read terribly, and
+  // between the two the author's own wording should win. Showing it at all
+  // matters because this row is the only place the notice reaches
+  // `--summary-file`, which renders Rules but never the stdout Notes block.
+  if (v.ruleId === 'no-deprecated-packages')
+    return `${v.packageName} is deprecated${suffix || chalk.gray(` — ${v.deprecated}`)}`;
   if (v.ruleId === 'no-package-fields')
     return `field ${v.fieldPath ?? patterns} is forbidden in package.json${suffix}`;
 
@@ -161,6 +170,7 @@ function describePlugin(v: PluginViolation): string {
  * declares each rule's rendering strategy. */
 const ONE_ROW_PER_VIOLATION = new Set<CoreRuleViolation['ruleId']>([
   'no-packages',
+  'no-deprecated-packages',
   'no-package-fields',
 ]);
 
@@ -176,7 +186,8 @@ export interface Row {
 
 /**
  * Describes a single violation on its own — for a plugin finding or a
- * `no-packages`/`no-package-fields` hit this is exactly what shows up in
+ * `no-packages`/`no-deprecated-packages`/`no-package-fields` hit this is
+ * exactly what shows up in
  * `buildRuleRows`'s output (each already renders one row per violation); for
  * a fold-style rule (`no-files`, `max-file-size`, `require-codeowners`, or
  * any absence rule) it describes that one violation in isolation, as if it
@@ -196,13 +207,14 @@ export function describeViolation(v: RuleViolation): string {
  * Turns a flat list of atomic violations into display rows: one row per
  * group for fold-style rules (`no-files`, `max-file-size`,
  * `require-codeowners`, and every absence rule, which are always
- * single-member groups), one row per violation for `no-packages`/
- * `no-package-fields`, one row per finding for plugins, and zero rows for
- * `release-age` (its display is the Packages table). Shared by the terminal
- * table (`printRules`) and `--summary-file` (`write-summary-file.ts`) so
- * the two surfaces can never render a different row count for the same
- * violations — pass violations pre-sorted (`sortViolationsBySeverity`) if
- * row order matters to the caller.
+ * single-member groups), one row per violation for the package and field
+ * rules in `ONE_ROW_PER_VIOLATION`, one row per finding for plugins, and
+ * zero rows for `release-age` (its display is the Packages table). Shared
+ * by the terminal table (`printRules`) and `--summary-file`
+ * (`write-summary-file.ts`) so the two surfaces can never render a
+ * different row count for the same violations — pass violations
+ * pre-sorted (`sortViolationsBySeverity`) if row order matters to the
+ * caller.
  */
 export function buildRuleRows(violations: RuleViolation[]): Row[] {
   const rows: Row[] = [];

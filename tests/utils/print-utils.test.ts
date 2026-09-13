@@ -11,12 +11,12 @@ import {
   describeAdvisoryBreaches,
   describeBundleImpact,
   describePackageNotes,
-  formatPackageName,
-  formatUpgradeCell,
+  describeMinimumTarget,
+  formatMinimumTargetCell,
   resolveCompliantTarget,
   resolveInstalledVersion,
 } from '../../src/utils/print-packages';
-import { enrichWithReleaseAge } from '../../src/npm-registry/enricher';
+import { enrichFromRegistry } from '../../src/npm-registry/enricher';
 import { printComponents } from '../../src/utils/print-components';
 import { printPatterns } from '../../src/utils/print-patterns';
 import { printDetails } from '../../src/utils/print-details';
@@ -34,6 +34,7 @@ import {
   createMockPackage,
   createMockReleaseAge,
   createMockReleaseAgeViolation,
+  createMockDeprecatedViolation,
 } from '../helpers/mock-reports';
 
 // Drive the "user report" test end-to-end through the real enricher, so it
@@ -413,10 +414,10 @@ describe('printPackages', () => {
 
   // (#57) When release age is enabled, the table splits into an unambiguous
   // "Installed" column (the single version the verdict was measured
-  // against) and "Target" column, with the bundle-impact/advisory-breach
+  // against) and "Minimum target" column, with the bundle-impact/advisory-breach
   // context printed as a separate Notes line below the table — not crammed
   // into a cell where it's unclear which installed copy a claim refers to.
-  it('shows Installed/Target columns and a Notes line for a package with an advisory breach', () => {
+  it('shows Installed/Minimum target columns and a Notes line for a package with an advisory breach', () => {
     const aggregated = makeAggregated({
       packageDistribution: [
         createMockPackage('multi-version-lib', {
@@ -437,7 +438,7 @@ describe('printPackages', () => {
       .map((call) => call.join(' '))
       .join('\n');
     expect(output).toContain('Installed');
-    expect(output).toContain('Target');
+    expect(output).toContain('Minimum target');
     // The table row shows only the single installed baseline, not the list.
     const tableLines = output.split('\n').filter((l) => l.includes('│'));
     expect(tableLines.some((l) => l.includes('3.0.0'))).toBe(true);
@@ -451,82 +452,191 @@ describe('printPackages', () => {
   });
 });
 
-describe('formatPackageName', () => {
-  it('prefixes a deprecated package', () => {
-    const pkg = createMockPackage('left-pad', {
-      releaseAge: createMockReleaseAge({ deprecated: 'use String.padStart' }),
+describe('the Status column (#86)', () => {
+  it('omits the column entirely when no package rule flagged anything', () => {
+    // A plain scan of a repo with no package rules keeps its clean two-column
+    // table rather than growing a column of blanks.
+    const aggregated = makeAggregated({
+      packageDistribution: [createMockPackage('react', { version: '18.3.1' })],
     });
-    expect(formatPackageName(pkg)).toContain('[DEPRECATED]');
+    printPackages(aggregated, 'table');
+    const output = consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(output).not.toContain('Status');
   });
 
-  it('prefixes an error-severity banned package as [BANNED]', () => {
-    const pkg = createMockPackage('moment');
-    expect(
-      formatPackageName(pkg, forbidViolation('moment', 'error')),
-    ).toContain('[BANNED]');
-  });
-
-  it('prefixes a warn-severity banned package as [RESTRICTED]', () => {
-    const pkg = createMockPackage('moment');
-    expect(formatPackageName(pkg, forbidViolation('moment', 'warn'))).toContain(
-      '[RESTRICTED]',
+  it('adds the column as soon as one row has a badge', () => {
+    const aggregated = makeAggregated({
+      packageDistribution: [
+        createMockPackage('react', { version: '18.3.1' }),
+        createMockPackage('moment', { version: '2.29.4' }),
+      ],
+      ruleViolations: [forbidViolation('moment', 'error')],
+    });
+    printPackages(aggregated, 'table');
+    const output = stripAnsi(
+      consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n'),
     );
+    expect(output).toContain('Status');
+    expect(output).toContain('🔴 FORBIDDEN');
   });
 
-  it('combines [DEPRECATED] with [BANNED] when both apply', () => {
-    const pkg = createMockPackage('moment', {
-      releaseAge: createMockReleaseAge({ deprecated: 'use dayjs' }),
+  it('keeps the package name cell bare — no prefixes glued to the name', () => {
+    const aggregated = makeAggregated({
+      packageDistribution: [
+        createMockPackage('moment', {
+          version: '2.29.4',
+          deprecated: 'use dayjs',
+        }),
+      ],
+      ruleViolations: [
+        forbidViolation('moment', 'error'),
+        createMockDeprecatedViolation('moment', { deprecated: 'use dayjs' }),
+      ],
     });
-    const name = formatPackageName(pkg, forbidViolation('moment'));
-    expect(name).toContain('[DEPRECATED]');
-    expect(name).toContain('[BANNED]');
+    printPackages(aggregated, 'table');
+    const output = stripAnsi(
+      consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n'),
+    );
+    expect(output).not.toContain('[BANNED]');
+    expect(output).not.toContain('[RESTRICTED]');
+    expect(output).not.toContain('[DEPRECATED]');
+    expect(output).toContain('🔴 FORBIDDEN 🔵 DEPRECATED');
+  });
+
+  it('surfaces the publisher notice as a Notes line rather than in a cell', () => {
+    const aggregated = makeAggregated({
+      packageDistribution: [
+        createMockPackage('request', {
+          version: '2.88.2',
+          deprecated: 'request has been deprecated',
+        }),
+      ],
+      ruleViolations: [
+        createMockDeprecatedViolation('request', {
+          deprecated: 'request has been deprecated',
+        }),
+      ],
+    });
+    printPackages(aggregated, 'table');
+    const output = stripAnsi(
+      consoleSpy.mock.calls.map((c) => c.join(' ')).join('\n'),
+    );
+    expect(output).toContain('Notes:');
+    expect(output).toContain(
+      '🔵 request → deprecated: request has been deprecated',
+    );
   });
 });
 
-describe('formatUpgradeCell', () => {
-  it('returns an empty string when there is no release-age data', () => {
-    expect(formatUpgradeCell(undefined)).toBe('');
-  });
-
-  it('returns a success icon when there is no worst level and no pending upgrade', () => {
-    expect(formatUpgradeCell(createMockReleaseAge({ worstLevel: null }))).toBe(
-      '🟢',
-    );
-  });
-
-  it('returns a success icon when worstLevel is set but the upgrades list is empty', () => {
-    expect(
-      formatUpgradeCell(
-        createMockReleaseAge({ worstLevel: 'major_overdue', upgrades: [] }),
+describe('printPackages chart — label alignment (#86)', () => {
+  // The bug: maxLabelLength was measured from packageName.length while the
+  // string actually padded was the ANSI-colored, badge-prefixed label, so any
+  // flagged row pushed its bar out of the column.
+  it('starts every bar in the same column even when a row is flagged', () => {
+    const aggregated = makeAggregated({
+      packageDistribution: [
+        createMockPackage('@design-system/foundation', {
+          usageCount: 33,
+          percentage: 91.7,
+        }),
+        createMockPackage('react', { usageCount: 3, percentage: 8.3 }),
+      ],
+      ruleViolations: [forbidViolation('@design-system/foundation', 'error')],
+    });
+    printPackages(aggregated, 'chart');
+    const lines = consoleSpy.mock.calls
+      .map((c) => stripAnsi(c.join(' ')))
+      .filter((l) => l.includes('█') || l.includes('░'));
+    expect(lines).toHaveLength(2);
+    const barStarts = lines.map((l) =>
+      Math.min(
+        ...['█', '░'].map((ch) => {
+          const i = l.indexOf(ch);
+          return i === -1 ? Number.POSITIVE_INFINITY : i;
+        }),
       ),
-    ).toBe('🟢');
+    );
+    expect(barStarts[0]).toBe(barStarts[1]);
   });
 
-  it('uses the warn icon (not error) for a major_overdue upgrade at warn severity', () => {
-    const cell = formatUpgradeCell(
-      createMockReleaseAge({
-        worstLevel: 'major_overdue',
-        severity: 'warn',
-        upgrades: [
-          {
-            version: '2.0.0',
-            releasedDaysAgo: 10,
-            breachReleasedDaysAgo: 100,
-            semverBump: 'major',
-            level: 'major_overdue',
-            thresholdDays: 60,
-          },
-        ],
-      }),
-    );
-    expect(cell).toContain('🟡');
-    expect(cell).not.toContain('🔴');
-    expect(cell).toContain('[not enforced]');
+  it('trails the badges after the percentage instead of prefixing the label', () => {
+    const aggregated = makeAggregated({
+      packageDistribution: [
+        createMockPackage('moment', { usageCount: 5, percentage: 100 }),
+      ],
+      ruleViolations: [forbidViolation('moment', 'error')],
+    });
+    printPackages(aggregated, 'chart');
+    const line = consoleSpy.mock.calls
+      .map((c) => stripAnsi(c.join(' ')))
+      .find((l) => l.includes('█'));
+    expect(line).toMatch(/^moment /);
+    expect(line?.trimEnd()).toMatch(/🔴 FORBIDDEN$/);
   });
+
+  it('adds nothing after the percentage when no rule flagged the package', () => {
+    const aggregated = makeAggregated({
+      packageDistribution: [
+        createMockPackage('react', { usageCount: 5, percentage: 100 }),
+      ],
+    });
+    printPackages(aggregated, 'chart');
+    const line = consoleSpy.mock.calls
+      .map((c) => stripAnsi(c.join(' ')))
+      .find((l) => l.includes('█'));
+    expect(line?.trimEnd()).toMatch(/\(5\)$/);
+  });
+});
+
+describe('describeMinimumTarget', () => {
+  it('returns an empty string when there is no release-age data', () => {
+    expect(describeMinimumTarget(undefined)).toBe('');
+  });
+
+  it('returns an empty string when nothing is breached or pending', () => {
+    expect(
+      describeMinimumTarget(createMockReleaseAge({ worstLevel: null })),
+    ).toBe('');
+  });
+
+  // The summary file renders its own severity in a leading column, so it
+  // takes the text alone — sharing this function with the human table is
+  // what keeps the two from recommending different versions (#57).
+  it('never carries an icon, at any severity', () => {
+    const majorOverdueUpgrade = {
+      version: '2.0.0',
+      releasedDaysAgo: 10,
+      breachReleasedDaysAgo: 100,
+      semverBump: 'major' as const,
+      level: 'major_overdue' as const,
+      thresholdDays: 60,
+    };
+    for (const severity of ['error', 'warn', 'info', 'off'] as const) {
+      const text = describeMinimumTarget(
+        createMockReleaseAge({
+          worstLevel: 'major_overdue',
+          severity,
+          upgrades: [majorOverdueUpgrade],
+        }),
+      );
+      expect(text).toBe('major 2.0.0 (40 days overdue)');
+    }
+  });
+});
+
+describe('formatMinimumTargetCell', () => {
+  const majorOverdueUpgrade = {
+    version: '2.0.0',
+    releasedDaysAgo: 10,
+    breachReleasedDaysAgo: 100,
+    semverBump: 'major' as const,
+    level: 'major_overdue' as const,
+    thresholdDays: 60,
+  };
 
   // The status icon reflects severity, not which tier breached: an ENFORCED
-  // minor_overdue fails comply just like a major would (#28), so it renders red
-  // — only a non-enforced (advisory) breach is yellow.
+  // minor_overdue fails comply just like a major would (#28), so it renders
+  // red.
   const minorOverdueUpgrade = {
     version: '1.1.0',
     releasedDaysAgo: 10,
@@ -536,8 +646,72 @@ describe('formatUpgradeCell', () => {
     thresholdDays: 30,
   };
 
+  it('returns an empty string when there is no release-age data', () => {
+    expect(formatMinimumTargetCell(undefined)).toBe('');
+  });
+
+  it('returns a success icon when there is no worst level and no pending upgrade', () => {
+    expect(
+      formatMinimumTargetCell(createMockReleaseAge({ worstLevel: null })),
+    ).toBe('🟢');
+  });
+
+  it('returns a success icon when worstLevel is set but the upgrades list is empty', () => {
+    expect(
+      formatMinimumTargetCell(
+        createMockReleaseAge({ worstLevel: 'major_overdue', upgrades: [] }),
+      ),
+    ).toBe('🟢');
+  });
+
+  // A pending upgrade is not a verdict — nothing is overdue and no rule has
+  // anything to say yet. Carrying the info icon here made 🔵 mean two
+  // unrelated things in one report (#86).
+  it('renders a pending upgrade with no icon at all', () => {
+    const cell = formatMinimumTargetCell(
+      createMockReleaseAge({
+        worstLevel: null,
+        pendingUpgrade: {
+          version: '2.0.0',
+          semverBump: 'major',
+          releasedDaysAgo: 48,
+          thresholdDays: 60,
+          daysRemaining: 12,
+        },
+      }),
+    );
+    expect(cell).toBe('major 2.0.0 (12 days remaining)');
+    expect(cell).not.toContain('🔵');
+  });
+
+  it('uses the warn icon (not error) for a major_overdue upgrade at warn severity', () => {
+    const cell = formatMinimumTargetCell(
+      createMockReleaseAge({
+        worstLevel: 'major_overdue',
+        severity: 'warn',
+        upgrades: [majorOverdueUpgrade],
+      }),
+    );
+    expect(cell).toContain('🟡');
+    expect(cell).not.toContain('🔴');
+  });
+
+  // The gray "[not enforced]" suffix is gone: 🟡 already says the package
+  // does not fail comply, and every other surface lets the icon carry
+  // severity on its own (#86).
+  it('no longer appends a [not enforced] suffix at warn severity', () => {
+    const cell = formatMinimumTargetCell(
+      createMockReleaseAge({
+        worstLevel: 'minor_overdue',
+        severity: 'warn',
+        upgrades: [minorOverdueUpgrade],
+      }),
+    );
+    expect(cell).not.toContain('not enforced');
+  });
+
   it('uses the error icon for an enforced minor_overdue worst level (#28)', () => {
-    const cell = formatUpgradeCell(
+    const cell = formatMinimumTargetCell(
       createMockReleaseAge({
         worstLevel: 'minor_overdue',
         severity: 'error',
@@ -548,16 +722,30 @@ describe('formatUpgradeCell', () => {
     expect(cell).not.toContain('🟡');
   });
 
-  it('uses the warn icon for a non-enforced minor_overdue worst level', () => {
-    const cell = formatUpgradeCell(
+  // Both of these used to render red, because the icon came from a
+  // severity-is-warn-else-error ternary that swept info and off into the
+  // error branch (#86).
+  it('uses the info icon for a breach governed by an info-severity entry', () => {
+    const cell = formatMinimumTargetCell(
       createMockReleaseAge({
-        worstLevel: 'minor_overdue',
-        severity: 'warn',
-        upgrades: [minorOverdueUpgrade],
+        worstLevel: 'major_overdue',
+        severity: 'info',
+        upgrades: [majorOverdueUpgrade],
       }),
     );
-    expect(cell).toContain('🟡');
-    expect(cell).toContain('[not enforced]');
+    expect(cell).toContain('🔵');
+    expect(cell).not.toContain('🔴');
+  });
+
+  it('renders no icon at all for a breach governed by an off entry', () => {
+    const cell = formatMinimumTargetCell(
+      createMockReleaseAge({
+        worstLevel: 'major_overdue',
+        severity: 'off',
+        upgrades: [majorOverdueUpgrade],
+      }),
+    );
+    expect(cell).toBe('major 2.0.0 (40 days overdue)');
   });
 });
 
@@ -760,7 +948,7 @@ describe('describePackageNotes (#57)', () => {
   });
 });
 
-describe('formatUpgradeCell — stale 0.x minor line beneath a compliant newer major (user report)', () => {
+describe('formatMinimumTargetCell — stale 0.x minor line beneath a compliant newer major (user report)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -783,7 +971,7 @@ describe('formatUpgradeCell — stale 0.x minor line beneath a compliant newer m
       versions: {},
     });
 
-    const { enriched } = await enrichWithReleaseAge(
+    const { enriched } = await enrichFromRegistry(
       [pkg],
       { cacheDisabled: false },
       // Named explicitly: severity follows the resolved policy alone, so
@@ -796,7 +984,7 @@ describe('formatUpgradeCell — stale 0.x minor line beneath a compliant newer m
       }),
     );
 
-    const cell = formatUpgradeCell(enriched[0].releaseAge);
+    const cell = formatMinimumTargetCell(enriched[0].releaseAge);
 
     // Correct target: the compliant major, not the stale minor.
     expect(cell).toContain('1.0.0');
@@ -1088,6 +1276,62 @@ describe('printRules', () => {
     expect(output).toContain('no-packages');
     expect(output).toContain('moment is forbidden');
     expect(output).toContain('🟡');
+  });
+
+  // Deprecation renders an ordinary rules row, which is why the summary
+  // file's Packages section deliberately doesn't repeat it (#107).
+  it('renders a no-deprecated-packages violation with the publisher notice when the rule has no message', () => {
+    const aggregated = makeAggregated({
+      ruleViolations: [
+        createMockDeprecatedViolation('request', {
+          severity: 'error',
+          deprecated: 'request has been deprecated',
+        }),
+      ],
+    });
+    printRules(aggregated);
+    const output = stripAnsi(
+      consoleSpy.mock.calls.map((call) => call.join(' ')).join('\n'),
+    );
+    expect(output).toContain('no-deprecated-packages');
+    expect(output).toContain(
+      'request is deprecated — request has been deprecated',
+    );
+  });
+
+  // Two gray em-dash clauses in a row read terribly, and between the policy
+  // author's wording and npm's the author's should win.
+  it("prefers the rule's own message over the publisher notice", () => {
+    const aggregated = makeAggregated({
+      ruleViolations: [
+        createMockDeprecatedViolation('request', {
+          severity: 'error',
+          message: 'use undici',
+          deprecated: 'request has been deprecated',
+        }),
+      ],
+    });
+    printRules(aggregated);
+    const output = stripAnsi(
+      consoleSpy.mock.calls.map((call) => call.join(' ')).join('\n'),
+    );
+    expect(output).toContain('request is deprecated — use undici');
+    expect(output).not.toContain('request has been deprecated');
+  });
+
+  it('gives every deprecated package its own row rather than folding them', () => {
+    const aggregated = makeAggregated({
+      ruleViolations: [
+        createMockDeprecatedViolation('request'),
+        createMockDeprecatedViolation('left-pad'),
+      ],
+    });
+    printRules(aggregated);
+    const output = stripAnsi(
+      consoleSpy.mock.calls.map((call) => call.join(' ')).join('\n'),
+    );
+    expect(output).toContain('request is deprecated');
+    expect(output).toContain('left-pad is deprecated');
   });
 
   // `packageName` is set by `detectForbiddenPackages`, but the rule's own
@@ -1996,6 +2240,22 @@ describe('printJson', () => {
     const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
     expect(parsed.compliance.status).toBe('compliant');
     expect(parsed.compliance.compliant).toBe(true);
+  });
+
+  it('exposes deprecation as a package-level fact, not under releaseAge (#107)', () => {
+    const aggregated = makeAggregated({
+      packageDistribution: [
+        createMockPackage('request', {
+          deprecated: 'request has been deprecated',
+          releaseAge: createMockReleaseAge({ worstLevel: null }),
+        }),
+      ],
+    });
+    printJson(aggregated, makeOutput());
+
+    const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+    expect(parsed.packages[0].deprecated).toBe('request has been deprecated');
+    expect(parsed.packages[0].releaseAge.deprecated).toBeUndefined();
   });
 
   it('passes an explicitly provided compliance result straight through (#55)', () => {

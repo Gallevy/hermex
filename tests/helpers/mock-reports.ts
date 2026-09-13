@@ -4,7 +4,12 @@ import type {
   PackageInventoryEntry,
 } from '../../src/utils/aggregator';
 import type { ReleaseAgeEntry } from '../../src/npm-registry/types';
-import type { ReleaseAgeViolation } from '../../src/rules/evaluator';
+// From ./shared, not ./evaluator: evaluator re-exports only RuleViolation, so
+// these two named imports never actually resolved (tests aren't typechecked).
+import type {
+  NoDeprecatedPackagesViolation,
+  ReleaseAgeViolation,
+} from '../../src/rules/shared';
 
 /**
  * Creates a minimal UsageReport with all required fields.
@@ -141,6 +146,22 @@ export function createMockReleaseAgeViolation(
     installedVersion: '1.0.0',
     worstLevel: 'major_overdue',
     scope: 'root',
+    ...overrides,
+  };
+}
+
+/** A `no-deprecated-packages` hit, the shape `detectDeprecatedPackages`
+ * emits. Severity defaults to the rule family's own baseline (#107). */
+export function createMockDeprecatedViolation(
+  packageName: string,
+  overrides: Partial<NoDeprecatedPackagesViolation> = {},
+): NoDeprecatedPackagesViolation {
+  return {
+    ruleId: 'no-deprecated-packages',
+    severity: 'info',
+    patterns: ['**'],
+    packageName,
+    deprecated: 'no longer maintained',
     ...overrides,
   };
 }

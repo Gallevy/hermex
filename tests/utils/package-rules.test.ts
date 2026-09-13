@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
+  detectDeprecatedPackages,
   detectForbiddenPackages,
   detectRequiredPackages,
 } from '../../src/utils/package-rules';
 import { HermexConfigSchema } from '../../src/config/schema';
 import type { HermexConfigInput } from '../../src/config/schema';
 import { applyOverrides } from '../../src/config/overrides';
-import { createMockInventoryEntry } from '../helpers/mock-reports';
+import {
+  createMockInventoryEntry,
+  createMockPackage,
+} from '../helpers/mock-reports';
 
 /**
  * Parse a partial config through the real schema, then resolve it exactly
@@ -368,5 +372,131 @@ describe('detectRequiredPackages', () => {
     });
 
     expect(detectRequiredPackages([], config)).toEqual([]);
+  });
+});
+
+describe('detectDeprecatedPackages', () => {
+  /** A package the registry reported as deprecated. */
+  const deprecated = (name: string, notice = 'no longer maintained') =>
+    createMockPackage(name, { deprecated: notice });
+
+  it('reports a deprecated package at the info baseline with no rule authored', () => {
+    // The baseline is what preserves the long-standing behavior that a
+    // deprecated package is always visible once hermex has registry data for
+    // it, without it ever affecting the verdict (#107).
+    const config = createConfig({});
+
+    expect(
+      detectDeprecatedPackages(
+        [deprecated('request', 'request has been deprecated')],
+        config.rules['no-deprecated-packages'],
+      ),
+    ).toEqual([
+      {
+        ruleId: 'no-deprecated-packages',
+        severity: 'info',
+        patterns: ['**'],
+        message: undefined,
+        packageName: 'request',
+        deprecated: 'request has been deprecated',
+      },
+    ]);
+  });
+
+  it('says nothing about a package the registry did not report as deprecated', () => {
+    const config = createConfig({});
+
+    expect(
+      detectDeprecatedPackages(
+        [createMockPackage('react')],
+        config.rules['no-deprecated-packages'],
+      ),
+    ).toEqual([]);
+  });
+
+  it('takes severity and message from the entry that governs the package', () => {
+    const config = createConfig({
+      rules: {
+        'no-deprecated-packages': [
+          { severity: 'error', patterns: ['request'], message: 'use undici' },
+        ],
+      },
+    });
+
+    const violations = detectDeprecatedPackages(
+      [deprecated('request')],
+      config.rules['no-deprecated-packages'],
+    );
+
+    expect(violations[0].severity).toBe('error');
+    expect(violations[0].message).toBe('use undici');
+    expect(violations[0].patterns).toEqual(['request']);
+  });
+
+  it('lets an off entry exempt a package, falling back to the baseline for others', () => {
+    // The reason this rule resolves like release-age rather than like
+    // no-packages: an 'off' entry has to survive resolution, or the package
+    // falls through to the baseline and 'off' silently does nothing.
+    const config = createConfig({
+      rules: {
+        'no-deprecated-packages': [{ severity: 'off', patterns: ['request'] }],
+      },
+    });
+
+    const violations = detectDeprecatedPackages(
+      [deprecated('request'), deprecated('left-pad')],
+      config.rules['no-deprecated-packages'],
+    );
+
+    expect(violations.map((v) => v.packageName)).toEqual(['left-pad']);
+  });
+
+  it('honors a glob pattern', () => {
+    const config = createConfig({
+      rules: {
+        'no-deprecated-packages': [
+          { severity: 'off', patterns: ['@legacy/*'] },
+        ],
+      },
+    });
+
+    const violations = detectDeprecatedPackages(
+      [deprecated('@legacy/widget'), deprecated('moment')],
+      config.rules['no-deprecated-packages'],
+    );
+
+    expect(violations.map((v) => v.packageName)).toEqual(['moment']);
+  });
+
+  it('emits exactly one violation per package when several entries match', () => {
+    // Last match wins — one entry governs a package, so a package can't be
+    // simultaneously error under one entry and off under another.
+    const config = createConfig({
+      rules: {
+        'no-deprecated-packages': [
+          { severity: 'error', patterns: ['**'] },
+          { severity: 'warn', patterns: ['req*'] },
+        ],
+      },
+    });
+
+    const violations = detectDeprecatedPackages(
+      [deprecated('request')],
+      config.rules['no-deprecated-packages'],
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0].severity).toBe('warn');
+  });
+
+  it('carries the publisher notice verbatim', () => {
+    const config = createConfig({});
+
+    const violations = detectDeprecatedPackages(
+      [deprecated('moment', 'Moment.js is a legacy project')],
+      config.rules['no-deprecated-packages'],
+    );
+
+    expect(violations[0].deprecated).toBe('Moment.js is a legacy project');
   });
 });

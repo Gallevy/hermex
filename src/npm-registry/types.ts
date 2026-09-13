@@ -38,7 +38,6 @@ export interface ReleaseAgeEntry {
    */
   worstLevel: UpgradeLevel | null;
   pendingUpgrade?: PendingUpgrade;
-  deprecated?: string;
   latestVersion?: string;
   latestReleasedDaysAgo?: number;
   /**

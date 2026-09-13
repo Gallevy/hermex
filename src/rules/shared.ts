@@ -49,6 +49,20 @@ export interface NoPackagesViolation extends BaseViolation<'no-packages'> {
   packageName?: string;
 }
 
+/**
+ * One violation per deprecated package — atomic, like every other package
+ * rule. The publisher's own notice rides along so neither the rules table
+ * nor a JSON consumer has to go back to the registry for it.
+ *
+ * The *fact* of deprecation lives on `PackageDistribution.deprecated`,
+ * recorded by registry enrichment whether or not any rule judges it. This
+ * is the *judgment*, and the two are deliberately separate (#107).
+ */
+export interface NoDeprecatedPackagesViolation extends BaseViolation<'no-deprecated-packages'> {
+  packageName: string;
+  deprecated: string;
+}
+
 export interface OversizeFile {
   file: string;
   sizeBytes: number;
@@ -92,7 +106,6 @@ export interface ReleaseAgeViolation extends BaseViolation<'release-age'> {
   installedVersion: string;
   worstLevel: 'minor_overdue' | 'major_overdue';
   scope: 'root' | 'tree';
-  deprecated?: string;
 }
 
 /**
@@ -105,6 +118,7 @@ export type CoreRuleViolation =
   | MaxFileSizeViolation
   | RequirePackagesViolation
   | NoPackagesViolation
+  | NoDeprecatedPackagesViolation
   | RequireScriptsViolation
   | RequirePackageFieldsViolation
   | NoPackageFieldsViolation
