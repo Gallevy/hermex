@@ -221,6 +221,23 @@ by hand and versions are never edited directly.
 Changesets accumulate, so several merged PRs batch into one release rather than
 publishing once per merge.
 
+### The v3 Beta
+
+`main` is in Changesets **pre-release mode** on the `beta` tag while v3 is in
+development. Nothing about adding a changeset changes — the bump types still
+mean what they mean above — but the release side behaves differently:
+
+- Versions come out as `3.0.0-beta.N`. Each Version Packages PR merged while
+  pre mode is on bumps the beta counter instead of cutting a stable release.
+- npm publishes those under the `beta` dist-tag, so `npm install hermex` still
+  resolves to the latest 2.x. Trying the beta means asking for it:
+  `npm install hermex@beta`.
+- The 2.x line is closed. Fixes land on `main` and ship in the next beta; there
+  are no 2.x hotfix releases.
+
+Cutting the stable 3.0.0 is a deliberate step: run `pnpm changeset pre exit` in
+a PR of its own, and the Version Packages PR that follows is the real 3.0.0.
+
 ## Submission Process
 
 1. Fork the repository and create a feature branch
