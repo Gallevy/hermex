@@ -14,7 +14,7 @@ _no baseline_
 
 **Ran** `hermex comply --config configs/deprecated-packages.config.ts` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/configs/deprecated-packages.config.ts`](https://github.com/Gallevy/hermex/blob/034b5ecbfd187d9ffc4d99aaebe2b48ce4384efe/fixtures/configs/deprecated-packages.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/034b5ecbfd187d9ffc4d99aaebe2b48ce4384efe/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/034b5ecbfd187d9ffc4d99aaebe2b48ce4384efe/fixtures/README.md)) · **Case** [`comply-deprecated-packages`](https://github.com/Gallevy/hermex/blob/034b5ecbfd187d9ffc4d99aaebe2b48ce4384efe/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/034b5ecbfd187d9ffc4d99aaebe2b48ce4384efe/fixtures/cases/comply-deprecated-packages.md))
+**Config** [`fixtures/configs/deprecated-packages.config.ts`](https://github.com/Gallevy/hermex/blob/8cba6db5eaf4546cb9a2a702aa7cc08086222a3e/fixtures/configs/deprecated-packages.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/8cba6db5eaf4546cb9a2a702aa7cc08086222a3e/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/8cba6db5eaf4546cb9a2a702aa7cc08086222a3e/fixtures/README.md)) · **Case** [`comply-deprecated-packages`](https://github.com/Gallevy/hermex/blob/8cba6db5eaf4546cb9a2a702aa7cc08086222a3e/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/8cba6db5eaf4546cb9a2a702aa7cc08086222a3e/fixtures/cases/comply-deprecated-packages.md))
 
 **Registry** offline, served from `fixtures/registry/timelines.ts` — no network
 
@@ -22,7 +22,7 @@ _no baseline_
 
 ## Config
 
-[`fixtures/configs/deprecated-packages.config.ts`](https://github.com/Gallevy/hermex/blob/034b5ecbfd187d9ffc4d99aaebe2b48ce4384efe/fixtures/configs/deprecated-packages.config.ts) — resolved, as the loader sees it
+[`fixtures/configs/deprecated-packages.config.ts`](https://github.com/Gallevy/hermex/blob/8cba6db5eaf4546cb9a2a702aa7cc08086222a3e/fixtures/configs/deprecated-packages.config.ts) — resolved, as the loader sees it
 
 ```json
 {

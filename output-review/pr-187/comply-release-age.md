@@ -14,7 +14,7 @@ _changed_
 
 **Ran** `hermex comply --config configs/release-age.config.ts` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/configs/release-age.config.ts`](https://github.com/Gallevy/hermex/blob/034b5ecbfd187d9ffc4d99aaebe2b48ce4384efe/fixtures/configs/release-age.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/034b5ecbfd187d9ffc4d99aaebe2b48ce4384efe/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/034b5ecbfd187d9ffc4d99aaebe2b48ce4384efe/fixtures/README.md)) · **Case** [`comply-release-age`](https://github.com/Gallevy/hermex/blob/034b5ecbfd187d9ffc4d99aaebe2b48ce4384efe/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/034b5ecbfd187d9ffc4d99aaebe2b48ce4384efe/fixtures/cases/comply-release-age.md))
+**Config** [`fixtures/configs/release-age.config.ts`](https://github.com/Gallevy/hermex/blob/8cba6db5eaf4546cb9a2a702aa7cc08086222a3e/fixtures/configs/release-age.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/8cba6db5eaf4546cb9a2a702aa7cc08086222a3e/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/8cba6db5eaf4546cb9a2a702aa7cc08086222a3e/fixtures/README.md)) · **Case** [`comply-release-age`](https://github.com/Gallevy/hermex/blob/8cba6db5eaf4546cb9a2a702aa7cc08086222a3e/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/8cba6db5eaf4546cb9a2a702aa7cc08086222a3e/fixtures/cases/comply-release-age.md))
 
 **Registry** offline, served from `fixtures/registry/timelines.ts` — no network
 
@@ -22,7 +22,7 @@ _changed_
 
 ## Config
 
-[`fixtures/configs/release-age.config.ts`](https://github.com/Gallevy/hermex/blob/034b5ecbfd187d9ffc4d99aaebe2b48ce4384efe/fixtures/configs/release-age.config.ts) — resolved, as the loader sees it
+[`fixtures/configs/release-age.config.ts`](https://github.com/Gallevy/hermex/blob/8cba6db5eaf4546cb9a2a702aa7cc08086222a3e/fixtures/configs/release-age.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -197,7 +197,7 @@ _changed_
 -│ [DEPRECATED] [BANNED] moment │ 2.29.4    │ 🔴 minor 2.30.1 (no compliant release available)  │
 -└──────────────────────────────┴───────────┴───────────────────────────────────────────────────┘
 +┌───────────────────────────┬───────────┬─────────────────────────────────────┬────────────────────────────┐
-+│ Package                   │ Installed │ Minimum target                      │ Status                     │
++│ Package                   │ Installed │ Minimum target                      │ Flags                      │
 +├───────────────────────────┼───────────┼─────────────────────────────────────┼────────────────────────────┤
 +│ @design-system/foundation │ 2.5.3     │ —                                   │                            │
 +├───────────────────────────┼───────────┼─────────────────────────────────────┼────────────────────────────┤
@@ -268,7 +268,7 @@ Caused by:
 📦 Packages
 
 ┌───────────────────────────┬───────────┬─────────────────────────────────────┬────────────────────────────┐
-│ Package                   │ Installed │ Minimum target                      │ Status                     │
+│ Package                   │ Installed │ Minimum target                      │ Flags                      │
 ├───────────────────────────┼───────────┼─────────────────────────────────────┼────────────────────────────┤
 │ @design-system/foundation │ 2.5.3     │ —                                   │                            │
 ├───────────────────────────┼───────────┼─────────────────────────────────────┼────────────────────────────┤

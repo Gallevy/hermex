@@ -14,13 +14,13 @@ _changed_
 
 **Ran** `hermex scan` in `fixtures/` → exit 0, as asserted
 
-**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/034b5ecbfd187d9ffc4d99aaebe2b48ce4384efe/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/034b5ecbfd187d9ffc4d99aaebe2b48ce4384efe/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/034b5ecbfd187d9ffc4d99aaebe2b48ce4384efe/fixtures/README.md)) · **Case** [`scan-human-default`](https://github.com/Gallevy/hermex/blob/034b5ecbfd187d9ffc4d99aaebe2b48ce4384efe/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/034b5ecbfd187d9ffc4d99aaebe2b48ce4384efe/fixtures/cases/scan-human-default.md))
+**Config** [`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/8cba6db5eaf4546cb9a2a702aa7cc08086222a3e/fixtures/hermex.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/8cba6db5eaf4546cb9a2a702aa7cc08086222a3e/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/8cba6db5eaf4546cb9a2a702aa7cc08086222a3e/fixtures/README.md)) · **Case** [`scan-human-default`](https://github.com/Gallevy/hermex/blob/8cba6db5eaf4546cb9a2a702aa7cc08086222a3e/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/8cba6db5eaf4546cb9a2a702aa7cc08086222a3e/fixtures/cases/scan-human-default.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter scan-human-default`</sub>
 
 ## Config
 
-[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/034b5ecbfd187d9ffc4d99aaebe2b48ce4384efe/fixtures/hermex.config.ts) — resolved, as the loader sees it
+[`fixtures/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/8cba6db5eaf4546cb9a2a702aa7cc08086222a3e/fixtures/hermex.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -153,7 +153,7 @@ _changed_
 -│ [BANNED] moment           │ 2.29.4  │
 -└───────────────────────────┴─────────┘
 +┌───────────────────────────┬─────────┬──────────────┐
-+│ Package                   │ Version │ Status       │
++│ Package                   │ Version │ Flags        │
 +├───────────────────────────┼─────────┼──────────────┤
 +│ @design-system/foundation │ 2.5.3   │              │
 +├───────────────────────────┼─────────┼──────────────┤
@@ -201,7 +201,7 @@ Caused by:
 📦 Packages
 
 ┌───────────────────────────┬─────────┬──────────────┐
-│ Package                   │ Version │ Status       │
+│ Package                   │ Version │ Flags        │
 ├───────────────────────────┼─────────┼──────────────┤
 │ @design-system/foundation │ 2.5.3   │              │
 ├───────────────────────────┼─────────┼──────────────┤
