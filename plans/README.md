@@ -62,6 +62,7 @@ via dispatched executor + tech-lead review, verified DONE, merged to
 | [036](036-authenticated-registry-cache.md) | Cache authenticated registry responses | P2 | M | 035 (order only) | TODO |
 | [037](037-imported-axis.md) | Add an imported axis to the package inventory | P1 | L | — | TODO |
 | [038](038-props-per-usage-and-values.md) | Props per usage, statically-resolvable values, surfaced | P1 | L | 022 | TODO |
+| [039](039-one-rule-layer.md) | One rule layer owns the violation list; `AggregatedReport` built once | P2 | M | — | TODO |
 
 Status values: `TODO` | `IN PROGRESS` | `DONE` | `BLOCKED: <reason>` | `REJECTED: <reason>`
 
@@ -172,11 +173,42 @@ Notes on 026–028, kept for history since the plan files are gone:
   `defineConfig`), following the project's existing `HermexConfigInput`
   type — no change to `loadConfig` or the config schema needed.
 
+### Targeted pass 2026-09-13 (commit `044719c`) — plan 039
+
+Written against [#84](https://github.com/Gallevy/hermex/issues/84) at the
+maintainer's request, not from a fresh audit. The issue was first checked for
+**relevance** before planning: it is still reproducing, and the seam it reports
+has *widened* since it was filed — from two rule-evaluation call sites to four
+(#168, #183, #187, #191 added registry rules and plugins). Its own prediction
+("worth doing before another rule type gets added and has to guess which side of
+the seam it belongs on") has since played out three times.
+
+Two things in the original filing were stale and were corrected in a rewrite of
+the issue body:
+
+- **The fix it proposed no longer fits.** A synchronous
+  `evaluateRules({ ..., inventory })` cannot absorb the registry phase (async,
+  networked, spinner-driven, also returns enriched packages) or the plugin phase
+  (async, third-party, must run last by design, #102). It would merge two of the
+  four sites while implying the seam had closed.
+- **The "nobody reads the half-built report yet" caveat has expired.**
+  `src/plugins/runner.ts:59` now does, and `PluginInventoryView.violations` is
+  public plugin API — so the completeness promise is made to third-party authors
+  and kept by one unenforced line. That is the strongest argument for the plan
+  and did not exist when the issue was written.
+
+No assumption encoded: internal only, `aggregateReports`/`AggregatedReport` are
+not exported from `src/index.ts`, and the acceptance test is a zero-diff
+`pnpm run test:output`.
+
 ## Dependency notes
 
 - **013 → 016** is ordering, not hard dependency: both touch
   `src/swc-parser/index.ts`. Execute in that order to avoid conflicts.
 - 022 is independent of everything else.
+- **039** touches `src/commands/pipeline.ts` and `src/utils/aggregator-core.ts`.
+  No other TODO plan does, so it can run in any order — but 016 also edits the
+  pipeline's parse loop, so if both are queued, coordinate.
 
 ## Direction options (maintainer decisions, not plans)
 
