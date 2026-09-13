@@ -14,7 +14,7 @@ _changed_
 
 **Ran** `hermex comply --config tree.config.ts` in `fixtures/repos/version-conflict` → exit 1, as asserted
 
-**Config** [`fixtures/repos/version-conflict/tree.config.ts`](https://github.com/Gallevy/hermex/blob/37572faa222f1169f4c17dc6ebb0b50192bb8d00/fixtures/repos/version-conflict/tree.config.ts) · **Fixture** [`fixtures/repos/version-conflict`](https://github.com/Gallevy/hermex/blob/37572faa222f1169f4c17dc6ebb0b50192bb8d00/fixtures/repos/version-conflict) ([overview](https://github.com/Gallevy/hermex/blob/37572faa222f1169f4c17dc6ebb0b50192bb8d00/fixtures/repos/version-conflict/README.md)) · **Case** [`release-age-tree-scope`](https://github.com/Gallevy/hermex/blob/37572faa222f1169f4c17dc6ebb0b50192bb8d00/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/37572faa222f1169f4c17dc6ebb0b50192bb8d00/fixtures/cases/release-age-tree-scope.md))
+**Config** [`fixtures/repos/version-conflict/tree.config.ts`](https://github.com/Gallevy/hermex/blob/034b5ecbfd187d9ffc4d99aaebe2b48ce4384efe/fixtures/repos/version-conflict/tree.config.ts) · **Fixture** [`fixtures/repos/version-conflict`](https://github.com/Gallevy/hermex/blob/034b5ecbfd187d9ffc4d99aaebe2b48ce4384efe/fixtures/repos/version-conflict) ([overview](https://github.com/Gallevy/hermex/blob/034b5ecbfd187d9ffc4d99aaebe2b48ce4384efe/fixtures/repos/version-conflict/README.md)) · **Case** [`release-age-tree-scope`](https://github.com/Gallevy/hermex/blob/034b5ecbfd187d9ffc4d99aaebe2b48ce4384efe/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/034b5ecbfd187d9ffc4d99aaebe2b48ce4384efe/fixtures/cases/release-age-tree-scope.md))
 
 **Registry** offline, served from `fixtures/registry/timelines.ts` — no network
 
@@ -22,7 +22,7 @@ _changed_
 
 ## Config
 
-[`fixtures/repos/version-conflict/tree.config.ts`](https://github.com/Gallevy/hermex/blob/37572faa222f1169f4c17dc6ebb0b50192bb8d00/fixtures/repos/version-conflict/tree.config.ts) — resolved, as the loader sees it
+[`fixtures/repos/version-conflict/tree.config.ts`](https://github.com/Gallevy/hermex/blob/034b5ecbfd187d9ffc4d99aaebe2b48ce4384efe/fixtures/repos/version-conflict/tree.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -66,13 +66,13 @@ _changed_
 -├───────────────────────┼───────────┼──────────────────────────────────────────────────┤
 -│ @hermex/legacy-widget │ 1.0.0     │ 🟡 major 2.1.0 (240 days overdue) [not enforced] │
 -└───────────────────────┴───────────┴──────────────────────────────────────────────────┘
-+┌───────────────────────┬───────────┬────────────────────────────────────┐
-+│ Package               │ Installed │ Minimum target                     │
-+├───────────────────────┼───────────┼────────────────────────────────────┤
-+│ react                 │ 17.0.2    │ 🔴 major 19.1.0 (640 days overdue) │
-+├───────────────────────┼───────────┼────────────────────────────────────┤
-+│ @hermex/legacy-widget │ 1.0.0     │ 🟡 major 2.1.0 (240 days overdue)  │
-+└───────────────────────┴───────────┴────────────────────────────────────┘
++┌───────────────────────┬───────────┬─────────────────────────────────────┐
++│ Package               │ Installed │ Minimum target                      │
++├───────────────────────┼───────────┼─────────────────────────────────────┤
++│ react                 │ 17.0.2    │ 🔴 19.1.0 (major, 640 days overdue) │
++├───────────────────────┼───────────┼─────────────────────────────────────┤
++│ @hermex/legacy-widget │ 1.0.0     │ 🟡 2.1.0 (major, 240 days overdue)  │
++└───────────────────────┴───────────┴─────────────────────────────────────┘
  
  Notes:
    🔵 react → 2 versions installed (bundle impact): 17.0.2, 18.3.1
@@ -92,13 +92,13 @@ hermex v<version>
 
 📦 Packages
 
-┌───────────────────────┬───────────┬────────────────────────────────────┐
-│ Package               │ Installed │ Minimum target                     │
-├───────────────────────┼───────────┼────────────────────────────────────┤
-│ react                 │ 17.0.2    │ 🔴 major 19.1.0 (640 days overdue) │
-├───────────────────────┼───────────┼────────────────────────────────────┤
-│ @hermex/legacy-widget │ 1.0.0     │ 🟡 major 2.1.0 (240 days overdue)  │
-└───────────────────────┴───────────┴────────────────────────────────────┘
+┌───────────────────────┬───────────┬─────────────────────────────────────┐
+│ Package               │ Installed │ Minimum target                      │
+├───────────────────────┼───────────┼─────────────────────────────────────┤
+│ react                 │ 17.0.2    │ 🔴 19.1.0 (major, 640 days overdue) │
+├───────────────────────┼───────────┼─────────────────────────────────────┤
+│ @hermex/legacy-widget │ 1.0.0     │ 🟡 2.1.0 (major, 240 days overdue)  │
+└───────────────────────┴───────────┴─────────────────────────────────────┘
 
 Notes:
   🔵 react → 2 versions installed (bundle impact): 17.0.2, 18.3.1
