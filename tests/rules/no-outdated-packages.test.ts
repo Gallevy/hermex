@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   deriveOverdueTier,
   evaluateOutdatedPackages,
+  releaseAgeConnection,
 } from '../../src/rules/no-outdated-packages';
 import type { ResolvedReleaseAgeRuleConfig } from '../../src/config/types';
 import type { AvailableUpgrade } from '../../src/npm-registry/types';
@@ -45,6 +46,28 @@ function overduePackage(
     }),
   });
 }
+
+// Connection/infra only: whatever else the `releaseAge` config block grows,
+// nothing policy-shaped may reach the registry layer through it (#189).
+describe('releaseAgeConnection', () => {
+  it('passes through the connection fields', () => {
+    expect(
+      releaseAgeConnection({
+        authToken: 'tok',
+        cacheTtlMs: 1000,
+        cacheDisabled: true,
+      }),
+    ).toEqual({ authToken: 'tok', cacheTtlMs: 1000, cacheDisabled: true });
+  });
+
+  it('leaves the optional fields undefined when the block omits them', () => {
+    expect(releaseAgeConnection({ cacheDisabled: false })).toEqual({
+      authToken: undefined,
+      cacheTtlMs: undefined,
+      cacheDisabled: false,
+    });
+  });
+});
 
 // The verdict is derived from the facts, never stored beside them (#189).
 describe('deriveOverdueTier', () => {
