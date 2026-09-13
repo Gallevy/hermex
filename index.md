@@ -51,5 +51,6 @@ What the hermex CLI actually printed, one page per case, published per pull requ
 - [Pull request #185](./output-review/pr-185/index.html)
 - [Pull request #186](./output-review/pr-186/index.html)
 - [Pull request #187](./output-review/pr-187/index.html)
+- [Pull request #188](./output-review/pr-188/index.html)
 - [Pull request #98](./output-review/pr-98/index.html)
 - [Pull request #99](./output-review/pr-99/index.html)
