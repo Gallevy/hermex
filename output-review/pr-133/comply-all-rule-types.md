@@ -10,11 +10,11 @@ title: "comply-all-rule-types — Output Review"
 
 _unchanged_
 
-**Asserts** — Every one of the eleven rule types in one run, at three severities — the only case that renders max-file-size, require-engine-version, codeowners, both package-field shapes, and release-age together. release-age itself never gets a Rules-table row (its display is the Packages table) — that split is what this case pins.
+**Asserts** — Every one of the twelve rule types in one run, at three severities — the only case that renders max-file-size, require-engine-version, codeowners, both package-field shapes, release-age and no-deprecated-packages together. release-age itself never gets a Rules-table row (its display is the Packages table) — that split is what this case pins, along with the only multi-badge Status cell in the fixtures (moment is both forbidden and deprecated).
 
 **Ran** `hermex comply` in `fixtures/repos/all-rule-types` → exit 1, as asserted
 
-**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/e03e7ac552df3bdcf6b6f069dc8085e934630adc/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/e03e7ac552df3bdcf6b6f069dc8085e934630adc/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/e03e7ac552df3bdcf6b6f069dc8085e934630adc/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types`](https://github.com/Gallevy/hermex/blob/e03e7ac552df3bdcf6b6f069dc8085e934630adc/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/e03e7ac552df3bdcf6b6f069dc8085e934630adc/fixtures/cases/comply-all-rule-types.md))
+**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/2891555e0b8ad6562b0e6e278f600181087bee1c/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/2891555e0b8ad6562b0e6e278f600181087bee1c/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/2891555e0b8ad6562b0e6e278f600181087bee1c/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types`](https://github.com/Gallevy/hermex/blob/2891555e0b8ad6562b0e6e278f600181087bee1c/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/2891555e0b8ad6562b0e6e278f600181087bee1c/fixtures/cases/comply-all-rule-types.md))
 
 **Registry** offline, served from `fixtures/registry/timelines.ts` — no network
 
@@ -22,7 +22,7 @@ _unchanged_
 
 ## Config
 
-[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/e03e7ac552df3bdcf6b6f069dc8085e934630adc/fixtures/repos/all-rule-types/hermex.config.ts) — resolved, as the loader sees it
+[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/2891555e0b8ad6562b0e6e278f600181087bee1c/fixtures/repos/all-rule-types/hermex.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -38,6 +38,14 @@ _unchanged_
         "severity": "error",
         "patterns": [
           "react"
+        ]
+      }
+    ],
+    "no-deprecated-packages": [
+      {
+        "severity": "warn",
+        "patterns": [
+          "moment"
         ]
       }
     ],
@@ -170,22 +178,27 @@ hermex v<version>
 ├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
 │ package-fields         │ 🟡 field publishConfig.registry is forbidden in package.json — Publish to the public registry │
 ├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
+│ no-deprecated-packages │ 🟡 moment is deprecated — Moment is in maintenance mode — prefer date-fns or dayjs            │
+├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
 │ require-codeowners     │ 🔵 1 scanned file(s) have no owner: src/orphan.tsx — Every file needs a platform owner        │
 ├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
 │ require-codeowners     │ 🔵 1 scanned file(s) have the wrong owner: src/legacy.tsx — Every file needs a platform owner │
 └────────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────┘
 
-6 errors, 3 warnings, 2 info
+6 errors, 4 warnings, 2 info
 
 📦 Packages
 
-┌──────────────────────────────┬───────────┬─────────────────────────────────────────────────────────────────┐
-│ Package                      │ Installed │ Target                                                          │
-├──────────────────────────────┼───────────┼─────────────────────────────────────────────────────────────────┤
-│ react                        │ 18.3.1    │ 🔴 major 19.1.0 (340 days overdue)                              │
-├──────────────────────────────┼───────────┼─────────────────────────────────────────────────────────────────┤
-│ [DEPRECATED] [BANNED] moment │ 2.29.4    │ 🟡 minor 2.30.1 (no compliant release available) [not enforced] │
-└──────────────────────────────┴───────────┴─────────────────────────────────────────────────────────────────┘
+┌─────────┬───────────┬─────────────────────────────────────┬────────────────────────────┐
+│ Package │ Installed │ Minimum target                      │ Flags                      │
+├─────────┼───────────┼─────────────────────────────────────┼────────────────────────────┤
+│ react   │ 18.3.1    │ 🔴 19.1.0 (major, 340 days overdue) │                            │
+├─────────┼───────────┼─────────────────────────────────────┼────────────────────────────┤
+│ moment  │ 2.29.4    │ 🟡 2.30.1 (minor, 455 days overdue) │ 🔴 forbidden 🟡 deprecated │
+└─────────┴───────────┴─────────────────────────────────────┴────────────────────────────┘
+
+Notes:
+  🔵 moment → deprecated: Moment is in maintenance mode — prefer date-fns or dayjs
 
 1 error, 1 warning
 

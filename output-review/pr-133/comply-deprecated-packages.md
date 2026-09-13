@@ -1,28 +1,28 @@
 ---
 layout: default
-title: "comply-release-age — Output Review"
+title: "comply-deprecated-packages — Output Review"
 ---
 
 {% raw %}
 [← all cases](./index.html)
 
-# `comply-release-age`
+# `comply-deprecated-packages`
 
 _unchanged_
 
-**Asserts** — The flagged-packages table, against a recorded registry: an overdue package with no in-window target (#26), one with a real target, and one merely coming due. `rules['release-age']` names two of them at severity error, so the same three packages split across both severity tiers via the implicit `['**']` baseline for everything else — pair it with comply-release-age-unscoped, where the identical repo is checked with nothing enforced.
+**Asserts** — Deprecation detection with release-age switched off entirely — the #107 case. Before, deprecation was a by-product of release-age enrichment, so this configuration found nothing at all and this run would have been silently compliant on that axis. Now the registry is consulted for deprecation alone: a no-deprecated-packages row appears in the Rules table carrying npm own notice, and at severity error it fails comply on its own. The only case where the registry is reached without release-age, which is exactly the path that did not exist before.
 
-**Ran** `hermex comply --config configs/release-age.config.ts` in `fixtures/` → exit 1, as asserted
+**Ran** `hermex comply --config configs/deprecated-packages.config.ts` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/configs/release-age.config.ts`](https://github.com/Gallevy/hermex/blob/2891555e0b8ad6562b0e6e278f600181087bee1c/fixtures/configs/release-age.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/2891555e0b8ad6562b0e6e278f600181087bee1c/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/2891555e0b8ad6562b0e6e278f600181087bee1c/fixtures/README.md)) · **Case** [`comply-release-age`](https://github.com/Gallevy/hermex/blob/2891555e0b8ad6562b0e6e278f600181087bee1c/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/2891555e0b8ad6562b0e6e278f600181087bee1c/fixtures/cases/comply-release-age.md))
+**Config** [`fixtures/configs/deprecated-packages.config.ts`](https://github.com/Gallevy/hermex/blob/2891555e0b8ad6562b0e6e278f600181087bee1c/fixtures/configs/deprecated-packages.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/2891555e0b8ad6562b0e6e278f600181087bee1c/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/2891555e0b8ad6562b0e6e278f600181087bee1c/fixtures/README.md)) · **Case** [`comply-deprecated-packages`](https://github.com/Gallevy/hermex/blob/2891555e0b8ad6562b0e6e278f600181087bee1c/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/2891555e0b8ad6562b0e6e278f600181087bee1c/fixtures/cases/comply-deprecated-packages.md))
 
 **Registry** offline, served from `fixtures/registry/timelines.ts` — no network
 
-<sub>Reproduce locally: `pnpm run test:output -- --filter comply-release-age`</sub>
+<sub>Reproduce locally: `pnpm run test:output -- --filter comply-deprecated-packages`</sub>
 
 ## Config
 
-[`fixtures/configs/release-age.config.ts`](https://github.com/Gallevy/hermex/blob/2891555e0b8ad6562b0e6e278f600181087bee1c/fixtures/configs/release-age.config.ts) — resolved, as the loader sees it
+[`fixtures/configs/deprecated-packages.config.ts`](https://github.com/Gallevy/hermex/blob/2891555e0b8ad6562b0e6e278f600181087bee1c/fixtures/configs/deprecated-packages.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -118,12 +118,11 @@ _unchanged_
       "range": ">=20",
       "message": "Minimum Node 20 required"
     },
-    "release-age": [
+    "no-deprecated-packages": [
       {
         "severity": "error",
         "patterns": [
-          "moment",
-          "react-dom"
+          "**"
         ]
       }
     ]
@@ -161,7 +160,7 @@ hermex v<version>
 Caused by:
     Syntax Error
 
-✔ Release age fetched (3 packages skipped — registry unreachable or not found)
+✔ Registry checked (3 packages skipped — registry unreachable or not found)
 
 🔍 Rules
 
@@ -174,37 +173,12 @@ Caused by:
 ├────────────────────────┼────────────────────────────────────────────────────────────────────────────────────┤
 │ require-files          │ 🔴 .nvmrc not found                                                                │
 ├────────────────────────┼────────────────────────────────────────────────────────────────────────────────────┤
-│ require-files          │ 🟡 .editorconfig not found                                                         │
+│ no-deprecated-packages │ 🔴 moment is deprecated — Moment is in maintenance mode — prefer date-fns or dayjs │
 ├────────────────────────┼────────────────────────────────────────────────────────────────────────────────────┤
-│ no-deprecated-packages │ 🔵 moment is deprecated — Moment is in maintenance mode — prefer date-fns or dayjs │
+│ require-files          │ 🟡 .editorconfig not found                                                         │
 └────────────────────────┴────────────────────────────────────────────────────────────────────────────────────┘
 
-3 errors, 1 warning, 1 info
-
-📦 Packages
-
-┌───────────────────────────┬───────────┬─────────────────────────────────────┬────────────────────────────┐
-│ Package                   │ Installed │ Minimum target                      │ Flags                      │
-├───────────────────────────┼───────────┼─────────────────────────────────────┼────────────────────────────┤
-│ @design-system/foundation │ 2.5.3     │ —                                   │                            │
-├───────────────────────────┼───────────┼─────────────────────────────────────┼────────────────────────────┤
-│ react                     │ 18.3.1    │ 🟡 19.1.0 (major, 340 days overdue) │                            │
-├───────────────────────────┼───────────┼─────────────────────────────────────┼────────────────────────────┤
-│ react-dom                 │ 18.3.1    │ 🟢 18.3.2 (patch, due in 20 days)   │                            │
-├───────────────────────────┼───────────┼─────────────────────────────────────┼────────────────────────────┤
-│ lodash                    │ 4.17.21   │ —                                   │                            │
-├───────────────────────────┼───────────┼─────────────────────────────────────┼────────────────────────────┤
-│ es-toolkit                │ 1.39.10   │ —                                   │                            │
-├───────────────────────────┼───────────┼─────────────────────────────────────┼────────────────────────────┤
-│ eslint                    │ N/A       │ —                                   │                            │
-├───────────────────────────┼───────────┼─────────────────────────────────────┼────────────────────────────┤
-│ moment                    │ 2.29.4    │ 🔴 2.30.1 (minor, 455 days overdue) │ 🔴 forbidden 🔵 deprecated │
-└───────────────────────────┴───────────┴─────────────────────────────────────┴────────────────────────────┘
-
-Notes:
-  🔵 moment → deprecated: Moment is in maintenance mode — prefer date-fns or dayjs
-
-1 error, 1 warning
+4 errors, 1 warning
 
 ⚖️ Versus
 

@@ -6,13 +6,13 @@ title: "Output Review"
 {% raw %}
 # Output Review
 
-27 cases · 0 changed · 0 invariant breach(es)
+28 cases · 0 changed · 0 invariant breach(es)
 
-Reference: `a53b1d1` — reused from cache.
+Reference: `ec7ba75` — reused from cache.
 
 Every case matches the target branch.
 
-## Unchanged (27)
+## Unchanged (28)
 
 | Case | Status | Proves |
 | --- | --- | --- |
@@ -29,7 +29,8 @@ Every case matches the target branch.
 | [`comply-summary-file`](./comply-summary-file.html) | unchanged | The markdown a consumer pastes into a PR comment or job summary — ANSI-free, rules + flagged packages + verdict. |
 | [`comply-release-age`](./comply-release-age.html) | unchanged | The flagged-packages table, against a recorded registry: an overdue package with no in-window target (#26), one with a real target, and one merely coming due. `rules['release-age']` names two of them at severity error, so the same three packages split across both severity tiers via the implicit `['**']` baseline for everything else — pair it with comply-release-age-unscoped, where the identical repo is checked with nothing enforced. |
 | [`comply-release-age-unscoped`](./comply-release-age-unscoped.html) | unchanged | An authored catch-all at severity `warn` (no package-specific `error` entry) enforces nothing, rather than enforcing everything: every installed package is still fetched and reported, every release-age row is advisory, and the exit code comes from rule violations alone. Includes moment — declared, installed, never imported — which release age never even looked up before #171. The only case covering the nothing-enforced path, which is the one path where #171 can move a verdict. |
-| [`comply-all-rule-types`](./comply-all-rule-types.html) | unchanged | Every one of the eleven rule types in one run, at three severities — the only case that renders max-file-size, require-engine-version, codeowners, both package-field shapes, and release-age together. release-age itself never gets a Rules-table row (its display is the Packages table) — that split is what this case pins. |
+| [`comply-deprecated-packages`](./comply-deprecated-packages.html) | unchanged | Deprecation detection with release-age switched off entirely — the #107 case. Before, deprecation was a by-product of release-age enrichment, so this configuration found nothing at all and this run would have been silently compliant on that axis. Now the registry is consulted for deprecation alone: a no-deprecated-packages row appears in the Rules table carrying npm own notice, and at severity error it fails comply on its own. The only case where the registry is reached without release-age, which is exactly the path that did not exist before. |
+| [`comply-all-rule-types`](./comply-all-rule-types.html) | unchanged | Every one of the twelve rule types in one run, at three severities — the only case that renders max-file-size, require-engine-version, codeowners, both package-field shapes, release-age and no-deprecated-packages together. release-age itself never gets a Rules-table row (its display is the Packages table) — that split is what this case pins, along with the only multi-badge Status cell in the fixtures (moment is both forbidden and deprecated). |
 | [`comply-all-rule-types-json`](./comply-all-rule-types-json.html) | unchanged | The machine-readable shape of every rule type: fieldPath and actualValue on package-field hits, maxSizeBytes/oversizeFile on max-file-size, installedRange/requiredRange on require-engine-version, matchedFile on codeowners, packageName/worstLevel/scope on release-age. Also where the #95 fix is visible — the two codeowners entries now differ by `reason` ('unowned' vs 'wrong-owner'), not just matchedFile. |
 | [`comply-summary-title`](./comply-summary-title.html) | unchanged | --summary-title replaces the default heading, so a consumer embedding the markdown can name it after the policy rather than the tool. |
 | [`comply-exit-2`](./comply-exit-2.html) | unchanged | A pipeline failure (nothing matched `includes`) exits 2, not 1 — a consumer must be able to tell "could not run" from "not compliant". |

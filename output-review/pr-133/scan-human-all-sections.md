@@ -14,13 +14,13 @@ _unchanged_
 
 **Ran** `hermex scan --config configs/all-sections.config.ts` in `fixtures/` → exit 0, as asserted
 
-**Config** [`fixtures/configs/all-sections.config.ts`](https://github.com/Gallevy/hermex/blob/e03e7ac552df3bdcf6b6f069dc8085e934630adc/fixtures/configs/all-sections.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/e03e7ac552df3bdcf6b6f069dc8085e934630adc/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/e03e7ac552df3bdcf6b6f069dc8085e934630adc/fixtures/README.md)) · **Case** [`scan-human-all-sections`](https://github.com/Gallevy/hermex/blob/e03e7ac552df3bdcf6b6f069dc8085e934630adc/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/e03e7ac552df3bdcf6b6f069dc8085e934630adc/fixtures/cases/scan-human-all-sections.md))
+**Config** [`fixtures/configs/all-sections.config.ts`](https://github.com/Gallevy/hermex/blob/2891555e0b8ad6562b0e6e278f600181087bee1c/fixtures/configs/all-sections.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/2891555e0b8ad6562b0e6e278f600181087bee1c/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/2891555e0b8ad6562b0e6e278f600181087bee1c/fixtures/README.md)) · **Case** [`scan-human-all-sections`](https://github.com/Gallevy/hermex/blob/2891555e0b8ad6562b0e6e278f600181087bee1c/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/2891555e0b8ad6562b0e6e278f600181087bee1c/fixtures/cases/scan-human-all-sections.md))
 
 <sub>Reproduce locally: `pnpm run test:output -- --filter scan-human-all-sections`</sub>
 
 ## Config
 
-[`fixtures/configs/all-sections.config.ts`](https://github.com/Gallevy/hermex/blob/e03e7ac552df3bdcf6b6f069dc8085e934630adc/fixtures/configs/all-sections.config.ts) — resolved, as the loader sees it
+[`fixtures/configs/all-sections.config.ts`](https://github.com/Gallevy/hermex/blob/2891555e0b8ad6562b0e6e278f600181087bee1c/fixtures/configs/all-sections.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -155,23 +155,23 @@ Caused by:
 
 📦 Packages
 
-┌───────────────────────────┬─────────┐
-│ Package                   │ Version │
-├───────────────────────────┼─────────┤
-│ @design-system/foundation │ 2.5.3   │
-├───────────────────────────┼─────────┤
-│ react                     │ 18.3.1  │
-├───────────────────────────┼─────────┤
-│ react-dom                 │ 18.3.1  │
-├───────────────────────────┼─────────┤
-│ lodash                    │ 4.17.21 │
-├───────────────────────────┼─────────┤
-│ es-toolkit                │ 1.39.10 │
-├───────────────────────────┼─────────┤
-│ eslint                    │ N/A     │
-├───────────────────────────┼─────────┤
-│ [BANNED] moment           │ 2.29.4  │
-└───────────────────────────┴─────────┘
+┌───────────────────────────┬─────────┬──────────────┐
+│ Package                   │ Version │ Flags        │
+├───────────────────────────┼─────────┼──────────────┤
+│ @design-system/foundation │ 2.5.3   │              │
+├───────────────────────────┼─────────┼──────────────┤
+│ react                     │ 18.3.1  │              │
+├───────────────────────────┼─────────┼──────────────┤
+│ react-dom                 │ 18.3.1  │              │
+├───────────────────────────┼─────────┼──────────────┤
+│ lodash                    │ 4.17.21 │              │
+├───────────────────────────┼─────────┼──────────────┤
+│ es-toolkit                │ 1.39.10 │              │
+├───────────────────────────┼─────────┼──────────────┤
+│ eslint                    │ N/A     │              │
+├───────────────────────────┼─────────┼──────────────┤
+│ moment                    │ 2.29.4  │ 🔴 forbidden │
+└───────────────────────────┴─────────┴──────────────┘
 
 ⚖️ Versus
 

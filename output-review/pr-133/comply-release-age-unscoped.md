@@ -14,7 +14,7 @@ _unchanged_
 
 **Ran** `hermex comply --config configs/release-age-unscoped.config.ts` in `fixtures/` → exit 1, as asserted
 
-**Config** [`fixtures/configs/release-age-unscoped.config.ts`](https://github.com/Gallevy/hermex/blob/e03e7ac552df3bdcf6b6f069dc8085e934630adc/fixtures/configs/release-age-unscoped.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/e03e7ac552df3bdcf6b6f069dc8085e934630adc/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/e03e7ac552df3bdcf6b6f069dc8085e934630adc/fixtures/README.md)) · **Case** [`comply-release-age-unscoped`](https://github.com/Gallevy/hermex/blob/e03e7ac552df3bdcf6b6f069dc8085e934630adc/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/e03e7ac552df3bdcf6b6f069dc8085e934630adc/fixtures/cases/comply-release-age-unscoped.md))
+**Config** [`fixtures/configs/release-age-unscoped.config.ts`](https://github.com/Gallevy/hermex/blob/2891555e0b8ad6562b0e6e278f600181087bee1c/fixtures/configs/release-age-unscoped.config.ts) · **Fixture** [`fixtures`](https://github.com/Gallevy/hermex/blob/2891555e0b8ad6562b0e6e278f600181087bee1c/fixtures) ([overview](https://github.com/Gallevy/hermex/blob/2891555e0b8ad6562b0e6e278f600181087bee1c/fixtures/README.md)) · **Case** [`comply-release-age-unscoped`](https://github.com/Gallevy/hermex/blob/2891555e0b8ad6562b0e6e278f600181087bee1c/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/2891555e0b8ad6562b0e6e278f600181087bee1c/fixtures/cases/comply-release-age-unscoped.md))
 
 **Registry** offline, served from `fixtures/registry/timelines.ts` — no network
 
@@ -22,7 +22,7 @@ _unchanged_
 
 ## Config
 
-[`fixtures/configs/release-age-unscoped.config.ts`](https://github.com/Gallevy/hermex/blob/e03e7ac552df3bdcf6b6f069dc8085e934630adc/fixtures/configs/release-age-unscoped.config.ts) — resolved, as the loader sees it
+[`fixtures/configs/release-age-unscoped.config.ts`](https://github.com/Gallevy/hermex/blob/2891555e0b8ad6562b0e6e278f600181087bee1c/fixtures/configs/release-age-unscoped.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -164,39 +164,44 @@ Caused by:
 
 🔍 Rules
 
-┌──────────────────┬──────────────────────────────────────────────────────┐
-│ Rule             │ Description                                          │
-├──────────────────┼──────────────────────────────────────────────────────┤
-│ no-packages      │ 🔴 moment is forbidden — Use date-fns or dayjs       │
-├──────────────────┼──────────────────────────────────────────────────────┤
-│ require-packages │ 🔴 typescript not installed — TypeScript is required │
-├──────────────────┼──────────────────────────────────────────────────────┤
-│ require-files    │ 🔴 .nvmrc not found                                  │
-├──────────────────┼──────────────────────────────────────────────────────┤
-│ require-files    │ 🟡 .editorconfig not found                           │
-└──────────────────┴──────────────────────────────────────────────────────┘
+┌────────────────────────┬────────────────────────────────────────────────────────────────────────────────────┐
+│ Rule                   │ Description                                                                        │
+├────────────────────────┼────────────────────────────────────────────────────────────────────────────────────┤
+│ no-packages            │ 🔴 moment is forbidden — Use date-fns or dayjs                                     │
+├────────────────────────┼────────────────────────────────────────────────────────────────────────────────────┤
+│ require-packages       │ 🔴 typescript not installed — TypeScript is required                               │
+├────────────────────────┼────────────────────────────────────────────────────────────────────────────────────┤
+│ require-files          │ 🔴 .nvmrc not found                                                                │
+├────────────────────────┼────────────────────────────────────────────────────────────────────────────────────┤
+│ require-files          │ 🟡 .editorconfig not found                                                         │
+├────────────────────────┼────────────────────────────────────────────────────────────────────────────────────┤
+│ no-deprecated-packages │ 🔵 moment is deprecated — Moment is in maintenance mode — prefer date-fns or dayjs │
+└────────────────────────┴────────────────────────────────────────────────────────────────────────────────────┘
 
-3 errors, 1 warning
+3 errors, 1 warning, 1 info
 
 📦 Packages
 
-┌──────────────────────────────┬───────────┬─────────────────────────────────────────────────────────────────┐
-│ Package                      │ Installed │ Target                                                          │
-├──────────────────────────────┼───────────┼─────────────────────────────────────────────────────────────────┤
-│ @design-system/foundation    │ 2.5.3     │                                                                 │
-├──────────────────────────────┼───────────┼─────────────────────────────────────────────────────────────────┤
-│ react                        │ 18.3.1    │ 🟡 major 19.1.0 (340 days overdue) [not enforced]               │
-├──────────────────────────────┼───────────┼─────────────────────────────────────────────────────────────────┤
-│ react-dom                    │ 18.3.1    │ 🔵 patch 18.3.2 (20 days remaining)                             │
-├──────────────────────────────┼───────────┼─────────────────────────────────────────────────────────────────┤
-│ lodash                       │ 4.17.21   │                                                                 │
-├──────────────────────────────┼───────────┼─────────────────────────────────────────────────────────────────┤
-│ es-toolkit                   │ 1.39.10   │                                                                 │
-├──────────────────────────────┼───────────┼─────────────────────────────────────────────────────────────────┤
-│ eslint                       │ N/A       │                                                                 │
-├──────────────────────────────┼───────────┼─────────────────────────────────────────────────────────────────┤
-│ [DEPRECATED] [BANNED] moment │ 2.29.4    │ 🟡 minor 2.30.1 (no compliant release available) [not enforced] │
-└──────────────────────────────┴───────────┴─────────────────────────────────────────────────────────────────┘
+┌───────────────────────────┬───────────┬─────────────────────────────────────┬────────────────────────────┐
+│ Package                   │ Installed │ Minimum target                      │ Flags                      │
+├───────────────────────────┼───────────┼─────────────────────────────────────┼────────────────────────────┤
+│ @design-system/foundation │ 2.5.3     │ —                                   │                            │
+├───────────────────────────┼───────────┼─────────────────────────────────────┼────────────────────────────┤
+│ react                     │ 18.3.1    │ 🟡 19.1.0 (major, 340 days overdue) │                            │
+├───────────────────────────┼───────────┼─────────────────────────────────────┼────────────────────────────┤
+│ react-dom                 │ 18.3.1    │ 🟢 18.3.2 (patch, due in 20 days)   │                            │
+├───────────────────────────┼───────────┼─────────────────────────────────────┼────────────────────────────┤
+│ lodash                    │ 4.17.21   │ —                                   │                            │
+├───────────────────────────┼───────────┼─────────────────────────────────────┼────────────────────────────┤
+│ es-toolkit                │ 1.39.10   │ —                                   │                            │
+├───────────────────────────┼───────────┼─────────────────────────────────────┼────────────────────────────┤
+│ eslint                    │ N/A       │ —                                   │                            │
+├───────────────────────────┼───────────┼─────────────────────────────────────┼────────────────────────────┤
+│ moment                    │ 2.29.4    │ 🟡 2.30.1 (minor, 455 days overdue) │ 🔴 forbidden 🔵 deprecated │
+└───────────────────────────┴───────────┴─────────────────────────────────────┴────────────────────────────┘
+
+Notes:
+  🔵 moment → deprecated: Moment is in maintenance mode — prefer date-fns or dayjs
 
 2 warnings
 

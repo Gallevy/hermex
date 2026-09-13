@@ -14,7 +14,7 @@ _unchanged_
 
 **Ran** `hermex comply --format json` in `fixtures/repos/all-rule-types` → exit 1, as asserted
 
-**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/e03e7ac552df3bdcf6b6f069dc8085e934630adc/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/e03e7ac552df3bdcf6b6f069dc8085e934630adc/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/e03e7ac552df3bdcf6b6f069dc8085e934630adc/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types-json`](https://github.com/Gallevy/hermex/blob/e03e7ac552df3bdcf6b6f069dc8085e934630adc/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/e03e7ac552df3bdcf6b6f069dc8085e934630adc/fixtures/cases/comply-all-rule-types-json.md))
+**Config** [`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/2891555e0b8ad6562b0e6e278f600181087bee1c/fixtures/repos/all-rule-types/hermex.config.ts) · **Fixture** [`fixtures/repos/all-rule-types`](https://github.com/Gallevy/hermex/blob/2891555e0b8ad6562b0e6e278f600181087bee1c/fixtures/repos/all-rule-types) ([overview](https://github.com/Gallevy/hermex/blob/2891555e0b8ad6562b0e6e278f600181087bee1c/fixtures/repos/all-rule-types/README.md)) · **Case** [`comply-all-rule-types-json`](https://github.com/Gallevy/hermex/blob/2891555e0b8ad6562b0e6e278f600181087bee1c/fixtures/cases.ts) ([dossier](https://github.com/Gallevy/hermex/blob/2891555e0b8ad6562b0e6e278f600181087bee1c/fixtures/cases/comply-all-rule-types-json.md))
 
 **Registry** offline, served from `fixtures/registry/timelines.ts` — no network
 
@@ -22,7 +22,7 @@ _unchanged_
 
 ## Config
 
-[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/e03e7ac552df3bdcf6b6f069dc8085e934630adc/fixtures/repos/all-rule-types/hermex.config.ts) — resolved, as the loader sees it
+[`fixtures/repos/all-rule-types/hermex.config.ts`](https://github.com/Gallevy/hermex/blob/2891555e0b8ad6562b0e6e278f600181087bee1c/fixtures/repos/all-rule-types/hermex.config.ts) — resolved, as the loader sees it
 
 ```json
 {
@@ -38,6 +38,14 @@ _unchanged_
         "severity": "error",
         "patterns": [
           "react"
+        ]
+      }
+    ],
+    "no-deprecated-packages": [
+      {
+        "severity": "warn",
+        "patterns": [
+          "moment"
         ]
       }
     ],
@@ -203,6 +211,7 @@ _unchanged_
       "allVersions": [
         "2.29.4"
       ],
+      "deprecated": "Moment is in maintenance mode — prefer date-fns or dayjs",
       "releaseAge": {
         "installedVersion": "2.29.4",
         "upgrades": [
@@ -217,7 +226,6 @@ _unchanged_
           }
         ],
         "worstLevel": "minor_overdue",
-        "deprecated": "Moment is in maintenance mode — prefer date-fns or dayjs",
         "latestVersion": "2.30.1",
         "latestReleasedDaysAgo": 500,
         "minCompliantVersion": "2.30.1",
@@ -340,7 +348,15 @@ _unchanged_
       "packageName": "moment",
       "installedVersion": "2.29.4",
       "worstLevel": "minor_overdue",
-      "scope": "root",
+      "scope": "root"
+    },
+    {
+      "ruleId": "no-deprecated-packages",
+      "severity": "warn",
+      "patterns": [
+        "moment"
+      ],
+      "packageName": "moment",
       "deprecated": "Moment is in maintenance mode — prefer date-fns or dayjs"
     },
     {
@@ -369,7 +385,7 @@ _unchanged_
     "compliant": false,
     "counts": {
       "errorRuleViolations": 8,
-      "warningRuleViolations": 4
+      "warningRuleViolations": 5
     }
   }
 }
