@@ -69,7 +69,6 @@ describe('aggregateReports — empty input', () => {
     expect(result.packageDistribution).toEqual([]);
     expect(result.patternCounts).toEqual([]);
     expect(result.versusResults).toEqual([]);
-    expect(result.ruleViolations).toEqual([]);
     expect(result.topComponents).toEqual([]);
   });
 });
@@ -286,68 +285,13 @@ describe('aggregateReports — package distribution', () => {
   });
 });
 
-describe('aggregateReports — forbidden packages', () => {
-  it('reports a forbidden package as a rule violation', () => {
-    const report = reportWithNamedImport('Moment', 'moment');
-    const config = createConfig({
-      rules: {
-        'no-packages': [
-          { severity: 'error', patterns: ['moment'], message: 'Use dayjs' },
-        ],
-      },
-    });
-
-    const result = aggregateReports([report], { moment: '2.29.0' }, config);
-
-    expect(result.ruleViolations).toHaveLength(1);
-    expect(result.ruleViolations[0]).toEqual({
-      ruleId: 'no-packages',
-      severity: 'error',
-      patterns: ['moment'],
-      message: 'Use dayjs',
-      packageName: 'moment',
-    });
-  });
-
-  // #77: one list, so a consumer iterating ruleViolations can't miss a
-  // no-packages hit the way it could when they lived in their own field.
-  it('puts no-packages and require-packages hits in one list, in detection order', () => {
-    const report = reportWithNamedImport('Moment', 'moment');
-    const config = createConfig({
-      rules: {
-        'no-packages': [{ severity: 'error', patterns: ['moment'] }],
-        'require-packages': [{ severity: 'error', patterns: ['dayjs'] }],
-      },
-    });
-
-    const result = aggregateReports([report], { moment: '2.29.0' }, config);
-
-    expect(result.ruleViolations.map((v) => v.ruleId)).toEqual([
-      'no-packages',
-      'require-packages',
-    ]);
-  });
-
-  it('reports no violations when no package matches', () => {
+// The package rules that used to be asserted here now live in
+// tests/rules/run.test.ts — aggregation builds the inventory, the rule layer
+// judges it (#84). What remains is the aggregation fact underneath them.
+describe('aggregateReports — declared-only packages', () => {
+  it('gives a package that is only declared in package.json a packages[] row', () => {
     const report = reportWithNamedImport('Button', 'react');
-    const config = createConfig({
-      rules: { 'no-packages': [{ severity: 'warn', patterns: ['moment'] }] },
-    });
-
-    const result = aggregateReports([report], { react: '18.0.0' }, config);
-
-    expect(result.ruleViolations).toEqual([]);
-  });
-
-  it('reports a forbidden package that is only declared in package.json', () => {
-    const report = reportWithNamedImport('Button', 'react');
-    const config = createConfig({
-      rules: {
-        'no-packages': [
-          { severity: 'error', patterns: ['jest'], message: 'Use vitest' },
-        ],
-      },
-    });
+    const config = createConfig({});
 
     const result = aggregateReports(
       [report],
@@ -358,15 +302,6 @@ describe('aggregateReports — forbidden packages', () => {
       { jest: ['devDependencies'] },
     );
 
-    expect(result.ruleViolations).toEqual([
-      {
-        ruleId: 'no-packages',
-        severity: 'error',
-        patterns: ['jest'],
-        message: 'Use vitest',
-        packageName: 'jest',
-      },
-    ]);
     // Since #78 a declared-only package DOES get a packages[] row — the repo
     // depends on it, which is what that array now reports. It carries zero
     // usage, because nothing imports it as a component.

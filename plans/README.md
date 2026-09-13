@@ -62,7 +62,7 @@ via dispatched executor + tech-lead review, verified DONE, merged to
 | [036](036-authenticated-registry-cache.md) | Cache authenticated registry responses | P2 | M | 035 (order only) | TODO |
 | [037](037-imported-axis.md) | Add an imported axis to the package inventory | P1 | L | — | TODO |
 | [038](038-props-per-usage-and-values.md) | Props per usage, statically-resolvable values, surfaced | P1 | L | 022 | TODO |
-| [039](039-one-rule-layer.md) | One rule layer owns the violation list; `AggregatedReport` built once | P2 | M | — | TODO |
+| [039](039-one-rule-layer.md) | One rule layer owns the violation list; `AggregatedReport` built once | P2 | M | — | DONE |
 
 Status values: `TODO` | `IN PROGRESS` | `DONE` | `BLOCKED: <reason>` | `REJECTED: <reason>`
 
@@ -200,6 +200,17 @@ the issue body:
 No assumption encoded: internal only, `aggregateReports`/`AggregatedReport` are
 not exported from `src/index.ts`, and the acceptance test is a zero-diff
 `pnpm run test:output`.
+
+**Executed same session.** All 30 output-review cases matched `main`, 1204 tests
+pass, five gates green. One deviation from the plan's scope list, worth recording
+because it is the kind of coupling a scope list is meant to catch:
+`printScanResults` in `src/commands/scan.ts` typed its parameter as
+`ReturnType<typeof aggregateReports>`, so narrowing that return type to
+`AnalysisFacts` silently retargeted a *renderer* at the facts-only type. Fixed by
+naming `AggregatedReport` directly — which is what the annotation always meant.
+Worth a sweep for other `ReturnType<typeof …>` annotations standing in for a
+named type; they defeat exactly the kind of compiler check this refactor relied
+on.
 
 ## Dependency notes
 

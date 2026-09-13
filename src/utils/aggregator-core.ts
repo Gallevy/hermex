@@ -16,16 +16,18 @@ import type {
   PackageInventoryEntry,
 } from './package-inventory';
 import { buildPackageInventory } from './package-inventory';
-import {
-  detectForbiddenPackages,
-  detectRequiredPackages,
-} from './package-rules';
 import type { PatternCount } from './pattern-counter';
 import { countPatterns, getPatternDisplayName } from './pattern-counter';
 import type { VersusResult } from './versus';
 import { calculateVersusResults } from './versus';
 
-export interface AggregatedReport {
+/**
+ * What the run observed, before any rule has judged it. `aggregateReports`
+ * returns this and nothing more: the package inventory is a *fact*, and the
+ * rules that read it belong to the rule layer (`src/rules/run.ts`), not to
+ * aggregation (#84).
+ */
+export interface AnalysisFacts {
   filesAnalyzed: number;
   totalImports: number;
   totalComponents: number;
@@ -37,9 +39,16 @@ export interface AggregatedReport {
   packageInventory: PackageInventoryEntry[];
   packageDistribution: PackageDistribution[];
   versusResults: VersusResult[];
-  /** Every rule hit, `no-packages` included (#77) — one list, no second field to remember to read. */
-  ruleViolations: RuleViolation[];
   reports: UsageReport[];
+}
+
+/**
+ * Facts plus every verdict reached about them. Constructed exactly once, at
+ * the end of `runPipeline`, and never reassigned after (#84).
+ */
+export interface AggregatedReport extends AnalysisFacts {
+  /** Every rule hit, `no-packages` and plugin findings included (#77) — one list, no second field to remember to read. */
+  ruleViolations: RuleViolation[];
 }
 
 export function aggregateReports(
@@ -49,7 +58,7 @@ export function aggregateReports(
   multiVersions: MultiVersionMap = {},
   resolutions: LockfileResolutionMap = {},
   declaredPackages: DeclaredPackages = {},
-): AggregatedReport {
+): AnalysisFacts {
   const componentUsageMap = new Map<string, ComponentUsage>();
   // Package name → how many scanned files import it. One increment per file
   // per package, so a file pulling in five date-fns helpers counts once.
@@ -158,15 +167,6 @@ export function aggregateReports(
     packageInventory,
     config?.versus ?? [],
   );
-  const forbiddenPackageViolations = detectForbiddenPackages(
-    packageInventory,
-    config,
-  );
-
-  const requiredPackageViolations = detectRequiredPackages(
-    packageInventory,
-    config,
-  );
 
   return {
     filesAnalyzed: reports.length,
@@ -179,12 +179,6 @@ export function aggregateReports(
     packageInventory,
     packageDistribution,
     versusResults,
-    // Detection order: package rules here, then the file/script/manifest
-    // evaluators appended by the pipeline.
-    ruleViolations: [
-      ...forbiddenPackageViolations,
-      ...requiredPackageViolations,
-    ],
     reports,
   };
 }

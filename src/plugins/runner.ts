@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import type { ResolvedHermexConfig } from '../config/overrides';
-import type { AggregatedReport } from '../utils/aggregator';
+import type { RuleViolation } from '../rules/shared';
+import type { AnalysisFacts } from '../utils/aggregator';
 import type {
   HermexPlugin,
   PluginContext,
@@ -41,28 +42,33 @@ function namespaceRuleId(pluginName: string, ruleId: string): string {
 }
 
 function buildInventoryView(
-  aggregated: AggregatedReport,
-  violations: readonly PluginViolation[],
+  facts: AnalysisFacts,
+  hermexViolations: readonly RuleViolation[],
+  pluginViolations: readonly PluginViolation[],
 ): PluginInventoryView {
   return {
     summary: {
-      filesAnalyzed: aggregated.filesAnalyzed,
-      totalImports: aggregated.totalImports,
-      totalComponents: aggregated.totalComponents,
-      totalUsagePatterns: aggregated.totalUsagePatterns,
+      filesAnalyzed: facts.filesAnalyzed,
+      totalImports: facts.totalImports,
+      totalComponents: facts.totalComponents,
+      totalUsagePatterns: facts.totalUsagePatterns,
     },
-    packages: aggregated.packageDistribution,
-    components: aggregated.topComponents,
-    versus: aggregated.versusResults,
-    // hermex's own findings plus whatever earlier plugins contributed — the
+    packages: facts.packageDistribution,
+    components: facts.topComponents,
+    versus: facts.versusResults,
+    // hermex's complete list plus whatever earlier plugins contributed — the
     // view is rebuilt per plugin so a reporter running last sees everything.
-    violations: [...aggregated.ruleViolations, ...violations],
+    // Both halves arrive as arguments: nothing here reaches into a report that
+    // is still being assembled (#84).
+    violations: [...hermexViolations, ...pluginViolations],
   };
 }
 
 export interface RunPluginsOptions {
   plugins: readonly HermexPlugin[];
-  aggregated: AggregatedReport;
+  facts: AnalysisFacts;
+  /** Every violation hermex computed, complete before the first plugin runs. */
+  violations: readonly RuleViolation[];
   config: ResolvedHermexConfig;
   cwd: string;
   files: readonly string[];
@@ -85,7 +91,8 @@ export interface RunPluginsOptions {
  */
 export async function runPlugins({
   plugins,
-  aggregated,
+  facts,
+  violations,
   config,
   cwd,
   files,
@@ -104,7 +111,7 @@ export async function runPlugins({
       cwd,
       config,
       files,
-      inventory: buildInventoryView(aggregated, collected),
+      inventory: buildInventoryView(facts, violations, collected),
       violations: {
         add(violation: PluginViolationInput) {
           collected.push({
