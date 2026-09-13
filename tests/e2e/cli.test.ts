@@ -237,6 +237,28 @@ describe('CLI smoke tests', () => {
 });
 
 describe('comply command', () => {
+  // The Packages table belongs to `no-outdated-packages`, so it appears
+  // exactly when that rule is on — not merely when the registry was
+  // consulted. Those were the same thing only while release facts were
+  // gated on the policy; they are not any more (#189), and a
+  // `no-deprecated-packages`-only run briefly grew a table because of it.
+  it('prints the Packages table only when no-outdated-packages is on', () => {
+    const deprecatedOnly = run([
+      'comply',
+      '--config',
+      'configs/deprecated-packages.config.ts',
+    ]);
+    expect(deprecatedOnly.stdout).not.toContain('📦 Packages');
+
+    const outdated = run([
+      'comply',
+      '--config',
+      'configs/release-age.config.ts',
+    ]);
+    expect(outdated.stdout).toContain('📦 Packages');
+    expect(outdated.stdout).toContain('Minimum target');
+  });
+
   it('exits 1 when an error-severity rule violation is present', () => {
     const configPath = join(
       ROOT,
