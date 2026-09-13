@@ -9,7 +9,7 @@ import { findFiles } from '../utils/file-utils';
 import { findAndParseLockfile } from '../lock-parser';
 import { evaluateRules } from '../rules/evaluator';
 import { collectDeclaredPackages } from '../rules/shared';
-import { evaluateReleaseAge } from '../rules/release-age';
+import { evaluateRegistryRules, needsRegistry } from '../rules/registry-rules';
 import { applyOverrides } from '../config/overrides';
 import { runPlugins } from '../plugins';
 import type { HermexConfig } from '../config/types';
@@ -122,21 +122,27 @@ export async function runPipeline(
     ...evaluatorViolations,
   ];
 
-  // `rules['release-age']` being non-empty IS "release-age enabled" — no
-  // separate flag (see src/config/schema.ts's releaseAge block comment).
-  if (resolvedConfig.rules['release-age'].length > 0) {
+  // A rule family being non-empty IS "that rule enabled" — no separate
+  // flag (see src/config/schema.ts's releaseAge block comment). Both
+  // registry-backed families share one enrichment pass, so the gate is
+  // "does anything need the registry", not "is release-age on" (#107).
+  if (needsRegistry(resolvedConfig.rules)) {
+    const forReleaseAge = resolvedConfig.rules['release-age'].length > 0;
     if (spinner.isEnabled)
-      spinner.start('Fetching release age from registry...');
-    const { enriched, violations, skipped } = await evaluateReleaseAge(
+      spinner.start(
+        forReleaseAge
+          ? 'Fetching release age from registry...'
+          : 'Checking the registry for deprecated packages...',
+      );
+    const { enriched, violations, skipped } = await evaluateRegistryRules(
       aggregated.packageDistribution,
-      resolvedConfig.releaseAge,
-      resolvedConfig.rules['release-age'],
+      resolvedConfig,
     );
     aggregated.packageDistribution = enriched;
     aggregated.ruleViolations = [...aggregated.ruleViolations, ...violations];
     spinner.succeed(
       chalk.blue(
-        `Release age fetched${skipped > 0 ? chalk.gray(` (${skipped} packages skipped — registry unreachable or not found)`) : ''}`,
+        `${forReleaseAge ? 'Release age fetched' : 'Registry checked'}${skipped > 0 ? chalk.gray(` (${skipped} packages skipped — registry unreachable or not found)`) : ''}`,
       ),
     );
   }

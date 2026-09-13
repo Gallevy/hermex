@@ -1,11 +1,11 @@
 # `repos/all-rule-types/`
 
-A repo engineered so **every one of the eleven rule types fires at once**, at
+A repo engineered so **every one of the twelve rule types fires at once**, at
 three different severities.
 
 ## What it proves
 
-The primary fixture repo only ever trips three of the eleven. Without this
+The primary fixture repo only ever trips three of the twelve. Without this
 repo the rules table has never been reviewed with a `max-file-size` row, an
 `require-engine-version` row, a `codeowners` row, or either of the two
 package-field shapes in it — so nothing would catch a renderer that
@@ -30,6 +30,15 @@ field reports the offending value.
 | `no-package-fields` | warn | `publishConfig.registry` points at an internal registry |
 | `require-engine-version` | error | `engines.node` is `>=16`, below the required `>=20` |
 | `codeowners` | info | fires **twice** — see below |
+| `release-age` | error | `react@18.3.1` is overdue on a major, with `19.1.0` still in-window |
+| `no-deprecated-packages` | warn | the registry reports `moment@2.29.4` deprecated |
+
+`release-age` is the only rule that renders no row in the Rules table at
+all — its display is the Packages table. `no-deprecated-packages` renders in
+both: a Rules row carrying npm's own notice, and a Status badge on the
+Packages row. Since `moment` is also forbidden, that row is the one place in
+the fixtures where two Status badges appear together at different
+severities.
 
 `includes` is scoped to `src/` so `jest.config.js` is found by
 `no-files` without also being parsed as source — the same scoping keeps
@@ -62,7 +71,7 @@ reads "have the wrong owner".
 
 | Case | Command | Expects |
 | --- | --- | --- |
-| `comply-all-rule-types` | `hermex comply` | exit 1, all eleven rows in the human table |
+| `comply-all-rule-types` | `hermex comply` | exit 1, every rule type represented — eleven in the Rules table, release-age in the Packages table |
 | `comply-all-rule-types-json` | `hermex comply --format json` | exit 1, the machine-readable shape of each rule type |
 
 ## Layout
@@ -71,9 +80,9 @@ reads "have the wrong owner".
 .babelrc                 no-files hit
 .github/CODEOWNERS       two of three src files covered
 assets/logo.svg          1410 B, over the 1 KB max-file-size ceiling
-hermex.config.ts         all eleven rules, three severities
+hermex.config.ts         all twelve rules, three severities
 jest.config.js           no-files hit
-package.json             engines >=16, no license, publishConfig.registry, moment
+package.json             engines >=16, no license, publishConfig.registry, moment (forbidden + deprecated)
 src/legacy.tsx           owned by the wrong team
 src/orphan.tsx           owned by nobody
 src/owned.tsx            correctly owned

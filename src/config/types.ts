@@ -28,6 +28,7 @@ export type {
   ResolvedEngineVersionRule,
   ResolvedCodeownersRule,
   ResolvedReleaseAgeRuleConfig,
+  ResolvedDeprecatedPackagesRuleConfig,
   ResolvedRulesConfig,
   ResolvedHermexConfig,
 } from './overrides';

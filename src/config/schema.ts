@@ -139,6 +139,7 @@ const OverrideRulesSchema = z
     'require-files': RuleConfigOrArraySchema.optional(),
     'max-file-size': MaxFileSizeRuleOrArraySchema.optional(),
     'no-packages': RuleConfigOrArraySchema.optional(),
+    'no-deprecated-packages': RuleConfigOrArraySchema.optional(),
     'require-packages': RuleConfigOrArraySchema.optional(),
     'require-scripts': RuleConfigOrArraySchema.optional(),
     'require-package-fields': PackageFieldRuleOrArraySchema.optional(),
@@ -298,6 +299,18 @@ export const HermexConfigSchema = z
         'require-files': RuleConfigOrArraySchema.default([]),
         'max-file-size': MaxFileSizeRuleOrArraySchema.default([]),
         'no-packages': RuleConfigOrArraySchema.default([]),
+        /**
+         * Judges the deprecation notice registry enrichment records on each
+         * package. `patterns` match package names, like `no-packages`.
+         *
+         * Governed the way `release-age` is — one winning entry per package
+         * against an implicit `['**']` baseline at severity 'info' (see
+         * `resolveDeprecatedPackagesRule`, ./overrides) — so 'off' exempts a
+         * package rather than being dropped. That baseline sets severity,
+         * not enablement: leaving this empty with release-age also empty
+         * means the registry is never consulted at all.
+         */
+        'no-deprecated-packages': RuleConfigOrArraySchema.default([]),
         'require-packages': RuleConfigOrArraySchema.default([]),
         'require-scripts': RuleConfigOrArraySchema.default([]),
         'require-package-fields': PackageFieldRuleOrArraySchema.default([]),
@@ -314,6 +327,7 @@ export const HermexConfigSchema = z
         'require-files': [] as RuleConfig[],
         'max-file-size': [] as MaxFileSizeRule[],
         'no-packages': [] as RuleConfig[],
+        'no-deprecated-packages': [] as RuleConfig[],
         'require-packages': [] as RuleConfig[],
         'require-scripts': [] as RuleConfig[],
         'require-package-fields': [] as PackageFieldRule[],

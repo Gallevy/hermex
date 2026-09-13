@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
   applyOverrides,
+  resolveDeprecatedPackagesRule,
   resolveReleaseAgeRule,
 } from '../../src/config/overrides';
 import { HermexConfigSchema } from '../../src/config/schema';
@@ -1080,5 +1081,104 @@ describe('resolveReleaseAgeRule', () => {
       thresholds: DEFAULT_THRESHOLDS,
       scope: 'root',
     });
+  });
+});
+
+// no-deprecated-packages is the second family resolved by last-match-wins
+// governance against an implicit baseline, so it inherits release-age's
+// 'off' semantics rather than the ordinary "a dropped entry never fires"
+// ones (#107). These tests are the executable record of that choice — the
+// contrast with no-packages directly above is the point.
+describe('no-deprecated-packages resolution', () => {
+  it('keeps an "off" entry in the resolved rules array, the way release-age does', () => {
+    const dir = makeRepo('some-app');
+    try {
+      const config = createConfig({
+        rules: {
+          'no-deprecated-packages': [
+            { severity: 'off', patterns: ['@internal/*'] },
+          ],
+        },
+      });
+      const result = applyOverrides(config, dir);
+      expect(result.rules['no-deprecated-packages']).toEqual([
+        { severity: 'off', patterns: ['@internal/*'] },
+      ]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('drops an "off" no-packages entry, for contrast — that rule fires per matching entry', () => {
+    const dir = makeRepo('some-app');
+    try {
+      const config = createConfig({
+        rules: {
+          'no-packages': [{ severity: 'off', patterns: ['@internal/*'] }],
+        },
+      });
+      const result = applyOverrides(config, dir);
+      expect(result.rules['no-packages']).toEqual([]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('upserts an override on top of the base by patterns identity', () => {
+    const dir = makeRepo('@acme/internal-tools-x');
+    try {
+      const config = createConfig({
+        rules: {
+          'no-deprecated-packages': [
+            { severity: 'error', patterns: ['@acme/*'] },
+          ],
+        },
+        overrides: [
+          {
+            match: ['@acme/internal-tools-*'],
+            rules: {
+              'no-deprecated-packages': [
+                { severity: 'off', patterns: ['@acme/*'] },
+              ],
+            },
+          },
+        ],
+      });
+      const result = applyOverrides(config, dir);
+      expect(result.rules['no-deprecated-packages']).toEqual([
+        { severity: 'off', patterns: ['@acme/*'] },
+      ]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('resolveDeprecatedPackagesRule', () => {
+  it('falls back to the info baseline for a package no entry matches', () => {
+    expect(resolveDeprecatedPackagesRule('request', [])).toEqual({
+      severity: 'info',
+      patterns: ['**'],
+    });
+  });
+
+  it('lets the last matching entry win', () => {
+    const rules = [
+      { severity: 'error' as const, patterns: ['**'] },
+      { severity: 'off' as const, patterns: ['@internal/*'] },
+    ];
+    expect(resolveDeprecatedPackagesRule('@internal/ui', rules).severity).toBe(
+      'off',
+    );
+    expect(resolveDeprecatedPackagesRule('moment', rules).severity).toBe(
+      'error',
+    );
+  });
+
+  it('lets an authored ["**"] entry replace the baseline outright', () => {
+    const rules = [{ severity: 'error' as const, patterns: ['**'] }];
+    expect(resolveDeprecatedPackagesRule('anything', rules).severity).toBe(
+      'error',
+    );
   });
 });

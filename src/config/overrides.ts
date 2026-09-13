@@ -37,10 +37,22 @@ export type ResolvedCodeownersRule = Resolved<CodeownersRule>;
  * `upsertPatternRules` drops it for other rules, a package meant to be
  * exempted would just fall through to the next-best match (often the
  * baseline) instead of being exempted — the opposite of what 'off' means.
- * `upsertReleaseAgeRules` (below) is `upsertPatternRules` without the
+ * `upsertGoverningRules` (below) is `upsertPatternRules` without the
  * `isEnabled` filter, so 'off' entries are upserted like any other.
  */
 export type ResolvedReleaseAgeRuleConfig = ReleaseAgeRuleConfig;
+
+/**
+ * NOT `Resolved<RuleConfig>`, for exactly the reason spelled out on
+ * `ResolvedReleaseAgeRuleConfig` above: `no-deprecated-packages` is the
+ * other family resolved by last-match-wins governance against an implicit
+ * `['**']` baseline (`resolveDeprecatedPackagesRule` below), so an 'off'
+ * entry has to survive resolution in order to exempt a package. Drop it the
+ * way `upsertPatternRules` does for the ordinary families and the package
+ * falls through to the baseline instead — silently turning 'off' into a
+ * no-op.
+ */
+export type ResolvedDeprecatedPackagesRuleConfig = RuleConfig;
 
 /** The shape `RulesConfig` resolves to after `applyOverrides` — see `ResolvedRuleConfig`. */
 export interface ResolvedRulesConfig {
@@ -48,6 +60,7 @@ export interface ResolvedRulesConfig {
   'require-files': ResolvedRuleConfig[];
   'max-file-size': ResolvedMaxFileSizeRule[];
   'no-packages': ResolvedRuleConfig[];
+  'no-deprecated-packages': ResolvedDeprecatedPackagesRuleConfig[];
   'require-packages': ResolvedRuleConfig[];
   'require-scripts': ResolvedRuleConfig[];
   'require-package-fields': ResolvedPackageFieldRule[];
@@ -93,15 +106,17 @@ function upsertPatternRules<T extends { severity: string; patterns: string[] }>(
 }
 
 /**
- * Same identity/replacement semantics as {@link upsertPatternRules}
- * (keyed by `patterns`), but never drops an 'off' entry — see
- * `ResolvedReleaseAgeRuleConfig` above for why release-age needs 'off' to
- * remain a real, resolvable entry instead of vanishing from the array.
+ * Same identity/replacement semantics as {@link upsertPatternRules} (keyed
+ * by `patterns`), but never drops an 'off' entry — for the two families
+ * resolved by last-match-wins governance against an implicit baseline
+ * (`release-age`, `no-deprecated-packages`). See
+ * `ResolvedReleaseAgeRuleConfig` above for why those need 'off' to remain a
+ * real, resolvable entry instead of vanishing from the array.
  */
-function upsertReleaseAgeRules(
-  base: ReleaseAgeRuleConfig[],
-  overrides: ReleaseAgeRuleConfig[],
-): ReleaseAgeRuleConfig[] {
+function upsertGoverningRules<T extends { patterns: string[] }>(
+  base: T[],
+  overrides: T[],
+): T[] {
   let result = base;
   for (const rule of overrides) {
     result = result.filter((r) => !patternsMatch(r.patterns, rule.patterns));
@@ -151,6 +166,10 @@ function resolveRules(rules: RulesConfig): ResolvedRulesConfig {
     'require-files': upsertPatternRules([], toArray(rules['require-files'])),
     'max-file-size': upsertPatternRules([], toArray(rules['max-file-size'])),
     'no-packages': upsertPatternRules([], toArray(rules['no-packages'])),
+    'no-deprecated-packages': upsertGoverningRules(
+      [],
+      toArray(rules['no-deprecated-packages']),
+    ),
     'require-packages': upsertPatternRules(
       [],
       toArray(rules['require-packages']),
@@ -172,7 +191,7 @@ function resolveRules(rules: RulesConfig): ResolvedRulesConfig {
       toArray(rules['require-engine-version']),
     ),
     'require-codeowners': resolveCodeowners(rules['require-codeowners']),
-    'release-age': upsertReleaseAgeRules([], toArray(rules['release-age'])),
+    'release-age': upsertGoverningRules([], toArray(rules['release-age'])),
   };
 }
 
@@ -229,6 +248,12 @@ export function applyOverrides(
             toArray(o['no-packages']),
           );
         }
+        if (o['no-deprecated-packages'] !== undefined) {
+          rules['no-deprecated-packages'] = upsertGoverningRules(
+            rules['no-deprecated-packages'],
+            toArray(o['no-deprecated-packages']),
+          );
+        }
         if (o['require-packages'] !== undefined) {
           rules['require-packages'] = upsertPatternRules(
             rules['require-packages'],
@@ -265,7 +290,7 @@ export function applyOverrides(
           );
         }
         if (o['release-age'] !== undefined) {
-          rules['release-age'] = upsertReleaseAgeRules(
+          rules['release-age'] = upsertGoverningRules(
             rules['release-age'],
             toArray(o['release-age']),
           );
@@ -318,6 +343,42 @@ export function resolveReleaseAgeRule(
 ): ResolvedReleaseAgeRuleConfig {
   let winner = RELEASE_AGE_BASELINE;
   for (const rule of [RELEASE_AGE_BASELINE, ...resolvedRules]) {
+    if (micromatch.isMatch(packageName, rule.patterns)) winner = rule;
+  }
+  return winner;
+}
+
+/**
+ * The default policy for any package no authored
+ * `rules['no-deprecated-packages']` entry matches: reported, never
+ * enforced. 'info' is what preserves the long-standing behavior that a
+ * deprecated package is always *visible* once hermex has registry data for
+ * it, while keeping it out of the compliance verdict — an author opts into
+ * enforcement with an 'error' entry, and silences it with 'off'.
+ *
+ * Like `RELEASE_AGE_BASELINE`, this sets *severity*, not *enablement*: it
+ * only ever applies to packages the registry was already consulted about.
+ * An empty `rules['no-deprecated-packages']` with release-age also off
+ * means no registry call is made at all, so nothing reaches this.
+ */
+const DEPRECATED_PACKAGES_BASELINE: ResolvedDeprecatedPackagesRuleConfig = {
+  severity: 'info',
+  patterns: ['**'],
+};
+
+/**
+ * Resolves which single `no-deprecated-packages` entry governs
+ * `packageName` — last match wins against the implicit `['**']` baseline,
+ * identical in mechanic and rationale to `resolveReleaseAgeRule` above. A
+ * package can't be simultaneously 'error' under one entry and 'off' under
+ * another, so one entry has to win rather than every match firing.
+ */
+export function resolveDeprecatedPackagesRule(
+  packageName: string,
+  resolvedRules: ResolvedDeprecatedPackagesRuleConfig[],
+): ResolvedDeprecatedPackagesRuleConfig {
+  let winner = DEPRECATED_PACKAGES_BASELINE;
+  for (const rule of [DEPRECATED_PACKAGES_BASELINE, ...resolvedRules]) {
     if (micromatch.isMatch(packageName, rule.patterns)) winner = rule;
   }
   return winner;

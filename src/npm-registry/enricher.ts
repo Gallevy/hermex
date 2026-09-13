@@ -72,9 +72,11 @@ interface ReleaseAgeForVersion {
 
 /**
  * Computes everything version-dependent for a single installed version
- * against the registry's release timeline — no notion of scope, severity,
- * or deprecation, which are policy/registry facts independent of which
- * installed copy is being checked (#57).
+ * against the registry's release timeline — no notion of scope or
+ * severity, which are policy facts independent of which installed copy is
+ * being checked (#57). Deprecation isn't here either, and no longer passes
+ * through release-age at all: it's an inventory fact recorded directly by
+ * `enrichFromRegistry` below (#107).
  */
 function computeReleaseAgeForVersion(
   installedVersion: string,
@@ -258,7 +260,6 @@ export function computeReleaseAge(
   installedVersion: string,
   allVersions: string[],
   timeMap: Record<string, string>,
-  deprecated: string | undefined,
   thresholds: ReleaseAgeThresholds,
   distTags: Record<string, string> | undefined,
   severity: 'error' | 'warn' | 'info' | 'off',
@@ -324,7 +325,6 @@ export function computeReleaseAge(
     upgrades: baseline.upgrades,
     worstLevel: baseline.worstLevel,
     pendingUpgrade: baseline.pendingUpgrade,
-    deprecated,
     latestVersion: baseline.latestVersion,
     latestReleasedDaysAgo: baseline.latestReleasedDaysAgo,
     minCompliantVersion: baseline.minCompliantVersion,
@@ -356,18 +356,33 @@ export interface ReleaseAgePolicy {
   scope: 'root' | 'tree';
 }
 
+/** What one package's registry lookup produced. `found` records whether the
+ * fetch itself succeeded, which is deliberately separate from whether an
+ * `entry` was computed — see the merge loop below. */
+interface RegistryResult {
+  pkg: PackageDistribution;
+  found: boolean;
+  deprecated?: string;
+  entry?: ReleaseAgeEntry;
+}
+
 /**
- * Fetches registry data and computes `ReleaseAgeEntry` for every package
- * with an installed version — unconditionally, regardless of policy (#171,
- * #173): a package's `resolvePolicy` result decides only its severity,
- * thresholds and scope, never whether it's looked up at all. Pure registry
- * I/O plus the timeline math above; policy resolution (which rule entry
- * governs a package) lives in `src/rules/release-age.ts`, one layer up.
+ * One registry pass, two outputs. Deprecation is an inventory fact and is
+ * always recorded; the `ReleaseAgeEntry` is computed only when
+ * `resolvePolicy` is supplied — i.e. when `rules['release-age']` is
+ * non-empty for this repo. So both registry-backed rules cost one request
+ * per installed package between them, not one each (#107).
+ *
+ * Within a release-age run, enrichment stays unconditional regardless of
+ * policy (#171, #173): a package's `resolvePolicy` result decides only its
+ * severity, thresholds and scope, never whether it's looked up at all.
+ * Pure registry I/O plus the timeline math above; policy resolution (which
+ * rule entry governs a package) lives one layer up, in `src/rules/`.
  */
-export async function enrichWithReleaseAge(
+export async function enrichFromRegistry(
   packages: PackageDistribution[],
   connection: ReleaseAgeConnection,
-  resolvePolicy: (packageName: string) => ReleaseAgePolicy,
+  resolvePolicy?: (packageName: string) => ReleaseAgePolicy,
 ): Promise<{ enriched: PackageDistribution[]; skipped: number }> {
   const authToken =
     connection.authToken ?? process.env['HERMEX_REGISTRY_AUTH_TOKEN'];
@@ -387,8 +402,8 @@ export async function enrichWithReleaseAge(
   // Process in batches of CONCURRENCY
   for (let i = 0; i < targets.length; i += CONCURRENCY) {
     const batch = targets.slice(i, i + CONCURRENCY);
-    const results = await Promise.all(
-      batch.map(async (pkg) => {
+    const results: RegistryResult[] = await Promise.all(
+      batch.map(async (pkg): Promise<RegistryResult> => {
         const info = await getPackageInfo(
           pkg.packageName,
           NPM_REGISTRY_URL,
@@ -397,13 +412,13 @@ export async function enrichWithReleaseAge(
         );
         if (!info || !info.time) {
           skipped++;
-          return { pkg, entry: null };
+          return { pkg, found: false };
         }
 
         const deprecated =
           info.versions?.[pkg.version!]?.deprecated ?? info.deprecated;
 
-        const policy = resolvePolicy(pkg.packageName);
+        const policy = resolvePolicy?.(pkg.packageName);
 
         // `undefined` (never populated — e.g. a hand-built PackageDistribution
         // in a test) is treated as "unknown, assume root" for backward
@@ -412,28 +427,45 @@ export async function enrichWithReleaseAge(
         // means "don't enforce this under root scope" (#62).
         const hasRootVersion = pkg.rootVersion !== null;
 
-        const entry = computeReleaseAge(
-          pkg.version!,
-          pkg.allVersions,
-          info.time,
-          typeof deprecated === 'string' ? deprecated : undefined,
-          policy.thresholds,
-          info['dist-tags'],
-          policy.severity,
-          policy.scope,
-          hasRootVersion,
-        );
+        const entry = policy
+          ? computeReleaseAge(
+              pkg.version!,
+              pkg.allVersions,
+              info.time,
+              policy.thresholds,
+              info['dist-tags'],
+              policy.severity,
+              policy.scope,
+              hasRootVersion,
+            )
+          : undefined;
 
-        return { pkg, entry };
+        return {
+          pkg,
+          found: true,
+          deprecated: typeof deprecated === 'string' ? deprecated : undefined,
+          entry,
+        };
       }),
     );
 
-    for (const { pkg, entry } of results) {
-      if (!entry) continue;
-      const idx = enriched.findIndex((p) => p.packageName === pkg.packageName);
-      if (idx !== -1) {
-        enriched[idx] = { ...enriched[idx], releaseAge: entry };
-      }
+    // Keyed on whether the FETCH succeeded, never on whether an entry was
+    // computed: with release-age off there is no entry for any package, and
+    // `if (!entry) continue` would silently discard every deprecation fact
+    // this pass exists to collect (#107).
+    for (const result of results) {
+      if (!result.found) continue;
+      const idx = enriched.findIndex(
+        (p) => p.packageName === result.pkg.packageName,
+      );
+      if (idx === -1) continue;
+      enriched[idx] = {
+        ...enriched[idx],
+        ...(result.deprecated !== undefined
+          ? { deprecated: result.deprecated }
+          : {}),
+        ...(result.entry ? { releaseAge: result.entry } : {}),
+      };
     }
   }
 

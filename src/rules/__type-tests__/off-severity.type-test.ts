@@ -4,6 +4,15 @@
 // away, and every downstream consumer trusts that via ResolvedRulesConfig /
 // ResolvedHermexConfig instead of re-checking at runtime.
 //
+// Two rule families are deliberately absent below: `release-age` and
+// `no-deprecated-packages` resolve by last-match-wins governance against an
+// implicit `['**']` baseline, so for them 'off' must SURVIVE resolution in
+// order to exempt a package — dropping it would fall through to the
+// baseline instead (see `ResolvedReleaseAgeRuleConfig`,
+// src/config/overrides.ts). The resolved-vs-raw distinction proved here
+// simply doesn't apply to those two; their equivalent guarantee is the
+// explicit `severity === 'off'` check in each evaluator, covered by tests.
+//
 // This file is never imported by src/index.ts or src/cli.ts, so it never
 // ships in dist/ — it exists solely for `tsc --noEmit` (pnpm run
 // typecheck) to enforce the invariant below on every run. If any

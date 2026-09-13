@@ -31,11 +31,11 @@ describe('formatDaysOverdue', () => {
 
 describe('formatDaysRemaining', () => {
   it('pluralizes "days" when the remaining count is not 1', () => {
-    expect(formatDaysRemaining(12)).toBe('12 days remaining');
+    expect(formatDaysRemaining(12)).toBe('due in 12 days');
   });
 
   it('uses the singular "day" when the remaining count is exactly 1', () => {
-    expect(formatDaysRemaining(1)).toBe('1 day remaining');
+    expect(formatDaysRemaining(1)).toBe('due in 1 day');
   });
 });
 

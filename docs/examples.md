@@ -246,8 +246,9 @@ same set of strings), not a glob comparison — write the override's
 `patterns` identically to the base rule you want to replace or cancel.
 
 Every rule type supports this (`no-files`, `require-files`,
-`max-file-size`, `no-packages`, `require-packages`, `require-scripts`,
-`require-package-fields`, `no-package-fields`, `require-engine-version`). The
+`max-file-size`, `no-packages`, `no-deprecated-packages`, `require-packages`,
+`require-scripts`, `require-package-fields`, `no-package-fields`,
+`require-engine-version`). The
 exception is `require-codeowners`, which only ever holds a single rule — any
 matching override's `require-codeowners` replaces the base one outright, and
 severity `'off'` clears it.
@@ -381,9 +382,15 @@ no need to spell it out as `'no-package-fields': ['dependencies.x', 'devDependen
 Purely transitive dependencies are never flagged: they arrive through another package, so removing one
 isn't something your repo can do. Packages excluded by `packages.ignore` are never flagged either.
 
-Every banned package appears in the Rules and Compliance sections, and also gets a `[BANNED]` or
-`[RESTRICTED]` badge in the packages table. Since #78 that table lists every package the repo owns, so a
+Every banned package appears in the Rules and Compliance sections, and also gets a `forbidden` badge in
+the packages table's **Flags** column. Since #78 that table lists every package the repo owns, so a
 declared-but-unimported banned package has a row — and a badge on it — just like an imported one.
+
+The badge used to read `[BANNED]` at `error` and `[RESTRICTED]` at anything softer, glued to the front of
+the package name. That invented a distinction the config never had — there is one `no-packages` rule, not
+two — and it collapsed `warn` and `info` into the same word. One badge names *why* the row is flagged and
+the icon beside it says how hard the rule is enforced, which is what every other surface already did
+([#86](https://github.com/Gallevy/hermex/issues/86)).
 
 In the JSON output, each hit is an ordinary entry in `ruleViolations` with `ruleId: "no-packages"` —
 `patterns` carries the rule's globs, `packageName` the package that matched, and `matchedFiles` is empty
@@ -401,6 +408,107 @@ In the JSON output, each hit is an ordinary entry in `ruleViolations` with `rule
 ```
 
 A glob rule that matches several packages produces one entry per package, all sharing the same `patterns`.
+
+### Deprecated Packages
+
+Flags packages whose publisher has deprecated them on npm.
+
+```ts
+export default defineConfig({
+  rules: {
+    'no-deprecated-packages': [
+      { severity: 'error', patterns: ['**'] },
+    ],
+  },
+});
+```
+
+`patterns` match package names, the same way `no-packages` does. The rules-table row carries npm's own
+deprecation notice, unless you write a `message`, in which case yours is shown instead.
+
+**You don't have to configure it to see it.** Any package no entry matches falls back to an implicit
+`['**']` entry at severity `info`: reported, counted in the tally, never part of the pass/fail verdict.
+So a deprecated package shows up with no configuration at all, and you only reach for this rule to make
+it enforceable — or to silence it:
+
+```ts
+rules: {
+  'no-deprecated-packages': [
+    { severity: 'error', patterns: ['**'] },
+    // Deprecated, but we're mid-migration and don't want CI red over it.
+    { severity: 'off', patterns: ['@legacy/*'] },
+  ],
+},
+```
+
+Like [release-age](#release-age-opt-in) — and unlike every other rule — exactly one entry governs a
+package, **last match wins**. That is why `'off'` genuinely exempts a package here rather than falling
+through to the baseline.
+
+**The baseline decides severity, not whether hermex looks.** Deprecation is a registry fact, so it costs
+one request per installed dependency. That request is only made when `rules['no-deprecated-packages']` or
+`rules['release-age']` is non-empty for the repo — a run that configures neither makes no network calls
+at all. When either is configured, both rules read the same fetched document, so enabling the second one
+costs nothing extra.
+
+Before v3 deprecation had no rule of its own: it was detected as a by-product of release-age enrichment,
+so turning release-age off silently turned deprecation detection off with it, even though the two have
+nothing to do with each other ([#107](https://github.com/Gallevy/hermex/issues/107)).
+
+Purely transitive packages are out of scope, for the same reason they are for `no-packages`: you can't
+un-deprecate someone else's dependency.
+
+In the JSON output the fact and the judgment are separate. The fact is `packages[].deprecated` — npm's
+notice for the installed version, present whenever the registry was consulted. The judgment is an
+ordinary `ruleViolations` entry:
+
+```jsonc
+{
+  "ruleId": "no-deprecated-packages",
+  "severity": "error",
+  "patterns": ["**"],
+  "packageName": "request",
+  "deprecated": "request has been deprecated, see request/request#3142"
+}
+```
+
+### Reading the packages table
+
+```
+┌─────────┬───────────┬─────────────────────────────────────┬───────────────┐
+│ Package │ Installed │ Minimum target                      │ Flags         │
+├─────────┼───────────┼─────────────────────────────────────┼───────────────┤
+│ react   │ 18.3.1    │ 🟢                                  │               │
+│ zod     │ 3.23.8    │ 🟢 3.24.0 (minor, due in 12 days)   │               │
+│ moment  │ 2.29.4    │ 🔴 4.2.0 (major, 40 days overdue)   │ 🔵 deprecated │
+│ eslint  │ N/A       │ —                                   │ 🔴 forbidden  │
+└─────────┴───────────┴─────────────────────────────────────┴───────────────┘
+```
+
+**Installed** and **Minimum target** appear only when release-age ran; they are that rule's display, and
+its icon sits beside the target it judges. **Flags** is where every *other* package rule reports — one
+badge per rule that flagged the row, blank when none did.
+
+The target names the version to move to, then why: the bump tier, and how long the breached tier has
+been out of compliance (counted from its *oldest* release, not from the recommended one — see
+[#24](https://github.com/Gallevy/hermex/issues/24)). `N/A` under **Installed** means the package is
+declared in `package.json` but missing from the lockfile, so there is no installed version to check.
+
+The icons mean the same thing everywhere in hermex's output:
+
+| Icon | Meaning |
+| --- | --- |
+| 🟢 | Checked, nothing to report. |
+| 🔵 | Reported at `info` — counted in the tally, never part of the verdict. |
+| 🟡 | Reported at `warn` — counted, and drops `compliance.status` to `"warning"`, but `comply` still exits 0. |
+| 🔴 | Reported at `error` — `comply` exits 1. |
+| *(none)* | No rule is judging this. A release-age entry at `'off'` still shows the target it would have recommended, with no icon, because nothing about it is a verdict. |
+| `—` | Nothing was checked: the package has no installed version, or the registry never answered for it. Distinct from 🟢, which is the claim that hermex looked and found nothing to do. |
+
+Anything a badge can't hold — npm's deprecation notice, a package with several resolved copies, an
+overdue nested copy the current scope doesn't enforce — is printed as a **Notes** line under the table.
+Notes are stdout-only: `--summary-file` feeds CI checks and PR comments, where non-blocking context
+rendered as a colored line reads like blame for something that isn't failing.
 
 ### CODEOWNERS Rule
 
@@ -510,7 +618,13 @@ export default defineConfig({
 });
 ```
 
-Adds an `Upgrades` column to the packages table. Deprecated packages get a `[DEPRECATED]` badge regardless of which rule entries are configured.
+Splits the packages table's `Version` column into **Installed** and **Minimum target**, so the version
+you have and the version that would clear the breach sit side by side. "Minimum" is the point: the target
+is the most conservative release that clears the breach, not the newest one available — see
+[Resolution](#resolution-one-governing-entry-per-package-last-match-wins) below.
+
+Deprecation is a separate rule, [`no-deprecated-packages`](#deprecated-packages). It shares this rule's
+registry request but does not depend on it.
 
 ### Resolution: one governing entry per package, last match wins
 
@@ -557,7 +671,7 @@ rules: {
 
 Rule-entry patterns are checked against the lockfile directly, not just packages hermex found imported as components — so a CSS-only or side-effect-only dependency (e.g. `import '@my-org/styles/button.css'`) still gets checked and can still fail `hermex comply`, even though it never shows up in component usage.
 
-Which entry governs a package decides *severity, thresholds and scope* — never *whether the package is checked*, once release-age is on for the repo at all. Every package in the packages table with an installed version gets its release age looked up, so a dependency imported purely as functions or hooks (`@my-org/toolkit`) shows a Target like any other — advisory `[not enforced]` under the baseline, mandatory when a specific entry names it `error`. Before v3 that lookup was gated on JSX component usage, which had nothing to do with whether an installed version is stale and silently exempted every function-only dependency ([#171](https://github.com/Gallevy/hermex/issues/171)). The cost is one registry request per installed dependency rather than per rendered one.
+Which entry governs a package decides *severity, thresholds and scope* — never *whether the package is checked*, once release-age is on for the repo at all. Every package in the packages table with an installed version gets its release age looked up, so a dependency imported purely as functions or hooks (`@my-org/toolkit`) shows a Minimum target like any other — advisory 🟡 under the baseline, mandatory 🔴 when a specific entry names it `error`. Before v3 that lookup was gated on JSX component usage, which had nothing to do with whether an installed version is stale and silently exempted every function-only dependency ([#171](https://github.com/Gallevy/hermex/issues/171)). The cost is one registry request per installed dependency rather than per rendered one.
 
 Severity only decides mandatory vs. advisory for a package that's already being enforced under its governing entry's `scope` — it doesn't override `scope` itself. Under `scope: 'root'` (the default), a package matched by an `error` entry that's only ever pulled in transitively (never a direct dependency in your `package.json`) still can't fail `comply` — there's no root copy to hold accountable. It still shows up as advisory context (see below), it just doesn't block the build.
 
@@ -584,7 +698,7 @@ rules: {
 
 To give a subset of packages the opposite scope from your general policy, give them their own rule entry with `scope` set explicitly — listed after the broader entry so it wins for those packages (last match wins, above). Useful when most of your tree should be checked exhaustively but a handful of packages have transitive pins you don't control down to the root, or vice versa.
 
-**Root scope never hides nested duplicates from local output.** The human `--format human` table always shows a single **Installed** version (the exact copy the verdict was measured against — the enforced baseline, which under `scope: 'tree'` may be a nested copy rather than the root version) alongside the **Target** (recommended upgrade). When a package has multiple resolved versions, or an overdue nested copy the current scope doesn't enforce, that context is printed as a Notes line beneath the table — informational, not part of the pass/fail verdict. Notes are stdout-only: `--summary-file` (meant for a PR comment or CI check) only ever shows mandatory violations, so a reviewer never sees non-blocking context rendered as if it needed attention.
+**Root scope never hides nested duplicates from local output.** The human `--format human` table always shows a single **Installed** version (the exact copy the verdict was measured against — the enforced baseline, which under `scope: 'tree'` may be a nested copy rather than the root version) alongside the **Minimum target** (recommended upgrade). When a package has multiple resolved versions, or an overdue nested copy the current scope doesn't enforce, that context is printed as a Notes line beneath the table — informational, not part of the pass/fail verdict. Notes are stdout-only: `--summary-file` (meant for a PR comment or CI check) only ever shows mandatory violations, so a reviewer never sees non-blocking context rendered as if it needed attention.
 
 For **yarn**, root-version resolution works by reading the root `package.json`'s declared dependency range and matching it exactly against the corresponding entry in the already-parsed `yarn.lock` — yarn.lock itself retains no root/nested distinction, unlike npm's and pnpm's lockfile formats. If `package.json` can't be read, or a package isn't a direct dependency at all (purely transitive), hermex falls back to the highest resolved version found in the lockfile — but only for *display* (the `--format human` table, and `scan`'s Version column). That fallback is never treated as an enforced root version: under `scope: 'root'`, a package with no true root resolution can never fail `comply`, regardless of which rule entry governs it. Pre-v9 pnpm lockfiles (no `importers` field) are always treated as root-only regardless of `scope` — those legacy formats don't retain a root/nested distinction either.
 
@@ -635,13 +749,13 @@ Severity is the only thing that decides which bucket a rule violation lands in; 
 |---|---|
 | `version` | The hermex version that produced the report. |
 | `summary` | Aggregate counts: `filesAnalyzed`, `totalImports`, `totalComponents`, `totalUsagePatterns`, plus `patternCounts` — per-pattern-type usage counts (`imports.named`, `usage.jsx`, …). |
-| `packages` | Every package the repo owns — see below. Carries version, `declaredIn`, usage counts, and `releaseAge` when enrichment ran. |
+| `packages` | Every package the repo owns — see below. Carries version, `declaredIn`, usage counts, `deprecated` (npm's notice, when the registry was consulted) and `releaseAge` when release-age ran. |
 | `components` | Every component found, with its source package, usage count and the files using it. The one place component names live. |
 | `versus` | Head-to-head comparisons configured under `versus`. |
-| `ruleViolations` | **Every rule hit, in one list** — `no-files`, `require-files`, `max-file-size`, `require-packages`, `no-packages`, `require-scripts`, `require-package-fields`, `no-package-fields`, `require-engine-version`, `require-codeowners`. Filter on `ruleId`. |
+| `ruleViolations` | **Every rule hit, in one list** — `no-files`, `require-files`, `max-file-size`, `require-packages`, `no-packages`, `no-deprecated-packages`, `require-scripts`, `require-package-fields`, `no-package-fields`, `require-engine-version`, `require-codeowners`, `release-age`. Filter on `ruleId`. |
 | `compliance` | The canonical verdict — see above. |
 
-`ruleViolations` is the single source of truth for rule hits. Entries share a common shape (`ruleId`, `severity`, `patterns`, `message?`, `matchedFiles`) and add per-type fields where they apply: `packageName` for `no-packages`, `fieldPath`/`actualValue` for the package-field rules, `maxSizeBytes`/`oversizeFiles` for `max-file-size`, `installedRange`/`requiredRange` for `require-engine-version`.
+`ruleViolations` is the single source of truth for rule hits. Entries share a common shape (`ruleId`, `severity`, `patterns`, `message?`, `matchedFiles`) and add per-type fields where they apply: `packageName` for `no-packages`, `packageName`/`deprecated` for `no-deprecated-packages`, `fieldPath`/`actualValue` for the package-field rules, `maxSizeBytes`/`oversizeFiles` for `max-file-size`, `installedRange`/`requiredRange` for `require-engine-version`.
 
 #### Trimming the JSON with `output.*`
 

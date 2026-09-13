@@ -10,11 +10,12 @@ import {
   writeSummaryFile,
   DEFAULT_SUMMARY_TITLE,
 } from '../../src/utils/write-summary-file';
-import { formatUpgradeCell } from '../../src/utils/print-packages';
+import { describeMinimumTarget } from '../../src/utils/print-packages';
 import {
   createMockPackage,
   createMockReleaseAge,
   createMockReleaseAgeViolation,
+  createMockDeprecatedViolation,
 } from '../helpers/mock-reports';
 
 /** A no-packages hit, the shape `detectForbiddenPackages` emits (#77). */
@@ -249,7 +250,8 @@ describe('writeSummaryFile', () => {
   describe('Packages section', () => {
     it('excludes a deprecated-only package (no breached tier)', () => {
       const deprecated = createMockPackage('left-pad', {
-        releaseAge: createMockReleaseAge({ deprecated: '2020-01-01' }),
+        deprecated: 'no longer maintained',
+        releaseAge: createMockReleaseAge({}),
       });
       const content = write(
         makeAggregated({ packageDistribution: [deprecated] }),
@@ -311,18 +313,20 @@ describe('writeSummaryFile', () => {
         }),
       );
       expect(content).toContain('### Packages');
-      expect(content).toContain('| | Package | Installed | Target |');
       expect(content).toContain(
-        '| 🔴 | `my-internal-pkg` | 1.0.0 | major 4.2.0 (40 days overdue) |',
+        '| | Package | Installed | Minimum target | Flags |',
+      );
+      expect(content).toContain(
+        '| 🔴 | `my-internal-pkg` | 1.0.0 | 4.2.0 (major, 40 days overdue) |  |',
       );
     });
 
-    it('joins both reasons on one line for a package that is enforced-overdue and deprecated', () => {
+    it('shows a deprecated overdue package as a deprecated badge in Flags, not crammed into the target cell', () => {
       const both = createMockPackage('my-internal-pkg', {
+        deprecated: 'no longer maintained',
         releaseAge: createMockReleaseAge({
           worstLevel: 'major_overdue',
           severity: 'error',
-          deprecated: '2020-01-01',
           upgrades: [
             {
               version: '4.2.0',
@@ -343,6 +347,7 @@ describe('writeSummaryFile', () => {
               worstLevel: 'major_overdue',
               severity: 'error',
             }),
+            createMockDeprecatedViolation('my-internal-pkg'),
           ],
         }),
       );
@@ -350,18 +355,18 @@ describe('writeSummaryFile', () => {
         .split('\n')
         .find((l) => l.includes('my-internal-pkg'));
       expect(line).toBe(
-        '| 🔴 | `my-internal-pkg` | 1.0.0 | major 4.2.0 (40 days overdue), deprecated |',
+        '| 🔴 | `my-internal-pkg` | 1.0.0 | 4.2.0 (major, 40 days overdue) | 🔵 deprecated |',
       );
     });
 
-    it('shows only "deprecated" when a mandatory violation has no upgrade candidates', () => {
+    it('leaves the target cell empty when a mandatory violation has no upgrade candidates', () => {
       // worstLevel non-null but upgrades empty is a defensive/edge shape —
       // exercises the `top` guard independently of the deprecated reason.
       const deprecatedOnlyBreach = createMockPackage('my-internal-pkg', {
+        deprecated: 'no longer maintained',
         releaseAge: createMockReleaseAge({
           worstLevel: 'major_overdue',
           severity: 'error',
-          deprecated: '2020-01-01',
           upgrades: [],
         }),
       });
@@ -373,13 +378,16 @@ describe('writeSummaryFile', () => {
               worstLevel: 'major_overdue',
               severity: 'error',
             }),
+            createMockDeprecatedViolation('my-internal-pkg'),
           ],
         }),
       );
       const line = content
         .split('\n')
         .find((l) => l.includes('my-internal-pkg'));
-      expect(line).toBe('| 🔴 | `my-internal-pkg` | 1.0.0 | deprecated |');
+      expect(line).toBe(
+        '| 🔴 | `my-internal-pkg` | 1.0.0 |  | 🔵 deprecated |',
+      );
     });
 
     it('does not show a banned/restricted package (it is Rules-only, not duplicated here)', () => {
@@ -470,7 +478,7 @@ describe('writeSummaryFile', () => {
           ],
         }),
       );
-      expect(content).toContain('major 1.0.0 (155 days overdue)');
+      expect(content).toContain('1.0.0 (major, 155 days overdue)');
       expect(content).not.toContain('no compliant release available');
     });
 
@@ -479,7 +487,7 @@ describe('writeSummaryFile', () => {
     // upgrade description from the same ReleaseAgeEntry — they diverged on
     // this once before (#57) because only one call site passed the
     // compliantTarget argument.
-    it('agrees with formatUpgradeCell on the recommended upgrade description', () => {
+    it('renders the exact string describeMinimumTarget produces, not a re-derived one', () => {
       const releaseAge = createMockReleaseAge({
         worstLevel: 'minor_overdue',
         severity: 'error',
@@ -510,12 +518,11 @@ describe('writeSummaryFile', () => {
         }),
       );
 
-      const tableCell = formatUpgradeCell(releaseAge);
-      // formatUpgradeCell is "<icon> <description>[suffix]" — extract just
-      // the description text and confirm the summary row contains the exact
-      // same substring, not a re-derived (and potentially divergent) one.
-      const description = tableCell.replace(/^\S+\s/, '');
-      expect(content).toContain(description);
+      // Both surfaces call this one function now, so "they recommend the
+      // same version" is structural rather than two call sites kept in step
+      // by hand (#57) — and there is no icon to strip off first, since the
+      // summary renders severity in its own leading column.
+      expect(content).toContain(describeMinimumTarget(releaseAge));
     });
 
     // Notes (#57): a package that's compliant at the enforced scope but has
@@ -588,7 +595,7 @@ describe('writeSummaryFile', () => {
       );
       const tableLine = content.split('\n').find((l) => l.startsWith('| 🔴 |'));
       expect(tableLine).toBe(
-        '| 🔴 | `multi-version-lib` | 1.0.0 | major 2.0.0 (340 days overdue) |',
+        '| 🔴 | `multi-version-lib` | 1.0.0 | 2.0.0 (major, 340 days overdue) |  |',
       );
       expect(content).not.toContain('Notes:');
       expect(content).not.toContain('bundle impact');

@@ -2,14 +2,16 @@ import type { HermexConfigInput } from '../../../src/config/types.ts';
 
 /**
  * Every rule type hermex has, all firing at once, at three different
- * severities. The primary fixture repo only ever trips three of the eleven —
+ * severities. The primary fixture repo only ever trips three of the twelve —
  * so without this repo the rules table has never been reviewed with an
  * `require-engine-version` row, a `require-codeowners` row, or either of the
  * package-field shapes in it, and nothing would catch a renderer that
  * mishandles `fieldPath` / `installedRange` / a long `matchedFiles` list.
- * `release-age` is the eleventh and only rule that never renders a Rules-table
- * row at all (its display is the Packages table) — this is the only case
- * that exercises it alongside the other ten in one run.
+ * `release-age` is the only rule that never renders a Rules-table row at
+ * all (its display is the Packages table) — this is the only case that
+ * exercises it alongside the other eleven in one run. `moment` is both
+ * forbidden and deprecated here, which makes it the one row anywhere in the
+ * fixtures that carries two Status badges at different severities.
  *
  * Scoped to `src/` so `jest.config.js` is found by `no-files` without
  * also being parsed as source — and so `assets/logo.svg`, which exists
@@ -22,11 +24,15 @@ export default {
   },
   rules: {
     // react@18.3.1 is overdue on a major (19.0.0, breached) with a genuine
-    // compliant target still in-window (19.1.0) — the eleventh rule type,
-    // and the only one whose display lives in the Packages table rather
-    // than the Rules table (see src/utils/print-rules.ts's renderer
-    // dispatch).
+    // compliant target still in-window (19.1.0) — the only rule whose
+    // display lives in the Packages table rather than the Rules table (see
+    // src/utils/print-rules.ts's renderer dispatch).
     'release-age': [{ severity: 'error', patterns: ['react'] }],
+    // moment@2.29.4 carries a deprecation notice in the fixture registry,
+    // and is already forbidden below — so its Packages row renders both
+    // badges at once, at two different severities, which is the only place
+    // the fixtures exercise a multi-badge Status cell.
+    'no-deprecated-packages': [{ severity: 'warn', patterns: ['moment'] }],
     'no-files': [
       {
         severity: 'error',

@@ -44,6 +44,18 @@ export interface PackageDistribution {
    * transitive-only package as if it were a root dependency).
    */
   rootVersion?: string | null;
+  /**
+   * npm's deprecation notice for the installed version, falling back to the
+   * package-level one. An inventory fact, not a policy verdict: recorded
+   * whenever the registry is consulted at all, independent of whether
+   * `release-age` is configured (#107) — that coupling is what used to make
+   * deprecation vanish the moment release-age was turned off. Judging it is
+   * `rules['no-deprecated-packages']`'s job.
+   *
+   * Set by `enrichFromRegistry` (`src/npm-registry/enricher.ts`), never by
+   * `calculatePackageDistribution` — same as `releaseAge` below.
+   */
+  deprecated?: string;
   releaseAge?: ReleaseAgeEntry;
 }
 

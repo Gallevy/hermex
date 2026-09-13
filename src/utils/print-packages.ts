@@ -2,38 +2,22 @@ import chalk from 'chalk';
 import Table from 'cli-table3';
 import type { AggregatedReport, PackageDistribution } from './aggregator';
 import type { RuleViolation } from '../rules/evaluator';
-import { isPluginViolation } from '../rules/shared';
 import type {
   AvailableUpgrade,
   ReleaseAgeEntry,
   SemverBump,
 } from '../npm-registry/types';
 import { formatDaysOverdue, formatDaysRemaining } from './format-utils';
+import { formatSeverityTally, severityIcon } from './severity-format';
+import type { PackageFlag } from './package-flags';
 import {
-  formatSeverityTally,
-  severityIcon,
-  severityColor,
-} from './severity-format';
+  collectPackageFlags,
+  describeFlagDetails,
+  formatPackageFlags,
+} from './package-flags';
 
 function printHeader() {
   console.log(chalk.blueBright.bold('\n📦 Packages\n'));
-}
-
-export function formatPackageName(
-  pkg: PackageDistribution,
-  banned?: RuleViolation,
-): string {
-  let prefix = '';
-  if (pkg.releaseAge?.deprecated) {
-    prefix += severityColor('error')('[DEPRECATED] ');
-  }
-  if (banned) {
-    prefix +=
-      banned.severity === 'error'
-        ? severityColor('error')('[BANNED] ')
-        : severityColor('warn')('[RESTRICTED] ');
-  }
-  return prefix + pkg.packageName;
 }
 
 // Describe the recommended upgrade for a breached tier.
@@ -45,25 +29,28 @@ export function formatPackageName(
 // breached tier has been out of compliance, measured from its oldest breaching
 // release (#24).
 //
-// Only when there's no in-window target at all does the "no compliant release
-// available" wording apply — every candidate is itself past its threshold, so
-// a day count would imply a countdown that was never achievable (#26).
+// When there is no in-window target, the breached tier's own newest release
+// is still the right thing to name. Being on the newest release that exists
+// never breaches at all — nothing is newer than installed, so no tier is
+// breached and no row is produced — which means this branch is only ever
+// reached when a newer release DOES exist and has simply not been taken.
+// It used to read "no compliant release available", which contradicted the
+// version printed beside it and contradicted `minCompliantVersion`'s own
+// rule that being on latest counts as compliant (#26's wording, not its
+// arithmetic — the day count below is unchanged).
 export function describeUpgradeTarget(
   top: AvailableUpgrade,
   compliantTarget?: { version: string; bump: SemverBump },
 ): string {
-  if (compliantTarget) {
-    const overdue = formatDaysOverdue(
-      top.breachReleasedDaysAgo,
-      top.thresholdDays,
-    );
-    return `${compliantTarget.bump} ${compliantTarget.version} (${overdue})`;
-  }
-  const overdue =
-    top.releasedDaysAgo > top.thresholdDays
-      ? 'no compliant release available'
-      : formatDaysOverdue(top.breachReleasedDaysAgo, top.thresholdDays);
-  return `${top.semverBump} ${top.version} (${overdue})`;
+  const version = compliantTarget?.version ?? top.version;
+  const bump = compliantTarget?.bump ?? top.semverBump;
+  // Counted from the breached tier's OLDEST release: how long the tier has
+  // been out of compliance, not how old the recommended target is (#24).
+  const overdue = formatDaysOverdue(
+    top.breachReleasedDaysAgo,
+    top.thresholdDays,
+  );
+  return `${version} (${bump}, ${overdue})`;
 }
 
 // Prefer a genuinely compliant, still-in-window release as the recommended
@@ -148,62 +135,83 @@ export interface PackageNote {
 // stdout is the right place for "here's some extra context" (#59).
 export function describePackageNotes(
   pkg: PackageDistribution,
+  flags: PackageFlag[] = [],
 ): PackageNote | undefined {
   const facts = [
     describeBundleImpact(pkg),
     describeAdvisoryBreaches(pkg.releaseAge),
+    // Appended, not prepended: a badge's long-form context (the publisher's
+    // deprecation notice) elaborates on the Flags column, so it reads last,
+    // after the facts about the package's own installed copies.
+    ...describeFlagDetails(flags),
   ].filter((fact): fact is string => Boolean(fact));
   if (facts.length === 0) return undefined;
   return { icon: severityIcon('info'), facts };
 }
 
-export function formatUpgradeCell(releaseAge?: ReleaseAgeEntry): string {
+/**
+ * The recommended upgrade as text, with no icon and no verdict: the most
+ * conservative version that clears the breach, or the countdown for one
+ * that is merely coming due. Empty when there is nothing to recommend.
+ *
+ * Shared verbatim with `--summary-file`, which renders its own severity in
+ * a leading column of its own and so wants the text alone. That sharing is
+ * what makes "both surfaces recommend the same version" structural rather
+ * than a pair of call sites kept in step by hand (#57).
+ */
+export function describeMinimumTarget(releaseAge?: ReleaseAgeEntry): string {
   if (!releaseAge) return '';
-  const { worstLevel, upgrades, severity, pendingUpgrade } = releaseAge;
+  const { worstLevel, upgrades, pendingUpgrade } = releaseAge;
 
   if (!worstLevel) {
-    if (pendingUpgrade) {
-      return `${severityIcon('info')} ${pendingUpgrade.semverBump} ${pendingUpgrade.version} (${formatDaysRemaining(pendingUpgrade.daysRemaining)})`;
-    }
-    return severityIcon('success');
+    return pendingUpgrade
+      ? `${pendingUpgrade.version} (${pendingUpgrade.semverBump}, ${formatDaysRemaining(pendingUpgrade.daysRemaining)})`
+      : '';
   }
 
   const top = upgrades[0];
-  if (!top) return severityIcon('success');
+  if (!top) return '';
 
-  const suffix = severity === 'warn' ? chalk.gray(' [not enforced]') : '';
-  const description = describeUpgradeTarget(
-    top,
-    resolveCompliantTarget(releaseAge),
-  );
-
-  // The status reflects severity, not which tier breached: an enforced package
-  // fails comply whether the worst breach is minor_overdue or major_overdue
-  // (#28), so it renders red — never a softer yellow just because the breached
-  // tier happens to be minor.
-  const icon = severityIcon(severity === 'warn' ? 'warn' : 'error');
-  return `${icon} ${description}${suffix}`;
+  return describeUpgradeTarget(top, resolveCompliantTarget(releaseAge));
 }
 
+/** No release-age verdict for this row at all. Deliberately not blank and
+ * not 🟢: an em dash says hermex has no opinion here — either the package
+ * has no installed version to check (declared but absent from the lockfile,
+ * which the Installed column shows as `N/A`) or the registry never answered
+ * for it. 🟢 is the opposite claim: it looked, and there is nothing to do. */
+const NO_TARGET = '—';
+
 /**
- * The `no-packages` hit for this package, if any. Filters `ruleViolations`
- * by `ruleId` rather than reading a dedicated banned-packages array, which is
- * what #77 removed — `packageName` is what keeps the join to a table row
- * exact, since a violation carries no file paths to match on.
+ * The human table's "Minimum target" cell: `describeMinimumTarget` prefixed
+ * by release-age's own verdict.
+ *
+ * An icon here means a rule is judging this package, and which icon means
+ * how hard. So an entry at severity 'off' renders the target text with no
+ * icon at all — it produced no violation, and inheriting red from a
+ * fallback ternary (as it used to) claimed a verdict nobody made.
+ *
+ * A pending upgrade keeps the all-clear icon rather than going bare or
+ * borrowing a severity: nothing is overdue, so the row is genuinely fine —
+ * it just has a date attached. Bare cells next to iconned ones read as a
+ * rendering failure rather than as a deliberate absence of verdict.
  */
-export function findForbidViolation(
-  pkg: PackageDistribution,
-  violations: RuleViolation[],
-): RuleViolation | undefined {
-  return violations.find(
-    (v) =>
-      // Plugin findings are excluded before the id check, not just to
-      // narrow the type: this column joins on hermex's own `no-packages`
-      // rule, and a plugin's id space is its own (#102).
-      !isPluginViolation(v) &&
-      v.ruleId === 'no-packages' &&
-      v.packageName === pkg.packageName,
-  );
+export function formatMinimumTargetCell(releaseAge?: ReleaseAgeEntry): string {
+  if (!releaseAge) return NO_TARGET;
+  const { worstLevel, upgrades, severity } = releaseAge;
+  const description = describeMinimumTarget(releaseAge);
+
+  if (!worstLevel || !upgrades[0]) {
+    const ok = severityIcon('success');
+    return description ? `${ok} ${description}` : ok;
+  }
+
+  // Severity, not which tier breached: an enforced package fails comply
+  // whether the worst breach is minor_overdue or major_overdue (#28), so it
+  // renders red — never a softer yellow just because the breached tier
+  // happens to be minor.
+  if (severity === 'off') return description;
+  return `${severityIcon(severity)} ${description}`;
 }
 
 export function printPackages(
@@ -235,13 +243,22 @@ function printPackagesTable(
   printHeader();
 
   const hasReleaseAge = packages.some((p) => p.releaseAge !== undefined);
+  const flags = packages.map((pkg) => collectPackageFlags(pkg, violations));
+  // Only worth a column once something has actually landed in it —
+  // otherwise every repo with no package-rule hits grows a column of blanks
+  // where it used to have a clean two-column table.
+  const hasFlags = flags.some((rowFlags) => rowFlags.length > 0);
+
   // With release age on, "Version" splits into "Installed" (the single
-  // version the verdict was actually measured against) and "Target" (the
-  // recommended upgrade) — cramming a multi-version list and an upgrade
-  // recommendation into one cell was exactly the ambiguity #57 reported.
+  // version the verdict was actually measured against) and "Minimum target"
+  // (the most conservative upgrade that clears the breach) — cramming a
+  // multi-version list and an upgrade recommendation into one cell was
+  // exactly the ambiguity #57 reported. "Minimum" is load-bearing: the cell
+  // deliberately does not name the latest release (#24, #26).
   const head = hasReleaseAge
-    ? ['Package', 'Installed', 'Target']
+    ? ['Package', 'Installed', 'Minimum target']
     : ['Package', 'Version'];
+  if (hasFlags) head.push('Flags');
 
   const table = new Table({
     head,
@@ -251,13 +268,19 @@ function printPackagesTable(
     },
   });
 
-  packages.forEach((pkg) => {
-    const row = [formatPackageName(pkg, findForbidViolation(pkg, violations))];
+  packages.forEach((pkg, index) => {
+    // Just the name. The badges that used to be glued on as prefixes are a
+    // column of their own now (#86).
+    const row = [pkg.packageName];
     if (hasReleaseAge) {
-      row.push(resolveInstalledVersion(pkg), formatUpgradeCell(pkg.releaseAge));
+      row.push(
+        resolveInstalledVersion(pkg),
+        formatMinimumTargetCell(pkg.releaseAge),
+      );
     } else {
       row.push(pkg.version || 'N/A');
     }
+    if (hasFlags) row.push(formatPackageFlags(flags[index]));
     table.push(row);
   });
 
@@ -268,7 +291,10 @@ function printPackagesTable(
   // notes below the table rather than inside a cell, so the table itself
   // stays a clean "installed → target" comparison (#57).
   const notes = packages
-    .map((pkg) => ({ pkg, note: describePackageNotes(pkg) }))
+    .map((pkg, index) => ({
+      pkg,
+      note: describePackageNotes(pkg, flags[index]),
+    }))
     .filter(
       (entry): entry is { pkg: PackageDistribution; note: PackageNote } =>
         entry.note !== undefined,
@@ -284,8 +310,9 @@ function printPackagesTable(
   // The same "N errors, M warnings" tally style as the Rules section
   // (`print-rules.ts`), computed from this table's own release-age
   // violations — the only violation kind this table uniquely surfaces (a
-  // banned package's no-packages hit is already counted in the Rules
-  // tally; [BANNED] here is just a cross-reference, not a second count).
+  // banned or deprecated package's own hit is already counted in the Rules
+  // tally; the Flags badge here is just a cross-reference, not a second
+  // count).
   // A plain package count ("N packages total") said nothing about
   // compliance and didn't add up with anything else on screen — this does:
   // Rules-tally + Packages-tally always equals the overall mandatory count.
@@ -325,16 +352,20 @@ function printPackagesChart(
       (pkg.percentage / maxPercentage) * maxBarWidth,
     );
     const emptyLength = maxBarWidth - barLength;
-    const label = formatPackageName(
-      pkg,
-      findForbidViolation(pkg, violations),
-    ).padEnd(maxLabelLength, ' ');
+    // Padded on the bare name — which is exactly what `maxLabelLength`
+    // measured. Badges trail the row instead of prefixing the label: as a
+    // prefix they made every flagged row wider than the padding allowed
+    // for (and carried ANSI codes `.length` counted as visible width),
+    // which is the misalignment #86 reported.
+    const label = pkg.packageName.padEnd(maxLabelLength, ' ');
 
     const bar =
       chalk.green('█'.repeat(barLength)) + chalk.gray('░'.repeat(emptyLength));
 
+    const badges = formatPackageFlags(collectPackageFlags(pkg, violations));
+
     console.log(
-      `${label} ${bar} ${chalk.bold(pkg.percentage.toFixed(1) + '%')} (${pkg.usageCount})`,
+      `${label} ${bar} ${chalk.bold(pkg.percentage.toFixed(1) + '%')} (${pkg.usageCount})${badges ? ` ${badges}` : ''}`,
     );
   });
 }
