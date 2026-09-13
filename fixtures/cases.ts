@@ -121,6 +121,15 @@ export const cases: FixtureCase[] = [
     expectExit: 1,
   },
   {
+    name: 'scan-deprecated-packages',
+    proves:
+      "`scan` with a registry-backed rule that is NOT `no-outdated-packages` — the one combination no case covered, and the cell a real bug lived in. `scan` gates the Packages table on `output.packages` rather than on any rule, so it is the only path where registry facts reach the renderer without `no-outdated-packages` being configured. The table must therefore show the plain `Version` column and the `deprecated` badge, never the Installed/Minimum target pair, which belongs to a rule this config does not enable. Every other `scan` case runs a config with no registry rules at all, and every registry case runs `comply`, whose own gate hides this path entirely.",
+    cwd: '.',
+    args: ['scan', '--config', 'configs/deprecated-packages.config.ts'],
+    registry: true,
+    expectExit: 0,
+  },
+  {
     name: 'comply-release-age-json',
     proves:
       "The machine-readable shape of hermex's most consequential rule, against the same recorded registry as comply-release-age — which until #189 no case pinned at all, since the only JSON case that reached this rule (comply-all-rule-types-json) covers a single package on a single path. Here the whole surface is visible at once: `packages[].releases` as policy-free facts (every resolved copy, what was published after each, `latest`) and `ruleViolations[]` as the verdict (`overdueTier`, `daysOverdue`, `measuredVersion`, `scope`). Between them these packages cover an overdue package with no in-window target (#26), one with a real cross-tier target (#57), one merely coming due, one at an 'off' entry that carries full facts and no violation, and a version conflict whose nested copy is overdue but out of scope. The split is the thing to read: identical `releases` would be produced under any thresholds, and every threshold-derived answer sits on the violation instead.",
