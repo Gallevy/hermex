@@ -5,6 +5,7 @@ import type {
   DeclaredPackages,
   DependencyBucket,
 } from '../utils/package-inventory';
+import type { OverdueTier } from '../npm-registry/types';
 // Type-only: `RuleViolation` includes `PluginViolation` while
 // `PluginInventoryView` exposes `RuleViolation`. The cycle is legal for
 // types and erased at runtime.
@@ -103,8 +104,13 @@ export interface RequireEngineVersionViolation extends BaseViolation<'require-en
  */
 export interface NoOutdatedPackagesViolation extends BaseViolation<'no-outdated-packages'> {
   packageName: string;
-  installedVersion: string;
-  worstLevel: 'minor_overdue' | 'major_overdue';
+  /** The version the verdict was measured against — the root copy under
+   * `scope: 'root'`, the worst offending copy under `'tree'` (#57). */
+  measuredVersion: string;
+  /** Which semver tier is overdue. The verdict itself: it lives here, on
+   * the violation, and not on `PackageDistribution.releaseAge`, which
+   * carries registry facts only (#189). */
+  overdueTier: OverdueTier;
   scope: 'root' | 'tree';
 }
 

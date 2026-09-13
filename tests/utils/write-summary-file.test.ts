@@ -263,15 +263,12 @@ describe('writeSummaryFile', () => {
     it('excludes a not-enforced (severity: warn) overdue package', () => {
       const overdueWarn = createMockPackage('lodash', {
         releaseAge: createMockReleaseAge({
-          worstLevel: 'minor_overdue',
-          severity: 'warn',
           upgrades: [
             {
               version: '4.17.21',
               releasedDaysAgo: 10,
               breachReleasedDaysAgo: 100,
               semverBump: 'minor',
-              level: 'minor_overdue',
               thresholdDays: 60,
             },
           ],
@@ -287,15 +284,12 @@ describe('writeSummaryFile', () => {
     it('shows an enforced (severity: error) overdue package with the upgrade description', () => {
       const overdueError = createMockPackage('my-internal-pkg', {
         releaseAge: createMockReleaseAge({
-          worstLevel: 'major_overdue',
-          severity: 'error',
           upgrades: [
             {
               version: '4.2.0',
               releasedDaysAgo: 10,
               breachReleasedDaysAgo: 100,
               semverBump: 'major',
-              level: 'major_overdue',
               thresholdDays: 60,
             },
           ],
@@ -306,7 +300,7 @@ describe('writeSummaryFile', () => {
           packageDistribution: [overdueError],
           ruleViolations: [
             createMockNoOutdatedPackagesViolation('my-internal-pkg', {
-              worstLevel: 'major_overdue',
+              overdueTier: 'major',
               severity: 'error',
             }),
           ],
@@ -325,15 +319,12 @@ describe('writeSummaryFile', () => {
       const both = createMockPackage('my-internal-pkg', {
         deprecated: 'no longer maintained',
         releaseAge: createMockReleaseAge({
-          worstLevel: 'major_overdue',
-          severity: 'error',
           upgrades: [
             {
               version: '4.2.0',
               releasedDaysAgo: 10,
               breachReleasedDaysAgo: 100,
               semverBump: 'major',
-              level: 'major_overdue',
               thresholdDays: 60,
             },
           ],
@@ -344,7 +335,7 @@ describe('writeSummaryFile', () => {
           packageDistribution: [both],
           ruleViolations: [
             createMockNoOutdatedPackagesViolation('my-internal-pkg', {
-              worstLevel: 'major_overdue',
+              overdueTier: 'major',
               severity: 'error',
             }),
             createMockDeprecatedViolation('my-internal-pkg'),
@@ -365,8 +356,6 @@ describe('writeSummaryFile', () => {
       const deprecatedOnlyBreach = createMockPackage('my-internal-pkg', {
         deprecated: 'no longer maintained',
         releaseAge: createMockReleaseAge({
-          worstLevel: 'major_overdue',
-          severity: 'error',
           upgrades: [],
         }),
       });
@@ -375,7 +364,7 @@ describe('writeSummaryFile', () => {
           packageDistribution: [deprecatedOnlyBreach],
           ruleViolations: [
             createMockNoOutdatedPackagesViolation('my-internal-pkg', {
-              worstLevel: 'major_overdue',
+              overdueTier: 'major',
               severity: 'error',
             }),
             createMockDeprecatedViolation('my-internal-pkg'),
@@ -413,15 +402,12 @@ describe('writeSummaryFile', () => {
     it('never uses the "(issues only)" qualifier in the header', () => {
       const overdueError = createMockPackage('my-internal-pkg', {
         releaseAge: createMockReleaseAge({
-          worstLevel: 'major_overdue',
-          severity: 'error',
           upgrades: [
             {
               version: '4.2.0',
               releasedDaysAgo: 10,
               breachReleasedDaysAgo: 100,
               semverBump: 'major',
-              level: 'major_overdue',
               thresholdDays: 60,
             },
           ],
@@ -432,7 +418,7 @@ describe('writeSummaryFile', () => {
           packageDistribution: [overdueError],
           ruleViolations: [
             createMockNoOutdatedPackagesViolation('my-internal-pkg', {
-              worstLevel: 'major_overdue',
+              overdueTier: 'major',
               severity: 'error',
             }),
           ],
@@ -450,18 +436,18 @@ describe('writeSummaryFile', () => {
     it('recommends the cross-tier compliant target, not "no compliant release available" (#57 regression)', () => {
       const pkg = createMockPackage('some-lib', {
         releaseAge: createMockReleaseAge({
-          worstLevel: 'minor_overdue',
-          severity: 'error',
-          minCompliantInWindow: true,
-          minCompliantVersion: '1.0.0',
-          minCompliantBump: 'major',
+          recommendedTarget: {
+            version: '1.0.0',
+            releasedDaysAgo: 50,
+            semverBump: 'major',
+            inWindow: true,
+          },
           upgrades: [
             {
               version: '0.5.7',
               releasedDaysAgo: 200,
               breachReleasedDaysAgo: 200,
               semverBump: 'minor',
-              level: 'minor_overdue',
               thresholdDays: 45,
             },
           ],
@@ -472,7 +458,7 @@ describe('writeSummaryFile', () => {
           packageDistribution: [pkg],
           ruleViolations: [
             createMockNoOutdatedPackagesViolation('some-lib', {
-              worstLevel: 'minor_overdue',
+              overdueTier: 'minor',
               severity: 'error',
             }),
           ],
@@ -489,8 +475,6 @@ describe('writeSummaryFile', () => {
     // compliantTarget argument.
     it('renders the exact string describeMinimumTarget produces, not a re-derived one', () => {
       const releaseAge = createMockReleaseAge({
-        worstLevel: 'minor_overdue',
-        severity: 'error',
         minCompliantInWindow: true,
         minCompliantVersion: '1.0.0',
         minCompliantBump: 'major',
@@ -500,7 +484,6 @@ describe('writeSummaryFile', () => {
             releasedDaysAgo: 200,
             breachReleasedDaysAgo: 200,
             semverBump: 'minor',
-            level: 'minor_overdue',
             thresholdDays: 45,
           },
         ],
@@ -510,10 +493,7 @@ describe('writeSummaryFile', () => {
         makeAggregated({
           packageDistribution: [pkg],
           ruleViolations: [
-            createMockNoOutdatedPackagesViolation('some-lib', {
-              worstLevel: 'minor_overdue',
-              severity: 'error',
-            }),
+            createMockNoOutdatedPackagesViolation('some-lib', {}),
           ],
         }),
       );
@@ -539,10 +519,8 @@ describe('writeSummaryFile', () => {
         hasVersionConflict: true,
         allVersions: ['1.0.0', '3.0.0'],
         releaseAge: createMockReleaseAge({
-          worstLevel: null,
-          severity: 'error',
           scope: 'root',
-          advisoryBreaches: [{ version: '1.0.0', level: 'major_overdue' }],
+          advisoryBreaches: [{ version: '1.0.0', tier: 'major' }],
         }),
       });
       const content = write(
@@ -565,21 +543,18 @@ describe('writeSummaryFile', () => {
         hasVersionConflict: true,
         allVersions: ['1.0.0', '2.0.0'],
         releaseAge: createMockReleaseAge({
-          worstLevel: 'major_overdue',
-          severity: 'error',
           scope: 'root',
-          installedVersion: '1.0.0',
+          measuredVersion: '1.0.0',
           upgrades: [
             {
               version: '2.0.0',
               releasedDaysAgo: 10,
               breachReleasedDaysAgo: 400,
               semverBump: 'major',
-              level: 'major_overdue',
               thresholdDays: 60,
             },
           ],
-          advisoryBreaches: [{ version: '2.0.0', level: 'major_overdue' }],
+          advisoryBreaches: [{ version: '2.0.0', tier: 'major' }],
         }),
       });
       const content = write(
@@ -587,7 +562,7 @@ describe('writeSummaryFile', () => {
           packageDistribution: [both],
           ruleViolations: [
             createMockNoOutdatedPackagesViolation('multi-version-lib', {
-              worstLevel: 'major_overdue',
+              overdueTier: 'major',
               severity: 'error',
             }),
           ],

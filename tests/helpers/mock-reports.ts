@@ -119,11 +119,8 @@ export function createMockReleaseAge(
   overrides: Partial<ReleaseAgeEntry> = {},
 ): ReleaseAgeEntry {
   return {
-    installedVersion: '1.0.0',
+    measuredVersion: '1.0.0',
     upgrades: [],
-    worstLevel: null,
-    severity: 'error',
-    scope: 'root',
     ...overrides,
   };
 }
@@ -143,8 +140,8 @@ export function createMockNoOutdatedPackagesViolation(
     severity: 'error',
     patterns: [packageName],
     packageName,
-    installedVersion: '1.0.0',
-    worstLevel: 'major_overdue',
+    measuredVersion: '1.0.0',
+    overdueTier: 'major',
     scope: 'root',
     ...overrides,
   };

@@ -1,18 +1,37 @@
-export type UpgradeLevel = 'minor_overdue' | 'major_overdue';
+/**
+ * Which semver tier a package is overdue on — the `no-outdated-packages`
+ * verdict, and the only thing on that axis. It rides on the violation
+ * (`src/rules/shared.ts`), never on the registry facts below: a tier is
+ * overdue relative to a configured threshold, which is policy.
+ *
+ * A breached *patch* tier reports `'minor'`. There is no `'patch'` member
+ * on purpose — the tier names how far the upgrade moves you, and patch and
+ * minor are the same answer to "is this a breaking change".
+ */
+export type OverdueTier = 'minor' | 'major';
+
 export type SemverBump = 'patch' | 'minor' | 'major';
 
+/**
+ * A published release newer than the measured version whose bump tier has
+ * already aged past its threshold.
+ *
+ * Only breached tiers become `AvailableUpgrade`s, so the presence of any is
+ * itself the "something is overdue" signal — which is why this carries no
+ * overdue field of its own. The tier is `semverBump`; deriving the verdict
+ * from it is `deriveOverdueTier` in `src/rules/no-outdated-packages.ts`.
+ */
 export interface AvailableUpgrade {
   version: string;
   releasedDaysAgo: number;
   /**
    * Age (in days) of the oldest release in this bump tier — the one that
-   * actually breached `thresholdDays` and drove `level`. Distinct from
-   * `releasedDaysAgo`, which is the newest/recommended upgrade target and
-   * may be much younger than the release that triggered the breach (#24).
+   * actually breached `thresholdDays`. Distinct from `releasedDaysAgo`,
+   * which is the newest/recommended upgrade target and may be much younger
+   * than the release that triggered the breach (#24).
    */
   breachReleasedDaysAgo: number;
   semverBump: SemverBump;
-  level: UpgradeLevel;
   thresholdDays: number;
   isLatest?: boolean;
 }
@@ -26,52 +45,62 @@ export interface PendingUpgrade {
   daysRemaining: number;
 }
 
-export interface ReleaseAgeEntry {
-  installedVersion: string;
-  upgrades: AvailableUpgrade[];
+/**
+ * The upgrade hermex recommends, and whether it actually clears the breach.
+ *
+ * Grouped into one object rather than spread across four optional
+ * `minCompliant*` fields because they are one decision with three possible
+ * answers, and flat optionals could not express that: the old shape let
+ * `minCompliantVersion` hold a version that was *not* compliant, rescued
+ * only by a separate `minCompliantInWindow: false` beside it (#26). Here
+ * `inWindow: false` is attached to the fallback it describes.
+ */
+export interface RecommendedTarget {
+  version: string;
+  releasedDaysAgo: number;
+  /** Bump tier relative to the measured version — for labeling the target
+   * when it differs from the breached tier. */
+  semverBump?: SemverBump;
   /**
-   * `null` only when there are no breached upgrades at all. Independent of
-   * whether `minCompliantVersion` fell back to `latestVersion` — a package
-   * can still be overdue on a breached tier even when latest itself is past
-   * that tier's threshold and there's nothing fresher to recommend instead
-   * (#29).
+   * `true` when this is a genuine still-in-window target you could adopt
+   * right now and be compliant. `false` when it only fell back to latest
+   * because every candidate is itself past its threshold (#26): there is no
+   * compliant release to recommend, so the display says so rather than
+   * pointing at a target that wouldn't clear the breach.
    */
-  worstLevel: UpgradeLevel | null;
+  inWindow: boolean;
+}
+
+/**
+ * What the registry says about one package's releases, measured against
+ * what's installed. **Facts only** — no severity, no verdict.
+ *
+ * Everything here is derived from published release dates plus the
+ * configured thresholds. Thresholds are an *input* (a tier can't be called
+ * breached without one), but nothing about how hard the policy is enforced
+ * reaches this struct: severity lives on the violation, and whether a
+ * package is overdue at all is `upgrades.length > 0`. Populated for every
+ * package the registry answered for, whatever its policy — it is the
+ * Packages table's data, not a judgment (#189).
+ */
+export interface ReleaseAgeEntry {
+  /**
+   * The single version this was measured against. Under `scope: 'root'`
+   * that's the root-installed copy; under `scope: 'tree'` it's the worst
+   * offending copy in the lockfile, which may be a nested one (#57). Named
+   * for what it is rather than `installedVersion`, which read as "the
+   * version you installed" while silently meaning something else under
+   * tree scope.
+   */
+  measuredVersion: string;
+  /** Breached tiers only, newest-release-first. Empty means nothing is overdue. */
+  upgrades: AvailableUpgrade[];
+  /** Set only when nothing has breached yet — the "coming due" advisory. */
   pendingUpgrade?: PendingUpgrade;
   latestVersion?: string;
   latestReleasedDaysAgo?: number;
-  /**
-   * The oldest release (across any bump tier) that's still within its
-   * threshold, i.e. a safe upgrade target. Falls back to `latestVersion`
-   * when no release has ever qualified — upgrading to (or already being
-   * on) latest is always treated as compliant, since nothing fresher
-   * exists to require instead (#26).
-   */
-  minCompliantVersion?: string;
-  minCompliantReleasedDaysAgo?: number;
-  /**
-   * `true` when `minCompliantVersion` is a genuine still-in-window upgrade
-   * target — something you could adopt right now and be compliant. `false`
-   * when it only fell back to `latestVersion` because every candidate is
-   * itself past its threshold (#26): in that case there is no compliant
-   * release to recommend, so the display says so rather than pointing at a
-   * target that wouldn't actually clear the breach.
-   */
-  minCompliantInWindow?: boolean;
-  /** Bump tier of `minCompliantVersion` relative to installed — for labeling
-   * the recommended target when it differs from the breached tier. */
-  minCompliantBump?: SemverBump;
-  /** The governing rule entry's severity (see `resolveReleaseAgeRule`,
-   * `src/config/overrides.ts`) — 'off' still populates this entry (every
-   * package is fetched and shown regardless of policy), it just never
-   * becomes a `NoOutdatedPackagesViolation`. */
-  severity: 'error' | 'warn' | 'info' | 'off';
-  /**
-   * Which lockfile copies count toward this verdict: 'root' checks only
-   * `installedVersion`; 'tree' checks every resolved copy. From the
-   * governing `rules['no-outdated-packages']` entry's own `scope` field (#57).
-   */
-  scope: 'root' | 'tree';
+  /** Absent when there is no newer release to point at. */
+  recommendedTarget?: RecommendedTarget;
   /** Every distinct installed version considered — only set when more than one exists. */
   evaluatedVersions?: string[];
   /**
@@ -81,7 +110,7 @@ export interface ReleaseAgeEntry {
    * conflict, regardless of scope, so overdue nested copies are never
    * silently invisible just because they don't block `comply` (#57).
    */
-  advisoryBreaches?: { version: string; level: UpgradeLevel }[];
+  advisoryBreaches?: { version: string; tier: OverdueTier }[];
 }
 
 export interface RegistryPackageInfo {

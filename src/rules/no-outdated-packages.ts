@@ -5,6 +5,7 @@ import type {
 } from '../config/types';
 import type { PackageDistribution } from '../utils/aggregator';
 import type { ReleaseAgeConnection } from '../npm-registry/enricher';
+import type { AvailableUpgrade, OverdueTier } from '../npm-registry/types';
 import type { RuleViolation } from './shared';
 
 export { resolveReleaseAgeRule };
@@ -22,6 +23,27 @@ export function releaseAgeConnection(
     cacheTtlMs: config.cacheTtlMs,
     cacheDisabled: config.cacheDisabled,
   };
+}
+
+/**
+ * The rule's verdict for one package: which semver tier it is overdue on,
+ * or `null` when nothing is.
+ *
+ * Derived from the facts rather than stored beside them. `upgrades` holds
+ * *breached tiers only*, so its emptiness already answers "is anything
+ * overdue" — a stored `worstLevel` was a second copy of that answer living
+ * on the registry's output, which is what let the display read a verdict
+ * off the facts object (#189).
+ *
+ * A breached patch tier reports `'minor'`: `OverdueTier` has no `'patch'`
+ * member, because the tier names how far the upgrade moves you and patch
+ * and minor are the same answer to "is this breaking".
+ */
+export function deriveOverdueTier(
+  upgrades: readonly AvailableUpgrade[],
+): OverdueTier | null {
+  if (upgrades.some((u) => u.semverBump === 'major')) return 'major';
+  return upgrades.length > 0 ? 'minor' : null;
 }
 
 /**
@@ -46,20 +68,24 @@ export function evaluateOutdatedPackages(
 
   const violations: RuleViolation[] = [];
   for (const pkg of packages) {
-    const entry = pkg.releaseAge;
-    if (!entry || entry.worstLevel === null) continue;
-    if (entry.severity === 'off') continue;
+    const tier = pkg.releaseAge && deriveOverdueTier(pkg.releaseAge.upgrades);
+    if (!tier) continue;
 
+    // Severity comes from the governing entry, not from the facts — an
+    // 'off' entry still carries a full `releaseAge` for the table to
+    // render, it just never becomes a violation (#189).
     const rule = resolveReleaseAgeRule(pkg.packageName, rules);
+    if (rule.severity === 'off') continue;
+
     violations.push({
       ruleId: 'no-outdated-packages',
-      severity: entry.severity,
+      severity: rule.severity,
       patterns: rule.patterns,
       message: rule.message,
       packageName: pkg.packageName,
-      installedVersion: entry.installedVersion,
-      worstLevel: entry.worstLevel,
-      scope: entry.scope,
+      measuredVersion: pkg.releaseAge!.measuredVersion,
+      overdueTier: tier,
+      scope: rule.scope,
     });
   }
 

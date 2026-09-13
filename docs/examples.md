@@ -765,7 +765,18 @@ Severity is the only thing that decides which bucket a rule violation lands in; 
 | `ruleViolations` | **Every rule hit, in one list** — `no-files`, `require-files`, `max-file-size`, `require-packages`, `no-packages`, `no-deprecated-packages`, `require-scripts`, `require-package-fields`, `no-package-fields`, `require-engine-version`, `require-codeowners`, `no-outdated-packages`. Filter on `ruleId`. |
 | `compliance` | The canonical verdict — see above. |
 
-`ruleViolations` is the single source of truth for rule hits. Entries share a common shape (`ruleId`, `severity`, `patterns`, `message?`, `matchedFiles`) and add per-type fields where they apply: `packageName` for `no-packages`, `packageName`/`deprecated` for `no-deprecated-packages`, `fieldPath`/`actualValue` for the package-field rules, `maxSizeBytes`/`oversizeFiles` for `max-file-size`, `installedRange`/`requiredRange` for `require-engine-version`.
+`ruleViolations` is the single source of truth for rule hits. Entries share a common shape (`ruleId`, `severity`, `patterns`, `message?`, `matchedFiles`) and add per-type fields where they apply: `packageName` for `no-packages`, `packageName`/`deprecated` for `no-deprecated-packages`, `fieldPath`/`actualValue` for the package-field rules, `maxSizeBytes`/`oversizeFiles` for `max-file-size`, `installedRange`/`requiredRange` for `require-engine-version`, `measuredVersion`/`overdueTier`/`scope` for `no-outdated-packages`.
+
+#### Facts vs. verdict
+
+`packages[].releaseAge` and `ruleViolations[]` answer two different questions, and the split is deliberate:
+
+- **`packages[].releaseAge` is facts.** What the registry published and how it compares to what's installed: `measuredVersion` (the copy the check was measured against — the root one under `scope: 'root'`, the worst offending one under `'tree'`), `upgrades[]` (breached tiers only), `pendingUpgrade`, `latestVersion`, `recommendedTarget`, `evaluatedVersions`, `advisoryBreaches`. It is populated for every package the registry answered for, **whatever the policy** — including entries at `severity: 'off'`. Nothing here is a judgment.
+- **`ruleViolations[]` is the verdict.** Whether a package is *overdue* is `overdueTier`, and how hard that is enforced is `severity`. Both live only here.
+
+So "is this package overdue?" is `upgrades.length > 0` on the facts, and "does it fail `comply`?" is whether a violation exists for it. A package with breached upgrades and no violation is one whose governing entry is `'off'`.
+
+`recommendedTarget` carries `inWindow`. When `false`, the target is a fallback to `latestVersion` that is *itself* past its threshold — there is no release that would actually clear the breach, so don't present it as one (#26).
 
 #### Trimming the JSON with `output.*`
 

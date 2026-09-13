@@ -3,10 +3,11 @@ import type { PackageDistribution } from '../utils/aggregator';
 import type { ReleaseAgeThresholds } from '../config/types';
 import type {
   AvailableUpgrade,
+  OverdueTier,
   PendingUpgrade,
+  RecommendedTarget,
   ReleaseAgeEntry,
   SemverBump,
-  UpgradeLevel,
 } from './types';
 import { getPackageInfo, type CacheOptions } from './cache';
 
@@ -45,29 +46,40 @@ function pickNewest(versions: { version: string; daysAgo: number }[]): {
   return versions.reduce((a, b) => (a.daysAgo < b.daysAgo ? a : b));
 }
 
-function upgradeLevel(
+/** Whether this tier's oldest available release has aged past its
+ * threshold. A tier with no configured threshold (`false`/absent) can never
+ * breach. */
+function isBreached(
   daysAgo: number,
   bump: SemverBump,
   thresholds: ReleaseAgeThresholds,
-): UpgradeLevel | null {
+): boolean {
   const threshold = thresholds[bump];
-  if (threshold === false || threshold === undefined) return null;
-  if (daysAgo > threshold) {
-    return bump === 'major' ? 'major_overdue' : 'minor_overdue';
-  }
-  return null;
+  if (threshold === false || threshold === undefined) return false;
+  return daysAgo > threshold;
+}
+
+/**
+ * The overdue tier implied by a set of breached upgrades — `null` when
+ * nothing breached.
+ *
+ * Internal to the "which installed copy is worst" comparison below. The
+ * *verdict* of the same shape is the rule's to publish
+ * (`deriveOverdueTier`, `src/rules/no-outdated-packages.ts`); this is the
+ * same derivation reused for ranking, deliberately not exported, so the
+ * facts layer never hands a caller something verdict-shaped (#189).
+ */
+function tierOf(upgrades: AvailableUpgrade[]): OverdueTier | null {
+  if (upgrades.some((u) => u.semverBump === 'major')) return 'major';
+  return upgrades.length > 0 ? 'minor' : null;
 }
 
 interface ReleaseAgeForVersion {
   upgrades: AvailableUpgrade[];
-  worstLevel: UpgradeLevel | null;
   pendingUpgrade?: PendingUpgrade;
   latestVersion?: string;
   latestReleasedDaysAgo?: number;
-  minCompliantVersion?: string;
-  minCompliantReleasedDaysAgo?: number;
-  minCompliantInWindow: boolean;
-  minCompliantBump?: SemverBump;
+  recommendedTarget?: RecommendedTarget;
 }
 
 /**
@@ -85,9 +97,9 @@ function computeReleaseAgeForVersion(
   distTags: Record<string, string> | undefined,
 ): ReleaseAgeForVersion {
   const byBump = new Map<SemverBump, { version: string; daysAgo: number }[]>();
-  let minCompliantVersion: string | undefined;
-  let minCompliantReleasedDaysAgo: number | undefined;
-  let minCompliantBump: SemverBump | undefined;
+  let inWindowVersion: string | undefined;
+  let inWindowDaysAgo: number | undefined;
+  let inWindowBump: SemverBump | undefined;
 
   for (const [version, dateStr] of Object.entries(timeMap)) {
     if (version === 'created' || version === 'modified') continue;
@@ -114,12 +126,11 @@ function computeReleaseAgeForVersion(
       threshold !== false &&
       threshold !== undefined &&
       daysAgo <= threshold &&
-      (minCompliantReleasedDaysAgo === undefined ||
-        daysAgo > minCompliantReleasedDaysAgo)
+      (inWindowDaysAgo === undefined || daysAgo > inWindowDaysAgo)
     ) {
-      minCompliantVersion = version;
-      minCompliantReleasedDaysAgo = daysAgo;
-      minCompliantBump = bump;
+      inWindowVersion = version;
+      inWindowDaysAgo = daysAgo;
+      inWindowBump = bump;
     }
   }
 
@@ -129,8 +140,7 @@ function computeReleaseAgeForVersion(
   const upgrades: AvailableUpgrade[] = [];
   for (const [bump, versions] of byBump.entries()) {
     const oldestDaysAgo = Math.max(...versions.map((v) => v.daysAgo));
-    const level = upgradeLevel(oldestDaysAgo, bump, thresholds);
-    if (!level) continue;
+    if (!isBreached(oldestDaysAgo, bump, thresholds)) continue;
 
     const newest = pickNewest(versions);
     upgrades.push({
@@ -138,7 +148,6 @@ function computeReleaseAgeForVersion(
       releasedDaysAgo: newest.daysAgo,
       breachReleasedDaysAgo: oldestDaysAgo,
       semverBump: bump,
-      level,
       thresholdDays: thresholds[bump] as number,
     });
   }
@@ -153,45 +162,45 @@ function computeReleaseAgeForVersion(
     ? daysSince(latestEntry)
     : undefined;
 
-  // If nothing newer than installed ever fell inside its tier's threshold,
-  // the only real landing spot is latest — treat it as the compliant target
-  // even though it's itself past the window, since there's no fresher
-  // release to upgrade to instead (#26).
-  const hadInWindowCandidate = minCompliantVersion !== undefined;
-  if (
-    !hadInWindowCandidate &&
-    latestVersion &&
-    latestReleasedDaysAgo !== undefined &&
-    !semver.prerelease(latestVersion) &&
-    semver.gt(latestVersion, installedVersion)
-  ) {
-    minCompliantVersion = latestVersion;
-    minCompliantReleasedDaysAgo = latestReleasedDaysAgo;
-  }
-
   for (const upgrade of finalUpgrades) {
     if (latestVersion && upgrade.version === latestVersion) {
       upgrade.isLatest = true;
     }
   }
 
-  // The latest-fallback above is a display convenience for "closest
-  // achievable target" — it must not also erase worstLevel. A package with
-  // breached upgrades is still overdue even when latest itself is past the
-  // threshold and there's nothing fresher to recommend instead (#29).
-  const worstLevel: UpgradeLevel | null = finalUpgrades.some(
-    (u) => u.level === 'major_overdue',
-  )
-    ? 'major_overdue'
-    : finalUpgrades.length > 0
-      ? 'minor_overdue'
-      : null;
+  // If nothing newer than installed ever fell inside its tier's threshold,
+  // the only real landing spot is latest — recommend it even though it is
+  // itself past the window, flagged `inWindow: false` so the display can say
+  // there is nothing that would actually clear the breach (#26). That
+  // fallback is a recommendation, never an all-clear: a package with
+  // breached upgrades stays overdue regardless, which is why the verdict is
+  // derived from `upgrades` and never from this (#29).
+  let recommendedTarget: RecommendedTarget | undefined;
+  if (inWindowVersion !== undefined && inWindowDaysAgo !== undefined) {
+    recommendedTarget = {
+      version: inWindowVersion,
+      releasedDaysAgo: inWindowDaysAgo,
+      semverBump: inWindowBump,
+      inWindow: true,
+    };
+  } else if (
+    latestVersion &&
+    latestReleasedDaysAgo !== undefined &&
+    !semver.prerelease(latestVersion) &&
+    semver.gt(latestVersion, installedVersion)
+  ) {
+    recommendedTarget = {
+      version: latestVersion,
+      releasedDaysAgo: latestReleasedDaysAgo,
+      inWindow: false,
+    };
+  }
 
   // Only surface a "coming due" advisory when nothing has breached yet — a
   // package that's already in violation on one tier doesn't also need an
   // "N days remaining" note about another, unbreached tier.
   let pendingUpgrade: PendingUpgrade | undefined;
-  if (worstLevel === null) {
+  if (finalUpgrades.length === 0) {
     for (const [bump, versions] of byBump.entries()) {
       const threshold = thresholds[bump];
       if (threshold === false || threshold === undefined) continue;
@@ -215,34 +224,28 @@ function computeReleaseAgeForVersion(
 
   return {
     upgrades: finalUpgrades,
-    worstLevel,
     pendingUpgrade,
     latestVersion,
     latestReleasedDaysAgo,
-    minCompliantVersion,
-    minCompliantReleasedDaysAgo,
-    minCompliantInWindow: hadInWindowCandidate,
-    minCompliantBump,
+    recommendedTarget,
   };
 }
 
-const LEVEL_RANK: Record<'null' | UpgradeLevel, number> = {
+const TIER_RANK: Record<'null' | OverdueTier, number> = {
   null: 0,
-  minor_overdue: 1,
-  major_overdue: 2,
+  minor: 1,
+  major: 2,
 };
 
-function levelRank(level: UpgradeLevel | null): number {
-  return LEVEL_RANK[level ?? 'null'];
+function tierRank(tier: OverdueTier | null): number {
+  return TIER_RANK[tier ?? 'null'];
 }
 
-/** A vacuous "nothing enforced" result — worstLevel stays null regardless
- * of what the registry timeline actually says, since there's no enforced
- * baseline to measure against. */
+/** A vacuous "nothing enforced" result — no upgrades regardless of what the
+ * registry timeline says, since there is no enforced baseline to measure
+ * against. */
 const NOTHING_ENFORCED: ReleaseAgeForVersion = {
   upgrades: [],
-  worstLevel: null,
-  minCompliantInWindow: false,
 };
 
 /**
@@ -251,10 +254,16 @@ const NOTHING_ENFORCED: ReleaseAgeForVersion = {
  * direct dependency — not the "fell back to the highest resolved version"
  * placeholder for a purely transitive package (#62); 'tree': every
  * resolved copy). Evaluates each candidate independently via
- * `computeReleaseAgeForVersion`, and combines them into a single verdict —
- * the worst result among the enforced versions — while still surfacing
+ * `computeReleaseAgeForVersion`, and combines them into a single set of
+ * facts — those of the worst-off enforced version — while still surfacing
  * overdue-but-not-enforced copies via `advisoryBreaches` regardless of
  * scope (#57).
+ *
+ * `scope` and `thresholds` are inputs because the arithmetic genuinely
+ * needs them: you cannot say which copies count, or which tier is past its
+ * line, without them. Severity is not an input — nothing here varies by how
+ * hard a policy is enforced, and stamping it onto the result was what let
+ * the display read a verdict off the facts (#189).
  */
 export function computeReleaseAge(
   installedVersion: string,
@@ -262,7 +271,6 @@ export function computeReleaseAge(
   timeMap: Record<string, string>,
   thresholds: ReleaseAgeThresholds,
   distTags: Record<string, string> | undefined,
-  severity: 'error' | 'warn' | 'info' | 'off',
   scope: 'root' | 'tree',
   hasRootVersion: boolean,
 ): ReleaseAgeEntry {
@@ -294,8 +302,8 @@ export function computeReleaseAge(
     baseline = perVersion.get(baselineVersion)!;
     for (const version of enforcedVersions.slice(1)) {
       const candidate = perVersion.get(version)!;
-      const candidateRank = levelRank(candidate.worstLevel);
-      const baselineRank = levelRank(baseline.worstLevel);
+      const candidateRank = tierRank(tierOf(candidate.upgrades));
+      const baselineRank = tierRank(tierOf(baseline.upgrades));
       const candidateBreachAge =
         candidate.upgrades[0]?.breachReleasedDaysAgo ?? 0;
       const baselineBreachAge =
@@ -311,28 +319,20 @@ export function computeReleaseAge(
     }
   }
 
-  const advisoryBreaches: { version: string; level: UpgradeLevel }[] = [];
+  const advisoryBreaches: { version: string; tier: OverdueTier }[] = [];
   for (const version of candidates) {
     if (enforcedVersions.includes(version)) continue;
-    const result = perVersion.get(version)!;
-    if (result.worstLevel) {
-      advisoryBreaches.push({ version, level: result.worstLevel });
-    }
+    const tier = tierOf(perVersion.get(version)!.upgrades);
+    if (tier) advisoryBreaches.push({ version, tier });
   }
 
   return {
-    installedVersion: baselineVersion,
+    measuredVersion: baselineVersion,
     upgrades: baseline.upgrades,
-    worstLevel: baseline.worstLevel,
     pendingUpgrade: baseline.pendingUpgrade,
     latestVersion: baseline.latestVersion,
     latestReleasedDaysAgo: baseline.latestReleasedDaysAgo,
-    minCompliantVersion: baseline.minCompliantVersion,
-    minCompliantReleasedDaysAgo: baseline.minCompliantReleasedDaysAgo,
-    minCompliantInWindow: baseline.minCompliantInWindow,
-    minCompliantBump: baseline.minCompliantBump,
-    severity,
-    scope,
+    recommendedTarget: baseline.recommendedTarget,
     evaluatedVersions: candidates.length > 1 ? candidates : undefined,
     advisoryBreaches:
       advisoryBreaches.length > 0 ? advisoryBreaches : undefined,
@@ -347,11 +347,15 @@ export interface ReleaseAgeConnection {
   cacheDisabled: boolean;
 }
 
-/** A package's resolved release-age policy — from `resolveReleaseAgeRule`
- * (`src/config/overrides.ts`), one per package, already picked from
- * whichever rule entry governs it. */
+/**
+ * The inputs the timeline arithmetic needs from a package's resolved
+ * policy — from `resolveReleaseAgeRule` (`src/config/overrides.ts`), one
+ * per package, already picked from whichever rule entry governs it.
+ *
+ * Severity is deliberately absent: it changes nothing here, and only the
+ * rule needs it, to decide whether a breach becomes a violation (#189).
+ */
 export interface ReleaseAgePolicy {
-  severity: 'error' | 'warn' | 'info' | 'off';
   thresholds: ReleaseAgeThresholds;
   scope: 'root' | 'tree';
 }
@@ -434,7 +438,6 @@ export async function enrichFromRegistry(
               info.time,
               policy.thresholds,
               info['dist-tags'],
-              policy.severity,
               policy.scope,
               hasRootVersion,
             )
