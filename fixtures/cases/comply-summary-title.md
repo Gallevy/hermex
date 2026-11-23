@@ -3,7 +3,7 @@
 
 # `comply-summary-title`
 
---summary-title replaces the default heading, so a consumer embedding the markdown can name it after the policy rather than the tool.
+--summary-title is still accepted, and the summary file has no title heading. The pass/fail line is gone too; the violation count remains.
 
 ## What runs
 

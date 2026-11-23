@@ -88,9 +88,11 @@ to show, compliance rules, outdated-package thresholds — is controlled by
 `scan` is informational and always exits `0`. Use `comply` to gate CI — it
 runs the same pipeline, reports every violation, then exits `0` (compliant),
 `1` (not compliant), or `2` (couldn't run the check). `comply` additionally
-supports `--summary-file <path>` (and `--summary-title <title>`) to write a
-CI-friendly markdown summary suitable for a GitHub Actions job summary or PR
-comment. See [docs/examples.md](docs/examples.md#compliance-checking) for
+supports `--summary-file <path>` to write a CI-friendly markdown summary
+suitable for a GitHub Actions job summary or PR comment. The file has no
+title and no Compliant / Not compliant line. `--summary-title` is still
+accepted and ignored, so existing commands keep working. See
+[docs/examples.md](docs/examples.md#compliance-checking) for
 details and a full CI usage example.
 
 ## Configuration

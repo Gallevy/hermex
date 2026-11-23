@@ -866,11 +866,10 @@ Component **names** are not on these rows — they live in `components[]`, keyed
 
 ### CI Job Summary / PR Comment
 
-`--summary-file <path>` writes a concise, ANSI-free markdown summary (title, rules, flagged packages, verdict) to `<path>`, suitable for posting as a GitHub Actions job summary or a PR comment — the same file can be reused verbatim for both surfaces, no need to generate it twice:
+`--summary-file <path>` writes a concise, ANSI-free markdown summary (rules, flagged packages, and a violation count) to `<path>`, suitable for posting as a GitHub Actions job summary or a PR comment — the same file can be reused verbatim for both surfaces, no need to generate it twice. It has no title and no Compliant / Not compliant line. `--summary-title` is still accepted and ignored.
 
 ```bash
 hermex comply --summary-file summary.md
-hermex comply --summary-file summary.md --summary-title "Custom Heading"  # default: "Hermex Compliance Report"
 ```
 
 Because `hermex comply` exits non-zero on violations, and GitHub Actions `run:` steps default to `bash -eo pipefail` (errexit is already on), a step that's expected to sometimes fail will otherwise kill the job before later steps (like posting the comment) can run. Rather than wrapping the command in `set +e` / `set -e` and manually capturing `exit_code=$?`, use `continue-on-error` and read the step's `outcome` later:

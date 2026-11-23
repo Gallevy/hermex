@@ -6,10 +6,7 @@ import chalk from 'chalk';
 import type { AggregatedReport } from '../../src/utils/aggregator';
 import type { RuleViolation } from '../../src/rules/evaluator';
 import { computeCompliance } from '../../src/utils/compliance';
-import {
-  writeSummaryFile,
-  DEFAULT_SUMMARY_TITLE,
-} from '../../src/utils/write-summary-file';
+import { writeSummaryFile } from '../../src/utils/write-summary-file';
 import { describeMinimumTarget } from '../../src/utils/print-packages';
 import type { ResolvedReleaseAgeRuleConfig } from '../../src/config/types';
 import {
@@ -84,28 +81,19 @@ describe('writeSummaryFile', () => {
     },
   ];
 
-  function write(aggregated: AggregatedReport, title?: string): string {
+  function write(aggregated: AggregatedReport): string {
     writeSummaryFile(
       summaryPath,
       aggregated,
       computeCompliance(aggregated),
-      title,
       OUTDATED_RULES,
     );
     return readFileSync(summaryPath, 'utf8');
   }
 
-  describe('title', () => {
-    it('defaults to DEFAULT_SUMMARY_TITLE when no title is passed', () => {
-      const content = write(makeAggregated());
-      expect(content).toContain(`# ${DEFAULT_SUMMARY_TITLE}`);
-    });
-
-    it('uses a custom title when one is passed', () => {
-      const content = write(makeAggregated(), 'Custom Compliance Report');
-      expect(content).toContain('# Custom Compliance Report');
-      expect(content).not.toContain(DEFAULT_SUMMARY_TITLE);
-    });
+  it('does not write a title heading', () => {
+    const content = write(makeAggregated());
+    expect(content).not.toMatch(/^# /m);
   });
 
   it('writes a file with no ANSI escape sequences, even when chalk color is forced on', () => {
@@ -189,7 +177,7 @@ describe('writeSummaryFile', () => {
       );
       expect(content).not.toContain('### Rules');
       expect(content).not.toContain('no-files');
-      expect(content).toContain('### 🟢 Compliant');
+      expect(content).not.toContain('Compliant');
     });
 
     // The row wording is unchanged from when banned packages had their own
@@ -261,7 +249,7 @@ describe('writeSummaryFile', () => {
       );
       expect(content).not.toContain('### Rules');
       expect(content).not.toContain('some-pkg');
-      expect(content).toContain('### 🟢 Compliant');
+      expect(content).not.toContain('Compliant');
     });
   });
 
@@ -515,7 +503,7 @@ describe('writeSummaryFile', () => {
       expect(content).not.toContain('### Packages');
       expect(content).not.toContain('Notes:');
       expect(content).not.toContain('multi-version-lib');
-      expect(content).toContain('### 🟢 Compliant');
+      expect(content).not.toContain('Compliant');
       expect(content).not.toContain('Not compliant');
     });
 
@@ -555,7 +543,8 @@ describe('writeSummaryFile', () => {
       expect(content).not.toContain('Notes:');
       expect(content).not.toContain('bundle impact');
       expect(content).not.toContain('nested copy');
-      expect(content).toContain('Not compliant');
+      expect(content).toContain('mandatory violation');
+      expect(content).not.toContain('Not compliant');
     });
   });
 
@@ -584,29 +573,27 @@ describe('writeSummaryFile', () => {
     expect(content).not.toContain('ui-kits');
   });
 
-  it('writes a Compliant verdict when there are no violations', () => {
+  it('writes no Compliant line when there are no violations', () => {
     const content = write(makeAggregated());
-    expect(content).toContain('Compliant');
+    expect(content).not.toContain('Compliant');
     expect(content).not.toContain('Not compliant');
   });
 
-  // A fully clean report shouldn't carry "Rules"/"Packages" boilerplate for
-  // sections with nothing to say — just the title and the verdict.
-  it('omits both the Rules and Packages sections entirely on a fully clean report', () => {
+  // A fully clean report has nothing to say: no title, no verdict, no empty
+  // Rules or Packages sections.
+  it('writes an empty summary on a fully clean report', () => {
     const content = write(makeAggregated());
-    expect(content).not.toContain('### Rules');
-    expect(content).not.toContain('### Packages');
-    expect(content).toBe(`# ${DEFAULT_SUMMARY_TITLE}\n\n### 🟢 Compliant\n`);
+    expect(content).toBe('');
   });
 
-  it('writes a Not compliant verdict with the mandatory violation count when violations exist', () => {
+  it('writes the mandatory violation count without a Not compliant heading', () => {
     const violation: RuleViolation = {
       ruleId: 'require-files',
       severity: 'error',
       patterns: ['.nvmrc'],
     };
     const content = write(makeAggregated({ ruleViolations: [violation] }));
-    expect(content).toContain('Not compliant');
+    expect(content).not.toContain('Not compliant');
     expect(content).toContain('1 mandatory violation found');
   });
 
