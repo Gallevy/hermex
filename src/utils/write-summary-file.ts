@@ -30,9 +30,9 @@ function buildRulesSection(aggregated: AggregatedReport): string {
   );
 
   // Nothing to report — omit the section entirely, matching
-  // buildPackagesSection below. The verdict section always states pass/fail
-  // clearly; a "### Rules / All rule checks passed" block with zero rows
-  // is boilerplate indistinguishable from "no rules were ever configured."
+  // buildPackagesSection below. A "### Rules" block with zero rows is
+  // boilerplate indistinguishable from "no rules were ever configured."
+  // Pass/fail is the process exit code, not a line in this file.
   if (ruleViolations.length === 0) {
     return '';
   }
@@ -131,32 +131,28 @@ function buildPackagesSection(
 }
 
 function buildVerdictSection(compliance: ComplianceResult): string {
-  if (compliance.compliant) {
-    return `### ${severityIcon('success')} Compliant\n`;
-  }
+  if (compliance.compliant) return '';
 
   const mandatoryCount = countMandatoryViolations(compliance);
 
-  return `### ${severityIcon('error')} Not compliant\n\n${mandatoryCount} mandatory violation${mandatoryCount > 1 ? 's' : ''} found\n`;
+  return `${mandatoryCount} mandatory violation${mandatoryCount > 1 ? 's' : ''} found\n`;
 }
 
-export const DEFAULT_SUMMARY_TITLE = 'Hermex Compliance Report';
-
 /**
- * Writes a concise, ANSI-free markdown summary (title, rules, mandatory
- * package violations, verdict) for CI surfaces that can't render the full
- * human report — a sticky PR comment or job summary (#31). Omits Versus and
- * progress chrome by construction; never touches ora or the Versus renderer.
+ * Writes a concise, ANSI-free markdown summary (rules, mandatory package
+ * violations, and a violation count) for CI surfaces that can't render the
+ * full human report — a sticky PR comment or job summary (#31). No title
+ * and no Compliant / Not compliant line: the caller already has the exit
+ * code, and a badge in front of this file says the same thing. Omits Versus
+ * and progress chrome by construction; never touches ora or the Versus renderer.
  */
 export function writeSummaryFile(
   path: string,
   aggregated: AggregatedReport,
   compliance: ComplianceResult,
-  title: string = DEFAULT_SUMMARY_TITLE,
   rules: ResolvedReleaseAgeRuleConfig[] = [],
 ): void {
   const sections = [
-    `# ${title}\n`,
     buildRulesSection(aggregated),
     buildPackagesSection(aggregated, rules),
     buildVerdictSection(compliance),

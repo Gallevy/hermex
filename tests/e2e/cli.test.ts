@@ -415,7 +415,9 @@ describe('comply command', () => {
       const content = readFileSync(summaryPath, 'utf8');
       // oxlint-disable-next-line no-control-regex -- asserting the ANSI escape byte is absent
       expect(content).not.toMatch(/\x1b\[/);
-      expect(content).toMatch(/Not compliant/);
+      expect(content).toMatch(/mandatory violation/);
+      expect(content).not.toMatch(/Not compliant/);
+      expect(content).not.toMatch(/^# /m);
       expect(content).not.toMatch(/Versus/);
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
@@ -442,14 +444,14 @@ describe('comply command', () => {
       expect(result.status).toBe(0);
       expect(existsSync(summaryPath)).toBe(true);
       const content = readFileSync(summaryPath, 'utf8');
-      expect(content).toMatch(/Compliant/);
-      expect(content).not.toMatch(/Not compliant/);
+      expect(content).not.toMatch(/Compliant/);
+      expect(content).not.toMatch(/^# /m);
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
     }
   });
 
-  it('--summary-title overrides the default heading in the --summary-file output', () => {
+  it('--summary-title is accepted and does not add a heading', () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'hermex-summary-e2e-'));
     try {
       const summaryPath = join(tempDir, 'summary.md');
@@ -470,8 +472,9 @@ describe('comply command', () => {
       ]);
       expect(result.status).toBe(0);
       const content = readFileSync(summaryPath, 'utf8');
-      expect(content).toContain('# Custom CI Title');
+      expect(content).not.toContain('# Custom CI Title');
       expect(content).not.toContain('# Hermex Compliance Report');
+      expect(content).not.toMatch(/^# /m);
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
     }
@@ -498,7 +501,9 @@ describe('comply command', () => {
       expect(() => JSON.parse(result.stdout)).not.toThrow();
       expect(existsSync(summaryPath)).toBe(true);
       const content = readFileSync(summaryPath, 'utf8');
-      expect(content).toMatch(/Not compliant/);
+      expect(content).toMatch(/mandatory violation/);
+      expect(content).not.toMatch(/Not compliant/);
+      expect(content).not.toMatch(/^# /m);
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
     }

@@ -6,10 +6,7 @@ import { printPackages } from '../utils/print-packages';
 import { printVersus } from '../utils/print-versus';
 import { printComplianceVerdict } from '../utils/print-compliance';
 import { computeCompliance } from '../utils/compliance';
-import {
-  writeSummaryFile,
-  DEFAULT_SUMMARY_TITLE,
-} from '../utils/write-summary-file';
+import { writeSummaryFile } from '../utils/write-summary-file';
 import { loadConfig } from '../config/loader';
 import { runPipeline } from './pipeline';
 import { createCommandContext } from './command-context';
@@ -35,12 +32,11 @@ export function registerComplyCommand(program: Command) {
     .option('--no-color', 'Disable colored output (see also NO_COLOR env var)')
     .option(
       '--summary-file <path>',
-      'Write a concise, ANSI-free markdown summary (rules, flagged packages, verdict) to this path, for a CI job summary or PR comment',
+      'Write a concise, ANSI-free markdown summary (rules, flagged packages, violation count) to this path, for a CI job summary or PR comment',
     )
     .option(
       '--summary-title <text>',
-      'Title/heading for the --summary-file markdown output',
-      DEFAULT_SUMMARY_TITLE,
+      'Ignored. Kept so existing commands that pass it still run. The summary file has no title.',
     )
     .action(
       async (options: {
@@ -48,7 +44,6 @@ export function registerComplyCommand(program: Command) {
         format?: 'human' | 'json';
         color?: boolean;
         summaryFile?: string;
-        summaryTitle: string;
       }) => {
         const config = await loadConfig(process.cwd(), options.config);
         await executeComply(
@@ -58,7 +53,6 @@ export function registerComplyCommand(program: Command) {
             color: options.color,
           },
           options.summaryFile,
-          options.summaryTitle,
         );
       },
     );
@@ -68,7 +62,6 @@ export async function executeComply(
   config: HermexConfig,
   contextOptions: CommandContextOptions = {},
   summaryFile?: string,
-  summaryTitle: string = DEFAULT_SUMMARY_TITLE,
 ) {
   const { isJson, spinner } = createCommandContext(config, contextOptions);
 
@@ -107,13 +100,7 @@ export async function executeComply(
     }
 
     if (summaryFile) {
-      writeSummaryFile(
-        summaryFile,
-        aggregated,
-        compliance,
-        summaryTitle,
-        rules,
-      );
+      writeSummaryFile(summaryFile, aggregated, compliance, rules);
     }
 
     process.exitCode = compliance.compliant ? 0 : 1;

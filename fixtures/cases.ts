@@ -105,7 +105,7 @@ export const cases: FixtureCase[] = [
   {
     name: 'comply-summary-file',
     proves:
-      'The markdown a consumer pastes into a PR comment or job summary — ANSI-free, rules + flagged packages + verdict.',
+      'The markdown a consumer pastes into a PR comment or job summary — ANSI-free, rules + flagged packages + a violation count, with no title and no Compliant / Not compliant line.',
     cwd: '.',
     args: ['comply', '--summary-file', '{OUT}/summary.md'],
     writes: ['summary.md'],
@@ -183,7 +183,7 @@ export const cases: FixtureCase[] = [
   {
     name: 'comply-summary-title',
     proves:
-      '--summary-title replaces the default heading, so a consumer embedding the markdown can name it after the policy rather than the tool.',
+      '--summary-title is still accepted, and the summary file has no title heading. The pass/fail line is gone too; the violation count remains.',
     cwd: '.',
     args: [
       'comply',

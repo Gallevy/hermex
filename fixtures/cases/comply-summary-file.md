@@ -3,7 +3,7 @@
 
 # `comply-summary-file`
 
-The markdown a consumer pastes into a PR comment or job summary — ANSI-free, rules + flagged packages + verdict.
+The markdown a consumer pastes into a PR comment or job summary — ANSI-free, rules + flagged packages + a violation count, with no title and no Compliant / Not compliant line.
 
 ## What runs
 
